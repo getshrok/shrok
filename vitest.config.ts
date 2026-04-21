@@ -30,7 +30,7 @@ export default defineConfig({
   test: {
     pool: 'forks',
     poolOptions: {
-      forks: { minForks: 1, maxForks: 2, execArgv: ['--max-old-space-size=512'] },
+      forks: { minForks: 1, maxForks: 2, execArgv: ['--max-old-space-size=2048'] },
     },
     testTimeout: 30_000,
     hookTimeout: 15_000,
