@@ -67,7 +67,7 @@ The doctor source is under `src/doctor/` — one file per layer of checks.
 
 Tails the log stream. On macOS, `tail -f ~/.shrok/shrok.log`. On Linux, `journalctl --user -u shrok -f` (systemd captures stdout/stderr into its journal). On Windows, `Get-Content -Wait -Tail 50` on `%USERPROFILE%\.shrok\shrok.log`.
 
-What you'll see: identity-assembly notes, steward dispatches, channel events, and anything Shrok's internal logger writes at the configured level (default `info`). For deeper traces, use the Logs page in the dashboard with developer mode on — see [developer-mode.md](./developer-mode.md).
+What you'll see: identity-assembly notes, steward dispatches, channel events, and anything Shrok's internal logger writes at the configured level (default `info`). For deeper traces, use the Logs page in the dashboard with developer mode on — see [developer-mode.md](../development/developer-mode.md).
 
 ### `shrok update`
 
@@ -92,5 +92,5 @@ The CLI is deliberately small. It manages the service and nothing else.
 ## Related docs
 
 - [auto-start.md](./auto-start.md) — how the service registered itself in the first place
-- [developer-mode.md](./developer-mode.md) — the richer dashboard surface (logs, tests, evals)
+- [developer-mode.md](../development/developer-mode.md) — the richer dashboard surface (logs, tests, evals)
 - [architecture.md](./architecture.md) — what the daemon actually runs once it's up

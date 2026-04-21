@@ -167,4 +167,4 @@ These are logically stewards, but they live next to the scheduler because they g
 
 - [identity-files.md](./identity-files.md) -- the identity markdown files stewards read and write
 - [architecture.md](./architecture.md) -- how stewards fit into the overall flow
-- [developer-mode.md](./developer-mode.md) -- logs, debug streams, and evals for debugging
+- [developer-mode.md](../development/developer-mode.md) -- logs, debug streams, and evals for debugging

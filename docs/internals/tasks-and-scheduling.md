@@ -90,4 +90,4 @@ The steward has access to: the prompt, `USER.md`, `AMBIENT.md`, recent conversat
 
 - [architecture.md](./architecture.md)
 - [stewards.md](./stewards.md) -- proactive, reminder, and relay steward internals
-- [developer-mode.md](./developer-mode.md)
+- [developer-mode.md](../development/developer-mode.md)
