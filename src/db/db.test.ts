@@ -720,6 +720,54 @@ describe('AppStateStore', () => {
       expect(msg).toContain('$50.00')
     })
   })
+
+  describe('conversation visibility defaults', () => {
+    it('fresh DB returns all visibility fields as false (including agentWork)', () => {
+      const v = store.getConversationVisibility()
+      expect(v).toEqual({
+        agentWork: false,
+        headTools: false,
+        systemEvents: false,
+        stewardRuns: false,
+        agentPills: false,
+        memoryRetrievals: false,
+      })
+    })
+
+    it('setConversationVisibility({ agentWork: true, ... }) round-trips as true', () => {
+      store.setConversationVisibility({
+        agentWork: true,
+        headTools: false,
+        systemEvents: false,
+        stewardRuns: false,
+        agentPills: false,
+        memoryRetrievals: false,
+      })
+      expect(store.getConversationVisibility().agentWork).toBe(true)
+    })
+
+    it('setConversationVisibility({ agentWork: false, ... }) round-trips as false', () => {
+      store.setConversationVisibility({
+        agentWork: false,
+        headTools: false,
+        systemEvents: false,
+        stewardRuns: false,
+        agentPills: false,
+        memoryRetrievals: false,
+      })
+      expect(store.getConversationVisibility().agentWork).toBe(false)
+    })
+
+    it('legacy xray_enabled=true migration seeds agentWork: true and deletes the legacy key', () => {
+      const db = freshDb()
+      db.prepare("INSERT INTO app_state (key, value) VALUES ('xray_enabled', 'true')").run()
+      const localStore = new AppStateStore(db)
+      const v = localStore.getConversationVisibility()
+      expect(v.agentWork).toBe(true)
+      const after = db.prepare("SELECT value FROM app_state WHERE key = 'xray_enabled'").get()
+      expect(after).toBeUndefined()
+    })
+  })
 })
 
 // ─── ScheduleStore ────────────────────────────────────────────────────────────
