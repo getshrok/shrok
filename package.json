@@ -37,6 +37,7 @@
     "start": "tsx src/index.ts",
     "doctor": "tsx src/doctor/index.ts",
     "build": "npm run build:dashboard && tsc",
+    "sync:icw": "cd ../infinite-context-window && npm run build && cp -r dist/. ../shrok/src/icw/",
     "build:dashboard": "npm run build --workspace=dashboard",
     "test": "vitest run",
     "test:watch": "vitest",
