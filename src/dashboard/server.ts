@@ -182,7 +182,7 @@ export class DashboardServer {
     })
     app.use('/api/tests', createTestsRouter())
     if (this.opts.schedules) {
-      app.use('/api/schedules', createSchedulesRouter(this.opts.schedules, this.opts.config.timezone, this.opts.unifiedLoader, path.join(workspacePath, 'reminders')))
+      app.use('/api/schedules', createSchedulesRouter(this.opts.schedules, this.opts.config.timezone, this.opts.unifiedLoader))
     }
     if (this.opts.db && this.opts.evalResultsDir) {
       app.use('/api/evals', createEvalsRouter(this.opts.db, this.opts.evalResultsDir))

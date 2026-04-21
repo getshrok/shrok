@@ -1,14 +1,12 @@
 import express from 'express'
 import type { Request, Response } from 'express'
-import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { requireAuth } from '../auth.js'
 import type { ScheduleStore } from '../../db/schedules.js'
 import type { UnifiedLoader } from '../../skills/unified.js'
 import { nextRunAfter } from '../../scheduler/cron.js'
 import { generateId } from '../../llm/util.js'
 
-export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: string, unifiedLoader?: UnifiedLoader, remindersTasksDir?: string) {
+export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: string, unifiedLoader?: UnifiedLoader) {
   const router = express.Router()
 
   router.get('/', requireAuth, (_req: Request, res: Response): void => {
@@ -114,10 +112,6 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
 
   router.delete('/:id', requireAuth, (req: Request, res: Response): void => {
     const { id } = req.params as { id: string }
-    const schedule = scheduleStore.list().find(s => s.id === id)
-    if (schedule?.kind === 'reminder' && remindersTasksDir) {
-      try { fs.rmSync(path.join(remindersTasksDir, id), { recursive: true, force: true }) } catch { /* best-effort */ }
-    }
     scheduleStore.delete(id)
     res.json({ ok: true })
   })

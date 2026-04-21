@@ -234,11 +234,8 @@ export async function assembleTools(
 
   const usageTool = buildUsageTool(deps.usageStore)
   const scheduleTools = deps.scheduleStore ? buildScheduleTools(deps.scheduleStore, deps.timezone, deps.unifiedLoader ?? null) : []
-  const remindersTasksDir = deps.workspacePath
-    ? path.join(deps.workspacePath, 'reminders')
-    : null
-  const reminderTools = (deps.scheduleStore && remindersTasksDir)
-    ? buildReminderTools(deps.scheduleStore, remindersTasksDir, deps.timezone)
+  const reminderTools = deps.scheduleStore
+    ? buildReminderTools(deps.scheduleStore, deps.timezone)
     : []
   const noteTools = deps.noteStore ? buildNoteTools(deps.noteStore) : []
 

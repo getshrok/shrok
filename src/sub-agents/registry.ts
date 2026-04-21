@@ -812,7 +812,6 @@ export function buildScheduleTools(
 
 export function buildReminderTools(
   scheduleStore: ScheduleStore,
-  remindersTasksDir: string,
   timezone: string,
 ): AgentToolEntry[] {
   return [
@@ -912,20 +911,6 @@ export function buildReminderTools(
         }
         scheduleStore.create(createOpts)
 
-        const taskDir = path.join(remindersTasksDir, id)
-        try {
-          fs.mkdirSync(taskDir, { recursive: true })
-          fs.writeFileSync(path.join(taskDir, 'TASK.md'), [
-            'Deliver the following reminder message to the user.',
-            'Write only the reminder message as your final response — no preamble, no commentary.',
-            '',
-            `Reminder: ${message}`,
-          ].join('\n'), 'utf-8')
-        } catch (err) {
-          scheduleStore.delete(id)
-          throw err
-        }
-
         return JSON.stringify({ ok: true, id })
       },
     },
@@ -947,9 +932,6 @@ export function buildReminderTools(
         if (!schedule) {
           return JSON.stringify({ error: true, message: `Reminder '${id}' not found.` })
         }
-        // Clean up the task directory created by create_reminder
-        const taskDir = path.join(remindersTasksDir, id)
-        try { fs.rmSync(taskDir, { recursive: true, force: true }) } catch { /* best-effort */ }
         scheduleStore.delete(id)
         return JSON.stringify({ ok: true })
       },

@@ -1030,15 +1030,14 @@ describe('buildReminderTools', () => {
     const nodeFs = await import('node:fs')
     const nodePath = await import('node:path')
     const scheduleDir = nodeFs.mkdtempSync(nodePath.join(nodeOs.tmpdir(), 'rem-tool-sched-'))
-    const remindersDir = nodeFs.mkdtempSync(nodePath.join(nodeOs.tmpdir(), 'rem-tool-tasks-'))
     const { ScheduleStore } = await import('../db/schedules.js')
     const scheduleStore = new ScheduleStore(scheduleDir)
     const { buildReminderTools } = await import('./registry.js')
-    const tools = buildReminderTools(scheduleStore, remindersDir, 'UTC')
+    const tools = buildReminderTools(scheduleStore, 'UTC')
     const createReminder = tools.find(t => t.definition.name === 'create_reminder')!
     const listReminders = tools.find(t => t.definition.name === 'list_reminders')!
     const cancelReminder = tools.find(t => t.definition.name === 'cancel_reminder')!
-    return { createReminder, listReminder: listReminders, cancelReminder, scheduleStore, remindersDir }
+    return { createReminder, listReminder: listReminders, cancelReminder, scheduleStore }
   }
 
   it('create_reminder with valid input stores kind:"reminder" record with agentContext = message', async () => {
