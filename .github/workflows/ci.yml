@@ -62,7 +62,7 @@ jobs:
       - name: Fail on new vulnerabilities
         run: |
           # Known CVEs with no upstream fix — update this list when resolved
-          KNOWN_CVES="tar|cmake-js|kuzu"
+          KNOWN_CVES="tar|cmake-js"
           # Strip known CVEs and check if any unknown ones remain
           if grep -E "^[a-z@]" /tmp/audit.txt | grep -vE "$KNOWN_CVES" | grep -q "Severity: high\|Severity: critical"; then
             echo "::error::New high/critical vulnerabilities found beyond known allowlist"
