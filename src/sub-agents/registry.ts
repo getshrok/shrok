@@ -849,6 +849,10 @@ export function buildReminderTools(
               type: 'string',
               description: 'Cron expression for recurring reminders (e.g. "0 9 * * 1" for every Monday at 9am). When provided, triggerAt is the first fire time; subsequent fires follow the cron schedule.',
             },
+            conditions: {
+              type: 'string',
+              description: "Optional conditions shown to the scheduler steward when deciding whether to surface this reminder or skip it (e.g. 'Only on weekdays', 'Only after 5pm').",
+            },
           },
           required: ['message'],
         },
@@ -857,6 +861,7 @@ export function buildReminderTools(
         const message = input['message'] as string
         const triggerAtArg = input['triggerAt'] as string | undefined
         const cronArg = input['cron'] as string | undefined
+        const conditionsArg = input['conditions'] as string | undefined
 
         // T-12-01: validate message at tool boundary
         if (typeof message !== 'string' || message.trim().length === 0) {
@@ -908,6 +913,9 @@ export function buildReminderTools(
         }
         if (cronExpression !== null) {
           createOpts.cron = cronExpression
+        }
+        if (conditionsArg !== undefined) {
+          createOpts.conditions = conditionsArg
         }
         scheduleStore.create(createOpts)
 

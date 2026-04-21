@@ -1096,4 +1096,37 @@ describe('buildReminderTools', () => {
     expect(parsed.error).toBe(true)
     expect(parsed.message).toContain('rem-nonexistent')
   })
+
+  it('create_reminder stores conditions on the reminder schedule row (C-01)', async () => {
+    const { createReminder, scheduleStore } = await getReminderTools()
+    const result = await createReminder.execute(
+      { message: 'Check the build', triggerAt: '2099-01-01T09:00:00Z', conditions: 'Only on weekdays' },
+      ctx,
+    )
+    const parsed = JSON.parse(result as string)
+    expect(parsed.ok).toBe(true)
+    const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.conditions).toBe('Only on weekdays')
+    expect(rows[0]!.agentContext).toBe('Check the build')
+  })
+
+  it('create_reminder without conditions leaves conditions null', async () => {
+    const { createReminder, scheduleStore } = await getReminderTools()
+    await createReminder.execute(
+      { message: 'Check the build', triggerAt: '2099-01-01T09:00:00Z' },
+      ctx,
+    )
+    const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
+    expect(rows[0]!.conditions).toBeNull()
+  })
+
+  it('create_reminder inputSchema declares conditions property', async () => {
+    const { createReminder } = await getReminderTools()
+    const schema = createReminder.definition.inputSchema as {
+      properties: { conditions?: { type: string } }
+    }
+    expect(schema.properties.conditions).toBeDefined()
+    expect(schema.properties.conditions!.type).toBe('string')
+  })
 })
