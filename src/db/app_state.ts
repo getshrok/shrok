@@ -87,7 +87,7 @@ export class AppStateStore {
       return seeded
     }
     return {
-      agentWork: this.get('vis_agent_work') !== 'false',  // default true for new installs
+      agentWork: this.get('vis_agent_work') === 'true',
       headTools: this.get('vis_head_tools') === 'true',
       systemEvents: this.get('vis_system_events') === 'true',
       stewardRuns: this.get('vis_steward_runs') === 'true',
