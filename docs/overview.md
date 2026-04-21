@@ -1,5 +1,7 @@
 # Overview
 
+Shrok can be powerful once you get to know the pieces, but agent-driven stuff can easily get wild, so here's what you need to know to be dangerous with it
+
 ## Talking to Shrok
 
 No matter where you talk to it from, whether it's the built-in web dashboard (http://localhost:8888) or chat apps like Discord and WhatsApp, you are talking to the same Shrok.
