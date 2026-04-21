@@ -42,8 +42,6 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm test
-        env:
-          NODE_OPTIONS: --max-old-space-size=512
       - run: npm run --workspace=dashboard build
 
       - name: Commit rebuilt dashboard dist
