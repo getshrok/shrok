@@ -14,8 +14,8 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
   })
 
   router.post('/', requireAuth, (req: Request, res: Response): void => {
-    const { taskName, cron, runAt, agentContext } = req.body as {
-      taskName?: unknown; cron?: unknown; runAt?: unknown; agentContext?: unknown
+    const { taskName, cron, runAt, conditions, agentContext } = req.body as {
+      taskName?: unknown; cron?: unknown; runAt?: unknown; conditions?: unknown; agentContext?: unknown
     }
 
     const rawKind = (req.body as { kind?: unknown }).kind
@@ -66,6 +66,7 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
       if (typeof cron === 'string' && cron) createOpts.cron = cron
       if (typeof runAt === 'string' && runAt) createOpts.runAt = runAt
       if (nextRun !== undefined) createOpts.nextRun = nextRun
+      if (typeof conditions === 'string' && conditions) createOpts.conditions = conditions
       if (typeof agentContext === 'string' && agentContext) createOpts.agentContext = agentContext
       const schedule = scheduleStore.create(createOpts)
       res.json({ schedule })
