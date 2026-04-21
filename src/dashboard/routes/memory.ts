@@ -5,7 +5,7 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import { requireAuth } from '../auth.js'
 import type { Memory } from '../../memory/index.js'
-import type { ChunkRecord } from 'infinitecontextwindow'
+import type { ChunkRecord } from '../../icw/index.js'
 
 function safeTopicId(id: string): boolean {
   return /^[a-z0-9][a-z0-9-]{0,79}$/.test(id)

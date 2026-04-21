@@ -1,1 +1,1 @@
-export type { Message, RetrieveResult, Topic, LLMFunction } from 'infinitecontextwindow'
+export type { Message, RetrieveResult, Topic, LLMFunction } from '../icw/index.js'

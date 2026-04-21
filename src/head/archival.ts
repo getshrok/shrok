@@ -11,7 +11,7 @@ import type { Message } from '../types/core.js'
 import type { Memory } from '../memory/index.js'
 import { toMemoryMessages } from '../memory/index.js'
 import type { MessageStore } from '../db/messages.js'
-import type { Topic } from 'infinitecontextwindow'
+import type { Topic } from '../icw/index.js'
 import { generateId, now } from '../llm/util.js'
 
 export interface ArchivalDeps {

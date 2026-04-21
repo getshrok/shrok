@@ -1,9 +1,9 @@
-import { Memory } from 'infinitecontextwindow'
-import type { LLMFunction } from 'infinitecontextwindow'
+import { Memory } from '../icw/index.js'
+import type { LLMFunction } from '../icw/index.js'
 import type { Message as ShrokMessage } from '../types/core.js'
 
 export { Memory }
-export type { Topic, RetrieveResult } from 'infinitecontextwindow'
+export type { Topic, RetrieveResult } from '../icw/index.js'
 
 export function createTopicMemory(
   storagePath: string,
