@@ -377,6 +377,10 @@ function AddScheduleForm({
 
 function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [editMessage, setEditMessage] = useState('')
+  const [editValue, setEditValue] = useState('')      // holds cron OR runAt string
+  const [editConditions, setEditConditions] = useState('')
 
   const toggleMutation = useMutation({
     mutationFn: (enabled: boolean) => api.schedules.update(schedule.id, { enabled }),
@@ -387,6 +391,39 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     mutationFn: () => api.schedules.delete(schedule.id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['schedules'] }),
   })
+
+  const updateMutation = useMutation({
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string }) =>
+      api.schedules.update(schedule.id, update),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
+  })
+
+  function startEdit() {
+    setEditMessage(schedule.agentContext ?? '')
+    setEditValue(schedule.cron ?? schedule.runAt ?? '')
+    setEditConditions(schedule.conditions ?? '')
+    setEditing(true)
+  }
+
+  function commitEdit() {
+    const trimmedValue = editValue.trim()
+    const trimmedMessage = editMessage.trim()
+    if (!trimmedValue || !trimmedMessage) { setEditing(false); return }
+    const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
+    const messageUnchanged = trimmedMessage === (schedule.agentContext ?? '')
+    if (schedule.cron !== null) {
+      if (trimmedValue === schedule.cron && conditionsUnchanged && messageUnchanged) { setEditing(false); return }
+      if (!isValidCron(trimmedValue)) return
+      updateMutation.mutate({ cron: trimmedValue, conditions: editConditions, agentContext: trimmedMessage })
+      return
+    }
+    // one-time: editValue is a datetime-local string
+    const d = new Date(trimmedValue)
+    if (Number.isNaN(d.getTime())) return
+    const runAtUnchanged = d.toISOString() === schedule.runAt
+    if (runAtUnchanged && conditionsUnchanged && messageUnchanged) { setEditing(false); return }
+    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: trimmedMessage })
+  }
 
   const scheduleLabel = schedule.cron
     ? formatCron(schedule.cron)
@@ -420,6 +457,13 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
         }`} />
       </button>
       <button
+        onClick={startEdit}
+        title="Edit reminder"
+        className="text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+      >
+        <Pencil size={13} />
+      </button>
+      <button
         onClick={() => { if (window.confirm(`Delete reminder "${message}"?`)) deleteMutation.mutate() }}
         disabled={deleteMutation.isPending}
         title="Delete"
@@ -427,6 +471,88 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
       >
         <Trash2 size={13} />
       </button>
+
+      {editing && createPortal(
+        <>
+          <div className="fixed inset-0 z-50 bg-black/70" onClick={() => setEditing(false)} />
+          <div className="fixed z-50 flex items-center justify-center" style={{ inset: 0 }}>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-5 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-zinc-100 mb-3">Edit reminder</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Message</label>
+                  <textarea
+                    autoFocus
+                    rows={2}
+                    value={editMessage}
+                    onChange={e => setEditMessage(e.target.value)}
+                    placeholder="The reminder text"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">
+                    {schedule.cron !== null ? 'Cron expression' : 'Remind at'}
+                  </label>
+                  {schedule.cron !== null ? (
+                    <>
+                      <input
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
+                        placeholder="0 9 * * *"
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 font-mono outline-none focus:border-zinc-600"
+                      />
+                      {editValue && (
+                        <div className={`text-xs mt-1 ${isValidCron(editValue) ? 'text-zinc-500' : 'text-red-400'}`}>
+                          {isValidCron(editValue) ? formatCron(editValue) : 'Invalid cron — use 5 fields (min hour dom mon dow)'}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <input
+                      type="datetime-local"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
+                  <textarea
+                    rows={2}
+                    value={editConditions}
+                    onChange={e => setEditConditions(e.target.value)}
+                    placeholder="e.g. Only remind me between 9am and 5pm"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+                  />
+                </div>
+                {updateMutation.isError && (
+                  <div className="text-xs text-red-400">{(updateMutation.error as Error).message}</div>
+                )}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={commitEdit}
+                    disabled={updateMutation.isPending}
+                    className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {updateMutation.isPending ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   )
 }
