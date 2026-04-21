@@ -10,7 +10,7 @@ Shrok is a self-hosted personal agent that is:
 - Never too busy to talk (all work happens in the background)
 - Has the memory of an elephant (automatically recalls anything you talked about previously, including whole conversations and exact phrasing - see [getshrok/infinite-context-window](https://github.com/getshrok/infinite-context-window))
 - Cheap to run on higher tier models (it only sends what's relevant to the model each turn)
-- Always the same entity, no matter which app you talk to it from (Discord, WhatsApp, Slack, Telegram, Zoho Cliq, and its own web interface)
+- Always the same entity, no matter which app you talk to it from (Discord/Slack/Telegram/WhatsApp/Zoho Cliq, and its own web interface)
 - Designed for its capabilities to be extended through skills (curated repo at [getshrok/skills](https://github.com/getshrok/skills) to avoid malicious skills) 
 - Can be set to do anything on a smart schedule (it can decide when something is appropriate to run)
 
