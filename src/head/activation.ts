@@ -1055,6 +1055,7 @@ export class ActivationLoop {
             .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
           ambientContext: this.readAmbientContext(),
           currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
+          ...(schedule.conditions ? { conditions: schedule.conditions } : {}),
         }, this.opts.llmRouter, this.opts.config.stewardModel, this.opts.usageStore, event.id)
         if (this.opts.config.proactiveShadow) {
           log.info(`[proactive:reminder:shadow] ${event.scheduleId}: ${decision.action} — ${decision.reason}`)
@@ -1114,6 +1115,7 @@ export class ActivationLoop {
           .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
         ambientContext: this.readAmbientContext(),
         currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
+        ...(schedule?.conditions ? { conditions: schedule.conditions } : {}),
       }, this.opts.llmRouter, this.opts.config.stewardModel,
          this.opts.usageStore, event.id)
 

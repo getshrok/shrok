@@ -41,7 +41,7 @@ interface Fixture {
   tmpDir: string
 }
 
-function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'fire' | 'skip'; reason: string; context?: string } } = {}): Fixture {
+function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'fire' | 'skip'; reason: string; context?: string }; conditions?: string | null; kind?: 'task' | 'reminder'; agentContext?: string } = {}): Fixture {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'activation-test-'))
   const skillsDir = path.join(tmpDir, 'skills')
   const tasksDir = path.join(tmpDir, 'tasks')
@@ -82,10 +82,39 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
     injectWebhookEvent: vi.fn(),
   } as unknown as Injector
 
+  const scheduleKind = opts.kind ?? 'task'
+  const scheduleRow = scheduleKind === 'reminder'
+    ? {
+        id: 's1',
+        cron: null,
+        runAt: '2099-01-01T00:00:00Z',
+        lastRun: null,
+        lastSkipped: null,
+        lastSkipReason: null,
+        conditions: opts.conditions ?? null,
+        agentContext: opts.agentContext ?? '',
+        taskName: null,
+        kind: 'reminder' as const,
+        enabled: true,
+      }
+    : {
+        id: 's1',
+        cron: '*/5 * * * *',
+        lastRun: null,
+        lastSkipped: null,
+        lastSkipReason: null,
+        conditions: opts.conditions ?? null,
+        agentContext: null,
+        taskName: 'bar',
+        kind: 'task' as const,
+        enabled: true,
+      }
+
   const scheduleStore = {
-    get: vi.fn().mockReturnValue({ id: 's1', cron: '*/5 * * * *', lastRun: null, lastSkipped: null, lastSkipReason: null }),
+    get: vi.fn().mockReturnValue(scheduleRow),
     update: vi.fn(),
     markSkipped: vi.fn(),
+    delete: vi.fn(),
     count: vi.fn().mockReturnValue(0),
   } as unknown as ScheduleStore
 
@@ -234,6 +263,46 @@ describe('handleScheduleTrigger — kind-aware dispatch', () => {
 
     expect(fix.scheduleStore.markSkipped).toHaveBeenCalledOnce()
     expect(fix.agentRunner.spawn).not.toHaveBeenCalled()
+  })
+
+  it('task: threads schedule.conditions into ProactiveContext (C-02, D-04)', async () => {
+    fix = makeFixture({ proactiveEnabled: true, conditions: 'Weekdays only' })
+    await fire(fix.loop, jobEvent('bar', 'task'))
+    const ctx = vi.mocked(proactive.runProactiveDecision).mock.calls[0]![0]
+    expect(ctx.conditions).toBe('Weekdays only')
+  })
+
+  it('task: null conditions resolves to undefined in ProactiveContext', async () => {
+    fix = makeFixture({ proactiveEnabled: true, conditions: null })
+    await fire(fix.loop, jobEvent('bar', 'task'))
+    const ctx = vi.mocked(proactive.runProactiveDecision).mock.calls[0]![0]
+    expect(ctx.conditions).toBeUndefined()
+  })
+
+  it('reminder: threads schedule.conditions into ReminderDecisionContext (C-03, D-06)', async () => {
+    fix = makeFixture({
+      proactiveEnabled: true,
+      kind: 'reminder',
+      agentContext: 'Check the build',
+      conditions: "Only while I'm home",
+    })
+    vi.mocked(proactive.runReminderDecision).mockResolvedValue({ action: 'inject', reason: 'ok' } as any)
+    await fire(fix.loop, jobEvent(null, 'reminder'))
+    const ctx = vi.mocked(proactive.runReminderDecision).mock.calls[0]![0]
+    expect(ctx.conditions).toBe("Only while I'm home")
+  })
+
+  it('reminder: null conditions resolves to undefined in ReminderDecisionContext', async () => {
+    fix = makeFixture({
+      proactiveEnabled: true,
+      kind: 'reminder',
+      agentContext: 'Check the build',
+      conditions: null,
+    })
+    vi.mocked(proactive.runReminderDecision).mockResolvedValue({ action: 'inject', reason: 'ok' } as any)
+    await fire(fix.loop, jobEvent(null, 'reminder'))
+    const ctx = vi.mocked(proactive.runReminderDecision).mock.calls[0]![0]
+    expect(ctx.conditions).toBeUndefined()
   })
 
 })
