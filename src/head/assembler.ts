@@ -67,6 +67,9 @@ export function deriveQueryText(
     case 'agent_response':
       return trigger.response
 
+    case 'reminder_trigger':
+      return trigger.message
+
   }
 }
 

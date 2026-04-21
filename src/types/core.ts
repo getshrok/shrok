@@ -129,6 +129,14 @@ export type QueueEvent =
       createdAt: string
     }
   | {
+      type: 'reminder_trigger'
+      id: string
+      reminderId: string
+      message: string
+      channel: string
+      createdAt: string
+    }
+  | {
       type: 'webhook'
       id: string
       source: string
@@ -148,6 +156,7 @@ export const PRIORITY = {
   AGENT_RESPONSE: 30,
   WEBHOOK: 20,
   SCHEDULE_TRIGGER: 10,
+  REMINDER_TRIGGER: 10,
 } as const
 
 // ─── Head tool names ──────────────────────────────────────────────────────────

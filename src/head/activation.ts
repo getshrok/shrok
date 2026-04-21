@@ -1134,7 +1134,7 @@ export class ActivationLoop {
     // Budget enforcement: skip if monthly spend meets or exceeds max-per-month-usd.
     const cap = loaded.meta['max-per-month-usd']
     if (typeof cap === 'number' && cap > 0) {
-      const spend = this.opts.usageStore.getJobMonthlySpend(skillName)
+      const spend = this.opts.usageStore.getTaskMonthlySpend(skillName)
       if (spend >= cap) {
         const reason = `monthly budget exceeded ($${spend.toFixed(2)}/$${cap.toFixed(2)})`
         // Notify user once per schedule when budget is first hit (not on repeated skips)

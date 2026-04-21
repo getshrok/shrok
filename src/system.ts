@@ -56,6 +56,7 @@ export interface Stores {
   notes: NoteStore
   stewardRuns: StewardRunStore
   agentInbox: AgentInboxStore
+  reminders?: import('./db/reminders.js').ReminderStore
 }
 
 export interface SystemDeps {
