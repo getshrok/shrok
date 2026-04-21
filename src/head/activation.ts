@@ -1029,16 +1029,18 @@ export class ActivationLoop {
 
     // Reminder branch: kind='reminder' fires via schedule store (Plan 12-01)
     if (kind === 'reminder') {
+      const schedule = this.opts.scheduleStore.get(event.scheduleId)
+      if (!schedule) {
+        log.warn(`[scheduler] reminder:${event.scheduleId} — schedule row not found, skipping`)
+        return
+      }
       // channel resolved at fire time per REM-06
       const channel = this.opts.appState.getLastActiveChannel()
       if (!channel) {
         log.warn(`[scheduler] reminder:${event.scheduleId} — no active channel, skipping`)
-        this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
-        return
-      }
-      const schedule = this.opts.scheduleStore.get(event.scheduleId)
-      if (!schedule) {
-        log.warn(`[scheduler] reminder:${event.scheduleId} — schedule row not found, skipping`)
+        if (schedule.cron === null) {
+          this.opts.scheduleStore.delete(event.scheduleId)
+        }
         return
       }
       if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
@@ -1047,7 +1049,6 @@ export class ActivationLoop {
         const decision = await runReminderDecision({
           reminderMessage: schedule.agentContext ?? '',
           reminderCron: schedule.cron ?? null,
-          lastFired: schedule.lastRun ?? null,
           userMd: identityLoader.readFile('USER.md') ?? '',
           recentHistory: recentMsgs
             .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
@@ -1063,7 +1064,11 @@ export class ActivationLoop {
           return
         }
       }
-      this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
+      if (schedule.cron === null) {
+        this.opts.scheduleStore.delete(event.scheduleId)
+      } else {
+        this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
+      }
       const message = schedule.agentContext ?? ''
       const agentId = generateAgentId(event.scheduleId)
       const prompt = [
@@ -1154,7 +1159,11 @@ export class ActivationLoop {
 
     // Mark lastRun now that the proactive steward has approved it.
     // nextRun was already advanced by the scheduler tick to prevent re-firing.
-    this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
+    if (schedule?.cron === null) {
+      this.opts.scheduleStore.delete(event.scheduleId)
+    } else {
+      this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
+    }
 
     // Spawn path: narrative is anchored by the append-only agent_completed
     // injection (see injectAgentEvent). No synthetic spawn_agent pair needed.
