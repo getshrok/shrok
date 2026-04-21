@@ -250,7 +250,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
                 className="max-w-2xl bg-amber-950/40 border border-amber-900/50 rounded-lg text-xs font-mono"
               >
                 <summary className="px-3 py-2 cursor-pointer text-amber-500 select-none break-words">
-                  {agentPrefix}▸ {summary}
+                  {agentPrefix}🔧 {summary}
                 </summary>
                 <pre className="px-3 pb-2 text-amber-400/80 overflow-auto">
                   {JSON.stringify(_displayInput(tc), null, 2)}
@@ -311,7 +311,7 @@ function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_
             className="max-w-2xl bg-zinc-800/60 border border-zinc-700 rounded-lg text-xs font-mono"
           >
             <summary className="px-3 py-2 cursor-pointer select-none break-words">
-              <span className="text-amber-500">{agentPrefix}▸ {callSummary}</span>
+              <span className="text-amber-500">{agentPrefix}🔧 {callSummary}</span>
               {resultSummary && <span className="text-emerald-500 ml-2">{resultSummary}</span>}
             </summary>
             <pre className="px-3 pb-2 text-amber-400/80 overflow-auto">
