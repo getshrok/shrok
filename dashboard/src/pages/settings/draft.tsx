@@ -54,6 +54,9 @@ export interface DraftState {
   scheduledRelayStewardEnabled: boolean
   resumeStewardEnabled: boolean
   bootstrapStewardEnabled: boolean
+  preferenceStewardEnabled: boolean
+  spawnStewardEnabled: boolean
+  actionComplianceStewardEnabled: boolean
   contextRelevanceStewardEnabled: boolean
   memoryBudgetPercent: number
   memoryQueryContextTokens: number
@@ -129,6 +132,9 @@ export function initDraft(s: SettingsData): DraftState {
     scheduledRelayStewardEnabled: s.scheduledRelayStewardEnabled,
     resumeStewardEnabled: s.resumeStewardEnabled,
     bootstrapStewardEnabled: s.bootstrapStewardEnabled,
+    preferenceStewardEnabled: s.preferenceStewardEnabled,
+    spawnStewardEnabled: s.spawnStewardEnabled,
+    actionComplianceStewardEnabled: s.actionComplianceStewardEnabled,
     contextRelevanceStewardEnabled: s.contextRelevanceStewardEnabled,
     memoryBudgetPercent: s.memoryBudgetPercent,
     memoryQueryContextTokens: s.memoryQueryContextTokens,
@@ -202,6 +208,9 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.scheduledRelayStewardEnabled !== s.scheduledRelayStewardEnabled) return true
   if (draft.resumeStewardEnabled !== s.resumeStewardEnabled) return true
   if (draft.bootstrapStewardEnabled !== s.bootstrapStewardEnabled) return true
+  if (draft.preferenceStewardEnabled !== s.preferenceStewardEnabled) return true
+  if (draft.spawnStewardEnabled !== s.spawnStewardEnabled) return true
+  if (draft.actionComplianceStewardEnabled !== s.actionComplianceStewardEnabled) return true
   if (draft.contextRelevanceStewardEnabled !== s.contextRelevanceStewardEnabled) return true
   if (draft.memoryBudgetPercent !== s.memoryBudgetPercent) return true
   if (draft.memoryQueryContextTokens !== s.memoryQueryContextTokens) return true
@@ -263,6 +272,9 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.scheduledRelayStewardEnabled !== s.scheduledRelayStewardEnabled) body.scheduledRelayStewardEnabled = draft.scheduledRelayStewardEnabled
   if (draft.resumeStewardEnabled !== s.resumeStewardEnabled) body.resumeStewardEnabled = draft.resumeStewardEnabled
   if (draft.bootstrapStewardEnabled !== s.bootstrapStewardEnabled) body.bootstrapStewardEnabled = draft.bootstrapStewardEnabled
+  if (draft.preferenceStewardEnabled !== s.preferenceStewardEnabled) body.preferenceStewardEnabled = draft.preferenceStewardEnabled
+  if (draft.spawnStewardEnabled !== s.spawnStewardEnabled) body.spawnStewardEnabled = draft.spawnStewardEnabled
+  if (draft.actionComplianceStewardEnabled !== s.actionComplianceStewardEnabled) body.actionComplianceStewardEnabled = draft.actionComplianceStewardEnabled
   if (draft.contextRelevanceStewardEnabled !== s.contextRelevanceStewardEnabled) body.contextRelevanceStewardEnabled = draft.contextRelevanceStewardEnabled
   if (draft.memoryBudgetPercent !== s.memoryBudgetPercent) body.memoryBudgetPercent = draft.memoryBudgetPercent
   if (draft.memoryQueryContextTokens !== s.memoryQueryContextTokens) body.memoryQueryContextTokens = draft.memoryQueryContextTokens

@@ -318,6 +318,9 @@ export interface SettingsData {
   scheduledRelayStewardEnabled: boolean
   resumeStewardEnabled: boolean
   bootstrapStewardEnabled: boolean
+  preferenceStewardEnabled: boolean
+  spawnStewardEnabled: boolean
+  actionComplianceStewardEnabled: boolean
   contextRelevanceStewardEnabled: boolean
   memoryBudgetPercent: number
   memoryQueryContextTokens: number
