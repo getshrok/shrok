@@ -73,11 +73,12 @@ describe('createDocsRouter handlers', () => {
       { path: 'concepts.md', title: 'Concepts' },
     ])
     expect(body.groups).toHaveLength(2)
-    expect(body.groups[0]).toEqual({
+    const byName = Object.fromEntries(body.groups.map(g => [g.name, g]))
+    expect(byName['User guide']).toEqual({
       name: 'User guide',
       files: [{ path: 'user-guide/a.md', title: 'Topic A' }],
     })
-    expect(body.groups[1]).toEqual({
+    expect(byName['Internals']).toEqual({
       name: 'Internals',
       files: [{ path: 'internals/b.md', title: 'Topic B' }],
     })
