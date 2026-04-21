@@ -82,6 +82,7 @@ export interface ProactiveContext {
   recentHistory: Array<{ role: string; content: string; createdAt?: string }>
   ambientContext: string
   currentTime: string
+  conditions?: string
 }
 
 export interface ProactiveDecision {
@@ -102,6 +103,7 @@ export interface ReminderDecisionContext {
   recentHistory: Array<{ role: string; content: string; createdAt?: string }>
   ambientContext: string
   currentTime: string
+  conditions?: string
 }
 
 export type ReminderDecision = { action: 'inject' | 'skip'; reason: string }
@@ -119,10 +121,15 @@ export async function runReminderDecision(
     ? describeCron(ctx.reminderCron)
     : '(one-time)'
 
+  const conditionsBlock = ctx.conditions && ctx.conditions.trim().length > 0
+    ? `\n\nRun conditions:\n${ctx.conditions.trim()}\n`
+    : ''
+
   const prompt = interpolate(loadPrompt('reminder'), {
     CURRENT_TIME: ctx.currentTime,
     REMINDER_MESSAGE: ctx.reminderMessage,
     SCHEDULE: scheduleDesc,
+    SCHEDULE_CONDITIONS: conditionsBlock,
     USER_MD: ctx.userMd || '(empty)',
     AMBIENT: ctx.ambientContext || '(none)',
     HISTORY: formatTimestampedHistory(ctx.recentHistory),
@@ -156,12 +163,17 @@ export async function runProactiveDecision(
     ? describeCron(ctx.scheduleCron)
     : '(one-time)'
 
+  const conditionsBlock = ctx.conditions && ctx.conditions.trim().length > 0
+    ? `\n\nRun conditions:\n${ctx.conditions.trim()}\n`
+    : ''
+
   const prompt = interpolate(loadPrompt('tasks'), {
     CURRENT_TIME: ctx.currentTime,
     SKILL_NAME: ctx.skillName,
     SKILL_DESCRIPTION: ctx.skillDescription || '(no description)',
     SCHEDULE: scheduleDesc,
     LAST_RUN: ctx.lastRun || '(never)',
+    SCHEDULE_CONDITIONS: conditionsBlock,
     SKILL_INSTRUCTIONS: ctx.skillInstructions || '(no skill instructions available)',
     USER_MD: ctx.userMd || '(empty)',
     AMBIENT: ctx.ambientContext || '(none)',

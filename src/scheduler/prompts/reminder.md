@@ -5,7 +5,7 @@ Current time: {CURRENT_TIME}
 A reminder is about to be surfaced to the user:
 "{REMINDER_MESSAGE}"
 
-Frequency: {SCHEDULE}
+Frequency: {SCHEDULE}{SCHEDULE_CONDITIONS}
 
 ---
 
@@ -34,6 +34,7 @@ Inject ({"action": "inject"}) if:
 Skip ({"action": "skip"}) only if:
 - Recent conversation clearly shows the reminded task was already completed
 - The user explicitly cancelled or dismissed the underlying need
+- Run conditions are set on this reminder and clearly not satisfied right now (e.g. "only on weekdays" but today is Sunday, "only when I'm at my desk" but ambient context shows otherwise)
 
 Always provide a brief reason.
 

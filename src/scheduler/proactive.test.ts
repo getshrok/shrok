@@ -86,6 +86,37 @@ describe('runProactiveDecision', () => {
     expect(promptContent).toContain('email')
     expect(promptContent).toContain('Every 30 minutes')
   })
+
+  it('injects Run conditions block when conditions is set', async () => {
+    const router = makeRouter('{"action": "run", "reason": "ok"}')
+    const ctx = makeContext({ conditions: 'Weekdays only' })
+    await runProactiveDecision(ctx, router, 'standard', makeUsageStore())
+
+    const call = vi.mocked(router.complete).mock.calls[0]!
+    const promptContent = (call[1]![0] as { content: string }).content
+    expect(promptContent).toContain('Run conditions:')
+    expect(promptContent).toContain('Weekdays only')
+  })
+
+  it('omits Run conditions block when conditions is not set', async () => {
+    const router = makeRouter('{"action": "run", "reason": "ok"}')
+    const ctx = makeContext()
+    await runProactiveDecision(ctx, router, 'standard', makeUsageStore())
+
+    const call = vi.mocked(router.complete).mock.calls[0]!
+    const promptContent = (call[1]![0] as { content: string }).content
+    expect(promptContent).not.toContain('Run conditions:')
+  })
+
+  it('omits Run conditions block when conditions is empty string', async () => {
+    const router = makeRouter('{"action": "run", "reason": "ok"}')
+    const ctx = makeContext({ conditions: '' })
+    await runProactiveDecision(ctx, router, 'standard', makeUsageStore())
+
+    const call = vi.mocked(router.complete).mock.calls[0]!
+    const promptContent = (call[1]![0] as { content: string }).content
+    expect(promptContent).not.toContain('Run conditions:')
+  })
 })
 
 // ─── runReminderDecision ──────────────────────────────────────────────────────
@@ -133,5 +164,26 @@ describe('runReminderDecision', () => {
     const router = makeRouter('I think this reminder should fire')
     const decision = await runReminderDecision(makeReminderContext(), router, 'standard', makeUsageStore())
     expect(decision.action).toBe('inject')
+  })
+
+  it('injects Run conditions block when conditions is set', async () => {
+    const router = makeRouter('{"action": "inject", "reason": "ok"}')
+    const ctx = makeReminderContext({ conditions: "Only while I'm home" })
+    await runReminderDecision(ctx, router, 'standard', makeUsageStore())
+
+    const call = vi.mocked(router.complete).mock.calls[0]!
+    const promptContent = (call[1]![0] as { content: string }).content
+    expect(promptContent).toContain('Run conditions:')
+    expect(promptContent).toContain("Only while I'm home")
+  })
+
+  it('omits Run conditions block when conditions is not set', async () => {
+    const router = makeRouter('{"action": "inject", "reason": "ok"}')
+    const ctx = makeReminderContext()
+    await runReminderDecision(ctx, router, 'standard', makeUsageStore())
+
+    const call = vi.mocked(router.complete).mock.calls[0]!
+    const promptContent = (call[1]![0] as { content: string }).content
+    expect(promptContent).not.toContain('Run conditions:')
   })
 })
