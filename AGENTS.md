@@ -40,25 +40,24 @@ if you copy files manually, run `find src/icw -name '*.map' -delete` before comm
 
 ```bash
 npm test                        # full suite (runs all shards sequentially locally)
-npm test -- --shard=1/3         # run only shard 1 of 3 (mirrors CI)
+npm test -- --shard=1/6         # run only shard 1 of 6 (mirrors CI)
 ```
 
-Tests are split into 3 parallel shards on CI (see `.github/workflows/ci.yml`). Each shard
+Tests are split into 6 parallel shards on CI (see `.github/workflows/ci.yml`). Each shard
 runs in its own VM with a fresh Vite module graph. If a future shard starts OOMing, increase
-the shard count from `3` to `4` in `.github/workflows/ci.yml` — do not raise the heap limit
-as the first move.
+the shard count in `.github/workflows/ci.yml` — do not raise the heap limit as the first move.
 
 ## CI structure
 
-Three jobs run in parallel after `lint`:
+Six test jobs run in parallel after `lint`:
 
 | Job | What it does |
 |-----|-------------|
 | `lint` | BOM check on `.ps1` files + `tsc --noEmit` |
-| `test (1/3)`, `test (2/3)`, `test (3/3)` | vitest shards, 4 GB heap each |
+| `test (1/6)` … `test (6/6)` | vitest shards, 4 GB heap each |
 | `build` | dashboard build, commit rebuilt `dashboard/dist`, security audit |
 
-`build` only runs after all three test shards and lint pass.
+`build` only runs after all six test shards and lint pass.
 
 ## TypeScript
 
