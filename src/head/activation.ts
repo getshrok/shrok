@@ -175,7 +175,14 @@ export class ActivationLoop {
   /** Run a ~ command immediately, bypassing the queue.
    *  Called by channel adapters so commands respond even while an activation is running. */
   async handleCommand(text: string, channel: string): Promise<void> {
-    await this.runCommand(text, channel)
+    try {
+      await this.runCommand(text, channel)
+    } catch (err) {
+      log.error(`[activation] command failed: ${err instanceof Error ? err.message : String(err)}`)
+      try {
+        await this.opts.channelRouter.send(channel, `Command failed: ${err instanceof Error ? err.message : String(err)}`)
+      } catch { /* best effort */ }
+    }
   }
 
   start(): void {

@@ -277,7 +277,9 @@ async function main() {
   // everything else is enqueued normally.
   function routeMessage(msg: InboundMessage): void {
     if (msg.text.trim().startsWith('~')) {
-      void activationLoop.handleCommand(msg.text.trim(), msg.channel)
+      activationLoop.handleCommand(msg.text.trim(), msg.channel).catch(err => {
+        log.error(`[routeMessage] handleCommand rejected: ${err instanceof Error ? err.message : String(err)}`)
+      })
       return
     }
     queue.enqueue(
