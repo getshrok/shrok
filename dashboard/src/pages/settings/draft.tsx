@@ -93,8 +93,8 @@ export function initDraft(s: SettingsData): DraftState {
     slackAppToken: null,
     zohoClientId: null, zohoClientSecret: null, zohoRefreshToken: null,
     webhookSecret: null,
-    webhookHost: s.webhookHost ?? '127.0.0.1',
-    webhookPort: String(s.webhookPort ?? 8766),
+    webhookHost: s.webhookHost,
+    webhookPort: String(s.webhookPort),
     discordChannelId: s.discordChannelId,
     telegramChatId: s.telegramChatId,
     slackChannelId: s.slackChannelId,
@@ -165,8 +165,8 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.zohoClientSecret !== null) return true
   if (draft.zohoRefreshToken !== null) return true
   if (draft.webhookSecret !== null) return true
-  if (draft.webhookHost !== (s.webhookHost ?? '127.0.0.1')) return true
-  if (draft.webhookPort !== String(s.webhookPort ?? 8766)) return true
+  if (draft.webhookHost !== s.webhookHost) return true
+  if (draft.webhookPort !== String(s.webhookPort)) return true
   if (JSON.stringify(draft.llmProviderPriority) !== JSON.stringify(s.llmProviderPriority)) return true
   if (draft.discordChannelId !== s.discordChannelId) return true
   if (draft.telegramChatId !== s.telegramChatId) return true
@@ -296,8 +296,8 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.zohoClientSecret !== null) body.zohoClientSecret = draft.zohoClientSecret
   if (draft.zohoRefreshToken !== null) body.zohoRefreshToken = draft.zohoRefreshToken
   if (draft.webhookSecret !== null) body.webhookSecret = draft.webhookSecret
-  if (draft.webhookHost !== (s.webhookHost ?? '127.0.0.1')) body.webhookHost = draft.webhookHost
-  if (draft.webhookPort !== String(s.webhookPort ?? 8766)) body.webhookPort = Number(draft.webhookPort)
+  if (draft.webhookHost !== s.webhookHost) body.webhookHost = draft.webhookHost
+  if (draft.webhookPort !== String(s.webhookPort)) body.webhookPort = Number(draft.webhookPort)
   return body
 }
 
