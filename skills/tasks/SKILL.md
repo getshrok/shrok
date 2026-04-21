@@ -48,7 +48,7 @@ A task can have multiple schedules (e.g., a news monitor that runs hourly on wee
 
 Most tasks are orchestrators — they wire together one or more skills to perform a routine task. Rather than duplicating how those skills work, list them under `skill-deps` and the task agent automatically gets their instructions and state on spawn.
 
-This keeps the task's TASK.md focused on what only the task knows: **when to run, what matters, and what to report** — not how to use each underlying tool.
+This keeps the task's TASK.md focused on what only the task knows: **what matters, and what to report** — not how to use each underlying tool.
 
 Example task (`system-monitor`) with `skill-deps: [system-stats]`:
 
@@ -60,25 +60,20 @@ skill-deps:
   - system-stats
 ---
 
-## When to check
-
-ONLY BOTHER CHECKING IF IT IS BETWEEN THE HOURS OF 11AM and 9PM UTC.
-EITHER CHECK BECAUSE IT IS WITHIN THE WINDOW OR SKIP CHECKING,
-DO NOT HEDGE OR ASK IF YOU SHOULD CHECK.
-
 ## What to report
 
 DON'T WARN ABOUT MEMORY USAGE UNLESS 90% OR ABOVE.
 ```
 
-That's the whole task. The agent knows how to use `system-stats` because its instructions are auto-included. The task only contains the decision rules the skill doesn't have.
+That's the whole task. The agent knows how to use `system-stats` because its instructions are auto-included. The task only contains the decision rules the skill doesn't have. Time windows and run conditions belong on the **schedule**, not in the task — see the `scheduling` skill.
 
 ## Writing task instructions
 
-Good task instructions answer three questions:
-1. **When to run** — time windows, preconditions, skip conditions
-2. **What matters** — thresholds and criteria for "worth reporting"
-3. **What to report** — format and tone when there is something to say
+Good task instructions answer two questions:
+1. **What matters** — thresholds and criteria for "worth reporting"
+2. **What to report** — format and tone when there is something to say
+
+Time windows and skip conditions belong on the schedule's `conditions` field, not in the task — see the `scheduling` skill.
 
 Use ALL CAPS and assertive phrasing for hard rules the agent must not hedge on. Tasks run unattended; ambiguity leads to the agent asking questions into a void or wasting tokens second-guessing itself.
 
@@ -92,7 +87,7 @@ If a task should always notify (e.g., a daily briefing), say so explicitly.
 
 Same conventions as skills:
 
-- **Watermarks** — For tasks that process a feed, store `lastChecked: <ISO timestamp>` instead of item ID lists. Prevents unbounded growth.
+- **Watermarks** — For tasks that process a feed, store a last-checked timestamp instead of item ID lists. See the `scheduling` skill for the correct format. Prevents unbounded growth.
 - **Thresholds and state** — Store the current threshold and last known value.
 - **Credentials** — API keys, resolved user IDs. Though for tasks using `skill-deps`, credentials usually live in the dep skill's MEMORY.md, not the task's.
 
