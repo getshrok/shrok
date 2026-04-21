@@ -5,6 +5,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { log } from '../logger.js'
 import type { QueueEvent, Message, TextMessage, ToolCallMessage, ToolResultMessage, ToolCall, ToolResult } from '../types/core.js'
+import { PRIORITY } from '../types/core.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { Memory } from '../memory/index.js'
 import type { MessageStore } from '../db/messages.js'
@@ -1074,19 +1075,12 @@ export class ActivationLoop {
         this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
       }
       const message = schedule.agentContext ?? ''
-      const agentId = generateAgentId(event.scheduleId)
-      const prompt = [
-        'Deliver the following reminder message to the user.',
-        'Write only the reminder message as your final response — no preamble, no commentary.',
-        '',
-        `Reminder: ${message}`,
-      ].join('\n')
       log.info(`[scheduler] fired reminder:${event.scheduleId}`)
-      await this.opts.toolExecutorOpts.agentRunner.spawn({
-        agentId,
-        prompt,
-        trigger: 'scheduled',
-      })
+      this.opts.queueStore.enqueue(
+        { type: 'user_message', id: generateId('qe'), channel, text: systemTrigger('reminder', undefined, message), createdAt: new Date().toISOString() },
+        PRIORITY.USER_MESSAGE,
+      )
+      this.notify()
       return
     }
 
