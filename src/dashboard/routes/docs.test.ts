@@ -110,7 +110,7 @@ describe('createDocsRouter handlers', () => {
     expect(body.groups[0]!.files.map(f => f.path)).toEqual(['user-guide/visible.md'])
   })
 
-  it('LIST-03: root sorts alphabetically; groups fixed order; files alphabetical', async () => {
+  it('LIST-03: root sorts alphabetically; groups alphabetical; files alphabetical', async () => {
     fs.writeFileSync(path.join(docsDir, 'zeta.md'), '# Z\n')
     fs.writeFileSync(path.join(docsDir, 'alpha.md'), '# A\n')
     fs.writeFileSync(path.join(docsDir, 'concepts.md'), '# C\n')
@@ -128,13 +128,12 @@ describe('createDocsRouter handlers', () => {
       groups: Array<{ name: string; files: Array<{ path: string }> }>
     }
     expect(body.root.map(f => f.path)).toEqual(['alpha.md', 'concepts.md', 'zeta.md'])
-    expect(body.groups.map(g => g.name)).toEqual(['User guide', 'Internals'])
-    expect(body.groups[0]!.files.map(f => f.path)).toEqual(['user-guide/a.md', 'user-guide/z.md'])
-    expect(body.groups[1]!.files.map(f => f.path)).toEqual(['internals/a.md', 'internals/z.md'])
+    expect(body.groups.map(g => g.name)).toEqual(['Internals', 'User guide'])
+    expect(body.groups[0]!.files.map(f => f.path)).toEqual(['internals/a.md', 'internals/z.md'])
+    expect(body.groups[1]!.files.map(f => f.path)).toEqual(['user-guide/a.md', 'user-guide/z.md'])
   })
 
-  it('LIST-04: discovers arbitrary subdirs as groups (dynamic), preferred order first then alphabetical', async () => {
-    // Drop three new group folders alongside the canonical two.
+  it('LIST-04: discovers arbitrary subdirs as groups (dynamic), all alphabetical', async () => {
     fs.mkdirSync(path.join(docsDir, 'user-guide'))
     fs.writeFileSync(path.join(docsDir, 'user-guide', 'a.md'), '# UG A\n')
     fs.mkdirSync(path.join(docsDir, 'internals'))
@@ -154,8 +153,7 @@ describe('createDocsRouter handlers', () => {
     const body = await r.json() as {
       groups: Array<{ name: string; files: Array<{ path: string }> }>
     }
-    // Known groups first in canonical order, then unknown alphabetical
-    expect(body.groups.map(g => g.name)).toEqual(['User guide', 'Internals', 'Recipes', 'Tutorials'])
+    expect(body.groups.map(g => g.name)).toEqual(['Internals', 'Recipes', 'Tutorials', 'User guide'])
   })
 
   it('LIST-05: single-word subdir humanizes with capital first letter', async () => {
