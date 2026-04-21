@@ -781,8 +781,9 @@ export function buildScheduleTools(
         const patch: import('../db/schedules.js').SchedulePatch = {}
         if (input['cron'] !== undefined) {
           const { nextRunAfter } = await import('../scheduler/cron.js')
-          nextRunAfter(input['cron'] as string, new Date(), timezone)  // throws on invalid expression
+          const next = nextRunAfter(input['cron'] as string, new Date(), timezone)  // throws on invalid expression
           patch.cron = input['cron'] as string
+          patch.nextRun = next.toISOString()
         }
         if (input['runAt'] !== undefined) patch.runAt = input['runAt'] as string
         if (input['enabled'] !== undefined) patch.enabled = input['enabled'] as boolean
