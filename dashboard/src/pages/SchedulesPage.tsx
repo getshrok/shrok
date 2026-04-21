@@ -460,7 +460,6 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
       if (!message.trim()) throw new Error('Enter a reminder message')
       return api.schedules.create({
         skillName: 'reminder',
-        kind: 'reminder',
         agentContext: message.trim(),
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
       })
