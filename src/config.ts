@@ -132,6 +132,16 @@ const ConfigSchema = z.object({
   resumeStewardEnabled: z.coerce.boolean().default(true),
   // Steward that nudges the head to finish first-time onboarding.
   bootstrapStewardEnabled: z.coerce.boolean().default(true),
+  // Post-activation steward: nudges the head to call write_identity when the user stated
+  // a fact or preference that wasn't captured. On by default — prompt is conservative.
+  preferenceStewardEnabled: z.coerce.boolean().default(true),
+  // Post-activation steward: nudges the head when it committed to a spawn but didn't call
+  // spawn_agent/message_agent/cancel_agent. Off by default — observe before enabling.
+  spawnStewardEnabled: z.coerce.boolean().default(false),
+  // Post-activation steward: checks for missed spawns, hallucinated current facts, and
+  // computed answers that should have been delegated. Overlaps spawnSteward by design.
+  // Off by default — noisier than the other two, user opts in explicitly.
+  actionComplianceStewardEnabled: z.coerce.boolean().default(false),
   // Steward that trims older conversation history before the head LLM call (Haiku-based).
   // Reduces token cost when the head runs on an expensive model. Off by default.
   contextRelevanceStewardEnabled: z.coerce.boolean().default(false),

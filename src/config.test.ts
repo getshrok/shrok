@@ -158,6 +158,71 @@ describe('Milestone 1 nested spawning flags', () => {
   })
 })
 
+describe('Phase 15 preference/compliance/spawn steward flags', () => {
+  const originalEnv = process.env
+  let tmpConfigPath: string
+
+  beforeEach(() => {
+    process.env = { ...originalEnv }
+    tmpConfigPath = path.join(os.tmpdir(), `shrok-test-config-p15-${Date.now()}-${Math.random().toString(36).slice(2)}.json`)
+    process.env['USER_CONFIG_PATH'] = tmpConfigPath
+  })
+
+  afterEach(() => {
+    process.env = originalEnv
+    try { fs.unlinkSync(tmpConfigPath) } catch { /* ignore */ }
+  })
+
+  it('preferenceStewardEnabled defaults to true', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    expect(cfg.preferenceStewardEnabled).toBe(true)
+  })
+
+  it('actionComplianceStewardEnabled defaults to false', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    expect(cfg.actionComplianceStewardEnabled).toBe(false)
+  })
+
+  it('spawnStewardEnabled defaults to false', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    expect(cfg.spawnStewardEnabled).toBe(false)
+  })
+
+  it('preferenceStewardEnabled can be overridden to false via config.json', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ preferenceStewardEnabled: false }))
+    const cfg = loadConfig()
+    expect(cfg.preferenceStewardEnabled).toBe(false)
+  })
+
+  it('actionComplianceStewardEnabled can be overridden to true via config.json', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ actionComplianceStewardEnabled: true }))
+    const cfg = loadConfig()
+    expect(cfg.actionComplianceStewardEnabled).toBe(true)
+  })
+
+  it('spawnStewardEnabled can be overridden to true via config.json', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ spawnStewardEnabled: true }))
+    const cfg = loadConfig()
+    expect(cfg.spawnStewardEnabled).toBe(true)
+  })
+
+  it('spawnAgentStewardEnabled still exists and defaults to false (regression guard)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    expect(cfg.spawnAgentStewardEnabled).toBe(false)
+  })
+
+  it('spawnStewardEnabled is independent of spawnAgentStewardEnabled', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ spawnStewardEnabled: true, spawnAgentStewardEnabled: false }))
+    const cfg = loadConfig()
+    expect(cfg.spawnStewardEnabled).toBe(true)
+    expect(cfg.spawnAgentStewardEnabled).toBe(false)
+  })
+})
+
 describe('dailySpendLimitUsd removal (Phase 8)', () => {
   const originalEnv = process.env
   let tmpConfigPath: string
