@@ -111,7 +111,7 @@ describe('createDocsRouter handlers', () => {
     expect(body.groups[0]!.files.map(f => f.path)).toEqual(['user-guide/visible.md'])
   })
 
-  it('LIST-03: root files sort alphabetically; group files sort alphabetically', async () => {
+  it('LIST-03: root files sort alphabetically; groups sort reverse-alphabetically; group files sort alphabetically', async () => {
     fs.writeFileSync(path.join(docsDir, 'zeta.md'), '# Z\n')
     fs.writeFileSync(path.join(docsDir, 'alpha.md'), '# A\n')
     fs.writeFileSync(path.join(docsDir, 'concepts.md'), '# C\n')
@@ -130,9 +130,9 @@ describe('createDocsRouter handlers', () => {
     }
     // Root files alphabetical
     expect(body.root.map(f => f.path)).toEqual(['alpha.md', 'concepts.md', 'zeta.md'])
-    // Groups alphabetical
+    // Groups reverse-alphabetical
     const names = body.groups.map(g => g.name)
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
+    expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)))
     // Files within each group alphabetical
     for (const group of body.groups) {
       const paths = group.files.map(f => f.path)
@@ -140,7 +140,7 @@ describe('createDocsRouter handlers', () => {
     }
   })
 
-  it('LIST-04: excludes empty dirs and dotfile dirs; groups sort alphabetically', async () => {
+  it('LIST-04: excludes empty dirs and dotfile dirs; groups sort reverse-alphabetically', async () => {
     fs.mkdirSync(path.join(docsDir, 'beta'))
     fs.writeFileSync(path.join(docsDir, 'beta', 'a.md'), '# B\n')
     fs.mkdirSync(path.join(docsDir, 'alpha'))
@@ -160,9 +160,9 @@ describe('createDocsRouter handlers', () => {
     }
     // Only the three dirs with .md files appear
     expect(body.groups).toHaveLength(3)
-    // Alphabetical order
+    // Reverse-alphabetical order
     const names = body.groups.map(g => g.name)
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
+    expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)))
   })
 
   it('LIST-05: dir names are humanized (hyphens/underscores → spaces, first letter capitalised)', async () => {

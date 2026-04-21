@@ -445,10 +445,115 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   )
 }
 
+// ─── Add reminder form ────────────────────────────────────────────────────────
+
+function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
+  const qc = useQueryClient()
+  const [message, setMessage] = useState('')
+  const [type, setType] = useState<'once' | 'repeating'>('once')
+  const [runAt, setRunAt] = useState('')
+  const [cron, setCron] = useState('0 9 * * *')
+  const [error, setError] = useState('')
+
+  const createMutation = useMutation({
+    mutationFn: () => {
+      if (!message.trim()) throw new Error('Enter a reminder message')
+      return api.schedules.create({
+        skillName: 'reminder',
+        kind: 'reminder',
+        agentContext: message.trim(),
+        ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
+      })
+    },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); onDone() },
+    onError: (err: Error) => setError(err.message),
+  })
+
+  return (
+    <form
+      onSubmit={e => { e.preventDefault(); setError(''); createMutation.mutate() }}
+      className="p-4 border-t border-zinc-700 space-y-3"
+    >
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Message</label>
+        <input
+          autoFocus
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          placeholder="e.g. Review weekly goals"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Type</label>
+        <div className="flex gap-1">
+          {(['once', 'repeating'] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                type === t ? 'bg-zinc-600 text-zinc-100' : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              {t === 'once' ? 'One-time' : 'Repeating'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {type === 'once' ? (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Remind at</label>
+          <input
+            type="datetime-local"
+            value={runAt}
+            onChange={e => setRunAt(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          />
+          <div className="text-[11px] text-zinc-500 mt-0.5">Interpreted in {tz}</div>
+        </div>
+      ) : (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Cron expression</label>
+          <input
+            value={cron}
+            onChange={e => setCron(e.target.value)}
+            placeholder="0 9 * * *"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 font-mono"
+          />
+          {cron && <div className="text-xs text-zinc-500 mt-0.5">{formatCron(cron)}</div>}
+        </div>
+      )}
+
+      {error && <div className="text-xs text-red-400">{error}</div>}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={createMutation.isPending || !message.trim()}
+          className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          {createMutation.isPending ? 'Adding…' : 'Add reminder'}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="px-3 py-1.5 text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SchedulesPage() {
   const [showForm, setShowForm] = useState(false)
+  const [showReminderForm, setShowReminderForm] = useState(false)
   const tz = useConfigTimezone()
 
   const schedulesQuery = useQuery({
@@ -474,14 +579,14 @@ export default function SchedulesPage() {
         {/* ── Scheduled Tasks ── */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-zinc-100">Schedules</h1>
+            <h2 className="text-base font-semibold text-zinc-100">Tasks</h2>
             <p className="text-sm text-zinc-500 mt-0.5">Scheduled task runs</p>
           </div>
           <button
             onClick={() => setShowForm(f => !f)}
             className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors"
           >
-            {showForm ? 'Cancel' : '+ New schedule'}
+            {showForm ? 'Cancel' : '+ New task'}
           </button>
         </div>
 
@@ -509,21 +614,32 @@ export default function SchedulesPage() {
         </div>
 
         {/* ── Reminders ── */}
-        <div>
-          <h2 className="text-base font-semibold text-zinc-100">Reminders</h2>
-          <p className="text-sm text-zinc-500 mt-0.5">Upcoming reminders set by the assistant</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-100">Reminders</h2>
+            <p className="text-sm text-zinc-500 mt-0.5">Upcoming reminders set by the assistant</p>
+          </div>
+          <button
+            onClick={() => setShowReminderForm(f => !f)}
+            className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors"
+          >
+            {showReminderForm ? 'Cancel' : '+ New reminder'}
+          </button>
         </div>
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
           {schedulesQuery.isLoading && (
             <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading…</div>
           )}
-          {!schedulesQuery.isLoading && !schedulesQuery.isError && reminderSchedules.length === 0 && (
+          {!schedulesQuery.isLoading && !schedulesQuery.isError && reminderSchedules.length === 0 && !showReminderForm && (
             <div className="px-4 py-8 text-center text-sm text-zinc-500">
-              No reminders set. Ask the assistant to set one for you.
+              No reminders set. Ask the assistant or add one here.
             </div>
           )}
           {reminderSchedules.map(s => <ReminderRow key={s.id} schedule={s} tz={tz} />)}
+          {showReminderForm && (
+            <AddReminderForm onDone={() => setShowReminderForm(false)} tz={tz} />
+          )}
         </div>
 
       </div>

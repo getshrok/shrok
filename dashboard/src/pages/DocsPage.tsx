@@ -62,12 +62,19 @@ const DEFAULT_COLLAPSED_GROUPS = new Set<string>(['Internals'])
 
 export default function DocsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const currentPath = searchParams.get('file') ?? 'concepts.md'
+  const currentPath = searchParams.get('file') ?? ''
 
   const tree = useQuery({
     queryKey: ['docs-list'],
     queryFn: () => api.docs.list(),
   })
+
+  // Auto-navigate to first available doc when no file is selected
+  useEffect(() => {
+    if (currentPath || !tree.data) return
+    const first = tree.data.root[0] ?? tree.data.groups[0]?.files[0]
+    if (first) setSearchParams({ file: first.path }, { replace: true })
+  }, [currentPath, tree.data, setSearchParams])
 
   // Track user-toggled group open/closed state. Starts from
   // DEFAULT_COLLAPSED_GROUPS; user toggles override. Active group always

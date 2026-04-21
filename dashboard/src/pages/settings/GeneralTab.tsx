@@ -6,8 +6,8 @@ import { useTheme } from '../../lib/theme'
 import { Field, SettingTooltip } from './components'
 
 const MODES: { value: Mode; label: string; description: string }[] = [
-  { value: 'standard',  label: 'Standard',     description: 'Chat, skills, identity files, role models, and all core settings. Everything you need for day-to-day use.' },
-  { value: 'developer', label: 'Development',  description: 'Adds Logs, Tests, and Evals pages, steward and proactive agent identity files, token markers, and debug tools.' },
+  { value: 'standard',  label: 'Standard',     description: 'Everything you need for everyday use.' },
+  { value: 'developer', label: 'Development',  description: 'Adds extra tools for development and debugging.' },
 ]
 
 const developerWarning = (name: string) =>
@@ -30,7 +30,7 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
   return (
     <>
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
-      <div className="text-sm font-semibold text-zinc-300 px-1 pb-2.5 flex items-center">Mode<SettingTooltip text="Standard includes all core settings and identity files. Development mode adds Logs, Tests, and Evals pages plus steward and proactive agent identity files." /></div>
+      <div className="text-sm font-semibold text-zinc-300 px-1 pb-2.5 flex items-center">Mode<SettingTooltip text="Standard mode is for everyday use. Development mode adds extra tools for development and debugging." /></div>
       <div className="grid grid-cols-2 gap-2">
         {MODES.map(({ value, label, description }) => {
           const selected = draftMode === value

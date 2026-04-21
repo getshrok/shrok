@@ -28,7 +28,7 @@ function discoverGroups(docsRoot: string): Array<{ dir: string; name: string }> 
       } catch { return false }
     })
 
-  return dirs.sort((a, b) => a.localeCompare(b)).map(dir => ({ dir, name: humanizeDirName(dir) }))
+  return dirs.sort((a, b) => b.localeCompare(a)).map(dir => ({ dir, name: humanizeDirName(dir) }))
 }
 
 function extractTitle(filePath: string): string {
