@@ -29,8 +29,8 @@ const ConfigSchema = z.object({
 
   // Role-based model selection — each accepts a tier name ('standard','capable','expert')
   // or a direct model ID. Router resolves tier names to concrete model IDs transparently.
-  headModel:     z.string().default('standard'),   // head conversation
-  agentModel:    z.string().default('standard'),   // default for spawned agents
+  headModel:     z.string().default('capable'),   // head conversation
+  agentModel:    z.string().default('capable'),   // default for spawned agents
   composerModel: z.string().default('standard'),  // legacy — unused, kept for backward compat
   stewardModel:    z.string().default('standard'),  // loop steward, summaries, internal reasoning
   memoryModel:   z.string().default('standard'),  // legacy fallback — unused if chunking/archival/retrieval set
