@@ -126,11 +126,11 @@ Plans:
 - **D-12** — No changes to `StewardsTab.tsx` or `ExperimentalTab.tsx` — registry iteration auto-populates the UI; verify this stays true
 
 **Depends on:** Phase 14
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 15-01-PLAN.md — Backend: add preferenceStewardEnabled/spawnStewardEnabled/actionComplianceStewardEnabled to ConfigSchema; add all three to DEFAULT_STEWARDS; add three filter clauses in activation.ts mirroring bootstrapSteward (D-03/D-04/D-05/D-06/D-07)
-- [ ] 15-02-PLAN.md — Dashboard + API: add three descriptors to both steward registries; thread flags through DraftState/SettingsData/initDraft/isDirty/buildBody; extend CONFIG_JSON_FIELDS and GET /api/settings; update settings.test.ts factory + add regression tests; refresh docs/internals/stewards.md summary sentence (D-08/D-09/D-10/D-11/D-12)
+- [x] 15-02-PLAN.md — Dashboard + API: add three descriptors to both steward registries; thread flags through DraftState/SettingsData/initDraft/isDirty/buildBody; extend CONFIG_JSON_FIELDS and GET /api/settings; update settings.test.ts factory + add regression tests; refresh docs/internals/stewards.md summary sentence (D-08/D-09/D-10/D-11/D-12)
 
 ### Phase 16: Replace cron expression text field in schedules dashboard with react-cron-generator visual picker
 

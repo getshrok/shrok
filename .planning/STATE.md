@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-04-21T14:29:26.823Z"
+status: verifying
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-04-21T14:35:41.516Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/MILESTONES.md (v1.0 shipped 2026-04-11)
 
 Phase: 15 (re-enable-preference-steward-with-dashboard-toggle) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-21
 
 Progress: [██████████] 100%
@@ -51,6 +51,7 @@ Progress: [██████████] 100%
 *Updated after each plan completion*
 | Phase 11 P01 | 30 | 7 tasks | 14 files |
 | Phase 15-re-enable-preference-steward-with-dashboard-toggle P01 | 8 | 2 tasks | 5 files |
+| Phase 15-re-enable-preference-steward-with-dashboard-toggle P02 | 10 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Progress: [██████████] 100%
 - [Phase 11]: Always include SCHEDULE_CONDITIONS placeholder in tasks.md (empty when null) — model ignores empty sections, avoids conditional template complexity
 - [Phase 15]: preferenceStewardEnabled defaults to true; spawnStewardEnabled and actionComplianceStewardEnabled default to false — observe before enabling
 - [Phase 15]: spawnStewardEnabled is distinct from existing spawnAgentStewardEnabled — both coexist in config.ts
+- [Phase 15]: preferenceSteward placed in stable section, spawnSteward and actionComplianceSteward in experimental — registry iteration auto-populates dashboard cards without touching StewardsTab.tsx or ExperimentalTab.tsx
+- [Phase 15]: Three new steward flags added to CONFIG_JSON_FIELDS (not ENV_KEY_ALLOWLIST) — they live in config.json, consistent with all other *StewardEnabled flags
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-21T14:29:26.817Z
-Stopped at: Completed 15-01-PLAN.md
+Last session: 2026-04-21T14:35:41.508Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
