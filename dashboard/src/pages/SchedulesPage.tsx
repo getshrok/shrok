@@ -8,8 +8,12 @@ import { formatInTz, useConfigTimezone } from '../lib/formatTime'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
+const CRON_FIELD = /^(\*\/[0-9]+|\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?)(,(\*\/[0-9]+|\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?))*$/
+
 function isValidCron(expr: string): boolean {
-  return expr.trim().split(/\s+/).length === 5
+  const fields = expr.trim().split(/\s+/)
+  if (fields.length !== 5) return false
+  return fields.every(f => CRON_FIELD.test(f))
 }
 
 function formatCron(cron: string): string {
