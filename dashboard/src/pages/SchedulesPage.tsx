@@ -1,3 +1,4 @@
+import cronstrue from 'cronstrue'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -8,39 +9,21 @@ import { formatInTz, useConfigTimezone } from '../lib/formatTime'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-const CRON_FIELD = /^(\*\/[0-9]+|\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?)(,(\*\/[0-9]+|\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?))*$/
-
 function isValidCron(expr: string): boolean {
-  const fields = expr.trim().split(/\s+/)
-  if (fields.length !== 5) return false
-  return fields.every(f => CRON_FIELD.test(f))
+  try {
+    cronstrue.toString(expr.trim())
+    return true
+  } catch {
+    return false
+  }
 }
 
 function formatCron(cron: string): string {
-  // */N * * * *  → "Every N min"
-  const everyN = cron.match(/^\*\/(\d+) \* \* \* \*$/)
-  if (everyN) return `Every ${everyN[1]} min`
-
-  // 0 H * * *  → "Daily at H:00"
-  const daily = cron.match(/^0 (\d+) \* \* \*$/)
-  if (daily) return `Daily at ${daily[1]}:00`
-
-  // 0 H * * 1-5  → "Weekdays at H:00"
-  const weekdays = cron.match(/^0 (\d+) \* \* 1-5$/)
-  if (weekdays) return `Weekdays at ${weekdays[1]}:00`
-
-  // 0 H * * D  → "Every [day] at H:00"
-  const weekday = cron.match(/^0 (\d+) \* \* ([0-6])$/)
-  if (weekday) {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    return `${days[parseInt(weekday[2]!)]} at ${weekday[1]}:00`
+  try {
+    return cronstrue.toString(cron)
+  } catch {
+    return cron
   }
-
-  // 0 H 1 * *  → "Monthly at H:00"
-  const monthly = cron.match(/^0 (\d+) 1 \* \*$/)
-  if (monthly) return `Monthly at ${monthly[1]}:00`
-
-  return cron
 }
 
 function formatRelTime(iso: string | null): string {
@@ -90,7 +73,10 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
 
   function commitEdit() {
     const trimmed = editValue.trim()
-    if (!trimmed || trimmed === schedule.cron) { setEditing(false); return }
+    if (!trimmed) { setEditing(false); return }
+    const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
+    const agentContextUnchanged = editAgentContext === (schedule.agentContext ?? '')
+    if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
     if (schedule.cron !== null) {
       if (!isValidCron(trimmed)) return
       updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext })
@@ -453,6 +439,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
   const [type, setType] = useState<'once' | 'repeating'>('once')
   const [runAt, setRunAt] = useState('')
   const [cron, setCron] = useState('0 9 * * *')
+  const [conditions, setConditions] = useState('')
   const [error, setError] = useState('')
 
   const createMutation = useMutation({
@@ -462,6 +449,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
         kind: 'reminder',
         agentContext: message.trim(),
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
+        ...(conditions ? { conditions } : {}),
       })
     },
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); onDone() },
@@ -525,6 +513,17 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
           {cron && <div className="text-xs text-zinc-500 mt-0.5">{formatCron(cron)}</div>}
         </div>
       )}
+
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
+        <textarea
+          rows={2}
+          value={conditions}
+          onChange={e => setConditions(e.target.value)}
+          placeholder="e.g. Only remind me between 9am and 5pm"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+        />
+      </div>
 
       {error && <div className="text-xs text-red-400">{error}</div>}
 
