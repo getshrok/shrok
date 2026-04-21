@@ -717,25 +717,25 @@ export function buildScheduleTools(
         inputSchema: {
           type: 'object',
           properties: {
-            skillName: { type: 'string', description: 'Task name.' },
+            taskName: { type: 'string', description: 'Task name.' },
             cron: { type: 'string', description: 'Cron expression for recurring schedules.' },
             runAt: { type: 'string', description: 'ISO datetime for one-time schedules.' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
           },
-          required: ['skillName'],
+          required: ['taskName'],
         },
       },
       execute: async (input, _ctx) => {
-        const skillName = input['skillName'] as string
+        const taskName = input['taskName'] as string
 
         if (unifiedLoader) {
-          const loaded = unifiedLoader.loadByName(skillName)
+          const loaded = unifiedLoader.loadByName(taskName)
           if (!loaded) {
-            return JSON.stringify({ error: true, message: `Unknown task '${skillName}'. Create the task first before scheduling it.` })
+            return JSON.stringify({ error: true, message: `Unknown task '${taskName}'. Create the task first before scheduling it.` })
           }
           if (loaded.kind !== 'task') {
-            return JSON.stringify({ error: true, message: `'${skillName}' is not a task. Only tasks can be scheduled.` })
+            return JSON.stringify({ error: true, message: `'${taskName}' is not a task. Only tasks can be scheduled.` })
           }
         }
 
@@ -751,7 +751,7 @@ export function buildScheduleTools(
         }
         const conditionsArg = input['conditions'] as string | undefined
         const agentContextArg = input['agentContext'] as string | undefined
-        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, skillName, kind: 'task' }
+        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, taskName, kind: 'task' }
         if (cronArg !== undefined) createOpts.cron = cronArg
         if (runAtArg !== undefined) createOpts.runAt = runAtArg
         if (nextRun !== undefined) createOpts.nextRun = nextRun
@@ -902,7 +902,6 @@ export function buildReminderTools(
 
         const createOpts: import('../db/schedules.js').CreateScheduleOptions = {
           id,
-          skillName: id,
           kind: 'reminder',
           agentContext: message,
           runAt: triggerAt ?? undefined,

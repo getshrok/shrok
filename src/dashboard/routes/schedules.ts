@@ -16,11 +16,8 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
   })
 
   router.post('/', requireAuth, (req: Request, res: Response): void => {
-    const { skillName, cron, runAt } = req.body as { skillName?: unknown; cron?: unknown; runAt?: unknown }
-
-    if (typeof skillName !== 'string' || !skillName.trim()) {
-      res.status(400).json({ error: 'skillName is required' })
-      return
+    const { taskName, cron, runAt, agentContext } = req.body as {
+      taskName?: unknown; cron?: unknown; runAt?: unknown; agentContext?: unknown
     }
 
     const rawKind = (req.body as { kind?: unknown }).kind
@@ -30,11 +27,17 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
     }
     const kind: 'task' | 'reminder' = rawKind === 'reminder' ? 'reminder' : 'task'
 
-    if (kind === 'task' && unifiedLoader) {
-      const resolved = unifiedLoader.tasksLoader.load(skillName)
-      if (!resolved) {
-        res.status(400).json({ error: `Unknown task: ${skillName}` })
+    if (kind === 'task') {
+      if (typeof taskName !== 'string' || !taskName.trim()) {
+        res.status(400).json({ error: 'taskName is required for task schedules' })
         return
+      }
+      if (unifiedLoader) {
+        const resolved = unifiedLoader.tasksLoader.load(taskName)
+        if (!resolved) {
+          res.status(400).json({ error: `Unknown task: ${taskName}` })
+          return
+        }
       }
     }
 
@@ -60,11 +63,12 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
     }
 
     try {
-      const createOpts: import('../../db/schedules.js').CreateScheduleOptions = { id: generateId('sched'), skillName }
+      const createOpts: import('../../db/schedules.js').CreateScheduleOptions = { id: generateId('sched'), kind }
+      if (kind === 'task' && typeof taskName === 'string') createOpts.taskName = taskName
       if (typeof cron === 'string' && cron) createOpts.cron = cron
       if (typeof runAt === 'string' && runAt) createOpts.runAt = runAt
       if (nextRun !== undefined) createOpts.nextRun = nextRun
-      createOpts.kind = kind
+      if (typeof agentContext === 'string' && agentContext) createOpts.agentContext = agentContext
       const schedule = scheduleStore.create(createOpts)
       res.json({ schedule })
     } catch (err) {

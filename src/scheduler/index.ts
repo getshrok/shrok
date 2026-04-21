@@ -58,10 +58,10 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
     for (const schedule of due) {
       let enqueued = false
       try {
-        const directHandler = this.directHandlers.get(schedule.skillName)
+        const directHandler = this.directHandlers.get(schedule.taskName ?? '')
         if (directHandler) {
           directHandler().catch(err =>
-            log.error(`[scheduler] Direct handler for ${schedule.skillName} failed:`, (err as Error).message)
+            log.error(`[scheduler] Direct handler for ${schedule.taskName ?? schedule.id} failed:`, (err as Error).message)
           )
           enqueued = true
         } else {
@@ -71,14 +71,14 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
               type: 'schedule_trigger',
               id: eventId,
               scheduleId: schedule.id,
-              skillName: schedule.skillName,
+              taskName: schedule.taskName,
               kind: schedule.kind,
               createdAt: nowIso,
             },
             PRIORITY.SCHEDULE_TRIGGER,
           )
           enqueued = true
-          log.info(`[scheduler] enqueued ${schedule.kind}:${schedule.skillName}`)
+          log.info(`[scheduler] enqueued ${schedule.kind}:${schedule.taskName ?? schedule.id}`)
         }
       } catch (err) {
         log.error(`[scheduler] Failed to enqueue schedule ${schedule.id}:`, (err as Error).message)

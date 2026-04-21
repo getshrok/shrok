@@ -182,8 +182,8 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
   return { loop, agentRunner, injector, scheduleStore, tmpDir }
 }
 
-function jobEvent(skillName: string, kind: 'task' | 'reminder' = 'task'): QueueEvent & { type: 'schedule_trigger' } {
-  return { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', skillName, kind, createdAt: new Date().toISOString() }
+function jobEvent(taskName: string | null, kind: 'task' | 'reminder' = 'task'): QueueEvent & { type: 'schedule_trigger' } {
+  return { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', taskName, kind, createdAt: new Date().toISOString() }
 }
 
 // We invoke handleScheduleTrigger via the private member; the loop machinery

@@ -973,15 +973,15 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     return { createSchedule, scheduleStore }
   }
 
-  it('accepts { skillName, kind:"task" } for a real task and stores target_kind="task"', async () => {
+  it('accepts { taskName, kind:"task" } for a real task and stores target_kind="task"', async () => {
     const unified = await makeTmpUnified()
     const { createSchedule, scheduleStore } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
-    const result = await createSchedule.execute({ skillName: 'a-task' }, ctx)
+    const result = await createSchedule.execute({ taskName: 'a-task' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBeUndefined()
     expect(parsed.kind).toBe('task')
-    expect(parsed.skillName).toBe('a-task')
+    expect(parsed.taskName).toBe('a-task')
     // DB row confirms
     const rows = scheduleStore.list()
     expect(rows.length).toBe(1)
@@ -992,7 +992,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     const unified = await makeTmpUnified()
     const { createSchedule, scheduleStore } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
-    const result = await createSchedule.execute({ skillName: 'a-task' }, ctx)
+    const result = await createSchedule.execute({ taskName: 'a-task' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBeUndefined()
     expect(parsed.kind).toBe('task')
@@ -1003,7 +1003,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     const unified = await makeTmpUnified()
     const { createSchedule } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
-    const result = await createSchedule.execute({ skillName: 'missing' }, ctx)
+    const result = await createSchedule.execute({ taskName: 'missing' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toContain('missing')
@@ -1013,7 +1013,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     const unified = await makeTmpUnified()
     const { createSchedule } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
-    const result = await createSchedule.execute({ skillName: 'my-skill' }, ctx)
+    const result = await createSchedule.execute({ taskName: 'my-skill' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toContain('my-skill')
@@ -1073,7 +1073,7 @@ describe('buildReminderTools', () => {
   it('list_reminders returns only kind:"reminder" entries', async () => {
     const { createReminder, listReminder, scheduleStore } = await getReminderTools()
     // Create a non-reminder schedule directly
-    scheduleStore.create({ id: 's-task-x', skillName: 'my-task', kind: 'task', nextRun: '2099-01-01T00:00:00Z' })
+    scheduleStore.create({ id: 's-task-x', taskName: 'my-task', kind: 'task', nextRun: '2099-01-01T00:00:00Z' })
     await createReminder.execute({ message: 'Hello', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
     const result = await listReminder.execute({}, ctx)
     const items = JSON.parse(result as string)

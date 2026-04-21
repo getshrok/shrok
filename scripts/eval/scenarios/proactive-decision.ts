@@ -84,8 +84,8 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     type: 'schedule_trigger',
     id: generateId('ev'),
     scheduleId: SCHEDULE_ID,
-    skillName: 'email-triage',
-    kind: 'skill',
+    taskName: 'email-triage',
+    kind: 'task',
     createdAt: new Date().toISOString(),
   }
 
@@ -100,7 +100,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     // Seed schedule — cron matches current time so there's no timing ambiguity
     env1.bundle.schedules.create({
       id: SCHEDULE_ID,
-      skillName: 'email-triage',
+      taskName: 'email-triage',
       cron: scheduleCron,
       nextRun: new Date().toISOString(),
     })
@@ -139,7 +139,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     env2.bundle.schedules.create({
       id: SCHEDULE_ID,
-      skillName: 'email-triage',
+      taskName: 'email-triage',
       cron: scheduleCron,
       nextRun: new Date().toISOString(),
     })
@@ -175,7 +175,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     env3.bundle.schedules.create({
       id: SCHEDULE_ID,
-      skillName: 'email-triage',
+      taskName: 'email-triage',
       cron: scheduleCron,
       nextRun: new Date().toISOString(),
     })

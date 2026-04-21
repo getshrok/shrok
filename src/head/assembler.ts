@@ -51,10 +51,11 @@ export function deriveQueryText(
     }
 
     case 'schedule_trigger': {
-      const skill = skillLoader.load(trigger.skillName)
+      const name = trigger.taskName ?? ''
+      const skill = name ? skillLoader.load(name) : null
       return skill
         ? `${skill.name}: ${skill.frontmatter.description}`
-        : trigger.skillName
+        : name
     }
 
     case 'webhook': {

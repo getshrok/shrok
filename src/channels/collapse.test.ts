@@ -9,49 +9,49 @@ import {
 describe('collapseToolCall', () => {
   it('includes file_path brief for read_file', () => {
     const result = collapseToolCall('read_file', { file_path: 'src/foo.ts' })
-    expect(result).toBe('`🔧 ▸ read_file (src/foo.ts) ...`')
+    expect(result).toBe('`▸ read_file (src/foo.ts) ...`')
   })
 
   it('includes first token of command for bash', () => {
     const result = collapseToolCall('bash', { command: 'ls' })
-    expect(result).toBe('`🔧 ▸ bash ...`')
+    expect(result).toBe('`▸ bash ...`')
   })
 
   it('returns no-brief format when no meaningful input', () => {
     const result = collapseToolCall('bash', undefined)
-    expect(result).toBe('`🔧 ▸ bash ...`')
+    expect(result).toBe('`▸ bash ...`')
   })
 
   it('returns no-brief format when input has no extractable info', () => {
     const result = collapseToolCall('think', { thought: 'some reasoning' })
-    expect(result).toBe('`🔧 ▸ think ...`')
+    expect(result).toBe('`▸ think ...`')
   })
 })
 
 describe('collapseToolResult', () => {
   it('returns OK for successful read_file', () => {
     const result = collapseToolResult('read_file', 'file contents here')
-    expect(result).toBe('`🔧 ▸ read_file → OK`')
+    expect(result).toBe('`▸ read_file → OK`')
   })
 
   it('returns exit 0 for successful bash', () => {
     const result = collapseToolResult('bash', '{"exit_code":0,"stdout":"..."}')
-    expect(result).toBe('`🔧 ▸ bash (exit 0)`')
+    expect(result).toBe('`▸ bash (exit 0)`')
   })
 
   it('returns exit 1 for failed bash', () => {
     const result = collapseToolResult('bash', '{"exit_code":1,"stderr":"..."}')
-    expect(result).toBe('`🔧 ▸ bash (exit 1)`')
+    expect(result).toBe('`▸ bash (exit 1)`')
   })
 
   it('returns ERROR for error response', () => {
     const result = collapseToolResult('read_file', '{"error":true,"message":"not found"}')
-    expect(result).toBe('`🔧 ▸ read_file → ERROR`')
+    expect(result).toBe('`▸ read_file → ERROR`')
   })
 
   it('returns OK for web_search with results', () => {
     const result = collapseToolResult('web_search', 'result1\nresult2\nresult3')
-    expect(result).toBe('`🔧 ▸ web_search → OK`')
+    expect(result).toBe('`▸ web_search → OK`')
   })
 })
 

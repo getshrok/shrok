@@ -1024,7 +1024,7 @@ export class ActivationLoop {
   }
 
   private async handleScheduleTrigger(event: QueueEvent & { type: 'schedule_trigger' }): Promise<void> {
-    const { skillName, kind } = event
+    const { taskName, kind } = event
     let proactiveContext: string | undefined
 
     // Reminder branch: kind='reminder' fires via schedule store (Plan 12-01)
@@ -1032,7 +1032,7 @@ export class ActivationLoop {
       // channel resolved at fire time per REM-06
       const channel = this.opts.appState.getLastActiveChannel()
       if (!channel) {
-        log.warn(`[scheduler] reminder:${skillName} — no active channel, skipping`)
+        log.warn(`[scheduler] reminder:${event.scheduleId} — no active channel, skipping`)
         this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
         return
       }
@@ -1055,38 +1055,37 @@ export class ActivationLoop {
           currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
         }, this.opts.llmRouter, this.opts.config.stewardModel, this.opts.usageStore, event.id)
         if (this.opts.config.proactiveShadow) {
-          log.info(`[proactive:reminder:shadow] ${skillName}: ${decision.action} — ${decision.reason}`)
+          log.info(`[proactive:reminder:shadow] ${event.scheduleId}: ${decision.action} — ${decision.reason}`)
         }
         if (this.opts.config.proactiveEnabled && decision.action === 'skip') {
           this.opts.scheduleStore.markSkipped(event.scheduleId, new Date().toISOString(), decision.reason)
-          log.info(`[proactive:reminder] Skipped ${skillName}: ${decision.reason}`)
+          log.info(`[proactive:reminder] Skipped ${event.scheduleId}: ${decision.reason}`)
           return
         }
       }
       this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
       const message = schedule.agentContext ?? ''
-      const agentId = generateAgentId(skillName)
+      const agentId = generateAgentId(event.scheduleId)
       const prompt = [
         'Deliver the following reminder message to the user.',
         'Write only the reminder message as your final response — no preamble, no commentary.',
         '',
         `Reminder: ${message}`,
       ].join('\n')
-      log.info(`[scheduler] fired reminder:${skillName}`)
+      log.info(`[scheduler] fired reminder:${event.scheduleId}`)
       await this.opts.toolExecutorOpts.agentRunner.spawn({
         agentId,
         prompt,
         trigger: 'scheduled',
-        skillName,
       })
       return
     }
 
     // Resolve target via tasksLoader.
     const unified = this.opts.toolExecutorOpts.unifiedLoader
-    const loadedTask = unified?.tasksLoader.load(skillName) ?? null
+    const loadedTask = unified?.tasksLoader.load(taskName ?? '') ?? null
     if (!loadedTask) {
-      log.warn(`[scheduler] task ${skillName} not found — skipping`)
+      log.warn(`[scheduler] task ${taskName ?? '(unknown)'} not found — skipping`)
       return
     }
     const loaded = { kind: 'task' as const, meta: loadedTask.frontmatter, body: loadedTask.instructions, skill: loadedTask }
@@ -1100,7 +1099,7 @@ export class ActivationLoop {
       const { identityLoader } = this.opts.toolExecutorOpts
 
       const decision = await runProactiveDecision({
-        skillName,
+        skillName: taskName!,
         skillDescription: loaded.meta.description ?? '',
         skillInstructions: loaded.body,
         scheduleCron: schedule?.cron ?? null,
@@ -1116,7 +1115,7 @@ export class ActivationLoop {
          this.opts.usageStore, event.id)
 
       if (this.opts.config.proactiveShadow) {
-        log.info(`[proactive:shadow] ${kind}:${skillName}: ${decision.action} — ${decision.reason}`)
+        log.info(`[proactive:shadow] ${kind}:${taskName}: ${decision.action} — ${decision.reason}`)
       }
 
       if (this.opts.config.proactiveEnabled && decision.action === 'skip') {
@@ -1124,7 +1123,7 @@ export class ActivationLoop {
         // Intentionally NOT injecting into head history — quiet-hours/no-op skips
         // would otherwise pile up N-per-hour of meaningless system events. The skip
         // is still recorded on the schedule row (markSkipped) for dashboard visibility.
-        log.info(`[proactive] Skipped ${kind}:${skillName}: ${decision.reason}`)
+        log.info(`[proactive] Skipped ${kind}:${taskName}: ${decision.reason}`)
         return
       }
 
@@ -1134,7 +1133,7 @@ export class ActivationLoop {
     // Budget enforcement: skip if monthly spend meets or exceeds max-per-month-usd.
     const cap = loaded.meta['max-per-month-usd']
     if (typeof cap === 'number' && cap > 0) {
-      const spend = this.opts.usageStore.getTaskMonthlySpend(skillName)
+      const spend = this.opts.usageStore.getTaskMonthlySpend(taskName!)
       if (spend >= cap) {
         const reason = `monthly budget exceeded ($${spend.toFixed(2)}/$${cap.toFixed(2)})`
         // Notify user once per schedule when budget is first hit (not on repeated skips)
@@ -1144,11 +1143,11 @@ export class ActivationLoop {
           const channel = this.opts.appState.getLastActiveChannel()
           if (channel) {
             await this.opts.channelRouter.send(channel,
-              `Task **${skillName}** has hit its monthly budget ($${cap.toFixed(2)}) and won't run again until next month. You can raise the cap in the task's settings if needed.`)
+              `Task **${taskName}** has hit its monthly budget ($${cap.toFixed(2)}) and won't run again until next month. You can raise the cap in the task's settings if needed.`)
           }
         }
         this.opts.scheduleStore.markSkipped(event.scheduleId, new Date().toISOString(), reason)
-        log.info(`[scheduler] task:${skillName} skipped — ${reason}`)
+        log.info(`[scheduler] task:${taskName} skipped — ${reason}`)
         return
       }
     }
@@ -1159,7 +1158,7 @@ export class ActivationLoop {
 
     // Spawn path: narrative is anchored by the append-only agent_completed
     // injection (see injectAgentEvent). No synthetic spawn_agent pair needed.
-    const agentId = generateAgentId(skillName)
+    const agentId = generateAgentId(taskName!)
 
     // Tasks-only: use the task body directly as the prompt (D-15).
     const basePrompt = loaded.body
@@ -1189,8 +1188,8 @@ export class ActivationLoop {
     // Spawn directly — no head LLM call needed; target is known deterministically.
     // model is task-only; cast to reach it since SkillFrontmatter does not expose it.
     const scheduledModel = (loaded.meta as unknown as { model?: string }).model
-    log.info(`[scheduler] fired task:${skillName}`)
-    // skill_name on the agents row now records the SKILL-OR-TASK name — the semantic 'target name'.
+    log.info(`[scheduler] fired task:${taskName}`)
+    // skill_name on the agents row now records the task name — the semantic 'target name'.
     // Required so usage attribution can bucket scheduled task spend by name (see sql/026_usage_attribution.sql).
     // Relies on unifiedLoader being wired so resolveSkillByName() finds task names too — true in production;
     // test mocks spawn directly.
@@ -1198,7 +1197,7 @@ export class ActivationLoop {
       agentId,
       prompt,
       trigger: 'scheduled',
-      skillName: skillName,
+      skillName: taskName!,
       ...(scheduledModel ? { model: scheduledModel } : {}),
     })
   }
@@ -1336,7 +1335,7 @@ function formatInjectedEvent(event: QueueEvent): string {
     case 'agent_response':
       return systemEvent('agent-response', { agent: event.agentId }, event.response.slice(0, 300))
     case 'schedule_trigger':
-      return systemEvent('schedule-trigger', { scheduleId: event.scheduleId ?? '', skillName: event.skillName ?? '' })
+      return systemEvent('schedule-trigger', { scheduleId: event.scheduleId ?? '', taskName: event.taskName ?? '' })
     case 'webhook':
       return systemEvent('webhook', { source: event.source ?? '', event: event.event ?? '' })
     default:

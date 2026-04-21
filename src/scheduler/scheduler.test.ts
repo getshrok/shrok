@@ -67,7 +67,7 @@ describe('describeCron', () => {
 function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
   return {
     id: 'sched_1',
-    skillName: 'email',
+    taskName: 'email',
     kind: 'task',
     cron: '*/3 * * * *',
     runAt: null,
@@ -123,24 +123,24 @@ describe('ScheduleEvaluatorImpl', () => {
     expect(queueStore.enqueue).toHaveBeenCalledOnce()
     const [event, priority] = vi.mocked(queueStore.enqueue).mock.calls[0]!
     expect(event.type).toBe('schedule_trigger')
-    expect((event as { skillName: string }).skillName).toBe('email')
+    expect((event as { taskName: string }).taskName).toBe('email')
     expect(priority).toBe(PRIORITY.SCHEDULE_TRIGGER)
   })
 
   it("forwards schedule.kind into the schedule_trigger QueueEvent (DISPATCH-03)", () => {
-    const taskSchedule = makeSchedule({ id: 's_task', skillName: 'nightly-vacuum', kind: 'task' })
-    const reminderSchedule = makeSchedule({ id: 's_reminder', skillName: 'rem_1', kind: 'reminder' })
+    const taskSchedule = makeSchedule({ id: 's_task', taskName: 'nightly-vacuum', kind: 'task' })
+    const reminderSchedule = makeSchedule({ id: 's_reminder', taskName: null, kind: 'reminder' })
     vi.mocked(scheduleStore.getDue).mockReturnValue([taskSchedule, reminderSchedule])
 
     evaluator.tick()
 
     expect(queueStore.enqueue).toHaveBeenCalledTimes(2)
-    const ev1 = vi.mocked(queueStore.enqueue).mock.calls[0]![0] as { kind: string; skillName: string }
-    const ev2 = vi.mocked(queueStore.enqueue).mock.calls[1]![0] as { kind: string; skillName: string }
+    const ev1 = vi.mocked(queueStore.enqueue).mock.calls[0]![0] as { kind: string; taskName: string | null }
+    const ev2 = vi.mocked(queueStore.enqueue).mock.calls[1]![0] as { kind: string; taskName: string | null }
     expect(ev1.kind).toBe('task')
-    expect(ev1.skillName).toBe('nightly-vacuum')
+    expect(ev1.taskName).toBe('nightly-vacuum')
     expect(ev2.kind).toBe('reminder')
-    expect(ev2.skillName).toBe('rem_1')
+    expect(ev2.taskName).toBeNull()
   })
 
   it('advances nextRun without setting lastRun for cron schedules', () => {
@@ -193,8 +193,8 @@ describe('ScheduleEvaluatorImpl', () => {
   })
 
   it('handles multiple due schedules in one tick', () => {
-    const s1 = makeSchedule({ id: 'sched_1', skillName: 'email' })
-    const s2 = makeSchedule({ id: 'sched_2', skillName: 'email-triage' })
+    const s1 = makeSchedule({ id: 'sched_1', taskName: 'email' })
+    const s2 = makeSchedule({ id: 'sched_2', taskName: 'email-triage' })
     vi.mocked(scheduleStore.getDue).mockReturnValue([s1, s2])
 
     evaluator.tick()

@@ -2,7 +2,7 @@ import { createFileStore } from './file-store.js'
 
 export interface Schedule {
   id: string
-  skillName: string
+  taskName: string | null
   kind: 'task' | 'reminder'
   cron: string | null        // null for one-time
   runAt: string | null       // null for repeating
@@ -19,7 +19,7 @@ export interface Schedule {
 
 export interface CreateScheduleOptions {
   id: string
-  skillName: string
+  taskName?: string
   kind?: 'task' | 'reminder'
   cron?: string
   runAt?: string
@@ -41,7 +41,7 @@ export class ScheduleStore {
     const now = new Date().toISOString()
     const schedule: Schedule = {
       id: options.id,
-      skillName: options.skillName,
+      taskName: options.taskName ?? null,
       kind: options.kind ?? 'task',
       cron: options.cron ?? null,
       runAt: options.runAt ?? null,

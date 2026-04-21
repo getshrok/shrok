@@ -78,7 +78,7 @@ interface ScheduleVariant {
   /** Skills to write into the skills dir before running. */
   skills: Array<{ name: string; content: string }>
   /** Schedules to seed into the store before running. */
-  seedSchedules: Array<{ id: string; skillName: string; cron: string; enabled: boolean }>
+  seedSchedules: Array<{ id: string; taskName: string; cron: string; enabled: boolean }>
   /** Per-variant context for the judge explaining what "correct" means. */
   judgeContext: string
   /** Verify store state after the query. Returns description of findings. */
@@ -96,7 +96,7 @@ const SCHEDULE_VARIANTS: ScheduleVariant[] = [
     judgeContext: `The agent should call create_schedule with skillName "email-check" (or similar) and cron "0 9 * * *" (9am daily). After the turn, a schedule should exist in the store with that cron.`,
     verifyState: (bundle) => {
       const schedules = bundle.schedules.list()
-      const emailSchedule = schedules.find(s => s.skillName.includes('email'))
+      const emailSchedule = schedules.find(s => s.taskName?.includes('email'))
       return `Schedules in store: ${schedules.length}. Email schedule found: ${!!emailSchedule}. ${emailSchedule ? `Cron: "${emailSchedule.cron}", enabled: ${emailSchedule.enabled}` : '(none)'}`
     },
   },
@@ -109,14 +109,14 @@ const SCHEDULE_VARIANTS: ScheduleVariant[] = [
       { name: 'weekly-backup', content: BACKUP_SKILL_MD },
     ],
     seedSchedules: [
-      { id: 'sched-email', skillName: 'email-check', cron: '0 9 * * *', enabled: true },
-      { id: 'sched-standup', skillName: 'daily-standup-notes', cron: '0 10 * * 1-5', enabled: true },
-      { id: 'sched-backup', skillName: 'weekly-backup', cron: '0 2 * * 0', enabled: false },
+      { id: 'sched-email', taskName: 'email-check', cron: '0 9 * * *', enabled: true },
+      { id: 'sched-standup', taskName: 'daily-standup-notes', cron: '0 10 * * 1-5', enabled: true },
+      { id: 'sched-backup', taskName: 'weekly-backup', cron: '0 2 * * 0', enabled: false },
     ],
     judgeContext: `The agent should call list_schedules and return all 3 seeded schedules: email-check (9am daily, enabled), daily-standup-notes (10am weekdays, enabled), weekly-backup (2am Sundays, disabled). The head's response should be human-readable — not raw JSON or unexplained cron strings.`,
     verifyState: (bundle) => {
       const schedules = bundle.schedules.list()
-      return `Schedules in store: ${schedules.length} (expected 3). Names: ${schedules.map(s => s.skillName).join(', ')}`
+      return `Schedules in store: ${schedules.length} (expected 3). Names: ${schedules.map(s => s.taskName).join(', ')}`
     },
   },
   {
@@ -124,7 +124,7 @@ const SCHEDULE_VARIANTS: ScheduleVariant[] = [
     query: 'Change the email check to 8:30 instead.',
     skills: [{ name: 'email-check', content: EMAIL_SKILL_MD }],
     seedSchedules: [
-      { id: EMAIL_SCHEDULE_ID, skillName: 'email-check', cron: '0 9 * * *', enabled: true },
+      { id: EMAIL_SCHEDULE_ID, taskName: 'email-check', cron: '0 9 * * *', enabled: true },
     ],
     judgeContext: `The agent should call update_schedule targeting the email-check schedule (ID "${EMAIL_SCHEDULE_ID}") and update the cron to "30 8 * * *" (8:30am daily). The schedule should remain enabled.`,
     verifyState: (bundle) => {
@@ -137,7 +137,7 @@ const SCHEDULE_VARIANTS: ScheduleVariant[] = [
     query: 'Pause the email check for now.',
     skills: [{ name: 'email-check', content: EMAIL_SKILL_MD }],
     seedSchedules: [
-      { id: EMAIL_SCHEDULE_ID, skillName: 'email-check', cron: '0 9 * * *', enabled: true },
+      { id: EMAIL_SCHEDULE_ID, taskName: 'email-check', cron: '0 9 * * *', enabled: true },
     ],
     judgeContext: `The agent should call update_schedule with enabled=false on the email-check schedule (ID "${EMAIL_SCHEDULE_ID}"). The schedule must remain in the store — NOT deleted. After the turn, the schedule should exist with enabled=false.`,
     verifyState: (bundle) => {
@@ -150,7 +150,7 @@ const SCHEDULE_VARIANTS: ScheduleVariant[] = [
     query: 'Turn the email check back on.',
     skills: [{ name: 'email-check', content: EMAIL_SKILL_MD }],
     seedSchedules: [
-      { id: EMAIL_SCHEDULE_ID, skillName: 'email-check', cron: '0 9 * * *', enabled: false },
+      { id: EMAIL_SCHEDULE_ID, taskName: 'email-check', cron: '0 9 * * *', enabled: false },
     ],
     judgeContext: `The agent should call update_schedule with enabled=true on the email-check schedule (ID "${EMAIL_SCHEDULE_ID}"). After the turn, the schedule should exist with enabled=true.`,
     verifyState: (bundle) => {
@@ -163,7 +163,7 @@ const SCHEDULE_VARIANTS: ScheduleVariant[] = [
     query: 'Get rid of the email check schedule.',
     skills: [{ name: 'email-check', content: EMAIL_SKILL_MD }],
     seedSchedules: [
-      { id: EMAIL_SCHEDULE_ID, skillName: 'email-check', cron: '0 9 * * *', enabled: true },
+      { id: EMAIL_SCHEDULE_ID, taskName: 'email-check', cron: '0 9 * * *', enabled: true },
     ],
     judgeContext: `The agent should call delete_schedule on the email-check schedule (ID "${EMAIL_SCHEDULE_ID}"). After the turn, the schedule should be gone from the store. The skill file (email-check/SKILL.md) should still exist — only the schedule is removed, not the skill.`,
     verifyState: (bundle, skillsDir) => {
@@ -225,7 +225,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     for (const sched of sv.seedSchedules) {
       env.bundle.schedules.create({
         id: sched.id,
-        skillName: sched.skillName,
+        taskName: sched.taskName,
         cron: sched.cron,
       })
       if (!sched.enabled) {
@@ -313,7 +313,7 @@ ${response}
 
 STORE STATE AFTER OPERATION:
 ${stateVerification}
-Schedules in store: ${JSON.stringify(env.bundle.schedules.list().map(s => ({ id: s.id, skillName: s.skillName, cron: s.cron, enabled: s.enabled })), null, 2)}
+Schedules in store: ${JSON.stringify(env.bundle.schedules.list().map(s => ({ id: s.id, taskName: s.taskName, cron: s.cron, enabled: s.enabled })), null, 2)}
 `
 
     const judgment = await judge(rubric, context)

@@ -111,7 +111,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     <div className="flex items-center gap-4 px-4 py-3 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/30 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-zinc-100 truncate">
-          {schedule.skillName}
+          {schedule.taskName ?? '—'}
         </div>
         <div className="text-xs text-zinc-500 mt-0.5">{scheduleLabel}</div>
       </div>
@@ -139,7 +139,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
         <Pencil size={13} />
       </button>
       <button
-        onClick={() => { if (window.confirm(`Delete schedule "${schedule.skillName}"?`)) deleteMutation.mutate() }}
+        onClick={() => { if (window.confirm(`Delete schedule "${schedule.taskName ?? schedule.id}"?`)) deleteMutation.mutate() }}
         disabled={deleteMutation.isPending}
         title="Delete"
         className="text-zinc-500 hover:text-red-400 transition-colors shrink-0 disabled:opacity-50"
@@ -265,7 +265,7 @@ function AddScheduleForm({
     mutationFn: () => {
       if (!target) throw new Error('Pick a task')
       return api.schedules.create({
-        skillName: target,
+        taskName: target,
         kind: 'task',
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
         ...(conditions ? { conditions } : {}),
@@ -459,7 +459,6 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
     mutationFn: () => {
       if (!message.trim()) throw new Error('Enter a reminder message')
       return api.schedules.create({
-        skillName: 'reminder',
         kind: 'reminder',
         agentContext: message.trim(),
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),

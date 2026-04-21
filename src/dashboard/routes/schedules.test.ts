@@ -88,49 +88,51 @@ describe('POST /api/schedules kind validation', () => {
 
   it("Test A: kind='skill' → 400 mentioning kind; no row inserted", async () => {
     const before = store.list().length
-    const r = await post({ skillName: 'existing-skill', kind: 'skill', cron: '* * * * *' })
+    const r = await post({ taskName: 'existing-task', kind: 'skill', cron: '* * * * *' })
     expect(r.status).toBe(400)
     expect((r.data as { error: string }).error.toLowerCase()).toContain('kind')
     expect(store.list().length).toBe(before)
   })
 
-  it("Test A2: kind='reminder' → 200, persists kind='reminder'", async () => {
-    const r = await post({ skillName: 'reminder', kind: 'reminder', cron: '0 9 * * *' })
+  it("Test A2: kind='reminder' → 200, persists kind='reminder' with agentContext", async () => {
+    const r = await post({ kind: 'reminder', agentContext: 'Remember to review goals', cron: '0 9 * * *' })
     expect(r.status).toBe(200)
-    const schedule = (r.data as { schedule: { kind: string } }).schedule
+    const schedule = (r.data as { schedule: { kind: string; taskName: string | null; agentContext: string } }).schedule
     expect(schedule.kind).toBe('reminder')
+    expect(schedule.taskName).toBeNull()
+    expect(schedule.agentContext).toBe('Remember to review goals')
   })
 
   it("Test B: kind omitted + valid task target → 200, persists kind='task'", async () => {
-    const r = await post({ skillName: 'existing-task', cron: '* * * * *' })
+    const r = await post({ taskName: 'existing-task', cron: '* * * * *' })
     expect(r.status).toBe(200)
     const schedule = (r.data as { schedule: { kind: string } }).schedule
     expect(schedule.kind).toBe('task')
   })
 
   it('Test C: kind omitted + unknown target → 400 (tasks-only validates when kind absent)', async () => {
-    const r = await post({ skillName: 'does-not-exist', cron: '* * * * *' })
+    const r = await post({ taskName: 'does-not-exist', cron: '* * * * *' })
     expect(r.status).toBe(400)
     const err = (r.data as { error: string }).error
     expect(err.toLowerCase()).toMatch(/unknown|not found/)
   })
 
   it("Test D: kind='task' with valid task target → 200, kind='task'", async () => {
-    const r = await post({ skillName: 'existing-task', kind: 'task', cron: '* * * * *' })
+    const r = await post({ taskName: 'existing-task', kind: 'task', cron: '* * * * *' })
     expect(r.status).toBe(200)
     const schedule = (r.data as { schedule: { kind: string } }).schedule
     expect(schedule.kind).toBe('task')
   })
 
   it("Test E: kind='bogus' → 400 mentioning kind", async () => {
-    const r = await post({ skillName: 'x', kind: 'bogus', cron: '* * * * *' })
+    const r = await post({ kind: 'bogus', cron: '* * * * *' })
     expect(r.status).toBe(400)
     const err = (r.data as { error: string }).error
     expect(err.toLowerCase()).toContain('kind')
   })
 
   it("Test F: kind='task' + unknown task name → 400", async () => {
-    const r = await post({ skillName: 'nope', kind: 'task', cron: '* * * * *' })
+    const r = await post({ taskName: 'nope', kind: 'task', cron: '* * * * *' })
     expect(r.status).toBe(400)
     const err = (r.data as { error: string }).error
     expect(err.toLowerCase()).toMatch(/unknown|not found/)

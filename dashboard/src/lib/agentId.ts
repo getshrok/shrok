@@ -13,3 +13,13 @@ export function shortAgentId(id: string): string {
 export function agentDisplayName(id: string): string {
   return shortAgentId(id).replace(/-/g, ' ')
 }
+
+const AGENT_CIRCLES = ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤', '⚫']
+
+/** Colored circle emoji for an agent — mirrors the hash used in src/sub-agents/local.ts
+ *  so dashboard dots match the dots shown in channel outputs. */
+export function agentDot(id: string): string {
+  const shortId = id.slice(-8)
+  const idx = Math.abs([...shortId].reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0)) % AGENT_CIRCLES.length
+  return AGENT_CIRCLES[idx]!
+}

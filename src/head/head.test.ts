@@ -65,14 +65,14 @@ describe('deriveQueryText', () => {
   })
 
   it('uses skill description for schedule_trigger', () => {
-    const event: QueueEvent = { type: 'schedule_trigger', id: 'e1', scheduleId: 's1', skillName: 'email-triage', kind: 'skill', createdAt: new Date().toISOString() }
+    const event: QueueEvent = { type: 'schedule_trigger', id: 'e1', scheduleId: 's1', taskName: 'email-triage', kind: 'task', createdAt: new Date().toISOString() }
     expect(deriveQueryText(event, makeWorkerStore(), makeSkillLoader('Sort incoming emails'))).toContain('Sort incoming emails')
   })
 
-  it('falls back to skillName when skill not found', () => {
+  it('falls back to taskName when task not found', () => {
     const loader = { load: vi.fn().mockReturnValue(null) } as unknown as SkillLoader
-    const event: QueueEvent = { type: 'schedule_trigger', id: 'e1', scheduleId: 's1', skillName: 'unknown-skill', kind: 'skill', createdAt: new Date().toISOString() }
-    expect(deriveQueryText(event, makeWorkerStore(), loader)).toBe('unknown-skill')
+    const event: QueueEvent = { type: 'schedule_trigger', id: 'e1', scheduleId: 's1', taskName: 'unknown-task', kind: 'task', createdAt: new Date().toISOString() }
+    expect(deriveQueryText(event, makeWorkerStore(), loader)).toBe('unknown-task')
   })
 
   it('uses source + event + payload snippet for webhook', () => {

@@ -171,8 +171,8 @@ describe('QueueEvent discriminated union', () => {
       type: 'schedule_trigger',
       id: 'ev-5',
       scheduleId: 's-1',
-      skillName: 'email',
-      kind: 'skill',
+      taskName: 'email',
+      kind: 'task',
       createdAt: '2025-01-01T00:00:00Z',
     }
     expect(ev.type).toBe('schedule_trigger')

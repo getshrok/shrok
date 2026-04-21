@@ -5,7 +5,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Paperclip, X } from 'lucide-react'
 import { api } from '../lib/api'
-import { agentDisplayName } from '../lib/agentId'
+import { agentDisplayName, agentDot } from '../lib/agentId'
 import { useStream } from '../hooks/useStream'
 import { useMode } from '../context/ModeContext'
 import { useAssistantName } from '../lib/assistant-name'
@@ -237,8 +237,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 
   if (message.kind === 'tool_call') {
     const aid = (message as Message & { _agentId?: string })._agentId
-    const borderStyle = aid ? { borderLeftColor: agentColor(aid), borderLeftWidth: '3px' } : undefined
-    const agentPrefix = aid ? `[${agentDisplayName(aid)}] ` : ''
+    const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
         <div className="flex flex-col gap-1">
@@ -249,10 +248,9 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
               <details
                 key={key}
                 className="max-w-2xl bg-amber-950/40 border border-amber-900/50 rounded-lg text-xs font-mono"
-                style={borderStyle}
               >
                 <summary className="px-3 py-2 cursor-pointer text-amber-500 select-none break-words">
-                  {agentPrefix}🔧 ▸ {summary}
+                  {agentPrefix}▸ {summary}
                 </summary>
                 <pre className="px-3 pb-2 text-amber-400/80 overflow-auto">
                   {JSON.stringify(_displayInput(tc), null, 2)}
@@ -267,11 +265,10 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 
   if (message.kind === 'tool_result') {
     const aid = (message as Message & { _agentId?: string })._agentId
-    const borderStyle = aid ? { borderLeftColor: agentColor(aid), borderLeftWidth: '3px' } : undefined
-    const agentPrefix = aid ? `[${agentDisplayName(aid)}] ` : ''
+    const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
-        <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono" style={borderStyle}>
+        <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono">
           <summary className="px-3 py-2 cursor-pointer text-emerald-500 select-none">
             {agentPrefix}{message.toolResults.map(tr => toolResultSummary(tr)).join(' · ')}
           </summary>
@@ -299,8 +296,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_call' }; result: Message & { kind: 'tool_result' }; tz: string }) {
   const formatTime = (iso: string) => formatInTz(iso, tz, { includeSeconds: true })
   const aid = (call as Message & { _agentId?: string })._agentId
-  const borderStyle = aid ? { borderLeftColor: agentColor(aid), borderLeftWidth: '3px' } : undefined
-  const agentPrefix = aid ? `[${agentDisplayName(aid)}] ` : ''
+  const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
 
   return (
     <div className="flex flex-col items-start" title={formatTime(call.createdAt)}>
@@ -313,10 +309,9 @@ function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_
           <details
             key={key}
             className="max-w-2xl bg-zinc-800/60 border border-zinc-700 rounded-lg text-xs font-mono"
-            style={borderStyle}
           >
             <summary className="px-3 py-2 cursor-pointer select-none break-words">
-              <span className="text-amber-500">{agentPrefix}🔧 ▸ {callSummary}</span>
+              <span className="text-amber-500">{agentPrefix}▸ {callSummary}</span>
               {resultSummary && <span className="text-emerald-500 ml-2">{resultSummary}</span>}
             </summary>
             <pre className="px-3 pb-2 text-amber-400/80 overflow-auto">

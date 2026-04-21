@@ -222,7 +222,7 @@ export const api = {
   schedules: {
     list: () =>
       request<{ schedules: Schedule[] }>('/api/schedules'),
-    create: (body: { skillName: string; kind?: 'task' | 'reminder'; cron?: string; runAt?: string; conditions?: string; agentContext?: string }) =>
+    create: (body: { taskName?: string; kind?: 'task' | 'reminder'; cron?: string; runAt?: string; conditions?: string; agentContext?: string }) =>
       request<{ schedule: Schedule }>('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

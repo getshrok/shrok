@@ -123,7 +123,7 @@ export type QueueEvent =
       type: 'schedule_trigger'
       id: string
       scheduleId: string
-      skillName: string
+      taskName: string | null
       /** Target kind of the schedule — 'skill' for legacy/default, 'task' for tasks (v1.1), 'reminder' for reminders (v1.2). */
       kind: 'skill' | 'task' | 'reminder'
       createdAt: string
