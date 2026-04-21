@@ -423,9 +423,9 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
         onClick={() => { if (window.confirm(`Delete reminder "${message}"?`)) deleteMutation.mutate() }}
         disabled={deleteMutation.isPending}
         title="Delete"
-        className="text-zinc-500 hover:text-red-400 transition-colors shrink-0 disabled:opacity-50 text-lg leading-none"
+        className="text-zinc-500 hover:text-red-400 transition-colors shrink-0 disabled:opacity-50"
       >
-        ×
+        <Trash2 size={13} />
       </button>
     </div>
   )
