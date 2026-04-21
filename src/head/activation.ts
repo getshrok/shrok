@@ -132,7 +132,7 @@ function buildStewardHistory(
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]!
     const cost = estimateStringTokens(`[${m.role}] ${m.content}`)
-    if (used + cost > tokenBudget) break
+    if (used + cost > tokenBudget) continue
     result.unshift({ role: m.role, content: m.content, createdAt: m.createdAt })
     used += cost
   }
