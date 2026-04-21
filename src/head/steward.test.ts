@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runSpawnAgentSteward } from './steward.js'
+import { runSpawnAgentSteward, DEFAULT_STEWARDS } from './steward.js'
 import { log } from '../logger.js'
 import type { LLMRouter, LLMResponse } from '../types/llm.js'
 
@@ -20,6 +20,28 @@ function makeStubRouter(opts: {
     },
   } as unknown as LLMRouter
 }
+
+describe('DEFAULT_STEWARDS (Phase 15)', () => {
+  it('contains exactly four stewards', () => {
+    expect(DEFAULT_STEWARDS).toHaveLength(4)
+  })
+
+  it('first entry is bootstrapSteward', () => {
+    expect(DEFAULT_STEWARDS[0]?.name).toBe('bootstrapSteward')
+  })
+
+  it('second entry is preferenceSteward', () => {
+    expect(DEFAULT_STEWARDS[1]?.name).toBe('preferenceSteward')
+  })
+
+  it('third entry is spawnSteward', () => {
+    expect(DEFAULT_STEWARDS[2]?.name).toBe('spawnSteward')
+  })
+
+  it('fourth entry is actionComplianceSteward', () => {
+    expect(DEFAULT_STEWARDS[3]?.name).toBe('actionComplianceSteward')
+  })
+})
 
 describe('runSpawnAgentSteward', () => {
   it('TEST-02 pass path: returns pass:true when stub says pass', async () => {

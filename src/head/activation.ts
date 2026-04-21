@@ -969,10 +969,14 @@ export class ActivationLoop {
         ? event.channel
         : (this.opts.appState.getLastActiveChannel() ?? '')
 
-      // Filter out stewards disabled by config. Currently only bootstrapSteward is in DEFAULT_STEWARDS.
+      // Filter out stewards disabled by config. Each steward in DEFAULT_STEWARDS has its
+      // own *StewardEnabled flag in Config; add a clause here when wiring a new one.
       const rawStewards = this.opts.stewards ?? DEFAULT_STEWARDS
       const stewards = rawStewards.filter(s => {
         if (s.name === 'bootstrapSteward' && !this.opts.config.bootstrapStewardEnabled) return false
+        if (s.name === 'preferenceSteward' && !this.opts.config.preferenceStewardEnabled) return false
+        if (s.name === 'spawnSteward' && !this.opts.config.spawnStewardEnabled) return false
+        if (s.name === 'actionComplianceSteward' && !this.opts.config.actionComplianceStewardEnabled) return false
         return true
       })
 

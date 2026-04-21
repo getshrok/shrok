@@ -726,9 +726,15 @@ export async function runRoutingSteward(
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
-// preferenceSteward and actionComplianceSteward are implemented and exported
-// but deliberately left out of the default registry — they were too noisy in
-// practice (false-positive nudges interrupting the head). Keep them defined
-// so a future operator can opt back in via configuration without resurrecting
-// dead code. docs/internals/stewards.md describes them as scaffolded-but-off.
-export const DEFAULT_STEWARDS: Steward[] = [bootstrapSteward]
+// DEFAULT_STEWARDS is the post-activation steward bank that runs after every head
+// response. Each steward decides internally whether to fire (returning 'skipped',
+// a nudge, or null). Individual stewards are gated by per-steward config flags in
+// activation.ts — see the filter block there. Adding a steward here is a
+// prerequisite for it running at all; the flag controls whether it's allowed to
+// run on a given activation.
+export const DEFAULT_STEWARDS: Steward[] = [
+  bootstrapSteward,
+  preferenceSteward,
+  spawnSteward,
+  actionComplianceSteward,
+]
