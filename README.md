@@ -22,7 +22,12 @@ Check out [the full overview](docs/overview.md) and [the rest of the docs](docs/
 curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
 ```
 
-**Windows (cmd or PowerShell):**
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex
+```
+
+**Windows (cmd.exe):**
 ```
 powershell -c "irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex"
 ```
