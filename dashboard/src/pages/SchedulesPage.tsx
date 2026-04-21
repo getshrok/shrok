@@ -250,6 +250,7 @@ function AddScheduleForm({
   const createMutation = useMutation({
     mutationFn: () => {
       if (!target) throw new Error('Pick a task')
+      if (type === 'once' && !runAt) throw new Error('Pick a date and time for the schedule')
       return api.schedules.create({
         taskName: target,
         kind: 'task',
@@ -356,7 +357,7 @@ function AddScheduleForm({
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={createMutation.isPending || loading || !target}
+          disabled={createMutation.isPending || loading || !target || (type === 'once' && !runAt)}
           className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
           {createMutation.isPending ? 'Adding…' : 'Add schedule'}
@@ -571,6 +572,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
   const createMutation = useMutation({
     mutationFn: () => {
       if (!message.trim()) throw new Error('Enter a reminder message')
+      if (type === 'once' && !runAt) throw new Error('Pick a date and time for the reminder')
       return api.schedules.create({
         kind: 'reminder',
         agentContext: message.trim(),
@@ -656,7 +658,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={createMutation.isPending || !message.trim()}
+          disabled={createMutation.isPending || !message.trim() || (type === 'once' && !runAt)}
           className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
           {createMutation.isPending ? 'Adding…' : 'Add reminder'}
