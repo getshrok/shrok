@@ -3,6 +3,7 @@
 ![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-blue)
 [![Node 22+](https://img.shields.io/badge/node-22%2B-blue)](https://nodejs.org)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/getshrok/shrok/blob/main/LICENSE)
+![status: alpha](https://img.shields.io/badge/status-alpha-red)
 
 Shrok is a self-hosted personal agent that is:
 
