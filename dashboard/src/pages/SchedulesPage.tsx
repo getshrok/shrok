@@ -409,7 +409,7 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
       : '—'
 
   // agentContext stores the reminder message
-  const message = schedule.agentContext ?? schedule.skillName
+  const message = schedule.agentContext ?? schedule.id
 
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/30 transition-colors">
