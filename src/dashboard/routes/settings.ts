@@ -274,12 +274,14 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
 
       const before = envVars[envKey] ?? ''
       const after = value
-      if (value === '') {
-        delete envVars[envKey]
-      } else {
-        envVars[envKey] = value
+      if (before !== after) {
+        if (value === '') {
+          delete envVars[envKey]
+        } else {
+          envVars[envKey] = value
+        }
+        envChanged = true
       }
-      envChanged = true
       // Trigger channel hot-reload only on actual change.
       const sentinel = ENV_TO_RELOAD_SENTINEL[envKey]
       if (sentinel && before !== after) reloadSentinels.add(sentinel)
@@ -305,8 +307,10 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
 
     for (const field of CONFIG_JSON_FIELDS) {
       if (!(field in body)) continue
-      configJson[field] = body[field]
-      configChanged = true
+      if (configJson[field] !== body[field]) {
+        configJson[field] = body[field]
+        configChanged = true
+      }
     }
 
     // --- Logo upload (base64 data URL) ---
@@ -342,22 +346,26 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       }
     }
 
-    // Persist conversation visibility categories
-    if (appState && body['conversationVisibility'] && typeof body['conversationVisibility'] === 'object') {
-      const v = body['conversationVisibility'] as Record<string, unknown>
-      appState.setConversationVisibility({
-        agentWork: !!v['agentWork'],
-        headTools: !!v['headTools'],
-        systemEvents: !!v['systemEvents'],
-        stewardRuns: !!v['stewardRuns'],
-        agentPills: !!v['agentPills'],
-        memoryRetrievals: !!v['memoryRetrievals'],
-      })
-    }
-
-    // Persist usage footers toggle
-    if (appState && 'usageFootersEnabled' in body) {
-      appState.setUsageFootersEnabled(!!body['usageFootersEnabled'])
+    // Persist conversation visibility categories and usage footers toggle
+    if (body['conversationVisibility'] || 'usageFootersEnabled' in body) {
+      if (!appState) {
+        res.status(500).json({ error: 'appState not available — cannot persist visibility/footer settings' })
+        return
+      }
+      if (body['conversationVisibility'] && typeof body['conversationVisibility'] === 'object') {
+        const v = body['conversationVisibility'] as Record<string, unknown>
+        appState.setConversationVisibility({
+          agentWork: !!v['agentWork'],
+          headTools: !!v['headTools'],
+          systemEvents: !!v['systemEvents'],
+          stewardRuns: !!v['stewardRuns'],
+          agentPills: !!v['agentPills'],
+          memoryRetrievals: !!v['memoryRetrievals'],
+        })
+      }
+      if ('usageFootersEnabled' in body) {
+        appState.setUsageFootersEnabled(!!body['usageFootersEnabled'])
+      }
     }
 
     // Emit theme_changed if accent color or logo changed
