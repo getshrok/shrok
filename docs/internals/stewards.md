@@ -144,6 +144,7 @@ These are logically stewards, but they live next to the scheduler because they g
 
 - **Prompt:** `src/scheduler/prompts/reminder.md`
 - **Fires when:** a `schedule_trigger` with `kind: 'reminder'` is handled. Reminders are unified with the schedule system (v1.2) — there is no separate `reminder_trigger` event type.
+- **Inputs:** reminder message, frequency (one-time vs cron description), your profile, ambient context, and recent conversation. Does not receive a last-fired timestamp — the decision is based purely on whether the reminded thing has already been handled.
 - **Decides:** has the reminded task already been handled in recent conversation, or been explicitly cancelled? Defaults to inject.
 - **If skipped:** logged, not shown.
 

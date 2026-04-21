@@ -31,7 +31,7 @@ Tasks and schedules both live in the workspace as portable flat files. Copy the 
 
 1. Pulls all enabled schedules where `nextRun <= now`.
 2. For each due schedule, enqueues a `schedule_trigger` queue event carrying the schedule ID, target name, and kind.
-3. **nextRun is advanced immediately** so the tick won't double-fire. `lastRun` only gets stamped later, after the proactive steward approves the run.
+3. **nextRun is advanced immediately** so the tick won't double-fire. For repeating schedules, `advanceNextRun` updates the next fire time and the row stays in the store; `lastRun` is stamped later, only after the proactive steward approves the run. For one-time schedules (`runAt`, no cron), the row is **deleted from the store** immediately — there is no disabled record left behind.
 
 Cron parsing uses `cron-parser` with the configured IANA timezone. Human-readable descriptions come from `cronstrue`.
 
@@ -41,7 +41,7 @@ Cron parsing uses `cron-parser` with the configured IANA timezone. Human-readabl
 
 1. **Resolve target.** Load the task. If not found, drop the event with a warning (orphan schedule).
 2. **Proactive decision.** The proactive steward (`runProactiveDecision` in `src/scheduler/proactive.ts`) reads the task instructions, your profile, recent conversation, and ambient context, and decides `run` or `skip` (with the reason logged). On `skip`, the schedule row records the reason and nothing else happens. On `run`, an optional context string may be returned when the steward noticed something relevant in recent conversation.
-3. **Mark ran.** Stamp `lastRun` on the schedule row.
+3. **Mark ran.** For repeating schedules, stamp `lastRun` on the schedule row. For one-time schedules the row was already deleted in the tick; nothing more is written.
 4. **Spawn.** An agent is spawned directly with the `TASK.md` body as its prompt, optionally suffixed with the context from step 2. No head LLM call is needed since the target is known. Any `skill-deps` are resolved through the normal skill-dep mechanism. The agent gets the usual sub-agent system prompt (identity files minus `SYSTEM.md`, ambient context).
 
 ## From agent completion back to you
@@ -57,7 +57,7 @@ This is why task output feels like a conversational follow-up rather than a noti
 
 ## Running a task on demand
 
-There's no "run this task now" button yet. Tasks only run when a schedule fires. To run one immediately, create a one-shot schedule with `runAt` set to the current time (via conversation or the dashboard). It still goes through the proactive steward, though a just-created one-shot is unlikely to be skipped.
+There's no "run this task now" button yet. Tasks only run when a schedule fires. To run one immediately, create a one-shot schedule with `runAt` set to the current time (via conversation or the dashboard). It still goes through the proactive steward, though a just-created one-shot is unlikely to be skipped. Once it fires, the schedule row is deleted — no disabled record accumulates.
 
 ## Plain-language conditions
 
@@ -83,7 +83,7 @@ The steward has access to: the prompt, `USER.md`, `AMBIENT.md`, recent conversat
 ## Debugging
 
 - **Logs** (`[scheduler]`, `[proactive]`, `[activation]`) show every tick, every steward decision, every suppression.
-- **Schedules dashboard page** shows `lastRun`, `lastSkipped`, `lastSkipReason` per schedule.
+- **Schedules dashboard page** shows `lastRun`, `lastSkipped`, `lastSkipReason` per schedule. One-time schedules are deleted after firing, so they won't appear here after completion.
 - **Steward runs** are recorded and visible in the dashboard's steward-runs view.
 
 ## Related docs

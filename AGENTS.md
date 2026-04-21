@@ -1,4 +1,6 @@
-# Shrok — Agent Guide
+# Shrok
+
+Shrok is a self-hosted personal AI agent that maintains a single persistent identity across channels (Discord, Telegram, Slack, WhatsApp, Zoho Cliq, web dashboard). Its core design principle: **the head never does work directly** — it delegates to asynchronous sub-agents. The head handles routing, memory, and coordination; agents handle execution.
 
 ## Project layout
 
@@ -16,8 +18,7 @@
 **Why vendored instead of an npm dependency:** users clone shrok and run it directly — no
 separate install step for a private GitHub package.
 
-**What NOT to do:** never edit `src/icw/*.js` or `src/icw/*.d.ts` directly. Changes belong
-in the source repo (`../infinite-context-window/src/`).
+**What NOT to do:** never edit `src/icw/*.js` or `src/icw/*.d.ts` directly.
 
 **How to sync after changing infinite-context-window:**
 
@@ -36,12 +37,7 @@ inflating the test heap to 4 GB+.
 **Never commit `.map` files to `src/icw/`.** The `sync:icw` script handles this automatically;
 if you copy files manually, run `find src/icw -name '*.map' -delete` before committing.
 
-## Running tests
-
-```bash
-npm test                        # full suite (runs all shards sequentially locally)
-npm test -- --shard=1/6         # run only shard 1 of 6 (mirrors CI)
-```
+## Tests
 
 Tests are split into 6 parallel shards on CI (see `.github/workflows/ci.yml`). Each shard
 runs in its own VM with a fresh Vite module graph. If a future shard starts OOMing, increase
@@ -64,3 +60,57 @@ Six test jobs run in parallel after `lint`:
 - `moduleResolution: bundler` — import paths use `.js` extensions that resolve to `.ts` files
 - `src/icw/*.js` files are ignored by tsc (no `allowJs`); their `.d.ts` files provide types
 - Run `npx tsc --noEmit` to type-check without emitting
+- `noUncheckedIndexedAccess` is enabled — array indexing always returns `T | undefined`, null-check `arr[0]` before use
+- `exactOptionalPropertyTypes` is enabled — you cannot set an optional property to `undefined` explicitly; omit the key or use `delete`
+
+## Architecture: queue and activation loop
+
+All inbound events flow through a priority queue. When adding a new trigger type, follow this path:
+
+```
+ChannelAdapter → QueueStore (priority queue) → ActivationLoop (polls, claims atomically)
+  → ContextAssembler → runToolLoop → LocalAgentRunner (async worker per agent)
+```
+
+Priority order (highest first):
+
+| Priority | Event type |
+|----------|-----------|
+| 100 | `user_message` |
+| 50 | `agent_question` |
+| 30 | `agent_completed`, `agent_failed`, `agent_response` |
+| 20 | `webhook` |
+| 10 | `schedule_trigger`, `reminder_trigger` |
+
+Queue claims use an atomic `UPDATE ... RETURNING *` pattern. Stale `processing` rows are reset to `pending` on startup.
+
+## Database conventions
+
+The project uses **`node:sqlite`** (Node 22+ built-in, synchronous `DatabaseSync`).
+
+**Schedules and reminders are JSON files**, not SQLite rows — stored in `{workspacePath}/data/schedules/` and `{workspacePath}/data/reminders/` via `src/db/file-store.ts`.
+
+## System markers
+
+`src/markers.ts` defines XML-style builders used to inject system content into the LLM conversation.
+
+## Skills structure
+
+A skill is a **directory** under `~/.shrok/workspace/skills/` containing:
+- `SKILL.md` (required) — YAML frontmatter + markdown instructions
+- `MEMORY.md` (optional) — persistent state agents can read and write
+- Optional helper scripts (`.mjs`, `.sh`, etc.)
+
+`SKILL.md` frontmatter fields: `name` (kebab-case, no slashes), `description`, `skill-deps` (array of skill names whose instructions are auto-bundled), `mcp-capabilities`, `max-per-month-usd`.
+
+`MEMORY.md` is auto-injected into an agent's history as a synthetic `read_file` result when it reads the skill — agents always see it without explicitly requesting it.
+
+Use `write-file-atomic` for all skill and identity file writes — plain `fs.writeFileSync` is not used for these files.
+
+## Config vs env vars
+
+Secrets and provider choices go in `.env`; behavioral settings go in `config.json`. `config.json` merges — the base repo `./config.json` is overlaid by `{workspacePath}/config.json`. `ENV_KEY_ALLOWLIST` in `src/config.ts` is the definitive list of keys that the settings API is allowed to write to `.env`.
+
+## Real-time updates: SSE not WebSocket
+
+Server-to-client updates use SSE (`EventSource` at `/api/stream`), not WebSockets.
