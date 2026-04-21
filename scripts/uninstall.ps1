@@ -1,4 +1,4 @@
-﻿# Shrok uninstaller - Windows
+# Shrok uninstaller - Windows
 # Usage: powershell -File "$env:USERPROFILE\shrok\scripts\uninstall.ps1"
 $ErrorActionPreference = 'Stop'
 
@@ -13,7 +13,7 @@ $TaskName    = 'Shrok'
 
 function Stop-Shrok {
   Write-Step "Stopping Shrok..."
-  # Process may not be running — that's fine
+  # Process may not be running - that's fine
   $conns = Get-NetTCPConnection -LocalPort 8888 -State Listen -ErrorAction SilentlyContinue
   foreach ($conn in $conns) {
     Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
@@ -23,7 +23,7 @@ function Stop-Shrok {
 
 function Remove-Daemon {
   Write-Step "Removing daemon..."
-  # Task may not exist — that's fine
+  # Task may not exist - that's fine
   schtasks /end /tn $TaskName 2>$null | Out-Null
   Start-Sleep -Seconds 2
   schtasks /delete /tn $TaskName /f 2>$null | Out-Null
@@ -32,7 +32,7 @@ function Remove-Daemon {
 
 function Remove-Cli {
   Write-Step "Removing CLI..."
-  # Files may not exist — that's fine
+  # Files may not exist - that's fine
   Remove-Item "$BinDir\shrok.ps1" -Force -ErrorAction SilentlyContinue
   Remove-Item "$BinDir\shrok.cmd" -Force -ErrorAction SilentlyContinue
 
@@ -61,7 +61,7 @@ function Remove-Repo {
     Write-Warn "'$ShrokDir' doesn't look like a Shrok install (no package.json). Skipping."
     return
   }
-  # Can't delete a directory we're running from — move out first.
+  # Can't delete a directory we're running from - move out first.
   Set-Location $env:USERPROFILE
 
   # The .cmd wrapper that launched us lives inside $ShrokDir. cmd.exe holds it
@@ -93,7 +93,7 @@ function Remove-Workspace {
       Remove-Item "${env:USERPROFILE}\.shrok" -Recurse -Force
       $removed = $true
     } catch {
-      Write-Warn "Could not fully remove workspace — some files may be locked: $_"
+      Write-Warn "Could not fully remove workspace - some files may be locked: $_"
     }
     if ($removed) { Write-Success "Workspace data removed" }
   } else {

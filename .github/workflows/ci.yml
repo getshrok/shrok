@@ -16,26 +16,45 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Verify UTF-8 BOM on .ps1 files
-        # Windows PowerShell 5.1 reads BOM-less files as system ANSI, which
-        # silently corrupts any non-ASCII characters — em dashes in string
-        # literals can decode to curly-quote bytes and terminate strings
-        # mid-parse. Every shipped .ps1 must start with 0xEF 0xBB 0xBF.
+      - name: Verify no UTF-8 BOM on .ps1 files
+        # BOM causes irm | iex to fail — PowerShell receives the BOM as a
+        # literal U+FEFF character prepended to the first token.
+        # All .ps1 files must be plain UTF-8 (no BOM).
         run: |
           failed=()
           while IFS= read -r f; do
-            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" != "efbbbf" ]; then
+            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
               failed+=("$f")
             fi
           done < <(git ls-files '*.ps1')
           if [ ${#failed[@]} -gt 0 ]; then
-            echo "::error::PowerShell scripts missing UTF-8 BOM (required for Windows PS 5.1):"
+            echo "::error::PowerShell scripts have UTF-8 BOM (breaks irm | iex):"
             printf '  %s\n' "${failed[@]}"
             echo ""
-            echo "Fix: prepend the BOM with: printf '\\xef\\xbb\\xbf' | cat - FILE.ps1 > FILE.ps1.tmp && mv FILE.ps1.tmp FILE.ps1"
+            echo "Fix: python3 -c \"import sys; d=open(f,'rb').read(); open(f,'wb').write(d[3:] if d.startswith(b'\\xef\\xbb\\xbf') else d)\""
             exit 1
           fi
-          echo "All .ps1 files have UTF-8 BOM"
+          echo "All .ps1 files are BOM-free"
+
+      - name: Verify no non-ASCII characters in .ps1 files
+        # Non-ASCII chars (decorative Unicode, em dashes, box-drawing) break
+        # irm | iex on systems where PowerShell reads the response as ANSI.
+        # Keep all .ps1 files strictly ASCII.
+        run: |
+          failed=()
+          while IFS= read -r f; do
+            if LC_ALL=C grep -Pq '[^\x00-\x7F]' "$f"; then
+              failed+=("$f")
+            fi
+          done < <(git ls-files '*.ps1')
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::PowerShell scripts contain non-ASCII characters:"
+            printf '  %s\n' "${failed[@]}"
+            echo ""
+            LC_ALL=C grep -Pn '[^\x00-\x7F]' "${failed[@]}"
+            exit 1
+          fi
+          echo "All .ps1 files are ASCII-clean"
 
       - run: npm ci
       - run: npx tsc --noEmit

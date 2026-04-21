@@ -1,5 +1,5 @@
-﻿# Shrok installer - Windows
-# Usage: irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex
+# Shrok installer - Windows
+# Usage: powershell -c "irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex"
 
 #Requires -Version 5.1
 Set-StrictMode -Version Latest
@@ -8,16 +8,16 @@ $ErrorActionPreference = 'Stop'
 # Allow running scripts (npm.ps1, etc.) in this session - does not affect system policy
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
-# ─── Non-interactive guard ───────────────────────────────────────────────────
+# --- Non-interactive guard ---------------------------------------------------
 
 if (-not [Environment]::UserInteractive) {
   Write-Host "  x  This installer requires an interactive terminal." -ForegroundColor Red
   Write-Host "     Open PowerShell and run:" -ForegroundColor DarkGray
-  Write-Host "     irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex" -ForegroundColor DarkGray
+  Write-Host "     powershell -c `"irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex`"" -ForegroundColor DarkGray
   exit 1
 }
 
-# ─── Output helpers ───────────────────────────────────────────────────────────
+# --- Output helpers -----------------------------------------------------------
 
 function Write-Info    { param([string]$Msg) Write-Host "    $Msg" -ForegroundColor DarkGray }
 function Write-Success { param([string]$Msg) Write-Host "  v  $Msg" -ForegroundColor Cyan }
@@ -25,7 +25,7 @@ function Write-Warn    { param([string]$Msg) Write-Host "  !  $Msg" -ForegroundC
 function Write-Err     { param([string]$Msg) Write-Host "  x  $Msg" -ForegroundColor Red; exit 1 }
 function Write-Step    { param([string]$Msg) Write-Host "`n  $Msg" -ForegroundColor White }
 
-# ─── Refresh PATH from registry (picks up newly installed tools) ──────────────
+# --- Refresh PATH from registry (picks up newly installed tools) --------------
 
 function Invoke-RefreshPath {
   $machine = [System.Environment]::GetEnvironmentVariable('PATH', 'Machine')
@@ -33,7 +33,7 @@ function Invoke-RefreshPath {
   $env:PATH = "$machine;$user"
 }
 
-# ─── winget ───────────────────────────────────────────────────────────────────
+# --- winget -------------------------------------------------------------------
 
 function Ensure-Winget {
   if (Get-Command winget -ErrorAction SilentlyContinue) { return }
@@ -44,9 +44,9 @@ function Ensure-Winget {
   exit 1
 }
 
-# ─── Node.js ──────────────────────────────────────────────────────────────────
+# --- Node.js ------------------------------------------------------------------
 
-# Fallback direct download — no hash pinning since versions are resolved dynamically.
+# Fallback direct download - no hash pinning since versions are resolved dynamically.
 # Prefer winget (tried first in Ensure-Node) which has its own package verification.
 function Install-NodeDirect {
   $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' }
@@ -116,7 +116,7 @@ function Ensure-Node {
   Write-Success "Node.js $(node --version) installed"
 }
 
-# ─── Git ──────────────────────────────────────────────────────────────────────
+# --- Git ----------------------------------------------------------------------
 
 function Install-GitDirect {
   $arch = if ([Environment]::Is64BitOperatingSystem) { '64-bit' } else { '32-bit' }
@@ -179,7 +179,7 @@ function Ensure-Git {
   Write-Success "Git installed"
 }
 
-# ─── Clone Shrok ───────────────────────────────────────────────────────────
+# --- Clone Shrok -----------------------------------------------------------
 
 function Invoke-CloneShrok {
   Invoke-RefreshPath
@@ -198,7 +198,7 @@ function Invoke-CloneShrok {
   $script:ShrokDir = $installDir
 }
 
-# ─── npm install + setup wizard ──────────────────────────────────────────────
+# --- npm install + setup wizard ----------------------------------------------
 
 function Invoke-Setup {
   Set-Location $script:ShrokDir
@@ -213,7 +213,7 @@ function Invoke-Setup {
   # Route through cmd.exe so stderr merging (2>&1) happens inside cmd rather than PowerShell.
   # PowerShell wraps native stderr as error records, which terminates the script under
   # `irm | iex` even when npm succeeds (update-notifier writes to stderr regardless of
-  # --loglevel). cmd folds stderr into stdout before PowerShell sees it — no interpretation.
+  # --loglevel). cmd folds stderr into stdout before PowerShell sees it - no interpretation.
   & cmd.exe /c "`"$($npmCmd.Source)`" install --no-audit --no-fund --loglevel=error 2>&1" | Tee-Object -FilePath $npmLog
   if ($LASTEXITCODE -ne 0) { Write-Err "npm install failed (exit $LASTEXITCODE). See log: $npmLog" }
   Write-Success "Dependencies installed (full log: $npmLog)"
@@ -226,7 +226,7 @@ function Invoke-Setup {
   $script:SetupExit = $LASTEXITCODE
 }
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
+# --- Main ---------------------------------------------------------------------
 
 Write-Host ""
 Write-Host "  Shrok" -ForegroundColor Cyan
@@ -240,7 +240,7 @@ Invoke-Setup
 
 if ($script:SetupExit -eq 0) {
   Write-Step "Starting Shrok (first boot will register daemon + CLI)..."
-  # Launch via the shipped VBS daemon wrapper — wscript.exe has no console and
+  # Launch via the shipped VBS daemon wrapper - wscript.exe has no console and
   # invokes the daemon ps1 with -WindowStyle Hidden, so nothing visible is spawned.
   # Using `Start-Process npm -WindowStyle Hidden` doesn't work here because npm.cmd
   # re-spawns cmd.exe which creates its own console regardless of the parent's flags.
@@ -254,7 +254,7 @@ if ($script:SetupExit -eq 0) {
     Write-Warn "Daemon wrapper not found at $vbsPath - start Shrok manually: cd $($script:ShrokDir) && npm start"
   }
 } elseif ($script:SetupExit -eq 2) {
-  # Exit 2 = user chose "Start later" — config is saved, don't start
+  # Exit 2 = user chose "Start later" - config is saved, don't start
   Write-Success "Setup complete. Start when ready: cd $($script:ShrokDir) && npm start"
 } else {
   Write-Warn "Setup wizard exited with code $($script:SetupExit)."

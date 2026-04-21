@@ -22,9 +22,9 @@ Check out [the full overview](docs/overview.md) and [the rest of the docs](docs/
 curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
 ```
 
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex
+**Windows (cmd or PowerShell):**
+```
+powershell -c "irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex"
 ```
 
 **Uninstall:** `bash ~/shrok/scripts/uninstall.sh` (macOS/Linux) or `& "$HOME\shrok\scripts\uninstall.cmd"` (Windows).
