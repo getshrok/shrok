@@ -378,10 +378,15 @@ export function buildScopedBashTools(env: Record<string, string>, cap: number = 
 
 // ─── Filesystem executors ─────────────────────────────────────────────────────
 
-/** Resolve environment variables ($VAR and ${VAR}) and ~ in file paths. */
+/** Safe allowlist for environment variable expansion in agent-supplied paths. */
+const SAFE_PATH_VARS = new Set(['HOME', 'TMPDIR', 'TMP', 'TEMP'])
+
+/** Resolve environment variables ($VAR and ${VAR}) and ~ in file paths.
+ *  Only variables in SAFE_PATH_VARS are expanded; others are left as-is to
+ *  prevent LLM-controlled input from leaking arbitrary process.env secrets. */
 function resolvePath(p: string): string {
-  let resolved = p.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] ?? '')
-                   .replace(/\$(\w+)/g, (_, name) => process.env[name] ?? '')
+  let resolved = p.replace(/\$\{(\w+)\}/g, (_, name) => SAFE_PATH_VARS.has(name) ? (process.env[name] ?? '') : `\${${name}}`)
+                   .replace(/\$(\w+)/g, (_, name) => SAFE_PATH_VARS.has(name) ? (process.env[name] ?? '') : `$${name}`)
   if (resolved.startsWith('~/')) resolved = path.join(os.homedir(), resolved.slice(2))
   return resolved
 }
