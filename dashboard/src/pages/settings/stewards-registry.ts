@@ -12,7 +12,7 @@ export interface StewardDescriptor {
   description: string
   defaultOn: boolean
   contextTokensKey?: keyof DraftState
-  contextTokensRange?: { min: number; max: number; step: number }
+  contextTokensRange?: { min: number; max: number; step: number; default: number }
   experimental?: boolean
 }
 
@@ -46,7 +46,7 @@ export const STEWARDS: StewardDescriptor[] = [
     description: "Rewrites outgoing messages so they say 'I' instead of referencing agents and internal systems.",
     defaultOn: false,
     contextTokensKey: 'headRelayStewardContextTokens',
-    contextTokensRange: { min: 100, max: 10000, step: 100 },
+    contextTokensRange: { min: 100, max: 10000, step: 100, default: 2000 },
   },
   {
     id: 'bootstrap',
@@ -79,7 +79,7 @@ export const STEWARDS: StewardDescriptor[] = [
     defaultOn: true,
     experimental: true,
     contextTokensKey: 'resumeStewardContextTokens',
-    contextTokensRange: { min: 500, max: 20000, step: 500 },
+    contextTokensRange: { min: 500, max: 20000, step: 500, default: 4000 },
   },
   {
     id: 'messageAgent',
