@@ -117,42 +117,42 @@ function toolResultSummary(tr: { name: string; content: string }): string {
     case 'bash':
     case 'bash_no_net': {
       const m = tr.content.match(/Exit code: (\S+)/)
-      return `${tr.name} → exit ${m?.[1] ?? '?'}`
+      return `${tr.name} ← exit ${m?.[1] ?? '?'}`
     }
     case 'web_search': {
       const count = (tr.content.match(/Title:/g) || []).length
-      return `web_search → ${count} result${count === 1 ? '' : 's'}`
+      return `web_search ← ${count} result${count === 1 ? '' : 's'}`
     }
     case 'web_fetch': {
       const kb = (tr.content.length / 1024).toFixed(1)
-      return `web_fetch → ${kb}KB`
+      return `web_fetch ← ${kb}KB`
     }
     case 'read_file':
     case 'read_multiple_files': {
       const kb = (tr.content.length / 1024).toFixed(1)
-      return `${tr.name} → ${kb}KB`
+      return `${tr.name} ← ${kb}KB`
     }
-    case 'write_file': return `write_file → ${ok ? 'ok' : 'error'}`
-    case 'edit_file': return `edit_file → ${ok ? 'ok' : 'error'}`
-    case 'create_directory': return `create_directory → ${ok ? 'ok' : 'error'}`
-    case 'move_file': return `move_file → ${ok ? 'ok' : 'error'}`
+    case 'write_file': return `write_file ← ${ok ? 'ok' : 'error'}`
+    case 'edit_file': return `edit_file ← ${ok ? 'ok' : 'error'}`
+    case 'create_directory': return `create_directory ← ${ok ? 'ok' : 'error'}`
+    case 'move_file': return `move_file ← ${ok ? 'ok' : 'error'}`
     case 'search_files': {
       const lines = tr.content.split('\n').filter((l: string) => l.trim()).length
-      if (lines === 0 || tr.content.toLowerCase().includes('no match')) return 'search_files → no matches'
-      return `search_files → ${lines} match${lines === 1 ? '' : 'es'}`
+      if (lines === 0 || tr.content.toLowerCase().includes('no match')) return 'search_files ← no matches'
+      return `search_files ← ${lines} match${lines === 1 ? '' : 'es'}`
     }
     case 'list_directory': {
       const items = tr.content.split('\n').filter((l: string) => l.trim()).length
-      return `list_directory → ${items} item${items === 1 ? '' : 's'}`
+      return `list_directory ← ${items} item${items === 1 ? '' : 's'}`
     }
     case 'directory_tree': {
       const lines = tr.content.split('\n').filter((l: string) => l.trim()).length
-      return `directory_tree → ${lines} entries`
+      return `directory_tree ← ${lines} entries`
     }
-    case 'write_note': return `write_note → ${ok ? 'ok' : 'error'}`
-    case 'delete_note': return `delete_note → ${ok ? 'ok' : 'error'}`
-    case 'create_schedule': return `create_schedule → ${ok ? 'ok' : 'error'}`
-    case 'create_reminder': return `create_reminder → ${ok ? 'ok' : 'error'}`
+    case 'write_note': return `write_note ← ${ok ? 'ok' : 'error'}`
+    case 'delete_note': return `delete_note ← ${ok ? 'ok' : 'error'}`
+    case 'create_schedule': return `create_schedule ← ${ok ? 'ok' : 'error'}`
+    case 'create_reminder': return `create_reminder ← ${ok ? 'ok' : 'error'}`
     default: return tr.name
   }
 }
@@ -182,7 +182,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
         <div
           className={`max-w-2xl px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words ${
             isUser
-              ? 'bg-zinc-100 text-zinc-900'
+              ? 'bg-zinc-800 text-zinc-100'
               : message.injected
               ? 'bg-zinc-800/60 text-zinc-400 border border-zinc-700 font-mono text-xs'
               : 'bg-[var(--accent)] text-white border border-[var(--accent)] saturate-[1.06] brightness-[0.85]'
@@ -208,7 +208,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
                 if (mediaUrl) {
                   return (
                     <a key={i} href={mediaUrl} download={displayName}
-                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${isUser ? 'bg-zinc-200 text-zinc-700' : 'bg-white/15 text-white/90'}`}>
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${isUser ? 'bg-zinc-700 text-zinc-300' : 'bg-white/15 text-white/90'}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                         <path d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z" />
                         <path d="M3.5 9.75a.75.75 0 0 0-1.5 0v1.5A2.75 2.75 0 0 0 4.75 14h6.5A2.75 2.75 0 0 0 14 11.25v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-1.5Z" />
