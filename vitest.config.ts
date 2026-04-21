@@ -28,6 +28,7 @@ const nodeBuiltinPlugin: Plugin = {
 export default defineConfig({
   plugins: [nodeBuiltinPlugin],
   test: {
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tests/**/*.test.ts', 'tests/**/*.test.tsx'],
     pool: 'forks',
     poolOptions: {
       forks: { minForks: 0, maxForks: 1, execArgv: ['--max-old-space-size=4096'] },
