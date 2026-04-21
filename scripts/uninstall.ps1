@@ -1,5 +1,5 @@
 ﻿# Shrok uninstaller - Windows
-# Usage: powershell -File "$env:USERPROFILE\shrok\uninstall.ps1"
+# Usage: powershell -File "$env:USERPROFILE\shrok\scripts\uninstall.ps1"
 $ErrorActionPreference = 'Stop'
 
 function Write-Info    { param([string]$Msg) Write-Host "    $Msg" -ForegroundColor DarkGray }

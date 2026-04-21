@@ -19,15 +19,15 @@ Check out [the full overview](docs/overview.md) and [the rest of the docs](docs/
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/getshrok/shrok/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex
 ```
 
-**Uninstall:** `bash ~/shrok/uninstall.sh` (macOS/Linux) or `& "$HOME\shrok\uninstall.cmd"` (Windows).
+**Uninstall:** `bash ~/shrok/scripts/uninstall.sh` (macOS/Linux) or `& "$HOME\shrok\scripts\uninstall.cmd"` (Windows).
 
 ## Manual Install
 

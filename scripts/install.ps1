@@ -1,5 +1,5 @@
 ﻿# Shrok installer - Windows
-# Usage: irm https://raw.githubusercontent.com/getshrok/shrok/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex
 
 #Requires -Version 5.1
 Set-StrictMode -Version Latest
@@ -13,7 +13,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 if (-not [Environment]::UserInteractive) {
   Write-Host "  x  This installer requires an interactive terminal." -ForegroundColor Red
   Write-Host "     Open PowerShell and run:" -ForegroundColor DarkGray
-  Write-Host "     irm https://raw.githubusercontent.com/getshrok/shrok/main/install.ps1 | iex" -ForegroundColor DarkGray
+  Write-Host "     irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex" -ForegroundColor DarkGray
   exit 1
 }
 

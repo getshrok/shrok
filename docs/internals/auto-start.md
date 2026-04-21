@@ -4,7 +4,7 @@ This doc covers how Shrok gets itself registered as a background service that ru
 
 ## When it happens
 
-Not at install time. The installer (`install.sh` on macOS/Linux, `install.ps1` on Windows) just clones the repo, installs dependencies, runs the setup wizard, and does an initial `npm start`.
+Not at install time. The installer (`scripts/install.sh` on macOS/Linux, `scripts/install.ps1` on Windows) just clones the repo, installs dependencies, runs the setup wizard, and does an initial `npm start`.
 
 The auto-start registration happens on that first `npm start`. On every startup, `src/first-boot.ts` checks whether Shrok is already registered with the platform's service supervisor. If it isn't, it writes the service definition, registers it, and logs a one-line note. If it already is, it returns immediately. Every failure is non-fatal — Shrok runs fine without a supervisor, it just won't come back on its own after a reboot.
 
@@ -70,8 +70,8 @@ That's what lets `shrok start`, `shrok doctor`, and the rest work from anywhere.
 
 Every platform ships an uninstaller that tears down the service definition, removes the CLI wrapper, and optionally deletes the workspace.
 
-- **macOS / Linux** — `bash ~/shrok/uninstall.sh`. On macOS it runs `launchctl bootout gui/<uid>/com.shrok.agent` and deletes the plist (plus the two legacy labels `com.shrok.shrok` and `local.shrok` from earlier versions). On Linux it does `systemctl --user stop shrok && disable shrok`, deletes `shrok.service`, and runs `daemon-reload`.
-- **Windows** — `powershell -File "$env:USERPROFILE\shrok\uninstall.ps1"`. Ends the task, runs `schtasks /delete /tn Shrok /f`, removes the `shrok.ps1` + `shrok.cmd` shims from `~/.local/bin`, and strips that directory from the user `PATH`.
+- **macOS / Linux** — `bash ~/shrok/scripts/uninstall.sh`. On macOS it runs `launchctl bootout gui/<uid>/com.shrok.agent` and deletes the plist (plus the two legacy labels `com.shrok.shrok` and `local.shrok` from earlier versions). On Linux it does `systemctl --user stop shrok && disable shrok`, deletes `shrok.service`, and runs `daemon-reload`.
+- **Windows** — `powershell -File "$env:USERPROFILE\shrok\scripts\uninstall.ps1"`. Ends the task, runs `schtasks /delete /tn Shrok /f`, removes the `shrok.ps1` + `shrok.cmd` shims from `~/.local/bin`, and strips that directory from the user `PATH`.
 
 Each uninstaller prompts before deleting `~/.shrok/` (or `%USERPROFILE%\.shrok\`) so your memories, credentials, and conversation history aren't lost by accident.
 

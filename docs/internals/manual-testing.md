@@ -7,7 +7,7 @@ Run a clean install on each platform before testing anything else.
 ### macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
 ```
 
 - [ ] Installer runs to completion without errors
@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/install.sh | ba
 ### Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
 ```
 
 - [ ] Installer runs to completion without errors
@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/install.sh | ba
 ### Windows
 
 ```powershell
-irm https://raw.githubusercontent.com/getshrok/shrok/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex
 ```
 
 - [ ] Installer runs to completion without errors
@@ -332,7 +332,7 @@ Configure an MCP server in `mcp.json` (either HTTP or stdio).
 ### macOS / Linux
 
 ```bash
-bash ~/shrok/uninstall.sh
+bash ~/shrok/scripts/uninstall.sh
 ```
 
 - [ ] Script completes without errors
@@ -343,7 +343,7 @@ bash ~/shrok/uninstall.sh
 ### Windows
 
 ```cmd
-& "$HOME\shrok\uninstall.cmd"
+& "$HOME\shrok\scripts\uninstall.cmd"
 ```
 
 - [ ] Script completes without errors

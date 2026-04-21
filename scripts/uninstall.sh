@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shrok uninstaller — macOS and Linux
-# Usage: bash ~/shrok/uninstall.sh
+# Usage: bash ~/shrok/scripts/uninstall.sh
 set -euo pipefail
 
 BOLD='\033[1m'

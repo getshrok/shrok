@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shrok installer — macOS and Linux (Debian/Ubuntu, Fedora/RHEL, Arch, Alpine, openSUSE)
-# Usage: curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
 set -euo pipefail
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
@@ -37,8 +37,8 @@ print_usage() {
 Shrok installer
 
 Usage:
-  curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/install.sh | bash
-  ./install.sh [options]
+  curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
+  ./scripts/install.sh [options]
 
 Options:
   --dir <path>    Install directory (default: ~/shrok, or \$SHROK_DIR)
