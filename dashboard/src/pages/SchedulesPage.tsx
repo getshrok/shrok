@@ -326,7 +326,7 @@ function AddScheduleForm({
             onChange={e => setRunAt(e.target.value)}
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
           />
-          <div className="text-[11px] text-zinc-500 mt-0.5">Interpreted in {tz}</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">Browser local time (workspace timezone: {tz})</div>
         </div>
       )}
 
@@ -627,7 +627,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
             onChange={e => setRunAt(e.target.value)}
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
           />
-          <div className="text-[11px] text-zinc-500 mt-0.5">Interpreted in {tz}</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">Browser local time (workspace timezone: {tz})</div>
         </div>
       ) : (
         <div>
