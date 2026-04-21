@@ -181,14 +181,15 @@ describe('ScheduleEvaluatorImpl', () => {
     expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
   })
 
-  it('calls delete for one-time schedules', () => {
+  it('disables one-time schedules in the tick (keeps row for activation to read before deleting)', () => {
     const oneTime = makeSchedule({ cron: null, runAt: '2026-01-01T10:00:00Z' })
     vi.mocked(scheduleStore.getDue).mockReturnValue([oneTime])
 
     evaluator.tick()
 
-    expect(scheduleStore.delete).toHaveBeenCalledOnce()
-    expect(scheduleStore.delete).toHaveBeenCalledWith('sched_1')
+    expect(scheduleStore.update).toHaveBeenCalledOnce()
+    expect(scheduleStore.update).toHaveBeenCalledWith('sched_1', { enabled: false, nextRun: null })
+    expect(scheduleStore.delete).not.toHaveBeenCalled()
     expect(scheduleStore.markFired).not.toHaveBeenCalled()
   })
 

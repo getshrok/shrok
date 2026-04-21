@@ -88,7 +88,9 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
           const next = nextRunAfter(schedule.cron, now, this.timezone)
           this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
         } else if (enqueued) {
-          this.scheduleStore.delete(schedule.id)
+          // Disable so the tick won't re-fire, but keep the row — activation
+          // needs it to read agentContext and cron before deleting it after firing.
+          this.scheduleStore.update(schedule.id, { enabled: false, nextRun: null })
         }
       } catch (err) {
         log.error(`[scheduler] Failed to advance schedule ${schedule.id}:`, (err as Error).message)

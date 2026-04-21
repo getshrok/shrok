@@ -1059,7 +1059,11 @@ export class ActivationLoop {
           log.info(`[proactive:reminder:shadow] ${event.scheduleId}: ${decision.action} — ${decision.reason}`)
         }
         if (this.opts.config.proactiveEnabled && decision.action === 'skip') {
-          this.opts.scheduleStore.markSkipped(event.scheduleId, new Date().toISOString(), decision.reason)
+          if (schedule.cron === null) {
+            this.opts.scheduleStore.delete(event.scheduleId)
+          } else {
+            this.opts.scheduleStore.markSkipped(event.scheduleId, new Date().toISOString(), decision.reason)
+          }
           log.info(`[proactive:reminder] Skipped ${event.scheduleId}: ${decision.reason}`)
           return
         }

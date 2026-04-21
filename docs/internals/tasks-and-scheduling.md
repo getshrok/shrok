@@ -31,7 +31,7 @@ Tasks and schedules both live in the workspace as portable flat files. Copy the 
 
 1. Pulls all enabled schedules where `nextRun <= now`.
 2. For each due schedule, enqueues a `schedule_trigger` queue event carrying the schedule ID, target name, and kind.
-3. **nextRun is advanced immediately** so the tick won't double-fire. For repeating schedules, `advanceNextRun` updates the next fire time and the row stays in the store; `lastRun` is stamped later, only after the proactive steward approves the run. For one-time schedules (`runAt`, no cron), the row is **deleted from the store** immediately — there is no disabled record left behind.
+3. **nextRun is advanced immediately** so the tick won't double-fire. For repeating schedules, `advanceNextRun` updates the next fire time and the row stays in the store; `lastRun` is stamped later, only after the proactive steward approves the run. For one-time schedules (`runAt`, no cron), the row is **disabled** (`enabled=false, nextRun=null`) so it won't re-fire — but the row is kept so the activation handler can still read the reminder message. The activation handler deletes it after firing.
 
 Cron parsing uses `cron-parser` with the configured IANA timezone. Human-readable descriptions come from `cronstrue`.
 
