@@ -186,7 +186,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">Run conditions (shown to scheduler)</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
                   <textarea
                     rows={2}
                     value={editConditions}
@@ -196,12 +196,12 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">Agent context (added to task prompt)</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">Task prompt addition</label>
                   <textarea
                     rows={2}
                     value={editAgentContext}
                     onChange={e => setEditAgentContext(e.target.value)}
-                    placeholder="e.g. User is traveling this week"
+                    placeholder="Anything you want added to the task prompt for this schedule only"
                     className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
                   />
                 </div>
@@ -344,7 +344,7 @@ function AddScheduleForm({
       )}
 
       <div>
-        <label className="text-xs text-zinc-500 mb-1 block">Run conditions (shown to scheduler)</label>
+        <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
         <textarea
           rows={2}
           value={conditions}
@@ -355,12 +355,12 @@ function AddScheduleForm({
       </div>
 
       <div>
-        <label className="text-xs text-zinc-500 mb-1 block">Agent context (added to task prompt)</label>
+        <label className="text-xs text-zinc-500 mb-1 block">Task prompt addition</label>
         <textarea
           rows={2}
           value={agentContext}
           onChange={e => setAgentContext(e.target.value)}
-          placeholder="e.g. User is traveling this week"
+          placeholder="Anything you want added to the task prompt for this schedule only"
           className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
         />
       </div>
