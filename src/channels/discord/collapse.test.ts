@@ -73,7 +73,7 @@ describe('parseVerboseMessage', () => {
   })
 
   it('parses agent-wrapped tool call', () => {
-    const msg = '```\n[🔵 agent-name] → read_file (src/foo.ts)\n{"preview":"..."}\n```'
+    const msg = '```\n🔵 [agent-name] → read_file (src/foo.ts)\n{"preview":"..."}\n```'
     const result = parseVerboseMessage(msg)
     expect(result).not.toBeNull()
     expect(result!.direction).toBe('call')
@@ -81,7 +81,7 @@ describe('parseVerboseMessage', () => {
   })
 
   it('parses agent-wrapped tool result', () => {
-    const msg = '```\n[🔵 agent-name] ← write_file\nresult content\n```'
+    const msg = '```\n🔵 [agent-name] ← write_file\nresult content\n```'
     const result = parseVerboseMessage(msg)
     expect(result).not.toBeNull()
     expect(result!.direction).toBe('result')

@@ -237,7 +237,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 
   if (message.kind === 'tool_call') {
     const aid = (message as Message & { _agentId?: string })._agentId
-    const agentPrefix = aid ? `[${agentDot(aid)} ${agentDisplayName(aid)}] ` : ''
+    const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
         <div className="flex flex-col gap-1">
@@ -265,7 +265,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 
   if (message.kind === 'tool_result') {
     const aid = (message as Message & { _agentId?: string })._agentId
-    const agentPrefix = aid ? `[${agentDot(aid)} ${agentDisplayName(aid)}] ` : ''
+    const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
         <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono">
@@ -296,7 +296,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_call' }; result: Message & { kind: 'tool_result' }; tz: string }) {
   const formatTime = (iso: string) => formatInTz(iso, tz, { includeSeconds: true })
   const aid = (call as Message & { _agentId?: string })._agentId
-  const agentPrefix = aid ? `[${agentDot(aid)} ${agentDisplayName(aid)}] ` : ''
+  const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
 
   return (
     <div className="flex flex-col items-start" title={formatTime(call.createdAt)}>
@@ -310,9 +310,9 @@ function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_
             key={key}
             className="max-w-2xl bg-zinc-800/60 border border-zinc-700 rounded-lg text-xs font-mono"
           >
-            <summary className="px-3 py-2 cursor-pointer select-none break-words">
+            <summary className="px-3 py-2 cursor-pointer select-none break-words text-zinc-400">
               <span className="text-amber-500">{agentPrefix}🔧 {callSummary}</span>
-              {resultSummary && <span className="text-emerald-500 ml-2">🔧 {resultSummary}</span>}
+              {resultSummary && <><br /><span className="text-emerald-500">🔧 {resultSummary}</span></>}
             </summary>
             <pre className="px-3 pb-2 text-amber-400/80 overflow-auto">
               {JSON.stringify(_displayInput(tc), null, 2)}

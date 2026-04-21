@@ -815,7 +815,7 @@ export class LocalAgentRunner implements AgentRunner {
       // (onVerbose). onDebug is for head-level internals only; passing both would duplicate every
       // thinking block / tool call / tool result into the channel.
       const agentVerbose = options.onVerbose && options.trigger === 'manual'
-        ? (msg: string) => options.onVerbose!(`\`\`\`\n[${AGENT_CIRCLES[circleIdx]} ${displayName}] ${msg}\n\`\`\``)
+        ? (msg: string) => options.onVerbose!(`\`\`\`\n${AGENT_CIRCLES[circleIdx]} [${displayName}] ${msg}\n\`\`\``)
         : undefined
 
       await runToolLoop(this.llmRouter, {

@@ -32,14 +32,14 @@ export function parseVerboseMessage(text: string): ParsedVerboseMessage | null {
   const trimmed = text.trim()
 
   // Strip agent-wrapped triple-backtick code blocks
-  // Format: ```\n[{circle} {name}] → toolName ...\n{detail}\n```
+  // Format: ```\n{circle} [{name}] → toolName ...\n{detail}\n```
   let inner = trimmed
   let agentPrefix: string | null = null
   if (inner.startsWith('```')) {
     // Remove leading ``` and trailing ```
     inner = inner.replace(/^```\n?/, '').replace(/\n?```$/, '').trim()
-    // Capture and strip the agent prefix: "[🔵 agent-name] "
-    const prefixMatch = inner.match(/^(\[[^\]]*\])\s*/u)
+    // Capture and strip the colored circle + agent name prefix: "🔵 [agent-name] "
+    const prefixMatch = inner.match(/^([\u{1F300}-\u{1FFFF}]\s*\[[^\]]*\])\s*/u)
     if (prefixMatch) {
       agentPrefix = prefixMatch[1]!
       inner = inner.slice(prefixMatch[0].length)
