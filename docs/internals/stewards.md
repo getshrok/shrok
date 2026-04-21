@@ -21,7 +21,7 @@ There are twelve stewards in `src/head/steward.ts`, plus the routing steward in 
 
 ### After the head responds (post-activation compliance bank)
 
-Four stewards run in parallel after the head's response is delivered. Each one either returns a nudge (a synthetic user message that re-activates the head) or nothing. Only `bootstrapSteward` is enabled by default today; the others are scaffolded and currently commented out of the default set.
+Four stewards run in parallel after the head's response is delivered. Each one either returns a nudge (a synthetic user message that re-activates the head) or nothing. `bootstrapSteward` and `preferenceSteward` are on by default; `spawnSteward` and `actionComplianceSteward` are in the default set but gated off — each has its own toggle in Settings → Stewards (or Experimental for the latter two).
 
 #### `preferenceSteward` — preference capture
 

@@ -55,6 +55,9 @@ function makeTestConfig(overrides: Partial<Config> = {}): Config {
     scheduledRelayStewardEnabled: true,
     resumeStewardEnabled: true,
     bootstrapStewardEnabled: true,
+    preferenceStewardEnabled: true,
+    spawnStewardEnabled: false,
+    actionComplianceStewardEnabled: false,
     contextRelevanceStewardEnabled: false,
     memoryBudgetPercent: 45,
     memoryQueryContextTokens: 3000,
@@ -244,5 +247,20 @@ describe('GET /api/settings — config-derived defaults', () => {
     fs.writeFileSync(path.join(workspace, 'config.json'), JSON.stringify({ memoryBudgetPercent: 10 }), 'utf8')
     const b = await getBody()
     expect(b['memoryBudgetPercent']).toBe(10)
+  })
+
+  it('returns the three Phase 15 steward flags with config-derived defaults', async () => {
+    await startWithConfig(makeTestConfig())
+    const b = await getBody()
+    expect(b['preferenceStewardEnabled']).toBe(true)
+    expect(b['spawnStewardEnabled']).toBe(false)
+    expect(b['actionComplianceStewardEnabled']).toBe(false)
+  })
+
+  it('workspace config.json override wins for preferenceStewardEnabled (regression: Phase 13 pattern)', async () => {
+    await startWithConfig(makeTestConfig())
+    fs.writeFileSync(path.join(workspace, 'config.json'), JSON.stringify({ preferenceStewardEnabled: false }), 'utf8')
+    const b = await getBody()
+    expect(b['preferenceStewardEnabled']).toBe(false)
   })
 })
