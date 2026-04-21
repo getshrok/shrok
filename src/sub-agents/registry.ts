@@ -11,7 +11,6 @@ import type { UsageStore } from '../db/usage.js'
 import type { ScheduleStore } from '../db/schedules.js'
 import type { NoteStore } from '../db/notes.js'
 import type { AppStateStore } from '../db/app_state.js'
-import type { SkillLoader } from '../types/skill.js'
 import type { UnifiedLoader } from '../skills/unified.js'
 import { generateId } from '../llm/util.js'
 import { WEB_SEARCH_DEF, WEB_FETCH_DEF, executeWebSearch, executeWebFetch } from '../tools/web.js'
@@ -699,7 +698,6 @@ export function buildUsageTool(usageStore: UsageStore): AgentToolEntry {
 
 export function buildScheduleTools(
   scheduleStore: ScheduleStore,
-  skillLoader: SkillLoader,
   timezone: string,
   unifiedLoader: UnifiedLoader | null = null,
 ): AgentToolEntry[] {
@@ -707,7 +705,7 @@ export function buildScheduleTools(
     {
       definition: {
         name: 'list_schedules',
-        description: 'List all schedules (skills and tasks).',
+        description: 'List all schedules.',
         inputSchema: { type: 'object', properties: {} },
       },
       execute: async (_input, _ctx) => JSON.stringify(scheduleStore.list()),
@@ -715,12 +713,11 @@ export function buildScheduleTools(
     {
       definition: {
         name: 'create_schedule',
-        description: 'Create a new schedule targeting a skill (default) or a task. The target must already exist.',
+        description: 'Create a new schedule targeting a task. The task must already exist.',
         inputSchema: {
           type: 'object',
           properties: {
-            skillName: { type: 'string', description: 'Target name — a skill or task.' },
-            kind: { type: 'string', enum: ['skill', 'task'], description: 'Target kind. Defaults to "skill".' },
+            skillName: { type: 'string', description: 'Task name.' },
             cron: { type: 'string', description: 'Cron expression for recurring schedules.' },
             runAt: { type: 'string', description: 'ISO datetime for one-time schedules.' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
@@ -731,26 +728,14 @@ export function buildScheduleTools(
       },
       execute: async (input, _ctx) => {
         const skillName = input['skillName'] as string
-        const requestedKindRaw = input['kind'] as string | undefined
-        const requestedKind: 'skill' | 'task' = requestedKindRaw === 'task' ? 'task' : 'skill'
 
-        // Validate the target via unifiedLoader when threaded (production wiring).
-        // Fallback to skillLoader for back-compat with callers that haven't
-        // adopted UnifiedLoader yet (e.g. legacy tests).
         if (unifiedLoader) {
           const loaded = unifiedLoader.loadByName(skillName)
           if (!loaded) {
-            return JSON.stringify({ error: true, message: `Unknown schedule target '${skillName}'. Create the skill or task first before scheduling it.` })
+            return JSON.stringify({ error: true, message: `Unknown task '${skillName}'. Create the task first before scheduling it.` })
           }
-          if (loaded.kind !== requestedKind) {
-            return JSON.stringify({
-              error: true,
-              message: `Schedule target '${skillName}' is a ${loaded.kind}, not a ${requestedKind}. Pass kind:'${loaded.kind}' (or omit for skills).`,
-            })
-          }
-        } else {
-          if (!skillLoader.load(skillName)) {
-            return JSON.stringify({ error: true, message: `Skill "${skillName}" does not exist. Create the skill file first before scheduling it.` })
+          if (loaded.kind !== 'task') {
+            return JSON.stringify({ error: true, message: `'${skillName}' is not a task. Only tasks can be scheduled.` })
           }
         }
 
@@ -766,7 +751,7 @@ export function buildScheduleTools(
         }
         const conditionsArg = input['conditions'] as string | undefined
         const agentContextArg = input['agentContext'] as string | undefined
-        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, skillName, kind: requestedKind }
+        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, skillName, kind: 'task' }
         if (cronArg !== undefined) createOpts.cron = cronArg
         if (runAtArg !== undefined) createOpts.runAt = runAtArg
         if (nextRun !== undefined) createOpts.nextRun = nextRun

@@ -795,10 +795,10 @@ describe('ScheduleStore', () => {
     expect(store.get('s-job')!.kind).toBe('task')
   })
 
-  it('create without kind defaults to "skill"', () => {
-    const s = store.create({ id: 's-skill', skillName: 'email', nextRun: '2025-01-01T00:00:00Z' })
-    expect(s.kind).toBe('skill')
-    expect(store.get('s-skill')!.kind).toBe('skill')
+  it('create without kind defaults to "task"', () => {
+    const s = store.create({ id: 's-task-default', skillName: 'email', nextRun: '2025-01-01T00:00:00Z' })
+    expect(s.kind).toBe('task')
+    expect(store.get('s-task-default')!.kind).toBe('task')
   })
 
   it('corrupt file is skipped gracefully by list()', () => {
@@ -821,7 +821,7 @@ describe('ScheduleStore', () => {
 
   it('list().filter(s => s.kind === "reminder") returns only reminder entries', () => {
     store.create({ id: 'rem-sched-2', skillName: 'rem-sched-2', kind: 'reminder', agentContext: 'Hello', runAt: '2026-05-01T09:00:00Z' })
-    store.create({ id: 's-skill-1', skillName: 'email', kind: 'skill', nextRun: '2025-01-01T00:00:00Z' })
+    store.create({ id: 's-task-1', skillName: 'email', kind: 'task', nextRun: '2025-01-01T00:00:00Z' })
     const reminders = store.list().filter(s => s.kind === 'reminder')
     expect(reminders).toHaveLength(1)
     expect(reminders[0]!.id).toBe('rem-sched-2')

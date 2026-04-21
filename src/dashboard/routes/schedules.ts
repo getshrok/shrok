@@ -15,8 +15,6 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
     res.json({ schedules: scheduleStore.list() })
   })
 
-  // NOTE: `skillName` is retained as a legacy field name meaning "target name regardless of kind"
-  // per Phase 5 D-11. Renaming cascades through every caller for no semantic gain.
   router.post('/', requireAuth, (req: Request, res: Response): void => {
     const { skillName, cron, runAt } = req.body as { skillName?: unknown; cron?: unknown; runAt?: unknown }
 
@@ -25,19 +23,14 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
       return
     }
 
-    // Tasks-only scheduling: reject kind='skill' at the boundary;
-    // default omitted kind to 'task'; always validate via tasksLoader.
     const rawKind = (req.body as { kind?: unknown }).kind
-    if (rawKind === 'skill') {
-      res.status(400).json({ error: "Schedules can only target tasks. Convert the skill to a task or use a reminder." })
+    if (rawKind !== undefined && rawKind !== 'task' && rawKind !== 'reminder') {
+      res.status(400).json({ error: "kind must be 'task' or 'reminder'" })
       return
     }
-    if (rawKind !== undefined && rawKind !== 'task') {
-      res.status(400).json({ error: "kind must be 'task'" })
-      return
-    }
-    const kind: 'task' = 'task'
-    if (unifiedLoader) {
+    const kind: 'task' | 'reminder' = rawKind === 'reminder' ? 'reminder' : 'task'
+
+    if (kind === 'task' && unifiedLoader) {
       const resolved = unifiedLoader.tasksLoader.load(skillName)
       if (!resolved) {
         res.status(400).json({ error: `Unknown task: ${skillName}` })

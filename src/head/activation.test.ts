@@ -182,7 +182,7 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
   return { loop, agentRunner, injector, scheduleStore, tmpDir }
 }
 
-function jobEvent(skillName: string, kind: 'skill' | 'task' | 'reminder' = 'task'): QueueEvent & { type: 'schedule_trigger' } {
+function jobEvent(skillName: string, kind: 'task' | 'reminder' = 'task'): QueueEvent & { type: 'schedule_trigger' } {
   return { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', skillName, kind, createdAt: new Date().toISOString() }
 }
 
@@ -214,18 +214,6 @@ describe('handleScheduleTrigger — kind-aware dispatch', () => {
     expect(args.skillName).toBe('bar')
     expect(args.trigger).toBe('scheduled')
     expect(args.model).toBe('claude-opus-4-6')
-  })
-
-  it("legacy kind='skill' trigger: dropped with warn, no spawn, no injector (tasks-only, 260414-112)", async () => {
-    fix = makeFixture()
-    await fire(fix.loop, jobEvent('foo', 'skill'))
-    expect(fix.agentRunner.spawn).not.toHaveBeenCalled()
-  })
-
-  it("legacy kind='skill' trigger for a name that is actually a task: still dropped", async () => {
-    fix = makeFixture()
-    await fire(fix.loop, jobEvent('bar', 'skill'))
-    expect(fix.agentRunner.spawn).not.toHaveBeenCalled()
   })
 
   it("kind='task' for a name that only exists as a skill: logs and skips spawn", async () => {

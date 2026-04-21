@@ -1082,14 +1082,7 @@ export class ActivationLoop {
       return
     }
 
-    // Tasks-only scheduling (260414-112, T-260414-112-02):
-    // Legacy DB rows can carry kind='skill' — drop them defensively.
-    if (kind === 'skill') {
-      log.warn(`[scheduler] legacy skill-target schedule ${skillName} — dropping (tasks-only)`)
-      return
-    }
-
-    // Resolve target via tasksLoader only (tasks-only dispatch).
+    // Resolve target via tasksLoader.
     const unified = this.opts.toolExecutorOpts.unifiedLoader
     const loadedTask = unified?.tasksLoader.load(skillName) ?? null
     if (!loadedTask) {

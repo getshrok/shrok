@@ -2,10 +2,8 @@ import { createFileStore } from './file-store.js'
 
 export interface Schedule {
   id: string
-  /** Target name — kind-agnostic; see `kind` for whether this refers to a skill or a task. */
   skillName: string
-  /** Kind of target: 'skill' (default, back-compat), 'task', or 'reminder'. Fixed at create time. */
-  kind: 'skill' | 'task' | 'reminder'
+  kind: 'task' | 'reminder'
   cron: string | null        // null for one-time
   runAt: string | null       // null for repeating
   enabled: boolean
@@ -21,10 +19,8 @@ export interface Schedule {
 
 export interface CreateScheduleOptions {
   id: string
-  /** Target name — kind-agnostic. */
   skillName: string
-  /** Kind of target. Defaults to 'skill' when omitted. */
-  kind?: 'skill' | 'task' | 'reminder'
+  kind?: 'task' | 'reminder'
   cron?: string
   runAt?: string
   nextRun?: string
@@ -46,7 +42,7 @@ export class ScheduleStore {
     const schedule: Schedule = {
       id: options.id,
       skillName: options.skillName,
-      kind: options.kind ?? 'skill',
+      kind: options.kind ?? 'task',
       cron: options.cron ?? null,
       runAt: options.runAt ?? null,
       enabled: true,

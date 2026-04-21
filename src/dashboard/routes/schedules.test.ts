@@ -32,7 +32,7 @@ function seedEntry(root: string, name: string, marker: 'SKILL.md' | 'TASK.md') {
   )
 }
 
-describe('POST /api/schedules kind validation (tasks-only, 260414-112)', () => {
+describe('POST /api/schedules kind validation', () => {
   let skillsRoot: string
   let tasksRoot: string
   let storeDir: string
@@ -86,14 +86,19 @@ describe('POST /api/schedules kind validation (tasks-only, 260414-112)', () => {
     return { status: r.status, data }
   }
 
-  it("Test A: kind='skill' → 400 with exact D-XX message; no row inserted", async () => {
+  it("Test A: kind='skill' → 400 mentioning kind; no row inserted", async () => {
     const before = store.list().length
     const r = await post({ skillName: 'existing-skill', kind: 'skill', cron: '* * * * *' })
     expect(r.status).toBe(400)
-    expect((r.data as { error: string }).error).toBe(
-      'Schedules can only target tasks. Convert the skill to a task or use a reminder.'
-    )
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('kind')
     expect(store.list().length).toBe(before)
+  })
+
+  it("Test A2: kind='reminder' → 200, persists kind='reminder'", async () => {
+    const r = await post({ skillName: 'reminder', kind: 'reminder', cron: '0 9 * * *' })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { kind: string } }).schedule
+    expect(schedule.kind).toBe('reminder')
   })
 
   it("Test B: kind omitted + valid task target → 200, persists kind='task'", async () => {

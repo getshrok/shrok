@@ -68,7 +68,7 @@ function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
   return {
     id: 'sched_1',
     skillName: 'email',
-    kind: 'skill',
+    kind: 'task',
     cron: '*/3 * * * *',
     runAt: null,
     enabled: true,
@@ -129,8 +129,8 @@ describe('ScheduleEvaluatorImpl', () => {
 
   it("forwards schedule.kind into the schedule_trigger QueueEvent (DISPATCH-03)", () => {
     const taskSchedule = makeSchedule({ id: 's_task', skillName: 'nightly-vacuum', kind: 'task' })
-    const skillSchedule = makeSchedule({ id: 's_skill', skillName: 'email', kind: 'skill' })
-    vi.mocked(scheduleStore.getDue).mockReturnValue([taskSchedule, skillSchedule])
+    const reminderSchedule = makeSchedule({ id: 's_reminder', skillName: 'rem_1', kind: 'reminder' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([taskSchedule, reminderSchedule])
 
     evaluator.tick()
 
@@ -139,8 +139,8 @@ describe('ScheduleEvaluatorImpl', () => {
     const ev2 = vi.mocked(queueStore.enqueue).mock.calls[1]![0] as { kind: string; skillName: string }
     expect(ev1.kind).toBe('task')
     expect(ev1.skillName).toBe('nightly-vacuum')
-    expect(ev2.kind).toBe('skill')
-    expect(ev2.skillName).toBe('email')
+    expect(ev2.kind).toBe('reminder')
+    expect(ev2.skillName).toBe('rem_1')
   })
 
   it('advances nextRun without setting lastRun for cron schedules', () => {

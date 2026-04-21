@@ -968,8 +968,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     const { ScheduleStore } = await import('../db/schedules.js')
     const scheduleStore = new ScheduleStore(scheduleDir)
     const { buildScheduleTools } = await import('./registry.js')
-    // The skillLoader is the skills-only kind loader inside the unified facade
-    const tools = buildScheduleTools(scheduleStore, unified.skillsLoader, 'UTC', unified)
+    const tools = buildScheduleTools(scheduleStore, 'UTC', unified)
     const createSchedule = tools.find(t => t.definition.name === 'create_schedule')!
     return { createSchedule, scheduleStore }
   }
@@ -978,7 +977,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     const unified = await makeTmpUnified()
     const { createSchedule, scheduleStore } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
-    const result = await createSchedule.execute({ skillName: 'a-task', kind: 'task' }, ctx)
+    const result = await createSchedule.execute({ skillName: 'a-task' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBeUndefined()
     expect(parsed.kind).toBe('task')
@@ -989,38 +988,35 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     expect(rows[0]!.kind).toBe('task')
   })
 
-  it('rejects kind mismatch with instruction-shaped error when target is a task but kind is omitted', async () => {
+  it('accepts task target with kind omitted (defaults to task)', async () => {
     const unified = await makeTmpUnified()
-    const { createSchedule } = await getCreateScheduleTool(unified)
+    const { createSchedule, scheduleStore } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await createSchedule.execute({ skillName: 'a-task' }, ctx)
     const parsed = JSON.parse(result as string)
-    expect(parsed.error).toBe(true)
-    expect(parsed.message).toContain("'a-task'")
-    expect(parsed.message).toContain('task')
-    expect(parsed.message).toContain('skill')
+    expect(parsed.error).toBeUndefined()
+    expect(parsed.kind).toBe('task')
+    expect(scheduleStore.list()[0]!.kind).toBe('task')
   })
 
   it('rejects unknown task target with instruction-shaped error', async () => {
     const unified = await makeTmpUnified()
     const { createSchedule } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
-    const result = await createSchedule.execute({ skillName: 'missing', kind: 'task' }, ctx)
+    const result = await createSchedule.execute({ skillName: 'missing' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toContain('missing')
   })
 
-  it('accepts a skill target with default kind (back-compat)', async () => {
+  it('rejects a skill target with instruction-shaped error', async () => {
     const unified = await makeTmpUnified()
-    const { createSchedule, scheduleStore } = await getCreateScheduleTool(unified)
+    const { createSchedule } = await getCreateScheduleTool(unified)
     const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await createSchedule.execute({ skillName: 'my-skill' }, ctx)
     const parsed = JSON.parse(result as string)
-    expect(parsed.error).toBeUndefined()
-    expect(parsed.kind).toBe('skill')
-    const rows = scheduleStore.list()
-    expect(rows[0]!.kind).toBe('skill')
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toContain('my-skill')
   })
 })
 
@@ -1077,7 +1073,7 @@ describe('buildReminderTools', () => {
   it('list_reminders returns only kind:"reminder" entries', async () => {
     const { createReminder, listReminder, scheduleStore } = await getReminderTools()
     // Create a non-reminder schedule directly
-    scheduleStore.create({ id: 's-skill-x', skillName: 'my-skill', kind: 'skill', nextRun: '2099-01-01T00:00:00Z' })
+    scheduleStore.create({ id: 's-task-x', skillName: 'my-task', kind: 'task', nextRun: '2099-01-01T00:00:00Z' })
     await createReminder.execute({ message: 'Hello', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
     const result = await listReminder.execute({}, ctx)
     const items = JSON.parse(result as string)
