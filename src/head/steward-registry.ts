@@ -71,6 +71,13 @@ export const STEWARDS: StewardDescriptor[] = [
     description: 'Makes sure first-time setup completes — saving your profile and personality before moving on.',
     defaultOn: true,
   },
+  {
+    id: 'preference',
+    configKey: 'preferenceStewardEnabled',
+    label: 'Preference capture',
+    description: "Nudges the assistant to save facts and preferences you mention into USER.md and SOUL.md, so it doesn't lose track of details you shared in passing.",
+    defaultOn: true,
+  },
   // ── Experimental ──
   {
     id: 'routing',
@@ -95,6 +102,22 @@ export const STEWARDS: StewardDescriptor[] = [
     configKey: 'messageAgentStewardEnabled',
     label: 'Check-in guard',
     description: 'Prevents the head from impatiently checking in on agents that are still working.',
+    defaultOn: false,
+    experimental: true,
+  },
+  {
+    id: 'spawn',
+    configKey: 'spawnStewardEnabled',
+    label: 'Spawn commitment',
+    description: "Catches cases where the assistant says it will do something but forgets to actually spawn an agent for it.",
+    defaultOn: false,
+    experimental: true,
+  },
+  {
+    id: 'actionCompliance',
+    configKey: 'actionComplianceStewardEnabled',
+    label: 'Action compliance',
+    description: "Flags missed spawns, made-up real-world facts, and answers the assistant computed itself when it should have delegated.",
     defaultOn: false,
     experimental: true,
   },
