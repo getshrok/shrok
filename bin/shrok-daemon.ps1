@@ -1,4 +1,4 @@
-﻿# Shrok daemon wrapper - started by Windows Task Scheduler at login.
+# Shrok daemon wrapper - started by Windows Task Scheduler at login.
 # Handles env loading, log rotation, and restart-on-request via sentinel file.
 $ErrorActionPreference = 'Stop'
 
@@ -8,7 +8,7 @@ Set-Location $ShrokDir
 $LogFile = "$env:USERPROFILE\.shrok\shrok.log"
 $SentinelFile = "$env:USERPROFILE\.shrok\.restart-requested"
 
-# ─── Log rotation (>10 MB) ────────────────────────────────────────────────────
+# --- Log rotation (>10 MB) ----------------------------------------------------
 
 if (Test-Path $LogFile) {
   $logSize = (Get-Item $LogFile).Length
@@ -17,7 +17,7 @@ if (Test-Path $LogFile) {
   }
 }
 
-# ─── Load .env ────────────────────────────────────────────────────────────────
+# --- Load .env ----------------------------------------------------------------
 
 $envFile = "$env:USERPROFILE\.shrok\workspace\.env"
 if (Test-Path $envFile) {
@@ -34,7 +34,7 @@ if (Test-Path $envFile) {
   }
 }
 
-# ─── Restart loop ─────────────────────────────────────────────────────────────
+# --- Restart loop -------------------------------------------------------------
 
 while ($true) {
   $stderrLog = "$LogFile.err"

@@ -1,4 +1,4 @@
-﻿# Shrok CLI - manage the Shrok daemon on Windows.
+# Shrok CLI - manage the Shrok daemon on Windows.
 # Usage: shrok <start|stop|restart|status|logs|update>
 $ErrorActionPreference = 'Stop'
 
