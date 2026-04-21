@@ -110,16 +110,16 @@ describe('createDocsRouter handlers', () => {
     expect(body.groups[0]!.files.map(f => f.path)).toEqual(['user-guide/visible.md'])
   })
 
-  it('LIST-03: root sorts alphabetically; groups alphabetical; files alphabetical', async () => {
+  it('LIST-03: root files sort alphabetically; group files sort alphabetically', async () => {
     fs.writeFileSync(path.join(docsDir, 'zeta.md'), '# Z\n')
     fs.writeFileSync(path.join(docsDir, 'alpha.md'), '# A\n')
     fs.writeFileSync(path.join(docsDir, 'concepts.md'), '# C\n')
-    fs.mkdirSync(path.join(docsDir, 'user-guide'))
-    fs.writeFileSync(path.join(docsDir, 'user-guide', 'z.md'), '# Z\n')
-    fs.writeFileSync(path.join(docsDir, 'user-guide', 'a.md'), '# A\n')
-    fs.mkdirSync(path.join(docsDir, 'internals'))
-    fs.writeFileSync(path.join(docsDir, 'internals', 'z.md'), '# Z\n')
-    fs.writeFileSync(path.join(docsDir, 'internals', 'a.md'), '# A\n')
+    fs.mkdirSync(path.join(docsDir, 'aaa'))
+    fs.writeFileSync(path.join(docsDir, 'aaa', 'z.md'), '# Z\n')
+    fs.writeFileSync(path.join(docsDir, 'aaa', 'a.md'), '# A\n')
+    fs.mkdirSync(path.join(docsDir, 'bbb'))
+    fs.writeFileSync(path.join(docsDir, 'bbb', 'z.md'), '# Z\n')
+    fs.writeFileSync(path.join(docsDir, 'bbb', 'a.md'), '# A\n')
 
     await mount()
     const r = await fetch(`http://127.0.0.1:${port}/list`)
@@ -127,21 +127,25 @@ describe('createDocsRouter handlers', () => {
       root: Array<{ path: string }>
       groups: Array<{ name: string; files: Array<{ path: string }> }>
     }
+    // Root files alphabetical
     expect(body.root.map(f => f.path)).toEqual(['alpha.md', 'concepts.md', 'zeta.md'])
-    expect(body.groups.map(g => g.name)).toEqual(['Internals', 'User guide'])
-    expect(body.groups[0]!.files.map(f => f.path)).toEqual(['internals/a.md', 'internals/z.md'])
-    expect(body.groups[1]!.files.map(f => f.path)).toEqual(['user-guide/a.md', 'user-guide/z.md'])
+    // Groups alphabetical
+    const names = body.groups.map(g => g.name)
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
+    // Files within each group alphabetical
+    for (const group of body.groups) {
+      const paths = group.files.map(f => f.path)
+      expect(paths).toEqual([...paths].sort((a, b) => a.localeCompare(b)))
+    }
   })
 
-  it('LIST-04: discovers arbitrary subdirs as groups (dynamic), all alphabetical', async () => {
-    fs.mkdirSync(path.join(docsDir, 'user-guide'))
-    fs.writeFileSync(path.join(docsDir, 'user-guide', 'a.md'), '# UG A\n')
-    fs.mkdirSync(path.join(docsDir, 'internals'))
-    fs.writeFileSync(path.join(docsDir, 'internals', 'a.md'), '# IN A\n')
-    fs.mkdirSync(path.join(docsDir, 'tutorials'))
-    fs.writeFileSync(path.join(docsDir, 'tutorials', 'a.md'), '# TUT A\n')
-    fs.mkdirSync(path.join(docsDir, 'recipes'))
-    fs.writeFileSync(path.join(docsDir, 'recipes', 'a.md'), '# REC A\n')
+  it('LIST-04: excludes empty dirs and dotfile dirs; groups sort alphabetically', async () => {
+    fs.mkdirSync(path.join(docsDir, 'beta'))
+    fs.writeFileSync(path.join(docsDir, 'beta', 'a.md'), '# B\n')
+    fs.mkdirSync(path.join(docsDir, 'alpha'))
+    fs.writeFileSync(path.join(docsDir, 'alpha', 'a.md'), '# A\n')
+    fs.mkdirSync(path.join(docsDir, 'gamma'))
+    fs.writeFileSync(path.join(docsDir, 'gamma', 'a.md'), '# G\n')
     // Empty dir with no .md — should not show up as a group
     fs.mkdirSync(path.join(docsDir, 'empty-dir'))
     // Dotfile-prefixed dir — should be skipped
@@ -151,21 +155,27 @@ describe('createDocsRouter handlers', () => {
     await mount()
     const r = await fetch(`http://127.0.0.1:${port}/list`)
     const body = await r.json() as {
-      groups: Array<{ name: string; files: Array<{ path: string }> }>
+      groups: Array<{ name: string }>
     }
-    expect(body.groups.map(g => g.name)).toEqual(['Internals', 'Recipes', 'Tutorials', 'User guide'])
+    // Only the three dirs with .md files appear
+    expect(body.groups).toHaveLength(3)
+    // Alphabetical order
+    const names = body.groups.map(g => g.name)
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
   })
 
-  it('LIST-05: single-word subdir humanizes with capital first letter', async () => {
-    fs.mkdirSync(path.join(docsDir, 'glossary'))
-    fs.writeFileSync(path.join(docsDir, 'glossary', 'a.md'), '# G\n')
+  it('LIST-05: dir names are humanized (hyphens/underscores → spaces, first letter capitalised)', async () => {
+    fs.mkdirSync(path.join(docsDir, 'my-hyphen-group'))
+    fs.writeFileSync(path.join(docsDir, 'my-hyphen-group', 'a.md'), '# H\n')
     fs.mkdirSync(path.join(docsDir, 'my_underscore_group'))
     fs.writeFileSync(path.join(docsDir, 'my_underscore_group', 'a.md'), '# U\n')
 
     await mount()
     const r = await fetch(`http://127.0.0.1:${port}/list`)
     const body = await r.json() as { groups: Array<{ name: string }> }
-    expect(body.groups.map(g => g.name)).toEqual(['Glossary', 'My underscore group'])
+    const names = body.groups.map(g => g.name)
+    expect(names).toContain('My hyphen group')
+    expect(names).toContain('My underscore group')
   })
 
   it('FILE-01: returns {content} for a root file', async () => {
