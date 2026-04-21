@@ -6,10 +6,6 @@ Run a clean install on each platform before testing anything else.
 
 ### macOS
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
-```
-
 - [ ] Installer runs to completion without errors
 - [ ] `shrok` command is on PATH
 - [ ] `shrok status` reports running
@@ -18,10 +14,6 @@ curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install
 - [ ] After a reboot, `shrok status` still reports running (auto-start works)
 
 ### Linux
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.sh | bash
-```
 
 - [ ] Installer runs to completion without errors
 - [ ] `shrok` command is on PATH
@@ -32,10 +24,6 @@ curl -fsSL https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install
 
 ### Windows
 
-```powershell
-irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | iex
-```
-
 - [ ] Installer runs to completion without errors
 - [ ] `shrok` command works in a new PowerShell session
 - [ ] `shrok status` reports running
@@ -44,14 +32,6 @@ irm https://raw.githubusercontent.com/getshrok/shrok/main/scripts/install.ps1 | 
 - [ ] After a reboot, `shrok status` still reports running
 
 ### Docker
-
-```bash
-git clone https://github.com/getshrok/shrok.git ~/shrok
-cd ~/shrok
-cp .env.example ~/.shrok/workspace/.env
-# fill in API key, then:
-docker compose up -d
-```
 
 - [ ] Container starts without errors (`docker compose ps` shows healthy)
 - [ ] Dashboard opens at http://localhost:8888 and login works
@@ -331,20 +311,12 @@ Configure an MCP server in `mcp.json` (either HTTP or stdio).
 
 ### macOS / Linux
 
-```bash
-bash ~/shrok/scripts/uninstall.sh
-```
-
 - [ ] Script completes without errors
 - [ ] `shrok` command is no longer on PATH (or gives "not found")
 - [ ] Service is removed from launchd / systemd
 - [ ] `~/.shrok/` is removed (or left if the user chose to keep data)
 
 ### Windows
-
-```cmd
-& "$HOME\shrok\scripts\uninstall.cmd"
-```
 
 - [ ] Script completes without errors
 - [ ] `shrok` command no longer works

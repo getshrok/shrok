@@ -27,7 +27,10 @@ if (Test-Path $envFile) {
       $eq = $line.IndexOf('=')
       if ($eq -gt 0) {
         $key = $line.Substring(0, $eq).Trim()
-        $val = $line.Substring($eq + 1).Trim().Trim('"').Trim("'")
+        $val = $line.Substring($eq + 1)
+        # Strip inline comments unless the value is quoted (mirrors TS parseEnvFile)
+        if ($val -notmatch '^\s*["\x27]') { $val = $val -replace '#.*$', '' }
+        $val = $val.Trim().Trim('"').Trim("'")
         [System.Environment]::SetEnvironmentVariable($key, $val, 'Process')
       }
     }

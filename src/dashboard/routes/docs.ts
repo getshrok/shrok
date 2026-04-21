@@ -6,13 +6,6 @@ import { requireAuth } from '../auth.js'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Known-group ordering. Any subdir of docs/ automatically becomes a group
-// in the TOC; these ones get canonical slots at the top of the list so the
-// sidebar reads audience-first → internals-last. New groups (anything not
-// listed here) get appended after, alphabetically. This keeps the UX stable
-// for the common case and zero-config for the uncommon one.
-const PREFERRED_GROUP_ORDER = ['user-guide', 'internals']
-
 const TITLE_HEADING_RE = /^#\s+(.+?)\s*$/m
 
 /** "user-guide" → "User guide", "my_topic" → "My topic". */
@@ -35,9 +28,7 @@ function discoverGroups(docsRoot: string): Array<{ dir: string; name: string }> 
       } catch { return false }
     })
 
-  const preferred = PREFERRED_GROUP_ORDER.filter(d => dirs.includes(d))
-  const unknown = dirs.filter(d => !PREFERRED_GROUP_ORDER.includes(d)).sort((a, b) => a.localeCompare(b))
-  return [...preferred, ...unknown].map(dir => ({ dir, name: humanizeDirName(dir) }))
+  return dirs.sort((a, b) => b.localeCompare(a)).map(dir => ({ dir, name: humanizeDirName(dir) }))
 }
 
 function extractTitle(filePath: string): string {
