@@ -94,7 +94,6 @@ function makeReminderContext(overrides: Partial<ReminderDecisionContext> = {}): 
   return {
     reminderMessage: 'Follow up with Sarah about the proposal',
     reminderCron: null,
-    lastFired: null,
     userMd: 'Software engineer.',
     recentHistory: [
       { role: 'user', content: 'Good morning!' },

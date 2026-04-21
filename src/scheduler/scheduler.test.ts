@@ -102,7 +102,6 @@ describe('ScheduleEvaluatorImpl', () => {
       getDue: vi.fn().mockReturnValue([]),
       markFired: vi.fn(),
       advanceNextRun: vi.fn(),
-      completeOneTime: vi.fn(),
       create: vi.fn(),
       get: vi.fn(),
       list: vi.fn(),
@@ -182,13 +181,14 @@ describe('ScheduleEvaluatorImpl', () => {
     expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
   })
 
-  it('calls completeOneTime for one-time schedules', () => {
+  it('calls delete for one-time schedules', () => {
     const oneTime = makeSchedule({ cron: null, runAt: '2026-01-01T10:00:00Z' })
     vi.mocked(scheduleStore.getDue).mockReturnValue([oneTime])
 
     evaluator.tick()
 
-    expect(scheduleStore.completeOneTime).toHaveBeenCalledOnce()
+    expect(scheduleStore.delete).toHaveBeenCalledOnce()
+    expect(scheduleStore.delete).toHaveBeenCalledWith('sched_1')
     expect(scheduleStore.markFired).not.toHaveBeenCalled()
   })
 

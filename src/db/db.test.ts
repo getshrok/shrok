@@ -779,12 +779,11 @@ describe('ScheduleStore', () => {
     expect(s.nextRun).toBe('2025-01-01T02:00:00Z')
   })
 
-  it('completeOneTime disables the schedule', () => {
+  it('delete removes the schedule from the store', () => {
     store.create({ id: 's-1', taskName: 'a', runAt: '2025-01-01T00:00:00Z' })
-    store.completeOneTime('s-1', '2025-01-01T00:00:00Z')
-    const s = store.get('s-1')!
-    expect(s.enabled).toBe(false)
-    expect(s.nextRun).toBeNull()
+    store.delete('s-1')
+    expect(store.get('s-1')).toBeNull()
+    expect(store.list()).toHaveLength(0)
   })
 
   // ── target_kind / kind (Plan 04-01) ─────────────────────────────────────────
