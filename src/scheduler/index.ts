@@ -81,19 +81,17 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
           log.info(`[scheduler] enqueued ${schedule.kind}:${schedule.skillName}`)
         }
       } catch (err) {
-        log.error(`[scheduler] Failed to enqueue schedule ${schedule.id}, will retry next tick:`, (err as Error).message)
+        log.error(`[scheduler] Failed to enqueue schedule ${schedule.id}:`, (err as Error).message)
       }
-      if (enqueued) {
-        try {
-          if (schedule.cron) {
-            const next = nextRunAfter(schedule.cron, now, this.timezone)
-            this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
-          } else {
-            this.scheduleStore.completeOneTime(schedule.id, nowIso)
-          }
-        } catch (err) {
-          log.error(`[scheduler] Failed to advance schedule ${schedule.id}:`, (err as Error).message)
+      try {
+        if (schedule.cron) {
+          const next = nextRunAfter(schedule.cron, now, this.timezone)
+          this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
+        } else if (enqueued) {
+          this.scheduleStore.completeOneTime(schedule.id, nowIso)
         }
+      } catch (err) {
+        log.error(`[scheduler] Failed to advance schedule ${schedule.id}:`, (err as Error).message)
       }
     }
   }

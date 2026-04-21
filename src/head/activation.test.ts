@@ -98,6 +98,7 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
     getSince: vi.fn().mockReturnValue([]),
     getRecentBefore: vi.fn().mockReturnValue([]),
     replaceWithSummary: vi.fn(),
+    getRecentTextByTokens: vi.fn().mockReturnValue([]),
   } as unknown as MessageStore
 
   const config = {

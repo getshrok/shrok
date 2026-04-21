@@ -86,9 +86,9 @@ export function parseVerboseMessage(text: string): ParsedVerboseMessage | null {
 export function collapseToolCall(toolName: string, input?: unknown): string {
   const brief = extractInputBrief(toolName, input)
   if (brief) {
-    return `\`▸ ${toolName} (${brief}) ...\``
+    return `\`🔧 ▸ ${toolName} (${brief}) ...\``
   }
-  return `\`▸ ${toolName} ...\``
+  return `\`🔧 ▸ ${toolName} ...\``
 }
 
 /**
@@ -99,14 +99,14 @@ export function collapseToolCall(toolName: string, input?: unknown): string {
  * - bash JSON with exit_code → `exit N`
  * - otherwise → OK
  *
- * Format: `▸ toolName → OK` or `▸ toolName (exit 0)` etc.
+ * Format: `🔧 ▸ toolName → OK` or `🔧 ▸ toolName (exit 0)` etc.
  */
 export function collapseToolResult(toolName: string, content: string): string {
   const status = extractResultStatus(toolName, content)
   if (status.startsWith('exit ')) {
-    return `\`▸ ${toolName} (${status})\``
+    return `\`🔧 ▸ ${toolName} (${status})\``
   }
-  return `\`▸ ${toolName} → ${status}\``
+  return `\`🔧 ▸ ${toolName} → ${status}\``
 }
 
 /**
