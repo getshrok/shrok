@@ -145,7 +145,7 @@ export class DashboardServer {
       app.use('/api/mcp', createMcpRouter(this.opts.mcpRegistry))
     }
     const envFilePath = process.env['SHROK_ENV_FILE'] ?? path.join(workspacePath, '.env')
-    app.use('/api/settings', createSettingsRouter(workspacePath, envFilePath, this.opts.appState, this.opts.events))
+    app.use('/api/settings', createSettingsRouter(workspacePath, envFilePath, config, this.opts.appState, this.opts.events))
     app.use('/api/media', createMediaRouter(path.join(workspacePath, 'media')))
     // Docs viewer: serve the repo's checked-in /docs tree to the dashboard.
     // Resolved from the compiled module location so it works in both native
