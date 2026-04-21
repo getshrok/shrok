@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    background-color: #09090b; /* zinc-950 */
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Markdown inside chat bubbles */
+.markdown-content p { margin: 0; }
+.markdown-content p + p { margin-top: 0.5em; }
+.markdown-content strong { font-weight: 600; }
+.markdown-content em { font-style: italic; }
+.markdown-content code { background: rgba(255,255,255,0.1); padding: 0.1em 0.3em; border-radius: 0.25em; font-size: 0.85em; }
+.markdown-content pre { background: rgba(0,0,0,0.3); padding: 0.75em; border-radius: 0.5em; overflow-x: auto; margin: 0.5em 0; }
+.markdown-content pre code { background: none; padding: 0; }
+.markdown-content ul { margin: 0.4em 0; padding-left: 1.5em; list-style-type: disc; }
+.markdown-content ol { margin: 0.4em 0; padding-left: 1.5em; list-style-type: decimal; }
+.markdown-content li { margin: 0.15em 0; display: list-item; }
+.markdown-content h1 { font-weight: 700; font-size: 1.25em; margin: 0.6em 0 0.3em; }
+.markdown-content h2 { font-weight: 600; font-size: 1.1em; margin: 0.5em 0 0.25em; }
+.markdown-content h3 { font-weight: 600; font-size: 1em; margin: 0.4em 0 0.2em; }
+.markdown-content h4, .markdown-content h5, .markdown-content h6 { font-weight: 600; font-size: 0.95em; margin: 0.3em 0 0.15em; }
+.markdown-content a { text-decoration: underline; opacity: 0.9; }
+.markdown-content blockquote { border-left: 2px solid rgba(255,255,255,0.2); padding-left: 0.75em; opacity: 0.8; margin: 0.4em 0; }
+.markdown-content table { border-collapse: collapse; margin: 0.5em 0; width: 100%; font-size: 0.9em; }
+.markdown-content th { border-bottom: 2px solid rgba(255,255,255,0.2); padding: 0.3em 0.6em; text-align: left; font-weight: 600; }
+.markdown-content td { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 0.3em 0.6em; }
+.markdown-content tr:last-child td { border-bottom: none; }

@@ -1,0 +1,129 @@
+import express from 'express'
+import type { Request, Response } from 'express'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { requireAuth } from '../auth.js'
+import type { ScheduleStore } from '../../db/schedules.js'
+import type { UnifiedLoader } from '../../skills/unified.js'
+import { nextRunAfter } from '../../scheduler/cron.js'
+import { generateId } from '../../llm/util.js'
+
+export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: string, unifiedLoader?: UnifiedLoader, remindersTasksDir?: string) {
+  const router = express.Router()
+
+  router.get('/', requireAuth, (_req: Request, res: Response): void => {
+    res.json({ schedules: scheduleStore.list() })
+  })
+
+  // NOTE: `skillName` is retained as a legacy field name meaning "target name regardless of kind"
+  // per Phase 5 D-11. Renaming cascades through every caller for no semantic gain.
+  router.post('/', requireAuth, (req: Request, res: Response): void => {
+    const { skillName, cron, runAt } = req.body as { skillName?: unknown; cron?: unknown; runAt?: unknown }
+
+    if (typeof skillName !== 'string' || !skillName.trim()) {
+      res.status(400).json({ error: 'skillName is required' })
+      return
+    }
+
+    // Tasks-only scheduling: reject kind='skill' at the boundary;
+    // default omitted kind to 'task'; always validate via tasksLoader.
+    const rawKind = (req.body as { kind?: unknown }).kind
+    if (rawKind === 'skill') {
+      res.status(400).json({ error: "Schedules can only target tasks. Convert the skill to a task or use a reminder." })
+      return
+    }
+    if (rawKind !== undefined && rawKind !== 'task') {
+      res.status(400).json({ error: "kind must be 'task'" })
+      return
+    }
+    const kind: 'task' = 'task'
+    if (unifiedLoader) {
+      const resolved = unifiedLoader.tasksLoader.load(skillName)
+      if (!resolved) {
+        res.status(400).json({ error: `Unknown task: ${skillName}` })
+        return
+      }
+    }
+
+    if (!cron && !runAt) {
+      res.status(400).json({ error: 'Either cron or runAt is required' })
+      return
+    }
+
+    let nextRun: string | undefined
+    if (typeof cron === 'string' && cron) {
+      try {
+        nextRun = nextRunAfter(cron, new Date(), timezone).toISOString()
+      } catch {
+        res.status(400).json({ error: 'Invalid cron expression' })
+        return
+      }
+    } else if (typeof runAt === 'string' && runAt) {
+      if (isNaN(new Date(runAt).getTime())) {
+        res.status(400).json({ error: 'Invalid runAt date' })
+        return
+      }
+      nextRun = new Date(runAt).toISOString()
+    }
+
+    try {
+      const createOpts: import('../../db/schedules.js').CreateScheduleOptions = { id: generateId('sched'), skillName }
+      if (typeof cron === 'string' && cron) createOpts.cron = cron
+      if (typeof runAt === 'string' && runAt) createOpts.runAt = runAt
+      if (nextRun !== undefined) createOpts.nextRun = nextRun
+      createOpts.kind = kind
+      const schedule = scheduleStore.create(createOpts)
+      res.json({ schedule })
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message })
+    }
+  })
+
+  router.patch('/:id', requireAuth, (req: Request, res: Response): void => {
+    const { id } = req.params as { id: string }
+    const { enabled, cron, runAt, conditions, agentContext } = req.body as {
+      enabled?: unknown; cron?: unknown; runAt?: unknown;
+      conditions?: unknown; agentContext?: unknown
+    }
+
+    const patch: Parameters<typeof scheduleStore.update>[1] = {}
+    if (typeof enabled === 'boolean') patch.enabled = enabled
+    if (typeof cron === 'string') patch.cron = cron
+    if (typeof runAt === 'string') {
+      if (runAt && isNaN(new Date(runAt).getTime())) {
+        res.status(400).json({ error: 'Invalid runAt date' })
+        return
+      }
+      patch.runAt = runAt
+      if (runAt) patch.nextRun = new Date(runAt).toISOString()
+    }
+    if (typeof conditions === 'string') patch.conditions = conditions
+    if (typeof agentContext === 'string') patch.agentContext = agentContext
+
+    // Recompute nextRun if cron changed (overrides runAt-derived nextRun if both sent)
+    if (typeof cron === 'string' && cron) {
+      try {
+        patch.nextRun = nextRunAfter(cron, new Date(), timezone).toISOString()
+      } catch {
+        res.status(400).json({ error: 'Invalid cron expression' })
+        return
+      }
+    }
+
+    const schedule = scheduleStore.update(id, patch)
+    if (!schedule) { res.status(404).json({ error: 'Not found' }); return }
+    res.json({ schedule })
+  })
+
+  router.delete('/:id', requireAuth, (req: Request, res: Response): void => {
+    const { id } = req.params as { id: string }
+    const schedule = scheduleStore.list().find(s => s.id === id)
+    if (schedule?.kind === 'reminder' && remindersTasksDir) {
+      try { fs.rmSync(path.join(remindersTasksDir, id), { recursive: true, force: true }) } catch { /* best-effort */ }
+    }
+    scheduleStore.delete(id)
+    res.json({ ok: true })
+  })
+
+  return router
+}

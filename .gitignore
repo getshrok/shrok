@@ -1,0 +1,32 @@
+node_modules/
+dist/
+!dashboard/dist/
+!dashboard/dist/**
+data/
+.env
+*.db
+*.db-shm
+*.db-wal
+/identity/
+/eval-results/
+/notes/
+/.planning/
+/.planning-archive/
+~/
+
+# ── Baseline skill runtime state ─────────────────────────────────────────
+# Skills install deps + caches into their own dir on first run. None of it
+# should ever land in the repo. Patterns scoped to skills/ so a future
+# user-installed-elsewhere skill can opt out by living outside this tree.
+skills/*/.playwright-browsers/
+skills/*/.browser-session.json
+skills/*/.browser-sidecar.log
+skills/*/.highlight-*.png
+skills/*/.venv/
+skills/*/__pycache__/
+# MEMORY.md is per-user data (credentials, resolved IDs). Baseline skills
+# must never ship one — see skills/skills/SKILL.md "MEMORY.md patterns".
+skills/*/MEMORY.md
+
+# ── Baseline job runtime state ───────────────────────────────────────────
+tasks/*/MEMORY.md

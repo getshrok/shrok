@@ -1,0 +1,100 @@
+import type { QueueStore } from '../db/queue.js'
+import { log } from '../logger.js'
+import type { ScheduleStore } from '../db/schedules.js'
+import { PRIORITY } from '../types/core.js'
+import { nextRunAfter } from './cron.js'
+
+export interface ScheduleEvaluator {
+  start(): void
+  stop(): void
+  registerDirectHandler(skillName: string, handler: () => Promise<void>): void
+}
+
+export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
+  private queueStore: QueueStore
+  private scheduleStore: ScheduleStore
+  private timezone: string
+  private intervalMs: number
+  private timer: ReturnType<typeof setInterval> | null = null
+  private directHandlers = new Map<string, () => Promise<void>>()
+
+  constructor(queueStore: QueueStore, scheduleStore: ScheduleStore, timezone: string, intervalMs = 60_000) {
+    this.queueStore = queueStore
+    this.scheduleStore = scheduleStore
+    this.timezone = timezone
+    this.intervalMs = intervalMs
+  }
+
+  registerDirectHandler(skillName: string, handler: () => Promise<void>): void {
+    this.directHandlers.set(skillName, handler)
+  }
+
+  start(): void {
+    if (this.timer) return
+    this.timer = setInterval(() => this.tick(), this.intervalMs)
+    // Run immediately on start as well
+    this.tick()
+  }
+
+  stop(): void {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
+  }
+
+  tick(): void {
+    const now = new Date()
+    const nowIso = now.toISOString()
+
+    let due: ReturnType<ScheduleStore['getDue']>
+    try {
+      due = this.scheduleStore.getDue(nowIso)
+    } catch (err) {
+      log.error('[scheduler] Failed to fetch due schedules:', (err as Error).message)
+      return
+    }
+
+    for (const schedule of due) {
+      let enqueued = false
+      try {
+        const directHandler = this.directHandlers.get(schedule.skillName)
+        if (directHandler) {
+          directHandler().catch(err =>
+            log.error(`[scheduler] Direct handler for ${schedule.skillName} failed:`, (err as Error).message)
+          )
+          enqueued = true
+        } else {
+          const eventId = `qe_sched_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+          this.queueStore.enqueue(
+            {
+              type: 'schedule_trigger',
+              id: eventId,
+              scheduleId: schedule.id,
+              skillName: schedule.skillName,
+              kind: schedule.kind,
+              createdAt: nowIso,
+            },
+            PRIORITY.SCHEDULE_TRIGGER,
+          )
+          enqueued = true
+          log.info(`[scheduler] enqueued ${schedule.kind}:${schedule.skillName}`)
+        }
+      } catch (err) {
+        log.error(`[scheduler] Failed to enqueue schedule ${schedule.id}, will retry next tick:`, (err as Error).message)
+      }
+      if (enqueued) {
+        try {
+          if (schedule.cron) {
+            const next = nextRunAfter(schedule.cron, now, this.timezone)
+            this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
+          } else {
+            this.scheduleStore.completeOneTime(schedule.id, nowIso)
+          }
+        } catch (err) {
+          log.error(`[scheduler] Failed to advance schedule ${schedule.id}:`, (err as Error).message)
+        }
+      }
+    }
+  }
+}

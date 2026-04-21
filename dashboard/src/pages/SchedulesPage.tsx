@@ -1,0 +1,532 @@
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Pencil, Trash2 } from 'lucide-react'
+import { api } from '../lib/api'
+import type { Schedule } from '../types/api'
+import { formatInTz, useConfigTimezone } from '../lib/formatTime'
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+const CRON_FIELD = /^(\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?)(,(\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?))*$/
+
+function isValidCron(expr: string): boolean {
+  const fields = expr.trim().split(/\s+/)
+  if (fields.length !== 5) return false
+  return fields.every(f => CRON_FIELD.test(f))
+}
+
+function formatCron(cron: string): string {
+  // */N * * * *  → "Every N min"
+  const everyN = cron.match(/^\*\/(\d+) \* \* \* \*$/)
+  if (everyN) return `Every ${everyN[1]} min`
+
+  // 0 H * * *  → "Daily at H:00"
+  const daily = cron.match(/^0 (\d+) \* \* \*$/)
+  if (daily) return `Daily at ${daily[1]}:00`
+
+  // 0 H * * 1-5  → "Weekdays at H:00"
+  const weekdays = cron.match(/^0 (\d+) \* \* 1-5$/)
+  if (weekdays) return `Weekdays at ${weekdays[1]}:00`
+
+  // 0 H * * D  → "Every [day] at H:00"
+  const weekday = cron.match(/^0 (\d+) \* \* ([0-6])$/)
+  if (weekday) {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    return `${days[parseInt(weekday[2]!)]} at ${weekday[1]}:00`
+  }
+
+  // 0 H 1 * *  → "Monthly at H:00"
+  const monthly = cron.match(/^0 (\d+) 1 \* \*$/)
+  if (monthly) return `Monthly at ${monthly[1]}:00`
+
+  return cron
+}
+
+function formatRelTime(iso: string | null): string {
+  if (!iso) return 'Never'
+  const diff = new Date(iso).getTime() - Date.now()
+  const abs = Math.abs(diff)
+  const past = diff < 0
+  if (abs < 60_000) return past ? 'just now' : 'in <1 min'
+  const mins = Math.round(abs / 60_000)
+  if (mins < 60) return past ? `${mins}m ago` : `in ${mins}m`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return past ? `${hrs}h ago` : `in ${hrs}h`
+  const days = Math.round(hrs / 24)
+  return past ? `${days}d ago` : `in ${days}d`
+}
+
+// ─── Row ───────────────────────────────────────────────────────────────────────
+
+function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState('')
+  const [editConditions, setEditConditions] = useState('')
+  const [editAgentContext, setEditAgentContext] = useState('')
+
+  const toggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => api.schedules.update(schedule.id, { enabled }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['schedules'] }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.schedules.delete(schedule.id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['schedules'] }),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string }) => api.schedules.update(schedule.id, update),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
+  })
+
+  function startEdit() {
+    setEditValue(schedule.cron ?? schedule.runAt ?? '')
+    setEditConditions(schedule.conditions ?? '')
+    setEditAgentContext(schedule.agentContext ?? '')
+    setEditing(true)
+  }
+
+  function commitEdit() {
+    const trimmed = editValue.trim()
+    if (!trimmed || trimmed === schedule.cron) { setEditing(false); return }
+    if (schedule.cron !== null) {
+      if (!isValidCron(trimmed)) return
+      updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext })
+      return
+    }
+    const d = new Date(trimmed)
+    if (Number.isNaN(d.getTime())) return
+    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: editAgentContext })
+  }
+
+  const scheduleLabel = schedule.cron
+    ? formatCron(schedule.cron)
+    : schedule.runAt
+      ? `Once at ${formatInTz(schedule.runAt, tz, { style: 'full' })}`
+      : '—'
+
+  return (
+    <div className="flex items-center gap-4 px-4 py-3 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/30 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-zinc-100 truncate">
+          {schedule.skillName}
+        </div>
+        <div className="text-xs text-zinc-500 mt-0.5">{scheduleLabel}</div>
+      </div>
+      <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
+        <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
+        <div>Last: <span className="text-zinc-400">{formatRelTime(schedule.lastRun)}</span></div>
+      </div>
+      <button
+        onClick={() => toggleMutation.mutate(!schedule.enabled)}
+        disabled={toggleMutation.isPending}
+        title={schedule.enabled ? 'Disable' : 'Enable'}
+        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+          schedule.enabled ? 'bg-emerald-600' : 'bg-zinc-700'
+        } disabled:opacity-50`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+          schedule.enabled ? 'translate-x-[18px]' : 'translate-x-0'
+        }`} />
+      </button>
+      <button
+        onClick={startEdit}
+        title="Edit schedule"
+        className="text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+      >
+        <Pencil size={13} />
+      </button>
+      <button
+        onClick={() => { if (window.confirm(`Delete schedule "${schedule.skillName}"?`)) deleteMutation.mutate() }}
+        disabled={deleteMutation.isPending}
+        title="Delete"
+        className="text-zinc-500 hover:text-red-400 transition-colors shrink-0 disabled:opacity-50"
+      >
+        <Trash2 size={13} />
+      </button>
+
+      {editing && createPortal(
+        <>
+          <div className="fixed inset-0 z-50 bg-black/70" onClick={() => setEditing(false)} />
+          <div className="fixed z-50 flex items-center justify-center" style={{ inset: 0 }}>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-5 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-zinc-100 mb-3">Edit schedule</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">
+                    {schedule.cron !== null ? 'Cron expression' : 'Run at'}
+                  </label>
+                  {schedule.cron !== null ? (
+                    <>
+                      <input
+                        autoFocus
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
+                        placeholder="*/30 * * * *"
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 font-mono outline-none focus:border-zinc-600"
+                      />
+                      {editValue && (
+                        <div className={`text-xs mt-1 ${isValidCron(editValue) ? 'text-zinc-500' : 'text-red-400'}`}>
+                          {isValidCron(editValue) ? formatCron(editValue) : 'Invalid cron — use 5 fields (min hour dom mon dow)'}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <input
+                      autoFocus
+                      type="datetime-local"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Run conditions (shown to scheduler)</label>
+                  <textarea
+                    rows={2}
+                    value={editConditions}
+                    onChange={e => setEditConditions(e.target.value)}
+                    placeholder="e.g. Only run between 9am and 5pm"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Agent context (added to task prompt)</label>
+                  <textarea
+                    rows={2}
+                    value={editAgentContext}
+                    onChange={e => setEditAgentContext(e.target.value)}
+                    placeholder="e.g. User is traveling this week"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+                  />
+                </div>
+                {updateMutation.isError && (
+                  <div className="text-xs text-red-400">{(updateMutation.error as Error).message}</div>
+                )}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={commitEdit}
+                    disabled={updateMutation.isPending}
+                    className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {updateMutation.isPending ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  )
+}
+
+// ─── Add form ─────────────────────────────────────────────────────────────────
+
+function AddScheduleForm({
+  tasks,
+  loading,
+  onDone,
+  tz,
+}: {
+  tasks: Array<{ name: string }>
+  loading: boolean
+  onDone: () => void
+  tz: string
+}) {
+  const qc = useQueryClient()
+  const [target, setTarget] = useState<string>('')
+  const [type, setType] = useState<'repeating' | 'once'>('repeating')
+  const [cron, setCron] = useState('*/30 * * * *')
+  const [runAt, setRunAt] = useState('')
+  const [conditions, setConditions] = useState('')
+  const [agentContext, setAgentContext] = useState('')
+  const [error, setError] = useState('')
+
+  // Seed target once data arrives (Pitfall 5 — don't seed with empty string)
+  useEffect(() => {
+    if (target) return
+    if (tasks.length > 0) setTarget(tasks[0]!.name)
+  }, [tasks, target])
+
+  const createMutation = useMutation({
+    mutationFn: () => {
+      if (!target) throw new Error('Pick a task')
+      return api.schedules.create({
+        skillName: target,
+        kind: 'task',
+        ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
+        ...(conditions ? { conditions } : {}),
+        ...(agentContext ? { agentContext } : {}),
+      })
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['schedules'] })
+      onDone()
+    },
+    onError: (err: Error) => setError(err.message),
+  })
+
+  return (
+    <form
+      onSubmit={e => { e.preventDefault(); setError(''); createMutation.mutate() }}
+      className="p-4 border-t border-zinc-700 space-y-3"
+    >
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex-1 min-w-40">
+          <label className="text-xs text-zinc-500 mb-1 block">Target</label>
+          <select
+            value={target}
+            onChange={e => setTarget(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+            required
+          >
+            {tasks.length === 0
+              ? <option disabled value="">No tasks yet — create one on the Tasks page</option>
+              : tasks.map(j => (
+                  <option key={j.name} value={j.name}>{j.name}</option>
+                ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Type</label>
+          <div className="flex gap-1">
+            {(['repeating', 'once'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  type === t ? 'bg-zinc-600 text-zinc-100' : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {t === 'repeating' ? 'Repeating' : 'One-time'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {type === 'repeating' ? (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Cron expression</label>
+          <input
+            value={cron}
+            onChange={e => setCron(e.target.value)}
+            placeholder="*/30 * * * *"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 font-mono"
+          />
+          {cron && <div className="text-xs text-zinc-500 mt-0.5">{formatCron(cron)}</div>}
+        </div>
+      ) : (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Run at</label>
+          <input
+            type="datetime-local"
+            value={runAt}
+            onChange={e => setRunAt(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          />
+          <div className="text-[11px] text-zinc-500 mt-0.5">Interpreted in {tz}</div>
+        </div>
+      )}
+
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Run conditions (shown to scheduler)</label>
+        <textarea
+          rows={2}
+          value={conditions}
+          onChange={e => setConditions(e.target.value)}
+          placeholder="e.g. Only run between 9am and 5pm"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Agent context (added to task prompt)</label>
+        <textarea
+          rows={2}
+          value={agentContext}
+          onChange={e => setAgentContext(e.target.value)}
+          placeholder="e.g. User is traveling this week"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+        />
+      </div>
+
+      {error && <div className="text-xs text-red-400">{error}</div>}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={createMutation.isPending || loading || !target}
+          className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          {createMutation.isPending ? 'Adding…' : 'Add schedule'}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="px-3 py-1.5 text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Reminder row ─────────────────────────────────────────────────────────────
+
+function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
+  const qc = useQueryClient()
+
+  const toggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => api.schedules.update(schedule.id, { enabled }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['schedules'] }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.schedules.delete(schedule.id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['schedules'] }),
+  })
+
+  const scheduleLabel = schedule.cron
+    ? formatCron(schedule.cron)
+    : schedule.runAt
+      ? `Once at ${formatInTz(schedule.runAt, tz, { style: 'full' })}`
+      : '—'
+
+  // agentContext stores the reminder message
+  const message = schedule.agentContext ?? schedule.skillName
+
+  return (
+    <div className="flex items-center gap-4 px-4 py-3 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/30 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-zinc-100 truncate">{message}</div>
+        <div className="text-xs text-zinc-500 mt-0.5">{scheduleLabel}</div>
+      </div>
+      <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
+        <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
+        <div>Last: <span className="text-zinc-400">{formatRelTime(schedule.lastRun)}</span></div>
+      </div>
+      <button
+        onClick={() => toggleMutation.mutate(!schedule.enabled)}
+        disabled={toggleMutation.isPending}
+        title={schedule.enabled ? 'Disable' : 'Enable'}
+        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+          schedule.enabled ? 'bg-emerald-600' : 'bg-zinc-700'
+        } disabled:opacity-50`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+          schedule.enabled ? 'translate-x-[18px]' : 'translate-x-0'
+        }`} />
+      </button>
+      <button
+        onClick={() => { if (window.confirm(`Delete reminder "${message}"?`)) deleteMutation.mutate() }}
+        disabled={deleteMutation.isPending}
+        title="Delete"
+        className="text-zinc-500 hover:text-red-400 transition-colors shrink-0 disabled:opacity-50 text-lg leading-none"
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function SchedulesPage() {
+  const [showForm, setShowForm] = useState(false)
+  const tz = useConfigTimezone()
+
+  const schedulesQuery = useQuery({
+    queryKey: ['schedules'],
+    queryFn: api.schedules.list,
+    refetchInterval: 30_000,
+  })
+
+  const tasksQuery = useQuery({
+    queryKey: ['tasks'],
+    queryFn: api.tasks.list,
+  })
+
+  const allSchedules = schedulesQuery.data?.schedules ?? []
+  const taskSchedules = allSchedules.filter(s => s.kind !== 'reminder')
+  const reminderSchedules = allSchedules.filter(s => s.kind === 'reminder')
+  const tasks = tasksQuery.data?.tasks ?? []
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="max-w-2xl mx-auto space-y-6">
+
+        {/* ── Scheduled Tasks ── */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-zinc-100">Schedules</h1>
+            <p className="text-sm text-zinc-500 mt-0.5">Scheduled task runs</p>
+          </div>
+          <button
+            onClick={() => setShowForm(f => !f)}
+            className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors"
+          >
+            {showForm ? 'Cancel' : '+ New schedule'}
+          </button>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+          {schedulesQuery.isLoading && (
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading…</div>
+          )}
+          {schedulesQuery.isError && (
+            <div className="px-4 py-8 text-center text-sm text-red-400">
+              Failed to load schedules
+            </div>
+          )}
+          {!schedulesQuery.isLoading && !schedulesQuery.isError && taskSchedules.length === 0 && !showForm && (
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">No schedules configured.</div>
+          )}
+          {taskSchedules.map(s => <ScheduleRow key={s.id} schedule={s} tz={tz} />)}
+          {showForm && (
+            <AddScheduleForm
+              tasks={tasks}
+              loading={tasksQuery.isLoading}
+              onDone={() => setShowForm(false)}
+              tz={tz}
+            />
+          )}
+        </div>
+
+        {/* ── Reminders ── */}
+        <div>
+          <h2 className="text-base font-semibold text-zinc-100">Reminders</h2>
+          <p className="text-sm text-zinc-500 mt-0.5">Upcoming reminders set by the assistant</p>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+          {schedulesQuery.isLoading && (
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading…</div>
+          )}
+          {!schedulesQuery.isLoading && !schedulesQuery.isError && reminderSchedules.length === 0 && (
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">
+              No reminders set. Ask the assistant to set one for you.
+            </div>
+          )}
+          {reminderSchedules.map(s => <ReminderRow key={s.id} schedule={s} tz={tz} />)}
+        </div>
+
+      </div>
+    </div>
+  )
+}

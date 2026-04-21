@@ -1,0 +1,186 @@
+[
+  {
+    "role": "user",
+    "content": "Hey Saturday, I'm thinking about renovating my kitchen and I'm completely lost on where to start. We've got a 1990s galley kitchen that's pretty dated, and my wife really wants to modernize it. Should I be getting multiple quotes from contractors or what's the typical process?"
+  },
+  {
+    "role": "assistant",
+    "content": "That's a great question! Getting multiple contractor quotes is absolutely essential—I'd recommend reaching out to at least 3-5 contractors so you can compare pricing, timelines, and their communication style. Before you contact anyone though, you'll want to have a clear vision of what you want: are you doing a full gut renovation or just updating finishes? For a galley kitchen, you might also want to consider if you're changing the layout or keeping the same footprint, since wall relocation gets expensive fast. Start by getting detailed quotes that break down labor, materials, and timeline separately. It'll make comparing much easier."
+  },
+  {
+    "role": "user",
+    "content": "I think we want a pretty comprehensive refresh, honestly. We're looking at new cabinets, countertops, flooring, and probably new appliances too. Budget-wise, we were thinking somewhere around $30k-$40k, but I'm not sure if that's realistic for everything."
+  },
+  {
+    "role": "assistant",
+    "content": "That's a solid budget for a kitchen renovation in most markets, though it depends on your location and material choices. For $30k-$40k, you could definitely do quality work, but you'll need to be strategic. Custom or semi-custom cabinets are pricey—consider stock or semi-custom from brands like Kraftmaid or Waypoint to save 20-30% there. For countertops, granite or quartz in that budget range is doable, but laminate or butcher block are solid budget alternatives. Flooring-wise, quality porcelain tile or vinyl plank runs $2-5 per square foot installed, which is reasonable. Appliances can vary wildly—if you buy stainless steel mid-range stuff from Home Depot or Lowe's, you're looking at $3k-5k total. The real question is whether you're staying under $40k and if you need any structural or plumbing work, which can add thousands quickly."
+  },
+  {
+    "role": "user",
+    "content": "We might need some plumbing work since we want to relocate the sink to a different wall. That's going to be expensive, right? And what about timeline—how long does a kitchen renovation usually take?"
+  },
+  {
+    "role": "assistant",
+    "content": "Yeah, relocating the sink definitely adds complexity and cost because you're moving water supply lines and the drain line. You're probably looking at an extra $1500-$3000 depending on how far you're moving it and whether the plumbing runs are easy to access. For timeline, a typical kitchen renovation with sink relocation usually takes 4-8 weeks, though it can vary. The first week or two is demolition and any structural/plumbing work. Then cabinets go in, followed by countertops, flooring, backsplash, and finally appliances and finishing details. If you encounter surprises during demo—like old wiring, water damage, or structural issues—that can add 1-2 weeks. I'd also budget extra time if your contractor is waiting on materials; chip times have gotten better but custom stuff sometimes takes 4-6 weeks to arrive. When you talk to contractors, ask specifically about their typical timeline and what might cause delays."
+  },
+  {
+    "role": "user",
+    "content": "Okay, that makes sense. So when I'm vetting contractors, what questions should I actually ask them? I want to make sure I'm hiring someone reliable and not some fly-by-night operation."
+  },
+  {
+    "role": "assistant",
+    "content": "Great instinct—this is crucial. First, always verify they're licensed and insured; ask for proof and actually call to confirm coverage. Second, ask for references from kitchen renovations they've completed in the last year or two, and genuinely call those people. Ask if the contractor finished on time, on budget, and how they handled problems. Third, clarify their process: do they handle permits? How do they handle change orders? What's their payment schedule? (Avoid anyone asking for more than 50% upfront.) Ask about their warranty—legitimate contractors warranty their work for 1-2 years. Also ask how they handle daily cleanup and if they'll be doing the work themselves or subcontracting out major tasks. Finally, get a detailed written quote that specifies materials, labor costs, timeline, and what's included/excluded. If something seems vague in the quote, that's a red flag."
+  },
+  {
+    "role": "user",
+    "content": "Payment schedule is a good point. What's typical—like, do they want 50% down and 50% when it's done, or how does that usually work?"
+  },
+  {
+    "role": "assistant",
+    "content": "Typical payment structure for kitchen renovations is usually divided into 3-4 payments tied to project milestones rather than a simple 50/50 split. A common breakdown would be: 25-30% deposit to secure the start date and order materials, 25-30% when framing/rough-ins are done (plumbing, electrical, HVAC if applicable), 25-30% when cabinets and major installations are complete, and the final 15-20% at completion. Some contractors do 3-payment splits instead. What you want to avoid is paying the full amount before work starts or paying huge chunks early—that leaves you vulnerable if they ghost or do poor work. Get the payment schedule in writing as part of your contract. Also, never pay cash and make sure you have a signed contract that specifies what happens if the project goes over budget or timeline. If a contractor insists on non-standard terms like 50% upfront, that's often a warning sign."
+  },
+  {
+    "role": "user",
+    "content": "This is super helpful. Now I need to figure out what materials I actually want. For cabinets, what's the difference between those options you mentioned—like stock versus semi-custom versus custom? I have no idea what the quality difference is."
+  },
+  {
+    "role": "assistant",
+    "content": "Good question! Here's the breakdown: Stock cabinets are pre-made in standard sizes and configurations—you see them at big box stores like Home Depot. They're cheap (often $50-150 per linear foot installed), readily available, and basic but functional. The downside is limited styles, finishes, and you have to work within their dimensions. Semi-custom cabinets come from manufacturers like Kraftmaid, Waypoint, or Shaker—they offer more style options, better wood quality, and you can customize dimensions within certain ranges. They cost $100-250 per linear foot installed and take 4-6 weeks to arrive. Fully custom cabinets are built specifically for your space by a cabinet maker, unlimited design possibilities, premium materials, but expensive—$250-400+ per linear foot. For a $30-40k budget kitchen, semi-custom is usually the sweet spot; you get quality and design flexibility without the premium custom price. Stock cabinets work if you're super budget-conscious, but they often look dated faster."
+  },
+  {
+    "role": "user",
+    "content": "Alright, semi-custom sounds like the way to go then. What about countertops? My wife loves the look of quartz but I'm worried about cost. Is granite cheaper? And are there other options I should be considering?"
+  },
+  {
+    "role": "assistant",
+    "content": "Quartz and granite are actually pretty similar in price—both run about $40-75 per square foot installed, so on a typical 25-30 square foot kitchen countertop, you're looking at $1000-$2250 total. Quartz is engineered stone (more consistent patterns, no sealing needed), while granite is natural and has unique variations but requires occasional sealing. Honestly, quality-wise, both are excellent and will last decades. If your wife loves the look of quartz, go for it; it's durable and low-maintenance. But if you want to save money, there are solid alternatives: butcher block (warm aesthetic, $25-40/sq ft but needs oiling), laminate (looks decent now, $15-25/sq ft but less durable), or porcelain—which is becoming really popular ($30-50/sq ft, very durable and heat-resistant). Recycled glass countertops are another trendy option if you want something unique. For your budget, quartz is totally doable; just factor in the $1200-2000 for the full install and that helps you see where you stand on other materials."
+  },
+  {
+    "role": "user",
+    "content": "I like the practical approach. Let me ask about appliances then—do we need to match everything or buy from the same brand? And should we be looking at stainless steel or are there other finishes?"
+  },
+  {
+    "role": "assistant",
+    "content": "You don't need to match everything or buy from one brand—it's honestly more about budget and style preference. Stainless steel is traditional and professional-looking, but it shows fingerprints and smudges constantly, which honestly drives people crazy. Black stainless (like Samsung and LG make) is newer and hides fingerprints better. White appliances are vintage-trendy and hide things well. Matte black or slate finishes are becoming really popular too. Within a kitchen, mixing finishes actually looks fine—like stainless refrigerator with a black range. For your budget, stick with mid-range brands like Whirlpool, Samsung, LG, or GE rather than luxury brands like Sub-Zero. You can get a solid refrigerator, range, and dishwasher for $3500-5000 total at that level. One money-saving tip: buy during sales periods (Memorial Day, Labor Day, Black Friday) and you can sometimes negotiate better pricing. Also, consider if your contractor can get appliance discounts through their supplier—some do. Just make sure whatever you buy will fit your space before ordering."
+  },
+  {
+    "role": "user",
+    "content": "We're definitely going to do the black stainless, I think. Now, flooring—we have concrete under the tile right now. If we're putting in new flooring, do we need to do anything special with the concrete first? And what's your take on different flooring types?"
+  },
+  {
+    "role": "assistant",
+    "content": "Good question about the concrete prep. If the concrete is relatively flat and in decent condition, you can put most floorings right over it. However, if it's damaged, cracked, or uneven, you might need to grind/level it first ($300-800 depending on severity). For moisture—concrete wicks water, so if you're in a humid climate or have any history of moisture issues, you'll want a moisture barrier, which adds maybe $200-400. Now for flooring types in kitchens: luxury vinyl plank (LVP) is huge right now—looks like wood, costs $3-8/sq ft installed, waterproof, and super durable for kitchens. Porcelain tile is classic, very durable, $2-5/sq ft installed, and you can find beautiful options that look like wood or stone. Sheet vinyl is cheapest ($1-3/sq ft) but looks less high-end. Hardwood is risky in kitchens with moisture, and requires refinishing eventually. For your kitchen with the sink relocation and modern vibe, I'd lean toward quality LVP or porcelain tile—both look great, handle moisture well, and won't stress your budget."
+  },
+  {
+    "role": "user",
+    "content": "LVP sounds appealing actually. Is there a big quality difference between brands? Like, should we be looking at specific names or is most of it pretty comparable?"
+  },
+  {
+    "role": "assistant",
+    "content": "There's definitely quality variation in LVP. Budget brands from big box stores are okay but can feel thin and dent easier. Mid-range brands like Lifeproof, LifeProof, Pergo, or Coretec have better wear layers and hold up much better, especially in high-traffic kitchens. Premium brands like Mohawk, Shaw, or luxury brands have thicker planks, better underlayment, and superior water resistance—some are actually waterproof rather than just water-resistant. For kitchen use, I'd recommend spending a bit more for something like Lifeproof or Coretec ($6-8/sq ft installed)—the difference between that and $3/sq ft budget stuff is noticeable in durability and appearance. Check the wear layer thickness; ideally 20-30 mils or higher. Also look at the warranty—good brands offer 20-year warranties, which tells you they stand behind their product. If you're buying through a contractor, ask what they recommend and what they typically install; they usually get discounts and have experience with what holds up well."
+  },
+  {
+    "role": "user",
+    "content": "Okay, this is all really helpful context. Let me circle back to the overall timeline and budget. If we start this in spring, like April or May, could we realistically have it done before summer?"
+  },
+  {
+    "role": "assistant",
+    "content": "Potentially, yes, but it depends on a few factors. Spring is actually a good time to start because contractors are busy but not overbooked like summer. A 4-8 week timeline would have you done by mid-June to mid-July if there are no major surprises. The biggest variable is material lead times—with semi-custom cabinets taking 4-6 weeks, that eats into your schedule pretty quick. So ideally, you'd want to meet with contractors in March, finalize your choice and design in early April, place cabinet orders right away so they arrive by late May, and start demo/construction in late April or early May while waiting. That said, always add a 2-week buffer for unexpected issues (which happen during demo 80% of the time). If you want to guarantee summer completion, you really need to book your contractor and finalize designs by early March. Also, summer weather is actually nice for renovation dust and mess—your windows can stay open. Just go into it expecting 6-8 weeks realistically and anything faster is a bonus."
+  },
+  {
+    "role": "user",
+    "content": "We're currently in early March, so we're actually in a good spot timing-wise. Should I start reaching out to contractors now? How do I find good ones—do you just Google or are there better resources?"
+  },
+  {
+    "role": "assistant",
+    "content": "Perfect timing! Yes, you should start reaching out now. For finding contractors, there are several approaches: Google Maps reviews are helpful but take them with a grain of salt; check Yelp and Better Business Bureau for local reviews and ratings. Angie's List is solid if you're willing to pay for the membership, and HomeAdvisor has contractor listings though quality varies. However, the best source is honestly personal referrals—ask neighbors, friends, family who's done renovations recently and who they used. Local kitchen design showrooms often have contractor recommendations too. When you reach out, have your project description ready (1990s galley kitchen, new cabinets, countertops, flooring, appliances, sink relocation, budget $30-40k, timeline May-July). Most contractors will want to do an in-home estimate, which takes 30-45 minutes and is free. Aim to get 3-5 estimates so you can compare. Also, since it's early March, call soon—good contractors book out 2-3 months, and you want your top choices available for May start. Start the ball rolling this week if possible."
+  },
+  {
+    "role": "user",
+    "content": "Great advice. One more thing—my wife mentioned something about getting a design consultation from the showroom. Is that worth doing before or after we pick a contractor? Like, does it matter?"
+  },
+  {
+    "role": "assistant",
+    "content": "That's a smart question, and timing can definitely affect your process. Here's my take: getting a free or low-cost design consultation at a kitchen showroom before contractor meetings is really useful because it helps you clarify your vision—they'll show you cabinet styles, countertop options, layout ideas—so you know what you actually want. This makes contractor estimates much more accurate and useful. However, some showrooms only design if you're buying through them, which locks you in. What I'd recommend: visit 2-3 showrooms just to get inspired and see materials in person, but don't commit to buying from them yet. Then when contractors come for estimates, they can refine the design based on what you liked. Some contractors also partner with design services or have in-house designers who'll help for free or a small fee as part of the quote. So ideal order: showroom visit for inspiration → contractor meetings with rough ideas → contractor's designer or your collaboration with them to finalize details → order materials. The key is not getting locked into a showroom's inflated pricing before you know what contractors will cost."
+  },
+  {
+    "role": "user",
+    "content": "That makes sense. I'm feeling more confident about this now. Let me just ask—what are some common mistakes people make during kitchen renovations that I should avoid?"
+  },
+  {
+    "role": "assistant",
+    "content": "Great question; learning from others' mistakes is huge. Here are the big ones I see: (1) Underestimating budget and then having to cut corners mid-project—build in a 10-15% contingency. (2) Not getting things in writing—verbal promises disappear; get every detail in a signed contract. (3) Choosing materials based on trends instead of what you actually like—you'll live with this for 10+ years. (4) Skimping on labor and contractor quality to save money; cheap contractors create expensive problems. (5) Not planning for how you'll live during the renovation—no kitchen for 6-8 weeks is rough; set up a temporary kitchen area. (6) Changing your mind mid-project and doing change orders that balloon costs and timeline. (7) Not verifying permits are pulled; unpermitted work can cause insurance and resale issues. (8) Overlooking storage and layout during design—then regretting it after. (9) Not protecting your home from dust; kitchen renovation dust gets everywhere. Ask your contractor about dust containment. The biggest one is honestly just communication—keep in constant contact with your contractor and address small issues before they become big ones."
+  },
+  {
+    "role": "user",
+    "content": "I definitely don't want to be without a kitchen for two months. What can we actually set up as a temporary kitchen? Can we use the garage or something?"
+  },
+  {
+    "role": "assistant",
+    "content": "The garage can work, but a spare room, basement, or even outdoor space during nice weather is better. Here's what you'll need for a functional temporary kitchen: a hotplate or small portable induction cooktop ($40-100), a microwave (cheap, multipurpose), a small refrigerator or even just coolers with ice, a folding table for prep, and access to water and a sink—if your garage doesn't have water, you might need to run a hose from a bathroom. Honestly, a lot of people just eat out or do simple meals during demo—sandwiches, cereal, takeout. Set expectations with your wife early that you won't be cooking elaborate meals for 6-8 weeks. Some people use a neighbor's kitchen, or alternate eating at restaurants/casual meals. Paper plates and plastic utensils become your best friend. The main thing is planning this now so you're not stressed during the project. Also, coordinate with your contractor about daily cleanup—they should be removing debris regularly so your whole house doesn't get buried. Ask them specifically about dust barriers and how they'll protect other areas of your home. A good contractor will use plastic sheeting to seal off the kitchen area and minimize dust spreading."
+  },
+  {
+    "role": "user",
+    "content": "Okay, I think I have a pretty solid game plan now. Let me start reaching out to contractors this week and we'll go from there. Just one last thing—should we have a specific conversation with contractors about what happens if they find problems during demo? Like mold or old wiring?"
+  },
+  {
+    "role": "assistant",
+    "content": "Absolutely, this is critical. During demo, contractors often discover surprises—hidden water damage, mold, outdated electrical, old plumbing that needs replacement, structural issues, asbestos (in older homes). You need to establish upfront how these will be handled. Best practice: ask each contractor during the estimate how they handle discovery of issues. Get their process in writing: Will they stop work and notify you immediately? Will they get a specialist assessment (like a mold inspector or electrician) before proceeding? Will extra work be a change order with written cost estimate before work begins? Insist on this—never let a contractor just start fixing something without your approval and a written estimate. Set aside $2000-3000 as a contingency specifically for unknowns. Also, have a contractor handle the discovery process; don't DIY fixes. And definitely have your homeowner's insurance info handy in case something serious comes up. Asking this question during contractor meetings also tells good contractors you're informed and organized, which they respect. A contractor who gets defensive about discovery issues is a red flag."
+  },
+  {
+    "role": "user",
+    "content": "Perfect. I think I'm ready to start making calls. Do you think I should have my wife involved in the contractor meetings, or should I just go solo and report back to her?"
+  },
+  {
+    "role": "assistant",
+    "content": "Definitely have your wife there for at least one or two of the contractor meetings, if not all of them. Here's why: this is her kitchen too, and she's probably the one using it most. Having both of you there means the contractor gets consistent information, you both hear the same timeline and explanation, and she can ask questions or have concerns directly instead of playing telephone through you. Plus, contractors sometimes explain things differently depending on who's asking, and having both perspectives is valuable. That said, one person (probably you) can do the initial vetting calls just to narrow down to your top 3-5 options, then bring your wife for the final meetings with those top choices. Also, before the meetings, sit down with your wife and make sure you're aligned on priorities—does she care more about design aesthetics or function? Budget or timeline? That way you're asking consistent questions. Ultimately, a renovation is a joint decision, and good contractors want both decision-makers present so there's no surprises or disagreements later about what was promised."
+  },
+  {
+    "role": "user",
+    "content": "Yeah, that makes total sense. I'll have her in on the final meetings for sure. One thing I didn't think about—after the renovation is done, how do we make sure everything is actually done right and we're not getting stuck with problems?"
+  },
+  {
+    "role": "assistant",
+    "content": "Great question; this is called a final walkthrough and it's crucial. Before paying the final invoice, you and your wife should do a detailed walkthrough with the contractor present. Check everything: all appliances work correctly, cabinets open and close smoothly, drawers function properly, no gaps or misalignment, countertops are level and secure, flooring is even with no lippage (uneven tile), grout lines are consistent, no loose tiles, backsplash is straight and secure, paint/caulk is clean, all fixtures work, plumbing drains properly, and the space is clean and debris-free. Make a detailed punch list of anything that needs adjustment or fixing—document it in writing and photos. Don't hand over final payment until everything on that list is corrected. Once complete, get a signed-off completion certificate or receipt noting the project is finished. Also get documentation on warranties for all materials and appliances; keep this in a folder. After completion, the contractor should warranty labor for 1-2 years—if something breaks or fails soon after, contact them immediately while warranty is active. And honestly, wait a few weeks then re-check everything; sometimes small issues show up after living with it a bit. This is why a final 15-20% payment held until punch list completion is so important—it's your leverage."
+  },
+  {
+    "role": "user",
+    "content": "This has been incredibly helpful, honestly. I feel way less overwhelmed now. Should I be documenting anything else as I go through this process, like keeping receipts or taking photos?"
+  },
+  {
+    "role": "assistant",
+    "content": "Absolutely—documentation is your friend. Here's what to keep: (1) All contractor quotes and proposals in a folder, organized by contractor with dates. (2) The signed contract and scope of work once you hire someone. (3) All invoices, receipts, and payment receipts—keep these organized by date. (4) Photos of before, during, and after—these are great for your records and honestly nice for showing people later. (5) Warranties and product manuals for appliances and materials—keep these in one accessible spot. (6) Any change orders in writing; never agree to changes verbally. (7) Communication logs—if something important gets discussed, follow up via text or email to create a record. (8) Copies of any permits pulled and inspections passed. This might sound like overkill, but if something goes wrong or you need to make a warranty claim later, having everything documented saves you massive headaches. Also, take photos during demo and construction—it's interesting to have that progression. And keep a simple daily log if issues come up: date, issue, what was discussed, what was promised. It's not about mistrust; it's just good project management. Plus, these records are useful for home value and insurance purposes down the road."
+  },
+  {
+    "role": "user",
+    "content": "Alright, I'm definitely doing that. Last question, I promise—once we're done with the kitchen, how do we know if we got a good return on investment? Should we worry about that now?"
+  },
+  {
+    "role": "assistant",
+    "content": "That's actually a practical question, especially if you're thinking long-term. Kitchen renovations typically return about 50-60% of their cost in home resale value, depending on your market and how nice the renovation is. So a $35k renovation might add $17k-21k to your home value. However, if you're not planning to sell soon, this shouldn't drive your decisions—you're renovating for daily living quality, not immediate resale. That said, making smart choices (like semi-custom cabinets instead of cheap stock, quality appliances, timeless design over trendy) helps future resale value naturally. Avoiding overly personalized choices (super bold colors, niche styles) also keeps broader appeal. Honestly, if you love the space and use it daily for years, you're getting your money's worth in quality of life. The investment pays for itself in comfort and function. Don't stress too much about ROI unless you're flipping a house. Focus on getting quality work at fair price, avoiding budget creep, and creating a kitchen you'll enjoy. That's the real return. And since you're being thoughtful about contractor choice, materials, and timeline, you're already set up to do this right."
+  },
+  {
+    "role": "user",
+    "content": "Okay, I think I've asked literally everything I can think of. This conversation has been super valuable. I'm going to reach out to contractors today and set up those meetings. We'll bring my wife in for the final round of interviews. Wish me luck!"
+  },
+  {
+    "role": "assistant",
+    "content": "That's awesome! You're going into this well-prepared, which honestly sets you up for success. You've got a realistic budget, timeline, and you know what questions to ask—that puts you ahead of most people. Quick recap for your action items today: research and contact 3-5 contractors, get those estimates scheduled, visit a showroom or two with your wife for inspiration, and start a documentation folder. Then schedule the in-home estimates for next week or the week after. Remember, trust your gut on contractors—you want someone responsive, professional, and who answers your questions clearly. Don't just pick the cheapest bid. And make sure your wife is comfortable with your top choice before signing anything. You've got this! Feel free to reach out if questions come up during the process—timelines change, material options shift, and you might need advice as you move forward. Good luck with the renovation, and I'm excited for you guys to get this modernized kitchen you're envisioning!"
+  },
+  {
+    "role": "user",
+    "content": "Will do! Actually, one more thing just popped into my head—if we're doing the sink relocation, do we need a new window over the sink or is that optional? Our current window is right where the sink was, and we'd be moving the sink to the opposite wall."
+  },
+  {
+    "role": "assistant",
+    "content": "That's a great observation! So there's a reason kitchens traditionally had sinks under windows—natural light and ventilation while doing dishes. But it's not required; it's more of a nice-to-have. If your new sink location doesn't have a window, you can absolutely live without it; just make sure you have good task lighting over the sink—under-cabinet lights or a pendant light above work well. If you really want a window at the new sink location, adding one is definitely doable but it gets pricey: cutting through an exterior wall, framing, installing the window, and exterior work runs $800-1500+ depending on the window size and construction. It's something to discuss with your contractor during the estimate; they'll tell you if it's feasible and what it would cost. Another option is a decorative glass backsplash that lets light in without being a full window. Honestly, with a well-designed galley kitchen and good lighting, not having a window at the sink isn't a dealbreaker. Focus your budget on what matters most to you and your wife—if a window feels essential, budget for it; if other things are priorities, skip it and invest in lighting instead."
+  },
+  {
+    "role": "user",
+    "content": "Yeah, I think we'll probably skip the window for budget reasons. I'll just make sure to get really good task lighting. Now I'm actually ready! Going to call contractors right now. Thanks again for all this, Saturday!"
+  },
+  {
+    "role": "assistant",
+    "content": "You're so welcome! You're genuinely ready to go, and I'm impressed at how thoroughly you've thought this through. You've got your budget clear, timeline realistic, materials researched, and you know exactly what to ask contractors. That's going to make the whole process smoother and less stressful. Those contractors are going to appreciate working with someone this organized. Good task lighting over the sink is totally sufficient and way more budget-friendly anyway. Go make those calls, get those estimates, and keep track of everything in that documentation folder. Enjoy the process—kitchen renovations are exciting even when they're a bit stressful. And seriously, if anything comes up during the project that confuses you or you need to talk through, you know where to find me. I'm rooting for your new kitchen! Now get out there and make this happen. 🙌"
+  }
+]

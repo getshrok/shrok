@@ -1,0 +1,34 @@
+[
+  {
+    "role": "user",
+    "content": "Hey Saturday, can we do a quick working session on Phoenix? I need to tighten the migration plan from our legacy billing system to Stripe before tomorrow’s review with Priya Nair."
+  },
+  {
+    "role": "assistant",
+    "content": "Absolutely—let’s make it crisp. For Phoenix, we should lock four tracks: mapping existing plans to Stripe subscription objects, webhook handling, proration rules for mid-cycle upgrades, and the 6-week cutover with shadow-write. Want to start with plan mapping?"
+  },
+  {
+    "role": "user",
+    "content": "Yep. We currently have Basic-1999, Pro-4999, and Enterprise annual contracts in the legacy catalog. I’m thinking Stripe Products + Prices, then migrate active customers into Stripe subscriptions without changing renewal dates."
+  },
+  {
+    "role": "assistant",
+    "content": "That’s the right model: Products for plan families, Prices for billing cadence/amount, and one Subscription per active account. Keep `billing_cycle_anchor` aligned to the existing renewal date so customers don’t see surprise charges. We should also store legacy plan IDs in metadata for reconciliation."
+  },
+  {
+    "role": "user",
+    "content": "Great. Next is events—finance wants near-real-time updates when invoices clear or fail. We only care about `invoice.paid` and `invoice.payment_failed` for v1, and we need idempotency because retries happen."
+  },
+  {
+    "role": "assistant",
+    "content": "Perfect scope for v1. We’ll verify Stripe signatures, process only those two event types, and enforce idempotency using `event.id` in a dedupe table before writing to Phoenix billing state. Also add dead-letter logging so failed handlers can be replayed safely."
+  },
+  {
+    "role": "user",
+    "content": "Last piece: proration + timeline. For mid-cycle upgrades, product wants immediate access with prorated charge; no proration on downgrades until renewal. Timeline is 6 weeks total with shadow-write before cutover—can you summarize what I should present Priya?"
+  },
+  {
+    "role": "assistant",
+    "content": "Tell Priya: upgrades trigger immediate prorated invoicing in Stripe, while downgrades are scheduled at period end with no mid-cycle credit payout. Timeline: Weeks 1-2 integration + plan mapping, Weeks 3-4 webhook hardening and proration tests, Week 5 shadow-write (legacy remains source of truth), Week 6 cutover and monitoring. Include rollback criteria and daily reconciliation during shadow-write to de-risk launch."
+  }
+]

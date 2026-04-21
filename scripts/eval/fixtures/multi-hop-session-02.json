@@ -1,0 +1,58 @@
+[
+  {
+    "role": "user",
+    "content": "Hey, thanks for taking the time to discuss the event streaming backbone project. So we've been asked to build a central pub/sub infrastructure that all the engineering teams can use, and I know the Cobalt team has been selected to own this. Before we dive into architecture, I'm curious—did you evaluate other options besides Kafka, or was that already decided?"
+  },
+  {
+    "role": "assistant",
+    "content": "Great question. So we did do a pretty thorough evaluation about three weeks ago. We looked at Apache Kafka, Pulsar, and NATS as the main candidates. NATS got ruled out fairly quickly because it doesn't really have the durability guarantees or persistence layer we need for company-wide event archival—it's more designed for real-time messaging where you accept message loss. Pulsar was interesting because it has some nice operational properties and tiered storage, but we realized the team would need to manage significantly more operational complexity, especially around ZooKeeper dependencies and broker commissioning. Kafka won out because it's battle-tested at scale, has a massive ecosystem, and honestly, a couple of our engineers have production experience with it already, which will help us move faster during the launch phase."
+  },
+  {
+    "role": "user",
+    "content": "That makes sense. So assuming we go with Kafka, one of my concerns is—how do we handle schema evolution? Like, if the analytics team publishes an event with a certain schema and then six months later they want to add a new field, how do we make sure that doesn't break downstream consumers who haven't updated yet?"
+  },
+  {
+    "role": "assistant",
+    "content": "Excellent point, and this is something we've already spent time thinking about. We're planning to use Confluent Schema Registry for centralized schema management, and we'll be using Avro as our serialization format. More importantly, we're configuring the registry to use BACKWARD compatibility mode by default. This means new schemas can add optional fields, but they can't remove fields that existing consumers might depend on. So in your example, if analytics adds a new field, older consumers reading that topic don't break—they just won't see the new field. If a consumer needs that field, they can upgrade their code on their own schedule. We'll document this pretty clearly in our onboarding materials so teams understand the contract they're signing up for."
+  },
+  {
+    "role": "user",
+    "content": "Got it, that's reassuring. Now, talk me through the partitioning strategy. We're going to have a lot of different event types flowing through this system, and I imagine topic-per-event-type is the way to go. But how many partitions per topic are we thinking, and what's the retention policy?"
+  },
+  {
+    "role": "assistant",
+    "content": "So we've settled on a pretty straightforward approach: we'll go with 12 partitions as our standard for all topics initially. That number gives us good parallelism for consumers without being overkill for topics with lower throughput. If a particular team's topic ends up needing way more throughput, we can revisit, but 12 is a solid default that scales well for our expected load. On retention, we're defaulting to 7 days of message retention. That gives downstream consumers a week to recover from outages or replay events if needed, which strikes a good balance between operational flexibility and storage costs. We'll make both of these configurable per-topic through our platform team's API, so if analytics needs longer retention or a particular event stream needs more parallelism, they can request that. But 12 partitions and 7-day retention is what ships on day one."
+  },
+  {
+    "role": "user",
+    "content": "Makes sense. I'm also wondering about the rollout timeline and which team will be our first customer. I'd assume we want to pick someone who's fairly sophisticated but also motivated to give us good feedback early on, rather than just throwing this at everyone at once."
+  },
+  {
+    "role": "assistant",
+    "content": "Exactly. We've actually already aligned with the analytics pipeline team—they're going to be our first internal consumer in about 8 weeks from now. They're perfect for this because they already run their own event ingestion system, so they understand the domain really well and they're genuinely excited about having a company-backed streaming backbone. They're also not going to be precious about it; they'll tell us straight up if something doesn't work. The plan is to spend the next 4 weeks getting the core infrastructure solid—that's brokers, Schema Registry, monitoring, and our initial APIs. Then weeks 5-8 we'll work closely with analytics on their onboarding, smooth out operational wrinkles, and document the heck out of everything. By the time we go broad to other teams, we'll have a production deployment and a real success story, which should make adoption much easier."
+  },
+  {
+    "role": "user",
+    "content": "That timeline is tight but sounds realistic. Who's actually building this? I know the Cobalt platform team owns it, but what's the headcount and skill distribution look like? Are you going to need help from other teams, or is Cobalt self-sufficient here?"
+  },
+  {
+    "role": "assistant",
+    "content": "So the Cobalt team is fully staffed for this. We've got 4 engineers plus our team lead, and the skill set is actually pretty good for this particular problem. Two of them have done Kafka deployments in previous roles, one has solid DevOps and infrastructure-as-code experience which we'll lean on heavily, and one is really strong on the API and integration layer. We're not asking for help from other teams, partly because Cobalt is the right home for this work—you want platform infrastructure owned by people who think about it holistically—and partly because we genuinely have the bandwidth. The one area where we'll probably collaborate is operations: once this goes live, we'll need SRE support for on-call rotation and incident response, but that's downstream from the initial build. Right now, we're laser-focused on delivery."
+  },
+  {
+    "role": "user",
+    "content": "Alright, last thing I want to clarify—what about disaster recovery and high availability? If a Kafka broker dies or the cluster loses quorum, what happens to the rest of the company? I imagine we need pretty tight SLAs here since everything else depends on it."
+  },
+  {
+    "role": "assistant",
+    "content": "That's the right level of thinking, and honestly it's why we're taking this seriously from day one. We're deploying Kafka as a 3-broker cluster initially, which gives us quorum resilience—we can lose one broker and keep running. Each topic will have a replication factor of 2, so every partition has a leader and a replica on a different broker. If a broker goes down, the cluster automatically promotes a replica to leader and keeps serving. Our monitoring will be comprehensive: broker health, partition replica lag, Schema Registry availability—the whole stack. On the SLA side, we're targeting 99.95% uptime for the cluster itself during our first year, which is reasonable for a managed service at our scale. We'll get more aggressive once we're live and have real operational data. We're also planning a disaster recovery runbook, but it'll take some time to get that battle-tested. Does that level of resilience feel like it aligns with what you were expecting?"
+  },
+  {
+    "role": "user",
+    "content": "Yeah, 99.95% is solid for launch. Actually, one more thing just occurred to me—how are you thinking about cross-team support and onboarding for the analytics pipeline team? Like, will you be assigning dedicated people to work with them, or is this more of a 'here's the docs, go figure it out' situation?"
+  },
+  {
+    "role": "assistant",
+    "content": "We're definitely not doing the hands-off docs approach—that would be a recipe for frustration on both sides. For the analytics team's onboarding, one of our engineers will be embedded with them essentially full-time for those 3 weeks in phase 2 of our timeline. They'll help with topic creation, schema design, consumer implementation, and troubleshooting. In parallel, we're writing really comprehensive onboarding docs—not just API references but actual 'here's how to integrate with event streaming in 20 minutes' guides. We're also planning a tech talk and a design review session where their architects can ask questions and we can sanity-check their event design. After launch, there'll be a Slack channel and office hours every Tuesday where teams can ask questions. We want this to be a smooth, supported transition, because if analytics has a rough time, the word gets out and adoption from other teams becomes way harder."
+  }
+]

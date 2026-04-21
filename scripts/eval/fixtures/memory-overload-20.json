@@ -1,0 +1,34 @@
+[
+  {
+    "role": "user",
+    "content": "Hey Saturday, quick check-in — Lucia Ferrara had me shooting in manual again today and I’m still wrapping my head around the exposure triangle."
+  },
+  {
+    "role": "assistant",
+    "content": "Nice progress — manual mode gets easier fast with repetition. If you’re using Lucia’s baseline (ISO 800 indoors, f/2.8 for portraits, 1/250 for action), you’re already building a solid starting point. Then just tweak one variable at a time based on light and subject movement."
+  },
+  {
+    "role": "user",
+    "content": "Yeah that’s exactly what she said on Tuesday (March 5). I used ISO 800 at Mercado San Telmo and my shots were okay, but a few were noisy."
+  },
+  {
+    "role": "assistant",
+    "content": "That makes sense, especially in dim market corners. Try exposing a touch brighter in-camera so you don’t have to lift shadows too much later, since that exaggerates noise. If motion allows, drop shutter below 1/250 a bit before pushing ISO higher."
+  },
+  {
+    "role": "user",
+    "content": "Got it. For portraits I kept f/2.8 like Lucia recommended, and now I’m editing in Lightroom — mostly color grading and lens correction."
+  },
+  {
+    "role": "assistant",
+    "content": "Perfect workflow. Do lens correction first to clean distortion/vignetting, then color grade so your tones are consistent across the project. Save a preset once you like the look, especially for your market series."
+  },
+  {
+    "role": "user",
+    "content": "I’m building that street market project through April — mostly stalls, vendors, and fast candid moments. Any simple settings plan I can memorize?"
+  },
+  {
+    "role": "assistant",
+    "content": "Use this quick plan: start at f/2.8, 1/250 for moving subjects, and ISO 800 indoors (lower outdoors). For static stall details, slow to around 1/125 and keep ISO as low as possible for cleaner files. That’ll give you a reliable baseline while you focus on timing and composition."
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "role": "user",
+    "content": "Hey Saturday, quick prep for our Solstice work session tomorrow. Can you help me outline what we need to cover?"
+  },
+  {
+    "role": "assistant",
+    "content": "Absolutely. I’d structure it around the four core modules: PTO accrual rules, biannual performance reviews with 360 feedback, org chart visualization, and Slack team announcements. Since Nadia Kowalski is PM, we should also add a short decision log section for her open questions."
+  },
+  {
+    "role": "user",
+    "content": "Yep, makes sense. For PTO, I want to confirm the policy details are reflected correctly in Solstice before we demo."
+  },
+  {
+    "role": "assistant",
+    "content": "Got it—Solstice should show accrual at 1.5 days per month and cap carryover at 15 days into the next year. We should test at least two scenarios: a new hire mid-year and an employee with excess unused balance at year-end. I can draft those test cases for the session notes."
+  },
+  {
+    "role": "user",
+    "content": "Perfect. Also, I keep getting questions about review cadence and who can submit feedback."
+  },
+  {
+    "role": "assistant",
+    "content": "We can clarify that reviews run biannually, and each cycle includes 360 feedback from peers plus manager input. In the session, let’s confirm role-based permissions so employees, managers, and HRBPs see the right forms. I’d also verify cycle dates are visible in the employee dashboard."
+  },
+  {
+    "role": "user",
+    "content": "Nice. Last thing: Nadia wants org chart + Slack integration covered in 15 min. Can we keep that tight?"
+  },
+  {
+    "role": "assistant",
+    "content": "Yes—5 minutes for org chart visualization (reporting lines, department filters, vacancy visibility) and 10 minutes for Slack announcements setup and sample posts. We can demo a team announcement pushed to #people-ops-updates and confirm delivery logs in Solstice. I’ll keep the talking points concise so Nadia can drive decisions quickly."
+  }
+]

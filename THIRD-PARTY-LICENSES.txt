@@ -1,0 +1,2253 @@
+├─ @anthropic-ai/sdk@0.90.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/anthropics/anthropic-sdk-typescript
+│  ├─ publisher: Anthropic
+│  ├─ email: support@anthropic.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@anthropic-ai/sdk
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@anthropic-ai/sdk/LICENSE
+├─ @babel/runtime@7.29.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/babel/babel
+│  ├─ publisher: The Babel Team
+│  ├─ url: https://babel.dev/team
+│  ├─ path: /home/ubuntu/shrok/node_modules/@babel/runtime
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@babel/runtime/LICENSE
+├─ @brave/brave-search-mcp-server@2.0.75
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/brave/brave-search-mcp-server
+│  ├─ publisher: Brave Software, Inc.
+│  ├─ url: https://brave.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/LICENSE
+├─ @clack/core@1.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/bombshell-dev/clack
+│  ├─ publisher: Nate Moore
+│  ├─ email: nate@natemoo.re
+│  ├─ url: https://twitter.com/n_moore
+│  ├─ path: /home/ubuntu/shrok/node_modules/@clack/core
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@clack/core/LICENSE
+├─ @clack/prompts@1.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/bombshell-dev/clack
+│  ├─ publisher: Nate Moore
+│  ├─ email: nate@natemoo.re
+│  ├─ url: https://twitter.com/n_moore
+│  ├─ path: /home/ubuntu/shrok/node_modules/@clack/prompts
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@clack/prompts/LICENSE
+├─ @discordjs/builders@1.14.1
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/builders
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/builders/LICENSE
+├─ @discordjs/collection@1.5.3
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/collection
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/collection/LICENSE
+├─ @discordjs/collection@2.1.1
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/rest/node_modules/@discordjs/collection
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/rest/node_modules/@discordjs/collection/LICENSE
+├─ @discordjs/formatters@0.6.2
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/formatters
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/formatters/LICENSE
+├─ @discordjs/rest@2.6.1
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/rest
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/rest/LICENSE
+├─ @discordjs/util@1.2.0
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/util
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/util/LICENSE
+├─ @discordjs/ws@1.2.3
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/ws
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/ws/LICENSE
+├─ @google/generative-ai@0.21.0
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/google/generative-ai-js
+│  ├─ path: /home/ubuntu/shrok/node_modules/@google/generative-ai
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@google/generative-ai/LICENSE
+├─ @grammyjs/types@3.25.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/grammyjs/types
+│  ├─ publisher: KnorpelSenf
+│  ├─ path: /home/ubuntu/shrok/node_modules/@grammyjs/types
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@grammyjs/types/LICENSE
+├─ @hono/node-server@1.19.14
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/honojs/node-server
+│  ├─ publisher: Yusuke Wada
+│  ├─ email: yusuke@kamawada.com
+│  ├─ url: https://github.com/yusukebe
+│  ├─ path: /home/ubuntu/shrok/node_modules/@hono/node-server
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@hono/node-server/LICENSE
+├─ @inquirer/ansi@2.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/ansi
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/ansi/LICENSE
+├─ @inquirer/checkbox@5.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/checkbox
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/checkbox/LICENSE
+├─ @inquirer/confirm@6.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/confirm
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/confirm/LICENSE
+├─ @inquirer/core@11.1.7
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/core
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/core/LICENSE
+├─ @inquirer/editor@5.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/editor
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/editor/LICENSE
+├─ @inquirer/expand@5.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/expand
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/expand/LICENSE
+├─ @inquirer/external-editor@2.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/external-editor
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/external-editor/LICENSE
+├─ @inquirer/figures@2.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/figures
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/figures/LICENSE
+├─ @inquirer/input@5.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/input
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/input/LICENSE
+├─ @inquirer/number@4.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/number
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/number/LICENSE
+├─ @inquirer/password@5.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/password
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/password/LICENSE
+├─ @inquirer/prompts@8.3.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/prompts
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/prompts/LICENSE
+├─ @inquirer/rawlist@5.2.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/rawlist
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/rawlist/LICENSE
+├─ @inquirer/search@4.1.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/search
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/search/LICENSE
+├─ @inquirer/select@5.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/select
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/select/LICENSE
+├─ @inquirer/type@4.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/SBoudrias/Inquirer.js
+│  ├─ publisher: Simon Boudrias
+│  ├─ email: admin@simonboudrias.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@inquirer/type
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@inquirer/type/LICENSE
+├─ @modelcontextprotocol/sdk@1.26.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/modelcontextprotocol/typescript-sdk
+│  ├─ publisher: Anthropic, PBC
+│  ├─ url: https://anthropic.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/@modelcontextprotocol/sdk
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/@modelcontextprotocol/sdk/LICENSE
+├─ @modelcontextprotocol/sdk@1.27.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/modelcontextprotocol/typescript-sdk
+│  ├─ publisher: Anthropic, PBC
+│  ├─ url: https://anthropic.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@modelcontextprotocol/sdk
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@modelcontextprotocol/sdk/LICENSE
+├─ @sapphire/async-queue@1.5.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sapphiredev/utilities
+│  ├─ publisher: @sapphire
+│  ├─ path: /home/ubuntu/shrok/node_modules/@sapphire/async-queue
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@sapphire/async-queue/README.md
+├─ @sapphire/shapeshift@4.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sapphiredev/shapeshift
+│  ├─ publisher: @sapphire
+│  ├─ path: /home/ubuntu/shrok/node_modules/@sapphire/shapeshift
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@sapphire/shapeshift/LICENSE.md
+├─ @sapphire/snowflake@3.5.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sapphiredev/utilities
+│  ├─ publisher: @sapphire
+│  ├─ path: /home/ubuntu/shrok/node_modules/@sapphire/snowflake
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@sapphire/snowflake/README.md
+├─ @sapphire/snowflake@3.5.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sapphiredev/utilities
+│  ├─ publisher: @sapphire
+│  ├─ path: /home/ubuntu/shrok/node_modules/@discordjs/rest/node_modules/@sapphire/snowflake
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@discordjs/rest/node_modules/@sapphire/snowflake/README.md
+├─ @slack/bolt@4.6.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/slackapi/bolt-js
+│  ├─ publisher: Slack Technologies, LLC
+│  ├─ path: /home/ubuntu/shrok/node_modules/@slack/bolt
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@slack/bolt/LICENSE
+├─ @slack/logger@4.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/slackapi/node-slack-sdk
+│  ├─ publisher: Slack Technologies, LLC
+│  ├─ path: /home/ubuntu/shrok/node_modules/@slack/logger
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@slack/logger/LICENSE
+├─ @slack/oauth@3.0.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/slackapi/node-slack-sdk
+│  ├─ publisher: Slack Technologies, LLC
+│  ├─ path: /home/ubuntu/shrok/node_modules/@slack/oauth
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@slack/oauth/LICENSE
+├─ @slack/socket-mode@2.0.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/slackapi/node-slack-sdk
+│  ├─ publisher: Slack Technologies, LLC
+│  ├─ path: /home/ubuntu/shrok/node_modules/@slack/socket-mode
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@slack/socket-mode/LICENSE
+├─ @slack/types@2.20.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/slackapi/node-slack-sdk
+│  ├─ publisher: Slack Technologies, LLC
+│  ├─ path: /home/ubuntu/shrok/node_modules/@slack/types
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@slack/types/LICENSE
+├─ @slack/web-api@7.15.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/slackapi/node-slack-sdk
+│  ├─ publisher: Slack Technologies, LLC
+│  ├─ path: /home/ubuntu/shrok/node_modules/@slack/web-api
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@slack/web-api/LICENSE
+├─ @types/body-parser@1.19.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/body-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/body-parser/LICENSE
+├─ @types/connect@3.4.38
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/connect
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/connect/LICENSE
+├─ @types/express-serve-static-core@5.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/express-serve-static-core
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/express-serve-static-core/LICENSE
+├─ @types/express@5.0.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/express
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/express/LICENSE
+├─ @types/http-errors@2.0.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/http-errors
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/http-errors/LICENSE
+├─ @types/jsonwebtoken@9.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/jsonwebtoken
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/jsonwebtoken/LICENSE
+├─ @types/ms@2.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/ms
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/ms/LICENSE
+├─ @types/node-fetch@2.6.13
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/node-fetch
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/node-fetch/LICENSE
+├─ @types/node@18.19.130
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/openai/node_modules/@types/node
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/openai/node_modules/@types/node/LICENSE
+├─ @types/node@22.19.15
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/node
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/node/LICENSE
+├─ @types/qs@6.15.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/qs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/qs/LICENSE
+├─ @types/range-parser@1.2.7
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/range-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/range-parser/LICENSE
+├─ @types/retry@0.12.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/retry
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/retry/LICENSE
+├─ @types/send@1.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/send
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/send/LICENSE
+├─ @types/serve-static@2.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/serve-static
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/serve-static/LICENSE
+├─ @types/ws@8.18.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+│  ├─ path: /home/ubuntu/shrok/node_modules/@types/ws
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@types/ws/LICENSE
+├─ @vladfrangu/async_event_emitter@2.4.7
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/vladfrangu/async_event_emitter
+│  ├─ publisher: Vlad Frangu
+│  ├─ email: me@vladfrangu.dev
+│  ├─ path: /home/ubuntu/shrok/node_modules/@vladfrangu/async_event_emitter
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@vladfrangu/async_event_emitter/LICENSE.md
+├─ abort-controller@3.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/mysticatea/abort-controller
+│  ├─ publisher: Toru Nagashima
+│  ├─ url: https://github.com/mysticatea
+│  ├─ path: /home/ubuntu/shrok/node_modules/abort-controller
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/abort-controller/LICENSE
+├─ accepts@1.3.8
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/accepts
+│  ├─ path: /home/ubuntu/shrok/node_modules/accepts
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/accepts/LICENSE
+├─ accepts@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/accepts
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/accepts
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/accepts/LICENSE
+├─ agentkeepalive@4.6.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/node-modules/agentkeepalive
+│  ├─ publisher: fengmk2
+│  ├─ email: fengmk2@gmail.com
+│  ├─ url: https://github.com/fengmk2
+│  ├─ path: /home/ubuntu/shrok/node_modules/agentkeepalive
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/agentkeepalive/LICENSE
+├─ ajv-formats@3.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ajv-validator/ajv-formats
+│  ├─ publisher: Evgeny Poberezkin
+│  ├─ path: /home/ubuntu/shrok/node_modules/ajv-formats
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ajv-formats/LICENSE
+├─ ajv@8.18.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ajv-validator/ajv
+│  ├─ publisher: Evgeny Poberezkin
+│  ├─ path: /home/ubuntu/shrok/node_modules/ajv
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ajv/LICENSE
+├─ ansi-regex@5.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/chalk/ansi-regex
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/ansi-regex
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ansi-regex/license
+├─ ansi-styles@4.3.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/chalk/ansi-styles
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/ansi-styles
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ansi-styles/license
+├─ aproba@2.1.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/iarna/aproba
+│  ├─ publisher: Rebecca Turner
+│  ├─ email: me@re-becca.org
+│  ├─ path: /home/ubuntu/shrok/node_modules/aproba
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/aproba/LICENSE
+├─ are-we-there-yet@3.0.1
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/npm/are-we-there-yet
+│  ├─ publisher: GitHub Inc.
+│  ├─ path: /home/ubuntu/shrok/node_modules/are-we-there-yet
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/are-we-there-yet/LICENSE.md
+├─ argparse@1.0.10
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodeca/argparse
+│  ├─ path: /home/ubuntu/shrok/node_modules/gray-matter/node_modules/argparse
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/gray-matter/node_modules/argparse/LICENSE
+├─ argparse@2.0.1
+│  ├─ licenses: Python-2.0
+│  ├─ repository: https://github.com/nodeca/argparse
+│  ├─ path: /home/ubuntu/shrok/node_modules/argparse
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/argparse/LICENSE
+├─ array-flatten@1.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/blakeembrey/array-flatten
+│  ├─ publisher: Blake Embrey
+│  ├─ email: hello@blakeembrey.com
+│  ├─ url: http://blakeembrey.me
+│  ├─ path: /home/ubuntu/shrok/node_modules/array-flatten
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/array-flatten/LICENSE
+├─ asynckit@0.4.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/alexindigo/asynckit
+│  ├─ publisher: Alex Indigo
+│  ├─ email: iam@alexindigo.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/asynckit
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/asynckit/LICENSE
+├─ axios@1.15.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/axios/axios
+│  ├─ publisher: Matt Zabriskie
+│  ├─ path: /home/ubuntu/shrok/node_modules/axios
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/axios/LICENSE
+├─ bcryptjs@3.0.3
+│  ├─ licenses: BSD-3-Clause
+│  ├─ repository: https://github.com/dcodeIO/bcrypt.js
+│  ├─ publisher: Daniel Wirtz
+│  ├─ email: dcode@dcode.io
+│  ├─ path: /home/ubuntu/shrok/node_modules/bcryptjs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/bcryptjs/LICENSE
+├─ body-parser@1.20.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/body-parser
+│  ├─ path: /home/ubuntu/shrok/node_modules/body-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/body-parser/LICENSE
+├─ body-parser@2.2.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/body-parser
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/body-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/body-parser/LICENSE
+├─ buffer-equal-constant-time@1.0.1
+│  ├─ licenses: BSD-3-Clause
+│  ├─ repository: https://github.com/goinstant/buffer-equal-constant-time
+│  ├─ publisher: GoInstant Inc., a salesforce.com company
+│  ├─ path: /home/ubuntu/shrok/node_modules/buffer-equal-constant-time
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/buffer-equal-constant-time/LICENSE.txt
+├─ bytes@3.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/visionmedia/bytes.js
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ url: http://tjholowaychuk.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/bytes
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/bytes/LICENSE
+├─ call-bind-apply-helpers@1.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/call-bind-apply-helpers
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/call-bind-apply-helpers
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/call-bind-apply-helpers/LICENSE
+├─ call-bound@1.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/call-bound
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/call-bound
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/call-bound/LICENSE
+├─ camelcase@5.3.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/camelcase
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/camelcase
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/camelcase/license
+├─ chardet@2.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/runk/node-chardet
+│  ├─ publisher: Dmitry Shirokov
+│  ├─ email: deadrunk@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/chardet
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/chardet/LICENSE
+├─ chownr@2.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/chownr
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/chownr
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/chownr/LICENSE
+├─ cli-width@4.1.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/knownasilya/cli-width
+│  ├─ publisher: Ilya Radchenko
+│  ├─ email: knownasilya@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/cli-width
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cli-width/LICENSE
+├─ cliui@6.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/cliui
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/qrcode/node_modules/cliui
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/qrcode/node_modules/cliui/LICENSE.txt
+├─ cliui@8.0.1
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/cliui
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/cliui
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cliui/LICENSE.txt
+├─ cmake-js@7.4.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/cmake-js/cmake-js
+│  ├─ publisher: Gábor Mező aka unbornchikken
+│  ├─ path: /home/ubuntu/shrok/node_modules/cmake-js
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cmake-js/LICENSE
+├─ color-convert@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/Qix-/color-convert
+│  ├─ publisher: Heather Arthur
+│  ├─ email: fayearthur@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/color-convert
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/color-convert/LICENSE
+├─ color-name@1.1.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/colorjs/color-name
+│  ├─ publisher: DY
+│  ├─ email: dfcreative@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/color-name
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/color-name/LICENSE
+├─ color-support@1.1.3
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/color-support
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/color-support
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/color-support/LICENSE
+├─ combined-stream@1.0.8
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/felixge/node-combined-stream
+│  ├─ publisher: Felix Geisendörfer
+│  ├─ email: felix@debuggable.com
+│  ├─ url: http://debuggable.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/combined-stream
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/combined-stream/License
+├─ commander@14.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/tj/commander.js
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ path: /home/ubuntu/shrok/node_modules/commander
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/commander/LICENSE
+├─ console-control-strings@1.1.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/iarna/console-control-strings
+│  ├─ publisher: Rebecca Turner
+│  ├─ email: me@re-becca.org
+│  ├─ url: http://re-becca.org/
+│  ├─ path: /home/ubuntu/shrok/node_modules/console-control-strings
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/console-control-strings/LICENSE
+├─ content-disposition@0.5.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/content-disposition
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/content-disposition
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/content-disposition/LICENSE
+├─ content-disposition@1.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/content-disposition
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/content-disposition
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/content-disposition/LICENSE
+├─ content-type@1.0.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/content-type
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/content-type
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/content-type/LICENSE
+├─ cookie-parser@1.4.7
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/cookie-parser
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ url: http://tjholowaychuk.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/cookie-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cookie-parser/LICENSE
+├─ cookie-signature@1.0.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/visionmedia/node-cookie-signature
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@learnboost.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/cookie-parser/node_modules/cookie-signature
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cookie-parser/node_modules/cookie-signature/Readme.md
+├─ cookie-signature@1.0.7
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/visionmedia/node-cookie-signature
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@learnboost.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/cookie-signature
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cookie-signature/Readme.md
+├─ cookie-signature@1.2.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/visionmedia/node-cookie-signature
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@learnboost.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/cookie-signature
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/cookie-signature/LICENSE
+├─ cookie@0.7.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/cookie
+│  ├─ publisher: Roman Shtylman
+│  ├─ email: shtylman@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/cookie
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cookie/LICENSE
+├─ cors@2.8.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/cors
+│  ├─ publisher: Troy Goode
+│  ├─ email: troygoode@gmail.com
+│  ├─ url: https://github.com/troygoode/
+│  ├─ path: /home/ubuntu/shrok/node_modules/cors
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cors/LICENSE
+├─ cron-parser@5.5.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/harrisiirak/cron-parser
+│  ├─ publisher: Harri Siirak
+│  ├─ path: /home/ubuntu/shrok/node_modules/cron-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cron-parser/LICENSE
+├─ cronstrue@3.14.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/bradymholt/cronstrue
+│  ├─ publisher: Brady Holt
+│  ├─ path: /home/ubuntu/shrok/node_modules/cronstrue
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cronstrue/LICENSE
+├─ cross-spawn@7.0.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/moxystudio/node-cross-spawn
+│  ├─ publisher: André Cruz
+│  ├─ email: andre@moxy.studio
+│  ├─ path: /home/ubuntu/shrok/node_modules/cross-spawn
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/cross-spawn/LICENSE
+├─ debug@2.6.9
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/visionmedia/debug
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ path: /home/ubuntu/shrok/node_modules/debug
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/debug/LICENSE
+├─ debug@4.4.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/debug-js/debug
+│  ├─ publisher: Josh Junon
+│  ├─ url: https://github.com/qix-
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/debug
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/debug/LICENSE
+├─ decamelize@1.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/decamelize
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/decamelize
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/decamelize/license
+├─ deep-extend@0.6.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/unclechu/node-deep-extend
+│  ├─ publisher: Viacheslav Lotsmanov
+│  ├─ email: lotsmanov89@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/deep-extend
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/deep-extend/LICENSE
+├─ delayed-stream@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/felixge/node-delayed-stream
+│  ├─ publisher: Felix Geisendörfer
+│  ├─ email: felix@debuggable.com
+│  ├─ url: http://debuggable.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/delayed-stream
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/delayed-stream/License
+├─ delegates@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/visionmedia/node-delegates
+│  ├─ path: /home/ubuntu/shrok/node_modules/delegates
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/delegates/License
+├─ depd@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/dougwilson/nodejs-depd
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/depd
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/depd/LICENSE
+├─ destroy@1.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/stream-utils/destroy
+│  ├─ publisher: Jonathan Ong
+│  ├─ email: me@jongleberry.com
+│  ├─ url: http://jongleberry.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/destroy
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/destroy/LICENSE
+├─ dijkstrajs@1.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/tcort/dijkstrajs
+│  ├─ path: /home/ubuntu/shrok/node_modules/dijkstrajs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/dijkstrajs/LICENSE.md
+├─ discord-api-types@0.38.42
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/discordjs/discord-api-types
+│  ├─ publisher: Vlad Frangu
+│  ├─ email: me@vladfrangu.dev
+│  ├─ path: /home/ubuntu/shrok/node_modules/discord-api-types
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/discord-api-types/LICENSE
+├─ discord.js@14.26.3
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/discordjs/discord.js
+│  ├─ path: /home/ubuntu/shrok/node_modules/discord.js
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/discord.js/LICENSE
+├─ dotenv@16.6.1
+│  ├─ licenses: BSD-2-Clause
+│  ├─ repository: https://github.com/motdotla/dotenv
+│  ├─ path: /home/ubuntu/shrok/node_modules/tavily-mcp/node_modules/dotenv
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/tavily-mcp/node_modules/dotenv/LICENSE
+├─ dotenv@17.2.3
+│  ├─ licenses: BSD-2-Clause
+│  ├─ repository: https://github.com/motdotla/dotenv
+│  ├─ path: /home/ubuntu/shrok/node_modules/dotenv
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/dotenv/LICENSE
+├─ dunder-proto@1.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/es-shims/dunder-proto
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/dunder-proto
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/dunder-proto/LICENSE
+├─ ecdsa-sig-formatter@1.0.11
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/Brightspace/node-ecdsa-sig-formatter
+│  ├─ publisher: D2L Corporation
+│  ├─ path: /home/ubuntu/shrok/node_modules/ecdsa-sig-formatter
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ecdsa-sig-formatter/LICENSE
+├─ ee-first@1.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jonathanong/ee-first
+│  ├─ publisher: Jonathan Ong
+│  ├─ email: me@jongleberry.com
+│  ├─ url: http://jongleberry.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/ee-first
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ee-first/LICENSE
+├─ emoji-regex@8.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/mathiasbynens/emoji-regex
+│  ├─ publisher: Mathias Bynens
+│  ├─ url: https://mathiasbynens.be/
+│  ├─ path: /home/ubuntu/shrok/node_modules/emoji-regex
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/emoji-regex/LICENSE-MIT.txt
+├─ encodeurl@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/encodeurl
+│  ├─ path: /home/ubuntu/shrok/node_modules/encodeurl
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/encodeurl/LICENSE
+├─ es-define-property@1.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/es-define-property
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/es-define-property
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/es-define-property/LICENSE
+├─ es-errors@1.3.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/es-errors
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/es-errors
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/es-errors/LICENSE
+├─ es-object-atoms@1.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/es-object-atoms
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/es-object-atoms
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/es-object-atoms/LICENSE
+├─ es-set-tostringtag@2.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/es-shims/es-set-tostringtag
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/es-set-tostringtag
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/es-set-tostringtag/LICENSE
+├─ escalade@3.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lukeed/escalade
+│  ├─ publisher: Luke Edwards
+│  ├─ email: luke.edwards05@gmail.com
+│  ├─ url: https://lukeed.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/escalade
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/escalade/license
+├─ escape-html@1.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/component/escape-html
+│  ├─ path: /home/ubuntu/shrok/node_modules/escape-html
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/escape-html/LICENSE
+├─ esprima@4.0.1
+│  ├─ licenses: BSD-2-Clause
+│  ├─ repository: https://github.com/jquery/esprima
+│  ├─ publisher: Ariya Hidayat
+│  ├─ email: ariya.hidayat@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/esprima
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/esprima/LICENSE.BSD
+├─ etag@1.8.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/etag
+│  ├─ path: /home/ubuntu/shrok/node_modules/etag
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/etag/LICENSE
+├─ event-target-shim@5.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/mysticatea/event-target-shim
+│  ├─ publisher: Toru Nagashima
+│  ├─ path: /home/ubuntu/shrok/node_modules/event-target-shim
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/event-target-shim/LICENSE
+├─ eventemitter3@4.0.7
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/primus/eventemitter3
+│  ├─ publisher: Arnout Kazemier
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-queue/node_modules/eventemitter3
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-queue/node_modules/eventemitter3/LICENSE
+├─ eventemitter3@5.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/primus/eventemitter3
+│  ├─ publisher: Arnout Kazemier
+│  ├─ path: /home/ubuntu/shrok/node_modules/eventemitter3
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/eventemitter3/LICENSE
+├─ eventsource-parser@3.0.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/rexxars/eventsource-parser
+│  ├─ publisher: Espen Hovlandsdal
+│  ├─ email: espen@hovlandsdal.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/eventsource-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/eventsource-parser/LICENSE
+├─ eventsource@3.0.7
+│  ├─ licenses: MIT
+│  ├─ repository: git://git@github.com/EventSource/eventsource
+│  ├─ publisher: Espen Hovlandsdal
+│  ├─ email: espen@hovlandsdal.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/eventsource
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/eventsource/LICENSE
+├─ express-rate-limit@8.3.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/express-rate-limit/express-rate-limit
+│  ├─ publisher: Nathan Friedly
+│  ├─ url: http://nfriedly.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/express-rate-limit
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/express-rate-limit/license.md
+├─ express@4.22.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/express
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ path: /home/ubuntu/shrok/node_modules/express
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/express/LICENSE
+├─ express@5.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/express
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/express
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/express/LICENSE
+├─ extend-shallow@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jonschlinkert/extend-shallow
+│  ├─ publisher: Jon Schlinkert
+│  ├─ url: https://github.com/jonschlinkert
+│  ├─ path: /home/ubuntu/shrok/node_modules/extend-shallow
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/extend-shallow/LICENSE
+├─ fast-deep-equal@3.1.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/epoberezkin/fast-deep-equal
+│  ├─ publisher: Evgeny Poberezkin
+│  ├─ path: /home/ubuntu/shrok/node_modules/fast-deep-equal
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fast-deep-equal/LICENSE
+├─ fast-string-truncated-width@3.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/fabiospampinato/fast-string-truncated-width
+│  ├─ path: /home/ubuntu/shrok/node_modules/fast-string-truncated-width
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fast-string-truncated-width/license
+├─ fast-string-width@3.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/fabiospampinato/fast-string-width
+│  ├─ path: /home/ubuntu/shrok/node_modules/fast-string-width
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fast-string-width/license
+├─ fast-uri@3.1.0
+│  ├─ licenses: BSD-3-Clause
+│  ├─ repository: https://github.com/fastify/fast-uri
+│  ├─ publisher: Vincent Le Goff
+│  ├─ email: vince.legoff@gmail.com
+│  ├─ url: https://github.com/zekth
+│  ├─ path: /home/ubuntu/shrok/node_modules/fast-uri
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fast-uri/LICENSE
+├─ fast-wrap-ansi@0.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/43081j/fast-wrap-ansi
+│  ├─ publisher: James Garbutt
+│  ├─ url: https://github.com/43081j
+│  ├─ path: /home/ubuntu/shrok/node_modules/fast-wrap-ansi
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fast-wrap-ansi/LICENSE
+├─ finalhandler@1.3.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/finalhandler
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/finalhandler
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/finalhandler/LICENSE
+├─ finalhandler@2.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/finalhandler
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/finalhandler
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/finalhandler/LICENSE
+├─ find-up@4.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/find-up
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/find-up
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/find-up/license
+├─ follow-redirects@1.16.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/follow-redirects/follow-redirects
+│  ├─ publisher: Ruben Verborgh
+│  ├─ email: ruben@verborgh.org
+│  ├─ url: https://ruben.verborgh.org/
+│  ├─ path: /home/ubuntu/shrok/node_modules/follow-redirects
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/follow-redirects/LICENSE
+├─ form-data-encoder@1.7.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/octet-stream/form-data-encoder
+│  ├─ publisher: Nick K.
+│  ├─ path: /home/ubuntu/shrok/node_modules/form-data-encoder
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/form-data-encoder/license
+├─ form-data@4.0.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/form-data/form-data
+│  ├─ publisher: Felix Geisendörfer
+│  ├─ email: felix@debuggable.com
+│  ├─ url: http://debuggable.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/form-data
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/form-data/License
+├─ formdata-node@4.4.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/octet-stream/form-data
+│  ├─ publisher: Nick K.
+│  ├─ email: io@octetstream.me
+│  ├─ path: /home/ubuntu/shrok/node_modules/formdata-node
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/formdata-node/license
+├─ forwarded@0.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/forwarded
+│  ├─ path: /home/ubuntu/shrok/node_modules/forwarded
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/forwarded/LICENSE
+├─ fresh@0.5.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/fresh
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ url: http://tjholowaychuk.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/fresh
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fresh/LICENSE
+├─ fresh@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/fresh
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ url: http://tjholowaychuk.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/fresh
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/fresh/LICENSE
+├─ fs-extra@11.3.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jprichardson/node-fs-extra
+│  ├─ publisher: JP Richardson
+│  ├─ email: jprichardson@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/fs-extra
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fs-extra/LICENSE
+├─ fs-minipass@2.1.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/npm/fs-minipass
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/fs-minipass
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fs-minipass/LICENSE
+├─ function-bind@1.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/Raynos/function-bind
+│  ├─ publisher: Raynos
+│  ├─ email: raynos2@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/function-bind
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/function-bind/LICENSE
+├─ gauge@4.0.4
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/npm/gauge
+│  ├─ publisher: GitHub Inc.
+│  ├─ path: /home/ubuntu/shrok/node_modules/gauge
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/gauge/LICENSE.md
+├─ get-caller-file@2.0.5
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/stefanpenner/get-caller-file
+│  ├─ publisher: Stefan Penner
+│  ├─ path: /home/ubuntu/shrok/node_modules/get-caller-file
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/get-caller-file/LICENSE.md
+├─ get-intrinsic@1.3.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/get-intrinsic
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/get-intrinsic
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/get-intrinsic/LICENSE
+├─ get-proto@1.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/get-proto
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/get-proto
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/get-proto/LICENSE
+├─ gopd@1.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/gopd
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/gopd
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/gopd/LICENSE
+├─ graceful-fs@4.2.11
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/node-graceful-fs
+│  ├─ path: /home/ubuntu/shrok/node_modules/graceful-fs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/graceful-fs/LICENSE
+├─ grammy@1.41.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/grammyjs/grammY
+│  ├─ publisher: KnorpelSenf
+│  ├─ path: /home/ubuntu/shrok/node_modules/grammy
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/grammy/LICENSE
+├─ gray-matter@4.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jonschlinkert/gray-matter
+│  ├─ publisher: Jon Schlinkert
+│  ├─ url: https://github.com/jonschlinkert
+│  ├─ path: /home/ubuntu/shrok/node_modules/gray-matter
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/gray-matter/LICENSE
+├─ has-symbols@1.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/inspect-js/has-symbols
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ url: http://ljharb.codes
+│  ├─ path: /home/ubuntu/shrok/node_modules/has-symbols
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/has-symbols/LICENSE
+├─ has-tostringtag@1.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/inspect-js/has-tostringtag
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ url: http://ljharb.codes
+│  ├─ path: /home/ubuntu/shrok/node_modules/has-tostringtag
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/has-tostringtag/LICENSE
+├─ has-unicode@2.0.1
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/iarna/has-unicode
+│  ├─ publisher: Rebecca Turner
+│  ├─ email: me@re-becca.org
+│  ├─ path: /home/ubuntu/shrok/node_modules/has-unicode
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/has-unicode/LICENSE
+├─ hasown@2.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/inspect-js/hasOwn
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/hasown
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/hasown/LICENSE
+├─ hono@4.12.14
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/honojs/hono
+│  ├─ publisher: Yusuke Wada
+│  ├─ email: yusuke@kamawada.com
+│  ├─ url: https://github.com/yusukebe
+│  ├─ path: /home/ubuntu/shrok/node_modules/hono
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/hono/LICENSE
+├─ http-errors@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/http-errors
+│  ├─ publisher: Jonathan Ong
+│  ├─ email: me@jongleberry.com
+│  ├─ url: http://jongleberry.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/http-errors
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/http-errors/LICENSE
+├─ humanize-ms@1.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/node-modules/humanize-ms
+│  ├─ publisher: dead-horse
+│  ├─ email: dead_horse@qq.com
+│  ├─ url: http://deadhorse.me
+│  ├─ path: /home/ubuntu/shrok/node_modules/humanize-ms
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/humanize-ms/LICENSE
+├─ iconv-lite@0.4.24
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ashtuchkin/iconv-lite
+│  ├─ publisher: Alexander Shtuchkin
+│  ├─ email: ashtuchkin@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/iconv-lite
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/iconv-lite/LICENSE
+├─ iconv-lite@0.7.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/iconv-lite
+│  ├─ publisher: Alexander Shtuchkin
+│  ├─ email: ashtuchkin@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/iconv-lite
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/iconv-lite/LICENSE
+├─ infinitecontextwindow@0.1.0
+│  ├─ licenses: MIT*
+│  ├─ path: /home/ubuntu/shrok/node_modules/infinitecontextwindow
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/infinitecontextwindow/LICENSE
+├─ inherits@2.0.4
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/inherits
+│  ├─ path: /home/ubuntu/shrok/node_modules/inherits
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/inherits/LICENSE
+├─ ini@1.3.8
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/ini
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/ini
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ini/LICENSE
+├─ ip-address@10.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/beaugunderson/ip-address
+│  ├─ publisher: Beau Gunderson
+│  ├─ email: beau@beaugunderson.com
+│  ├─ url: https://beaugunderson.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/ip-address
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ip-address/LICENSE
+├─ ipaddr.js@1.9.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/whitequark/ipaddr.js
+│  ├─ publisher: whitequark
+│  ├─ email: whitequark@whitequark.org
+│  ├─ path: /home/ubuntu/shrok/node_modules/ipaddr.js
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ipaddr.js/LICENSE
+├─ is-electron@2.2.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/cheton/is-electron
+│  ├─ publisher: Cheton Wu
+│  ├─ email: cheton@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/is-electron
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/is-electron/LICENSE
+├─ is-extendable@0.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jonschlinkert/is-extendable
+│  ├─ publisher: Jon Schlinkert
+│  ├─ url: https://github.com/jonschlinkert
+│  ├─ path: /home/ubuntu/shrok/node_modules/is-extendable
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/is-extendable/LICENSE
+├─ is-fullwidth-code-point@3.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/is-fullwidth-code-point
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/is-fullwidth-code-point
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/is-fullwidth-code-point/license
+├─ is-promise@4.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/then/is-promise
+│  ├─ publisher: ForbesLindesay
+│  ├─ path: /home/ubuntu/shrok/node_modules/is-promise
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/is-promise/LICENSE
+├─ is-stream@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/is-stream
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: https://sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/is-stream
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/is-stream/license
+├─ isexe@2.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/isexe
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/isexe
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/isexe/LICENSE
+├─ jose@6.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/panva/jose
+│  ├─ publisher: Filip Skokan
+│  ├─ email: panva.ip@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/jose
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/jose/LICENSE.md
+├─ js-yaml@3.14.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodeca/js-yaml
+│  ├─ publisher: Vladimir Zapparov
+│  ├─ email: dervus.grim@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/gray-matter/node_modules/js-yaml
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/gray-matter/node_modules/js-yaml/LICENSE
+├─ js-yaml@4.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodeca/js-yaml
+│  ├─ publisher: Vladimir Zapparov
+│  ├─ email: dervus.grim@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/js-yaml
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/js-yaml/LICENSE
+├─ json-schema-to-ts@3.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ThomasAribart/json-schema-to-ts
+│  ├─ publisher: Thomas Aribart
+│  ├─ path: /home/ubuntu/shrok/node_modules/json-schema-to-ts
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/json-schema-to-ts/LICENSE
+├─ json-schema-traverse@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/epoberezkin/json-schema-traverse
+│  ├─ publisher: Evgeny Poberezkin
+│  ├─ path: /home/ubuntu/shrok/node_modules/json-schema-traverse
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/json-schema-traverse/LICENSE
+├─ json-schema-typed@8.0.2
+│  ├─ licenses: BSD-2-Clause
+│  ├─ repository: https://github.com/RemyRylan/json-schema-typed
+│  ├─ publisher: Remy Rylan
+│  ├─ url: https://github.com/RemyRylan
+│  ├─ path: /home/ubuntu/shrok/node_modules/json-schema-typed
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/json-schema-typed/LICENSE.md
+├─ jsonfile@6.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jprichardson/node-jsonfile
+│  ├─ publisher: JP Richardson
+│  ├─ email: jprichardson@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/jsonfile
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/jsonfile/LICENSE
+├─ jsonwebtoken@9.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/auth0/node-jsonwebtoken
+│  ├─ publisher: auth0
+│  ├─ path: /home/ubuntu/shrok/node_modules/jsonwebtoken
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/jsonwebtoken/LICENSE
+├─ jwa@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/brianloveswords/node-jwa
+│  ├─ publisher: Brian J. Brennan
+│  ├─ email: brianloveswords@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/jwa
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/jwa/LICENSE
+├─ jws@4.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/brianloveswords/node-jws
+│  ├─ publisher: Brian J Brennan
+│  ├─ path: /home/ubuntu/shrok/node_modules/jws
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/jws/LICENSE
+├─ kind-of@6.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jonschlinkert/kind-of
+│  ├─ publisher: Jon Schlinkert
+│  ├─ url: https://github.com/jonschlinkert
+│  ├─ path: /home/ubuntu/shrok/node_modules/kind-of
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/kind-of/LICENSE
+├─ kuzu@0.11.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/kuzudb/kuzu
+│  ├─ publisher: Kùzu Team
+│  ├─ path: /home/ubuntu/shrok/node_modules/kuzu
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/kuzu/LICENSE
+├─ locate-path@5.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/locate-path
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/locate-path
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/locate-path/license
+├─ lodash.includes@4.3.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.includes
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.includes/LICENSE
+├─ lodash.isboolean@3.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.isboolean
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.isboolean/LICENSE
+├─ lodash.isinteger@4.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.isinteger
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.isinteger/LICENSE
+├─ lodash.isnumber@3.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.isnumber
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.isnumber/LICENSE
+├─ lodash.isplainobject@4.0.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.isplainobject
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.isplainobject/LICENSE
+├─ lodash.isstring@4.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.isstring
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.isstring/LICENSE
+├─ lodash.once@4.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.once
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.once/LICENSE
+├─ lodash.snakecase@4.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ url: http://allyoucanleet.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash.snakecase
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash.snakecase/LICENSE
+├─ lodash@4.18.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lodash/lodash
+│  ├─ publisher: John-David Dalton
+│  ├─ email: john.david.dalton@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/lodash
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/lodash/LICENSE
+├─ luxon@3.7.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/moment/luxon
+│  ├─ publisher: Isaac Cambron
+│  ├─ path: /home/ubuntu/shrok/node_modules/luxon
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/luxon/LICENSE.md
+├─ magic-bytes.js@1.13.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/LarsKoelpin/magic-bytes
+│  ├─ publisher: Lars Kölpin
+│  ├─ path: /home/ubuntu/shrok/node_modules/magic-bytes.js
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/magic-bytes.js/LICENSE
+├─ math-intrinsics@1.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/es-shims/math-intrinsics
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/math-intrinsics
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/math-intrinsics/LICENSE
+├─ media-typer@0.3.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/media-typer
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/media-typer
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/media-typer/LICENSE
+├─ media-typer@1.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/media-typer
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/media-typer
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/media-typer/LICENSE
+├─ memory-stream@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/doanythingfordethklok/memory-stream
+│  ├─ publisher: Tommy Messbauer
+│  ├─ path: /home/ubuntu/shrok/node_modules/memory-stream
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/memory-stream/LICENSE
+├─ merge-descriptors@1.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/merge-descriptors
+│  ├─ publisher: Jonathan Ong
+│  ├─ email: me@jongleberry.com
+│  ├─ url: http://jongleberry.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/merge-descriptors
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/merge-descriptors/LICENSE
+├─ merge-descriptors@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/merge-descriptors
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/merge-descriptors
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/merge-descriptors/license
+├─ methods@1.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/methods
+│  ├─ path: /home/ubuntu/shrok/node_modules/methods
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/methods/LICENSE
+├─ mime-db@1.52.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/mime-db
+│  ├─ path: /home/ubuntu/shrok/node_modules/mime-db
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/mime-db/LICENSE
+├─ mime-db@1.54.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/mime-db
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/mime-db
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/mime-db/LICENSE
+├─ mime-types@2.1.35
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/mime-types
+│  ├─ path: /home/ubuntu/shrok/node_modules/mime-types
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/mime-types/LICENSE
+├─ mime-types@3.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/mime-types
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/mime-types
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/mime-types/LICENSE
+├─ mime@1.6.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/broofa/node-mime
+│  ├─ publisher: Robert Kieffer
+│  ├─ email: robert@broofa.com
+│  ├─ url: http://github.com/broofa
+│  ├─ path: /home/ubuntu/shrok/node_modules/mime
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/mime/LICENSE
+├─ minimist@1.2.8
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/minimistjs/minimist
+│  ├─ publisher: James Halliday
+│  ├─ email: mail@substack.net
+│  ├─ url: http://substack.net
+│  ├─ path: /home/ubuntu/shrok/node_modules/minimist
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/minimist/LICENSE
+├─ minipass@3.3.6
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/minipass
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/fs-minipass/node_modules/minipass
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/fs-minipass/node_modules/minipass/LICENSE
+├─ minipass@5.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/minipass
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/minipass
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/minipass/LICENSE
+├─ minizlib@2.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/isaacs/minizlib
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/minizlib
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/minizlib/LICENSE
+├─ mkdirp@1.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/isaacs/node-mkdirp
+│  ├─ path: /home/ubuntu/shrok/node_modules/mkdirp
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/mkdirp/LICENSE
+├─ ms@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/zeit/ms
+│  ├─ path: /home/ubuntu/shrok/node_modules/ms
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ms/license.md
+├─ ms@2.1.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/vercel/ms
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/ms
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/ms/license.md
+├─ mute-stream@3.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/npm/mute-stream
+│  ├─ publisher: GitHub Inc.
+│  ├─ path: /home/ubuntu/shrok/node_modules/mute-stream
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/mute-stream/LICENSE
+├─ negotiator@0.6.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/negotiator
+│  ├─ path: /home/ubuntu/shrok/node_modules/negotiator
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/negotiator/LICENSE
+├─ negotiator@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/negotiator
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/negotiator
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/negotiator/LICENSE
+├─ node-addon-api@6.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodejs/node-addon-api
+│  ├─ path: /home/ubuntu/shrok/node_modules/node-addon-api
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/node-addon-api/LICENSE.md
+├─ node-api-headers@1.8.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodejs/node-api-headers
+│  ├─ path: /home/ubuntu/shrok/node_modules/node-api-headers
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/node-api-headers/LICENSE
+├─ node-domexception@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jimmywarting/node-domexception
+│  ├─ publisher: Jimmy Wärting
+│  ├─ path: /home/ubuntu/shrok/node_modules/node-domexception
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/node-domexception/LICENSE
+├─ node-fetch@2.7.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/bitinn/node-fetch
+│  ├─ publisher: David Frank
+│  ├─ path: /home/ubuntu/shrok/node_modules/node-fetch
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/node-fetch/LICENSE.md
+├─ npmlog@6.0.2
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/npm/npmlog
+│  ├─ publisher: GitHub Inc.
+│  ├─ path: /home/ubuntu/shrok/node_modules/npmlog
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/npmlog/LICENSE.md
+├─ object-assign@4.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/object-assign
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/object-assign
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/object-assign/license
+├─ object-inspect@1.13.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/inspect-js/object-inspect
+│  ├─ publisher: James Halliday
+│  ├─ email: mail@substack.net
+│  ├─ url: http://substack.net
+│  ├─ path: /home/ubuntu/shrok/node_modules/object-inspect
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/object-inspect/LICENSE
+├─ on-finished@2.4.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/on-finished
+│  ├─ path: /home/ubuntu/shrok/node_modules/on-finished
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/on-finished/LICENSE
+├─ once@1.4.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/once
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/once
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/once/LICENSE
+├─ openai@4.104.0
+│  ├─ licenses: Apache-2.0
+│  ├─ repository: https://github.com/openai/openai-node
+│  ├─ publisher: OpenAI
+│  ├─ email: support@openai.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/openai
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/openai/LICENSE
+├─ p-finally@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/p-finally
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-finally
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-finally/license
+├─ p-limit@2.3.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/p-limit
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-limit
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-limit/license
+├─ p-locate@4.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/p-locate
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-locate
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-locate/license
+├─ p-queue@6.6.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/p-queue
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-queue
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-queue/license
+├─ p-retry@4.6.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/p-retry
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-retry
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-retry/license
+├─ p-timeout@3.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/p-timeout
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-timeout
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-timeout/license
+├─ p-try@2.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/p-try
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/p-try
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/p-try/license
+├─ parseurl@1.3.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/parseurl
+│  ├─ path: /home/ubuntu/shrok/node_modules/parseurl
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/parseurl/LICENSE
+├─ path-exists@4.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/path-exists
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/path-exists
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/path-exists/license
+├─ path-key@3.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/path-key
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/path-key
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/path-key/license
+├─ path-to-regexp@0.1.13
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/path-to-regexp
+│  ├─ path: /home/ubuntu/shrok/node_modules/path-to-regexp
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/path-to-regexp/LICENSE
+├─ path-to-regexp@8.4.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/path-to-regexp
+│  ├─ path: /home/ubuntu/shrok/node_modules/router/node_modules/path-to-regexp
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/router/node_modules/path-to-regexp/LICENSE
+├─ pkce-challenge@5.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/crouchcd/pkce-challenge
+│  ├─ publisher: crouchcd
+│  ├─ path: /home/ubuntu/shrok/node_modules/pkce-challenge
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/pkce-challenge/LICENSE
+├─ pngjs@5.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/lukeapage/pngjs
+│  ├─ path: /home/ubuntu/shrok/node_modules/pngjs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/pngjs/LICENSE
+├─ proxy-addr@2.0.7
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/proxy-addr
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/proxy-addr
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/proxy-addr/LICENSE
+├─ proxy-from-env@2.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/Rob--W/proxy-from-env
+│  ├─ publisher: Rob Wu
+│  ├─ email: rob@robwu.nl
+│  ├─ url: https://robwu.nl/
+│  ├─ path: /home/ubuntu/shrok/node_modules/proxy-from-env
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/proxy-from-env/LICENSE
+├─ qrcode@1.5.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/soldair/node-qrcode
+│  ├─ publisher: Ryan Day
+│  ├─ email: soldair@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/qrcode
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/qrcode/license
+├─ qs@6.14.2
+│  ├─ licenses: BSD-3-Clause
+│  ├─ repository: https://github.com/ljharb/qs
+│  ├─ path: /home/ubuntu/shrok/node_modules/qs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/qs/LICENSE.md
+├─ range-parser@1.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/range-parser
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ url: http://tjholowaychuk.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/range-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/range-parser/LICENSE
+├─ raw-body@2.5.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/stream-utils/raw-body
+│  ├─ publisher: Jonathan Ong
+│  ├─ email: me@jongleberry.com
+│  ├─ url: http://jongleberry.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/raw-body
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/raw-body/LICENSE
+├─ raw-body@3.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/stream-utils/raw-body
+│  ├─ publisher: Jonathan Ong
+│  ├─ email: me@jongleberry.com
+│  ├─ url: http://jongleberry.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/raw-body
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/raw-body/LICENSE
+├─ rc@1.2.8
+│  ├─ licenses: (BSD-2-Clause OR MIT OR Apache-2.0)
+│  ├─ repository: https://github.com/dominictarr/rc
+│  ├─ publisher: Dominic Tarr
+│  ├─ email: dominic.tarr@gmail.com
+│  ├─ url: dominictarr.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/rc
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/rc/LICENSE.APACHE2
+├─ readable-stream@3.6.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodejs/readable-stream
+│  ├─ path: /home/ubuntu/shrok/node_modules/readable-stream
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/readable-stream/LICENSE
+├─ require-directory@2.1.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/troygoode/node-require-directory
+│  ├─ publisher: Troy Goode
+│  ├─ email: troygoode@gmail.com
+│  ├─ url: http://github.com/troygoode/
+│  ├─ path: /home/ubuntu/shrok/node_modules/require-directory
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/require-directory/LICENSE
+├─ require-from-string@2.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/floatdrop/require-from-string
+│  ├─ publisher: Vsevolod Strukchinsky
+│  ├─ email: floatdrop@gmail.com
+│  ├─ url: github.com/floatdrop
+│  ├─ path: /home/ubuntu/shrok/node_modules/require-from-string
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/require-from-string/license
+├─ require-main-filename@2.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/require-main-filename
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/require-main-filename
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/require-main-filename/LICENSE.txt
+├─ retry@0.13.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/tim-kos/node-retry
+│  ├─ publisher: Tim Koschützki
+│  ├─ email: tim@debuggable.com
+│  ├─ url: http://debuggable.com/
+│  ├─ path: /home/ubuntu/shrok/node_modules/retry
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/retry/License
+├─ router@2.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/router
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/router
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/router/LICENSE
+├─ safe-buffer@5.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/feross/safe-buffer
+│  ├─ publisher: Feross Aboukhadijeh
+│  ├─ email: feross@feross.org
+│  ├─ url: https://feross.org
+│  ├─ path: /home/ubuntu/shrok/node_modules/safe-buffer
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/safe-buffer/LICENSE
+├─ safer-buffer@2.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ChALkeR/safer-buffer
+│  ├─ publisher: Nikita Skovoroda
+│  ├─ email: chalkerx@gmail.com
+│  ├─ url: https://github.com/ChALkeR
+│  ├─ path: /home/ubuntu/shrok/node_modules/safer-buffer
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/safer-buffer/LICENSE
+├─ section-matter@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jonschlinkert/section-matter
+│  ├─ publisher: Jon Schlinkert
+│  ├─ url: https://github.com/jonschlinkert
+│  ├─ path: /home/ubuntu/shrok/node_modules/section-matter
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/section-matter/LICENSE
+├─ semver@7.7.4
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/npm/node-semver
+│  ├─ publisher: GitHub Inc.
+│  ├─ path: /home/ubuntu/shrok/node_modules/semver
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/semver/LICENSE
+├─ send@0.19.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/send
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ path: /home/ubuntu/shrok/node_modules/send
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/send/LICENSE
+├─ send@1.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/pillarjs/send
+│  ├─ publisher: TJ Holowaychuk
+│  ├─ email: tj@vision-media.ca
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/send
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/send/LICENSE
+├─ serve-static@1.16.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/serve-static
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/serve-static
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/serve-static/LICENSE
+├─ serve-static@2.2.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/expressjs/serve-static
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/serve-static
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/serve-static/LICENSE
+├─ set-blocking@2.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/set-blocking
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/set-blocking
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/set-blocking/LICENSE.txt
+├─ setprototypeof@1.2.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/wesleytodd/setprototypeof
+│  ├─ publisher: Wes Todd
+│  ├─ path: /home/ubuntu/shrok/node_modules/setprototypeof
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/setprototypeof/LICENSE
+├─ shebang-command@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/kevva/shebang-command
+│  ├─ publisher: Kevin Mårtensson
+│  ├─ email: kevinmartensson@gmail.com
+│  ├─ url: github.com/kevva
+│  ├─ path: /home/ubuntu/shrok/node_modules/shebang-command
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/shebang-command/license
+├─ shebang-regex@3.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/shebang-regex
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/shebang-regex
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/shebang-regex/license
+├─ side-channel-list@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/side-channel-list
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/side-channel-list
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/side-channel-list/LICENSE
+├─ side-channel-map@1.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/side-channel-map
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/side-channel-map
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/side-channel-map/LICENSE
+├─ side-channel-weakmap@1.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/side-channel-weakmap
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/side-channel-weakmap
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/side-channel-weakmap/LICENSE
+├─ side-channel@1.1.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ljharb/side-channel
+│  ├─ publisher: Jordan Harband
+│  ├─ email: ljharb@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/side-channel
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/side-channel/LICENSE
+├─ signal-exit@3.0.7
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/tapjs/signal-exit
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/gauge/node_modules/signal-exit
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/gauge/node_modules/signal-exit/LICENSE.txt
+├─ signal-exit@4.1.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/tapjs/signal-exit
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/signal-exit
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/signal-exit/LICENSE.txt
+├─ sisteransi@1.0.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/terkelg/sisteransi
+│  ├─ publisher: Terkel Gjervig
+│  ├─ email: terkel@terkel.com
+│  ├─ url: https://terkel.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/sisteransi
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/sisteransi/license
+├─ sprintf-js@1.0.3
+│  ├─ licenses: BSD-3-Clause
+│  ├─ repository: https://github.com/alexei/sprintf.js
+│  ├─ publisher: Alexandru Marasteanu
+│  ├─ email: hello@alexei.ro
+│  ├─ url: http://alexei.ro/
+│  ├─ path: /home/ubuntu/shrok/node_modules/sprintf-js
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/sprintf-js/LICENSE
+├─ statuses@2.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/statuses
+│  ├─ path: /home/ubuntu/shrok/node_modules/statuses
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/statuses/LICENSE
+├─ string-width@4.2.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/string-width
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/string-width
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/string-width/license
+├─ string_decoder@1.3.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodejs/string_decoder
+│  ├─ path: /home/ubuntu/shrok/node_modules/string_decoder
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/string_decoder/LICENSE
+├─ strip-ansi@6.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/chalk/strip-ansi
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/strip-ansi
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/strip-ansi/license
+├─ strip-bom-string@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jonschlinkert/strip-bom-string
+│  ├─ publisher: Jon Schlinkert
+│  ├─ url: https://github.com/jonschlinkert
+│  ├─ path: /home/ubuntu/shrok/node_modules/strip-bom-string
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/strip-bom-string/LICENSE
+├─ strip-json-comments@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/sindresorhus/strip-json-comments
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/strip-json-comments
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/strip-json-comments/license
+├─ tar@6.2.1
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/node-tar
+│  ├─ publisher: GitHub Inc.
+│  ├─ path: /home/ubuntu/shrok/node_modules/tar
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/tar/LICENSE
+├─ tavily-mcp@0.2.18
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/tavily-ai/tavily-mcp
+│  ├─ publisher: Tavily
+│  ├─ path: /home/ubuntu/shrok/node_modules/tavily-mcp
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/tavily-mcp/LICENCE
+├─ tiktoken@1.0.22
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/dqbd/tiktoken
+│  ├─ path: /home/ubuntu/shrok/node_modules/tiktoken
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/tiktoken/README.md
+├─ toidentifier@1.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/component/toidentifier
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/toidentifier
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/toidentifier/LICENSE
+├─ tr46@0.0.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/Sebmaster/tr46.js
+│  ├─ publisher: Sebastian Mayr
+│  ├─ email: npm@smayr.name
+│  └─ path: /home/ubuntu/shrok/node_modules/tr46
+├─ ts-algebra@2.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/ThomasAribart/ts-algebra
+│  ├─ publisher: Thomas Aribart
+│  ├─ path: /home/ubuntu/shrok/node_modules/ts-algebra
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ts-algebra/LICENSE
+├─ ts-mixer@6.0.4
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/tannerntannern/ts-mixer
+│  ├─ publisher: Tanner Nielsen
+│  ├─ path: /home/ubuntu/shrok/node_modules/ts-mixer
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ts-mixer/LICENSE
+├─ tslib@2.8.1
+│  ├─ licenses: 0BSD
+│  ├─ repository: https://github.com/Microsoft/tslib
+│  ├─ publisher: Microsoft Corp.
+│  ├─ path: /home/ubuntu/shrok/node_modules/tslib
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/tslib/LICENSE.txt
+├─ tsscmp@1.0.6
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/suryagh/tsscmp
+│  ├─ publisher: suryagh
+│  ├─ path: /home/ubuntu/shrok/node_modules/tsscmp
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/tsscmp/LICENSE
+├─ type-is@1.6.18
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/type-is
+│  ├─ path: /home/ubuntu/shrok/node_modules/type-is
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/type-is/LICENSE
+├─ type-is@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/type-is
+│  ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/type-is
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/type-is/LICENSE
+├─ undici-types@5.26.5
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodejs/undici
+│  ├─ path: /home/ubuntu/shrok/node_modules/openai/node_modules/undici-types
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/openai/node_modules/undici-types/README.md
+├─ undici-types@6.21.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodejs/undici
+│  ├─ path: /home/ubuntu/shrok/node_modules/undici-types
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/undici-types/LICENSE
+├─ undici@6.24.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/nodejs/undici
+│  ├─ path: /home/ubuntu/shrok/node_modules/undici
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/undici/LICENSE
+├─ universalify@2.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/RyanZim/universalify
+│  ├─ publisher: Ryan Zimmerman
+│  ├─ email: opensrc@ryanzim.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/universalify
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/universalify/LICENSE
+├─ unpipe@1.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/stream-utils/unpipe
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/unpipe
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/unpipe/LICENSE
+├─ url-join@4.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jfromaniello/url-join
+│  ├─ publisher: José F. Romaniello
+│  ├─ email: jfromaniello@gmail.com
+│  ├─ url: http://joseoncode.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/url-join
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/url-join/LICENSE
+├─ util-deprecate@1.0.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/TooTallNate/util-deprecate
+│  ├─ publisher: Nathan Rajlich
+│  ├─ email: nathan@tootallnate.net
+│  ├─ url: http://n8.io/
+│  ├─ path: /home/ubuntu/shrok/node_modules/util-deprecate
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/util-deprecate/LICENSE
+├─ utils-merge@1.0.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jaredhanson/utils-merge
+│  ├─ publisher: Jared Hanson
+│  ├─ email: jaredhanson@gmail.com
+│  ├─ url: http://www.jaredhanson.net/
+│  ├─ path: /home/ubuntu/shrok/node_modules/utils-merge
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/utils-merge/LICENSE
+├─ vary@1.1.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jshttp/vary
+│  ├─ publisher: Douglas Christopher Wilson
+│  ├─ email: doug@somethingdoug.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/vary
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/vary/LICENSE
+├─ web-streams-polyfill@4.0.0-beta.3
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/MattiasBuelens/web-streams-polyfill
+│  ├─ publisher: Mattias Buelens
+│  ├─ email: mattias@buelens.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/web-streams-polyfill
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/web-streams-polyfill/LICENSE
+├─ webidl-conversions@3.0.1
+│  ├─ licenses: BSD-2-Clause
+│  ├─ repository: https://github.com/jsdom/webidl-conversions
+│  ├─ publisher: Domenic Denicola
+│  ├─ email: d@domenic.me
+│  ├─ url: https://domenic.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/webidl-conversions
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/webidl-conversions/LICENSE.md
+├─ whatwg-url@5.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/jsdom/whatwg-url
+│  ├─ publisher: Sebastian Mayr
+│  ├─ email: github@smayr.name
+│  ├─ path: /home/ubuntu/shrok/node_modules/whatwg-url
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/whatwg-url/LICENSE.txt
+├─ which-module@2.0.1
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/nexdrew/which-module
+│  ├─ publisher: nexdrew
+│  ├─ path: /home/ubuntu/shrok/node_modules/which-module
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/which-module/LICENSE
+├─ which@2.0.2
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/node-which
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me
+│  ├─ path: /home/ubuntu/shrok/node_modules/which
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/which/LICENSE
+├─ wide-align@1.1.5
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/iarna/wide-align
+│  ├─ publisher: Rebecca Turner
+│  ├─ email: me@re-becca.org
+│  ├─ url: http://re-becca.org/
+│  ├─ path: /home/ubuntu/shrok/node_modules/wide-align
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/wide-align/LICENSE
+├─ wrap-ansi@6.2.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/chalk/wrap-ansi
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/qrcode/node_modules/wrap-ansi
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/qrcode/node_modules/wrap-ansi/license
+├─ wrap-ansi@7.0.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/chalk/wrap-ansi
+│  ├─ publisher: Sindre Sorhus
+│  ├─ email: sindresorhus@gmail.com
+│  ├─ url: https://sindresorhus.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/wrap-ansi
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/wrap-ansi/license
+├─ wrappy@1.0.2
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/npm/wrappy
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/wrappy
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/wrappy/LICENSE
+├─ ws@8.19.0
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/websockets/ws
+│  ├─ publisher: Einar Otto Stangvik
+│  ├─ email: einaros@gmail.com
+│  ├─ url: http://2x.io
+│  ├─ path: /home/ubuntu/shrok/node_modules/ws
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/ws/LICENSE
+├─ y18n@4.0.3
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/y18n
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/qrcode/node_modules/y18n
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/qrcode/node_modules/y18n/LICENSE
+├─ y18n@5.0.8
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/y18n
+│  ├─ publisher: Ben Coe
+│  ├─ email: bencoe@gmail.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/y18n
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/y18n/LICENSE
+├─ yallist@4.0.0
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/isaacs/yallist
+│  ├─ publisher: Isaac Z. Schlueter
+│  ├─ email: i@izs.me
+│  ├─ url: http://blog.izs.me/
+│  ├─ path: /home/ubuntu/shrok/node_modules/yallist
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/yallist/LICENSE
+├─ yargs-parser@18.1.3
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/yargs-parser
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/qrcode/node_modules/yargs-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/qrcode/node_modules/yargs-parser/LICENSE.txt
+├─ yargs-parser@21.1.1
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/yargs/yargs-parser
+│  ├─ publisher: Ben Coe
+│  ├─ email: ben@npmjs.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/yargs-parser
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/yargs-parser/LICENSE.txt
+├─ yargs@15.4.1
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/yargs/yargs
+│  ├─ path: /home/ubuntu/shrok/node_modules/qrcode/node_modules/yargs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/qrcode/node_modules/yargs/LICENSE
+├─ yargs@17.7.2
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/yargs/yargs
+│  ├─ path: /home/ubuntu/shrok/node_modules/yargs
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/yargs/LICENSE
+├─ zod-to-json-schema@3.25.1
+│  ├─ licenses: ISC
+│  ├─ repository: https://github.com/StefanTerdell/zod-to-json-schema
+│  ├─ publisher: Stefan Terdell
+│  ├─ path: /home/ubuntu/shrok/node_modules/zod-to-json-schema
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/zod-to-json-schema/LICENSE
+├─ zod@3.25.76
+│  ├─ licenses: MIT
+│  ├─ repository: https://github.com/colinhacks/zod
+│  ├─ publisher: Colin McDonnell
+│  ├─ email: zod@colinhacks.com
+│  ├─ path: /home/ubuntu/shrok/node_modules/zod
+│  └─ licenseFile: /home/ubuntu/shrok/node_modules/zod/LICENSE
+└─ zod@4.3.5
+   ├─ licenses: MIT
+   ├─ repository: https://github.com/colinhacks/zod
+   ├─ publisher: Colin McDonnell
+   ├─ email: zod@colinhacks.com
+   ├─ path: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/zod
+   └─ licenseFile: /home/ubuntu/shrok/node_modules/@brave/brave-search-mcp-server/node_modules/zod/LICENSE

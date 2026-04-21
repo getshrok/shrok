@@ -1,0 +1,34 @@
+[
+  {
+    "role": "user",
+    "content": "Morning Saturday — quick Nebula work session? Fatima Al-Rashid wants an update before the 3:30 PM product review. Can we align on where we are with push notifications?"
+  },
+  {
+    "role": "assistant",
+    "content": "Yep, quick snapshot: Nebula push is wired through Firebase Cloud Messaging for both iOS and Android, with the Node.js fanout service handling segmentation and send orchestration. Redis rate limiting is active at 500 notifications per user per day. We’re stable in staging and ready to focus on experiment setup and delivery quality."
+  },
+  {
+    "role": "user",
+    "content": "Great. I need the A/B testing framework for notification copy finalized today — simple v1. Can we do 50/50 split and track open + conversion by variant?"
+  },
+  {
+    "role": "assistant",
+    "content": "Yes, we can ship a lightweight v1: deterministic 50/50 assignment per user (hash of userId + campaignId) so users stay in the same variant. We’ll attach variant tags in payload metadata and log delivery, open, and downstream conversion events by variant. I’ll also include a holdout flag so Fatima can request a control group next sprint."
+  },
+  {
+    "role": "user",
+    "content": "Nice. What deliverability metrics are we exposing in the dashboard this week? I want something Fatima can read in under 2 minutes."
+  },
+  {
+    "role": "assistant",
+    "content": "For this week: sent, accepted by FCM, device-delivered, opens, and conversion rate, plus failure buckets (invalid token, throttled, TTL expired). We’ll show iOS vs Android split and a 7-day trendline for quick health checks. I can add median delivery latency too, since that’s been a recurring question."
+  },
+  {
+    "role": "user",
+    "content": "Perfect. Last thing: do-not-disturb windows. Requirement is user local time, default 10:00 PM–7:00 AM, but transactional alerts can bypass. Any risks?"
+  },
+  {
+    "role": "assistant",
+    "content": "That works with current design: Node fanout checks user timezone and suppresses non-transactional sends during 22:00–07:00 local time, then queues for next allowed slot. Transactional notifications can bypass via a priority flag, still respecting the Redis 500/day cap unless we explicitly exempt critical categories. Main risk is stale timezone data, so we should refresh timezone on app open and profile updates."
+  }
+]

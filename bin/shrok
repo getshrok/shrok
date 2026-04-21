@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Shrok CLI — manage the Shrok daemon and trigger updates.
+set -euo pipefail
+
+SHROK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+is_macos() { [[ "$(uname -s)" == "Darwin" ]]; }
+
+daemon_start() {
+  if is_macos; then
+    launchctl start com.shrok.agent
+  else
+    systemctl --user start shrok
+  fi
+}
+
+daemon_stop() {
+  if is_macos; then
+    launchctl stop com.shrok.agent
+  else
+    systemctl --user stop shrok
+  fi
+}
+
+daemon_restart() {
+  if is_macos; then
+    launchctl kickstart -k "gui/$UID/com.shrok.agent" 2>/dev/null \
+      || launchctl start com.shrok.agent
+  else
+    systemctl --user restart shrok
+  fi
+}
+
+daemon_status() {
+  if is_macos; then
+    launchctl list | grep shrok || echo "shrok: not running"
+  else
+    systemctl --user status shrok
+  fi
+  echo
+  echo "(For a richer health report, run: shrok doctor)"
+}
+
+daemon_logs() {
+  if is_macos; then
+    tail -f "$HOME/.shrok/shrok.log"
+  else
+    journalctl --user -u shrok -f
+  fi
+}
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  start)
+    daemon_start
+    ;;
+  stop)
+    daemon_stop
+    ;;
+  restart)
+    daemon_restart
+    ;;
+  status)
+    daemon_status
+    ;;
+  logs)
+    daemon_logs
+    ;;
+  doctor)
+    exec npm --prefix "$SHROK_DIR" run doctor --silent -- "$@"
+    ;;
+  update)
+    echo "Pulling latest Shrok..."
+    git -C "$SHROK_DIR" pull --ff-only
+    echo "Installing dependencies..."
+    npm --prefix "$SHROK_DIR" install --quiet
+    echo "Restarting Shrok..."
+    daemon_restart
+    echo "Done."
+    ;;
+  *)
+    echo "Usage: shrok <start|stop|restart|status|doctor|logs|update>"
+    ;;
+esac

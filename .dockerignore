@@ -1,0 +1,26 @@
+node_modules
+.git
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# Dev/planning artifacts
+.planning
+.planning-archive
+.claude
+tests
+scripts/eval
+
+# Dashboard source (dist/ is prebuilt and copied)
+dashboard/node_modules
+
+# Runtime/generated
+coverage
+*.log
+workspace
+
+# OS/editor junk
+.DS_Store
+*.swp
+*.swo

@@ -1,0 +1,34 @@
+[
+  {
+    "role": "user",
+    "content": "Hey Saturday, can you help me set up a half-marathon plan? I’m working with coach Ben Torres, current pace is about 10:30 per mile, and my race is in 14 weeks."
+  },
+  {
+    "role": "assistant",
+    "content": "Absolutely—14 weeks is a great runway. With Ben Torres coaching, a solid structure is 4 runs per week: 2 easy runs, 1 tempo session, and 1 long run. At your current 10:30/mile pace, that balance will build endurance and speed without overloading you."
+  },
+  {
+    "role": "user",
+    "content": "Nice, that sounds manageable. How should I progress the long run each week?"
+  },
+  {
+    "role": "assistant",
+    "content": "Increase your long run by 1 mile each week to build steadily and reduce injury risk. Start from a comfortable baseline this week, then add one mile weekly, and include a lighter cutback week every 3–4 weeks if fatigue climbs. Ben can fine-tune that based on how your legs feel."
+  },
+  {
+    "role": "user",
+    "content": "Got it. What should I do for fueling, especially on longer runs?"
+  },
+  {
+    "role": "assistant",
+    "content": "For runs longer than 90 minutes, target about 60g of carbs per hour—gels, chews, or sports drink all work. Practice this during long runs now so race day is familiar. After every run, get protein within 30 minutes to support recovery."
+  },
+  {
+    "role": "user",
+    "content": "Perfect. Can you recap my weekly setup so I can send it to Ben?"
+  },
+  {
+    "role": "assistant",
+    "content": "Sure—your weekly plan is 4 runs: 2 easy, 1 tempo, and 1 long run. Long run increases by 1 mile each week over your 14-week build, with optional cutback weeks if needed. Fuel runs over 90 minutes with 60g carbs/hour, and take post-run protein within 30 minutes."
+  }
+]

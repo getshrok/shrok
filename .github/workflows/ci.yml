@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify UTF-8 BOM on .ps1 files
+        # Windows PowerShell 5.1 reads BOM-less files as system ANSI, which
+        # silently corrupts any non-ASCII characters — em dashes in string
+        # literals can decode to curly-quote bytes and terminate strings
+        # mid-parse. Every shipped .ps1 must start with 0xEF 0xBB 0xBF.
+        run: |
+          failed=()
+          while IFS= read -r f; do
+            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" != "efbbbf" ]; then
+              failed+=("$f")
+            fi
+          done < <(git ls-files '*.ps1')
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::PowerShell scripts missing UTF-8 BOM (required for Windows PS 5.1):"
+            printf '  %s\n' "${failed[@]}"
+            echo ""
+            echo "Fix: prepend the BOM with: printf '\\xef\\xbb\\xbf' | cat - FILE.ps1 > FILE.ps1.tmp && mv FILE.ps1.tmp FILE.ps1"
+            exit 1
+          fi
+          echo "All .ps1 files have UTF-8 BOM"
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run --workspace=dashboard build
+
+      - name: Commit rebuilt dashboard dist
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "shrok-ci"
+          git config user.email "ashley@shrok.ai"
+          git add dashboard/dist
+          if git diff --cached --quiet; then
+            echo "dashboard/dist unchanged — nothing to commit"
+          else
+            git commit -m "chore(ci): rebuild dashboard dist [skip ci]"
+            git push
+          fi
+      - name: Security audit
+        run: npm audit --audit-level=high 2>&1 | tee /tmp/audit.txt; exit ${PIPESTATUS[0]}
+        continue-on-error: true
+      - name: Fail on new vulnerabilities
+        run: |
+          # Known CVEs with no upstream fix — update this list when resolved
+          KNOWN_CVES="tar|cmake-js|kuzu"
+          # Strip known CVEs and check if any unknown ones remain
+          if grep -E "^[a-z@]" /tmp/audit.txt | grep -vE "$KNOWN_CVES" | grep -q "Severity: high\|Severity: critical"; then
+            echo "::error::New high/critical vulnerabilities found beyond known allowlist"
+            cat /tmp/audit.txt
+            exit 1
+          fi

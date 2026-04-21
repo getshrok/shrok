@@ -1,0 +1,17 @@
+services:
+
+  shrok:
+    build: .
+    init: true
+    restart: unless-stopped
+    env_file:
+      - path: ${SHROK_ENV_FILE:-${HOME}/.shrok/workspace/.env}
+        required: false
+    ports:
+      - "127.0.0.1:${DASHBOARD_PORT:-8888}:8888"
+    volumes:
+      # Single mount for all persistent state: DB, identity, skills, tasks,
+      # media, config, .env, memory, WhatsApp auth, traces, etc.
+      - ${WORKSPACE_PATH:-${HOME}/.shrok/workspace}:/app/workspace
+    environment:
+      WORKSPACE_PATH: /app/workspace

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Shrok daemon wrapper — started by systemd (Linux) or launchd (macOS).
+# Handles env loading and restart-on-request via sentinel file.
+set -euo pipefail
+
+SHROK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SENTINEL="$HOME/.shrok/.restart-requested"
+
+cd "$SHROK_DIR"
+
+# Rotate log if over 10MB (launchd won't do this for us)
+LOG_FILE="$HOME/.shrok/shrok.log"
+if [[ -f "$LOG_FILE" ]]; then
+  LOG_SIZE=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
+  if [[ "$LOG_SIZE" -gt $((10 * 1024 * 1024)) ]]; then
+    mv "$LOG_FILE" "${LOG_FILE}.1"
+  fi
+fi
+
+# Load credentials from workspace .env if present.
+# Use eval + single-quoted values to avoid shell expansion of $ in bcrypt hashes.
+WORKSPACE_PATH="${WORKSPACE_PATH:-$HOME/.shrok/workspace}"
+export WORKSPACE_PATH
+ENV_FILE="$WORKSPACE_PATH/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"  # strip comments
+    line="${line#"${line%%[![:space:]]*}"}"  # trim leading whitespace
+    [[ -z "$line" || "$line" != *=* ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    # Strip surrounding quotes and whitespace
+    val="${val#\"}" ; val="${val%\"}"
+    val="${val#\'}" ; val="${val%\'}"
+    val="${val#"${val%%[![:space:]]*}"}"  # trim leading
+    val="${val%"${val##*[![:space:]]}"}"  # trim trailing
+    [[ -z "$val" ]] && continue  # skip empty values
+    export "$key=$val"
+  done < "$ENV_FILE"
+fi
+
+while true; do
+  # Clean up any stale restart sentinel before starting
+  rm -f "$SENTINEL" 2>/dev/null
+
+  # Run Shrok — background so we can trap signals and forward them
+  SHROK_DAEMON=1 node_modules/.bin/tsx src/index.ts &
+  CHILD=$!
+
+  # Forward SIGTERM/SIGINT to the child so graceful shutdown works
+  trap 'kill -TERM "$CHILD" 2>/dev/null' SIGTERM SIGINT
+
+  wait "$CHILD" || true
+  EXIT=$?
+
+  # Reset trap for next iteration
+  trap - SIGTERM SIGINT
+
+  if [[ -f "$SENTINEL" ]]; then
+    rm -f "$SENTINEL"
+    echo "[shrok-daemon] $(date -u +%Y-%m-%dT%H:%M:%SZ) Restart requested — restarting"
+    continue
+  fi
+
+  # Not a restart request — propagate exit code so systemd/launchd can decide
+  exit "$EXIT"
+done

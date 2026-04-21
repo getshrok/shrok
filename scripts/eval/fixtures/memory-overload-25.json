@@ -1,0 +1,34 @@
+[
+  {
+    "role": "user",
+    "content": "Hey Saturday, I’m building a personal note-taking setup in Obsidian and I want to make a custom plugin in TypeScript. Goal is to auto-link notes based on entity extraction—people, projects, and dates. Can you help me sketch the architecture?"
+  },
+  {
+    "role": "assistant",
+    "content": "Nice project—this is super doable in Obsidian’s plugin API. I’d split it into three parts: an entity extraction pipeline, a link resolver/index, and a UI layer that writes links back into notes. Keep extraction async and cached so you’re not reprocessing every file on each vault change."
+  },
+  {
+    "role": "user",
+    "content": "Yeah that makes sense. I already have basic extraction working with compromise + a few regex rules for dates. I’m stuck on linking strategy though—like how to map \"Alex\" to \"People/Alex Chen.md\" reliably when names are ambiguous."
+  },
+  {
+    "role": "assistant",
+    "content": "Use a scored resolver: exact alias match first, then path-based hints (folder = People/), then fuzzy similarity with a threshold. Add frontmatter IDs (e.g., `entityId: person_alex_chen`) and keep an alias map in memory for deterministic matches. If confidence is low, log unresolved entities to a review note instead of auto-linking."
+  },
+  {
+    "role": "user",
+    "content": "Great. I also want it to play nice with Dataview because my weekly review template pulls task + meeting notes. Right now I have a template that should auto-populate from Monday–Sunday, but it misses notes created late at night."
+  },
+  {
+    "role": "assistant",
+    "content": "That’s usually a timezone boundary issue—Dataview date parsing can treat file ctime differently than your local day cutoff. In your query, normalize with Luxon and explicitly set local zone, then filter between `startOf('week')` and `endOf('week')` based on your preferred week start. Also decide whether to use file creation time vs a frontmatter `date` field for consistency."
+  },
+  {
+    "role": "user",
+    "content": "Ah got it. Last thing: I have hover-preview working for some linked entities, but not all—especially links inserted by my plugin after file save. Could be metadata cache timing maybe?"
+  },
+  {
+    "role": "assistant",
+    "content": "Yep, likely cache timing—after programmatic edits, wait for metadata to re-index before expecting hover to resolve. Trigger your link insertion in a debounced `modify` flow, then call a lightweight refresh once `metadataCache` updates for that file. If needed, queue updates and process sequentially to avoid race conditions when multiple notes save quickly."
+  }
+]

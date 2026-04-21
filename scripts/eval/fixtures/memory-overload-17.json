@@ -1,0 +1,34 @@
+[
+  {
+    "role": "user",
+    "content": "Hey Saturday, quick update — I started Andrew Ng’s ML Specialization and I’m on Course 2 now (advanced algorithms). Dr. Pradeep Krishnan at Lakeside University is mentoring me once a week. I want to make sure I’m learning the fundamentals the right way."
+  },
+  {
+    "role": "assistant",
+    "content": "That’s a great setup—you’ve got both structured coursework and a mentor. Since you’re in Course 2, focus on really understanding cost functions, gradient descent behavior, and why neural nets outperform linear models on non-linear data. If you want, we can make a simple weekly study checklist you can share with Dr. Krishnan."
+  },
+  {
+    "role": "user",
+    "content": "Yeah that’d help. I’ve been coding gradient descent from scratch in Python (no sklearn yet), and started a tiny neural net with NumPy. I get stuck on vectorization and shape mismatches all the time lol."
+  },
+  {
+    "role": "assistant",
+    "content": "That’s super normal when implementing from scratch. A good habit is to print tensor shapes at each step and keep a small “shape contract” in comments (e.g., X: (m,n), W: (n,1)). Also test each function with tiny fake data before plugging into the full training loop."
+  },
+  {
+    "role": "user",
+    "content": "Makes sense. At work I want to apply this to a real churn dataset from our SaaS product—about 48k customers, with features like login frequency, support tickets, plan type, and tenure. Target is churn in the next 30 days."
+  },
+  {
+    "role": "assistant",
+    "content": "Perfect ML use case. Start with a clean baseline (logistic regression) and track AUC, precision/recall, and especially recall for churners since class imbalance is likely. Then compare against a small neural net and see if the lift is meaningful, not just statistically better."
+  },
+  {
+    "role": "user",
+    "content": "Awesome. I meet Dr. Pradeep Krishnan next Tuesday (Mar 11), can you suggest what to show him so he can give good feedback fast?"
+  },
+  {
+    "role": "assistant",
+    "content": "Bring four things: your gradient descent + neural-net code, a one-page data dictionary, baseline metrics, and 2–3 specific questions where you’re blocked. Keep it to a 10-minute walkthrough so he can spend most of the time on critique. If you want, I can draft the exact agenda and question list now."
+  }
+]
