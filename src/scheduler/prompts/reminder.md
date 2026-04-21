@@ -6,7 +6,6 @@ A reminder is about to be surfaced to the user:
 "{REMINDER_MESSAGE}"
 
 Frequency: {SCHEDULE}
-Last fired: {LAST_FIRED}
 
 ---
 

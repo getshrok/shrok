@@ -98,7 +98,6 @@ const RUN_DEFAULT: ProactiveDecision = { action: 'run', reason: 'proactive decis
 export interface ReminderDecisionContext {
   reminderMessage: string
   reminderCron: string | null
-  lastFired: string | null
   userMd: string
   recentHistory: Array<{ role: string; content: string; createdAt?: string }>
   ambientContext: string
@@ -124,7 +123,6 @@ export async function runReminderDecision(
     CURRENT_TIME: ctx.currentTime,
     REMINDER_MESSAGE: ctx.reminderMessage,
     SCHEDULE: scheduleDesc,
-    LAST_FIRED: ctx.lastFired || '(never)',
     USER_MD: ctx.userMd || '(empty)',
     AMBIENT: ctx.ambientContext || '(none)',
     HISTORY: formatTimestampedHistory(ctx.recentHistory),

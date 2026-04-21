@@ -88,7 +88,7 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
           const next = nextRunAfter(schedule.cron, now, this.timezone)
           this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
         } else if (enqueued) {
-          this.scheduleStore.completeOneTime(schedule.id, nowIso)
+          this.scheduleStore.delete(schedule.id)
         }
       } catch (err) {
         log.error(`[scheduler] Failed to advance schedule ${schedule.id}:`, (err as Error).message)

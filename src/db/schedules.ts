@@ -116,17 +116,6 @@ export class ScheduleStore {
     this.store.save(s)
   }
 
-  /** Mark a one-time schedule as completed (disabled, no next_run). */
-  completeOneTime(id: string, lastRun: string): void {
-    const s = this.store.get(id)
-    if (!s) return
-    s.enabled = false
-    s.lastRun = lastRun
-    s.nextRun = null
-    s.updatedAt = new Date().toISOString()
-    this.store.save(s)
-  }
-
   /** Record that a scheduled run was skipped by the proactive decision. */
   markSkipped(id: string, lastSkipped: string, reason: string): void {
     const s = this.store.get(id)
