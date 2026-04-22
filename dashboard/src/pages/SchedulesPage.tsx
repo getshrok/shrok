@@ -68,13 +68,15 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     if (!trimmed) { setEditing(false); return }
     const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
     const agentContextUnchanged = editAgentContext === (schedule.agentContext ?? '')
-    if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
     if (schedule.cron !== null) {
+      if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
       updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext })
       return
     }
     const d = new Date(trimmed)
     if (Number.isNaN(d.getTime())) return
+    const runAtUnchanged = d.toISOString() === schedule.runAt
+    if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
     updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: editAgentContext })
   }
 
