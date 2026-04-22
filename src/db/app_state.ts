@@ -3,15 +3,6 @@ import type { UsageThreshold, ThresholdAction } from '../usage-threshold.js'
 import type { Period } from '../period.js'
 import { log } from '../logger.js'
 
-export interface ConversationVisibility {
-  agentWork: boolean
-  headTools: boolean
-  systemEvents: boolean
-  stewardRuns: boolean
-  agentPills: boolean
-  memoryRetrievals: boolean
-}
-
 export class AppStateStore {
   private stmtGet: StatementSync
   private stmtSet: StatementSync
@@ -63,54 +54,6 @@ export class AppStateStore {
 
   releaseArchivalLock(): void {
     this.set('archival_lock', 'false')
-  }
-
-  /**
-   * Categorized dashboard visibility controls. Replaces the old boolean `xray_enabled`.
-   * Each category controls a cohesive group of related message types in the conversation view.
-   */
-  getConversationVisibility(): ConversationVisibility {
-    // One-time migration: if legacy 'xray_enabled' exists, seed agentWork from it and delete.
-    // get() returns string | null, so check for !== null.
-    const legacy = this.get('xray_enabled')
-    if (legacy !== null) {
-      const seeded: ConversationVisibility = {
-        agentWork: legacy === 'true',
-        headTools: false,
-        systemEvents: false,
-        stewardRuns: false,
-        agentPills: false,
-        memoryRetrievals: false,
-      }
-      this.setConversationVisibility(seeded)
-      this.delete('xray_enabled')
-      return seeded
-    }
-    return {
-      agentWork: this.get('vis_agent_work') === 'true',
-      headTools: this.get('vis_head_tools') === 'true',
-      systemEvents: this.get('vis_system_events') === 'true',
-      stewardRuns: this.get('vis_steward_runs') === 'true',
-      agentPills: this.get('vis_agent_pills') === 'true',
-      memoryRetrievals: this.get('vis_memory_retrievals') === 'true',
-    }
-  }
-
-  setConversationVisibility(v: ConversationVisibility): void {
-    this.set('vis_agent_work', v.agentWork ? 'true' : 'false')
-    this.set('vis_head_tools', v.headTools ? 'true' : 'false')
-    this.set('vis_system_events', v.systemEvents ? 'true' : 'false')
-    this.set('vis_steward_runs', v.stewardRuns ? 'true' : 'false')
-    this.set('vis_agent_pills', v.agentPills ? 'true' : 'false')
-    this.set('vis_memory_retrievals', v.memoryRetrievals ? 'true' : 'false')
-  }
-
-  getUsageFootersEnabled(): boolean {
-    return this.get('usage_footers_enabled') === 'true'
-  }
-
-  setUsageFootersEnabled(enabled: boolean): void {
-    this.set('usage_footers_enabled', enabled ? 'true' : 'false')
   }
 
   // ─── Usage thresholds ────────────────────────────────────────────────────
