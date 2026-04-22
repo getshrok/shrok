@@ -2,6 +2,7 @@ import { z } from 'zod'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { sync as writeFileAtomic } from 'write-file-atomic'
 
 const WorkerDefaultsSchema = z.object({
   // Env vars available to bash subprocesses in ad hoc workers. null = unrestricted (full process.env).
@@ -368,5 +369,5 @@ export function updateUserConfig(patch: Partial<Config>, workspacePath: string):
     merged[k] = (patch as Record<string, unknown>)[k]
   }
   fs.mkdirSync(path.dirname(configPath), { recursive: true })
-  fs.writeFileSync(configPath, JSON.stringify(merged, null, 2) + '\n', { encoding: 'utf8' })
+  writeFileAtomic(configPath, JSON.stringify(merged, null, 2) + '\n', { encoding: 'utf8' })
 }

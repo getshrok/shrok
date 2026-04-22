@@ -2,6 +2,7 @@ import express from 'express'
 import type { Request, Response } from 'express'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { sync as writeFileAtomic } from 'write-file-atomic'
 import { requireAuth } from '../auth.js'
 import { ENV_KEY_ALLOWLIST } from '../../config.js'
 import { setLogLevel } from '../../logger.js'
@@ -346,7 +347,7 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
     if (configChanged) {
       try {
         fs.mkdirSync(path.dirname(configPath), { recursive: true })
-        fs.writeFileSync(configPath, JSON.stringify(configJson, null, 2) + '\n', 'utf8')
+        writeFileAtomic(configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
       } catch (err) {
         res.status(500).json({ error: `Failed to write config.json: ${(err as Error).message}` })
         return
