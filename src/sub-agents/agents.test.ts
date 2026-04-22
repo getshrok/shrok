@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { CADENCE_ERROR_MESSAGE } from '../scheduler/cadence.js'
 import * as path from 'node:path'
 import * as url from 'node:url'
 import { LocalAgentRunner } from './local.js'
@@ -1017,6 +1018,123 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toContain('my-skill')
+  })
+})
+
+// ─── cadence validation (create_schedule + update_schedule) ──────────────────
+
+describe('cadence validation (create_schedule + update_schedule)', () => {
+  async function makeTmpUnified() {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const os = await import('node:os')
+    const { FileSystemKindLoader } = await import('../skills/loader.js')
+    const { UnifiedLoader } = await import('../skills/unified.js')
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cadence-tool-'))
+    const tasksDir = path.join(tmp, 'tasks')
+    fs.mkdirSync(path.join(tasksDir, 'a-task'), { recursive: true })
+    fs.writeFileSync(path.join(tasksDir, 'a-task', 'TASK.md'), `---\nname: a-task\ndescription: j\n---\nbody`)
+    const skillsDir = path.join(tmp, 'skills')
+    fs.mkdirSync(skillsDir, { recursive: true })
+    const skillsLoader = new FileSystemKindLoader({ root: skillsDir, kind: 'skill', filename: 'SKILL.md' })
+    const tasksLoader  = new FileSystemKindLoader({ root: tasksDir,  kind: 'task',  filename: 'TASK.md' })
+    return new UnifiedLoader(skillsLoader, tasksLoader)
+  }
+
+  async function buildTools(unified: import('../skills/unified.js').UnifiedLoader) {
+    const nodeOs = await import('node:os')
+    const nodeFs = await import('node:fs')
+    const nodePath = await import('node:path')
+    const scheduleDir = nodeFs.mkdtempSync(nodePath.join(nodeOs.tmpdir(), 'cadence-store-'))
+    const { ScheduleStore } = await import('../db/schedules.js')
+    const scheduleStore = new ScheduleStore(scheduleDir)
+    const { buildScheduleTools } = await import('./registry.js')
+    const tools = buildScheduleTools(scheduleStore, 'UTC', unified)
+    return {
+      createSchedule: tools.find(t => t.definition.name === 'create_schedule')!,
+      updateSchedule: tools.find(t => t.definition.name === 'update_schedule')!,
+      scheduleStore,
+    }
+  }
+
+  const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+
+  // ─── create_schedule ──────────────────────────────────────────────
+
+  it('create_schedule rejects */7 * * * * with CADENCE_ERROR_MESSAGE', async () => {
+    const unified = await makeTmpUnified()
+    const { createSchedule, scheduleStore } = await buildTools(unified)
+    const before = scheduleStore.list().length
+    const result = await createSchedule.execute({ taskName: 'a-task', cron: '*/7 * * * *' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toBe(CADENCE_ERROR_MESSAGE)
+    expect(parsed.message).toContain('conditions')
+    expect(scheduleStore.list().length).toBe(before)  // no row persisted
+  })
+
+  it('create_schedule rejects 0 9 * * 1-5 (weekday range)', async () => {
+    const unified = await makeTmpUnified()
+    const { createSchedule } = await buildTools(unified)
+    const result = await createSchedule.execute({ taskName: 'a-task', cron: '0 9 * * 1-5' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toBe(CADENCE_ERROR_MESSAGE)
+  })
+
+  it('create_schedule accepts */30 * * * * (supported cadence)', async () => {
+    const unified = await makeTmpUnified()
+    const { createSchedule, scheduleStore } = await buildTools(unified)
+    const result = await createSchedule.execute({ taskName: 'a-task', cron: '*/30 * * * *' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBeUndefined()
+    expect(scheduleStore.list().length).toBe(1)
+    expect(scheduleStore.list()[0]!.cron).toBe('*/30 * * * *')
+  })
+
+  it('create_schedule accepts 0 9 * * 1 (weekly Monday 09:00)', async () => {
+    const unified = await makeTmpUnified()
+    const { createSchedule, scheduleStore } = await buildTools(unified)
+    const result = await createSchedule.execute({ taskName: 'a-task', cron: '0 9 * * 1' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBeUndefined()
+    expect(scheduleStore.list()[0]!.cron).toBe('0 9 * * 1')
+  })
+
+  // ─── update_schedule ──────────────────────────────────────────────
+
+  it('update_schedule rejects non-cadence cron and leaves the stored row unchanged', async () => {
+    const unified = await makeTmpUnified()
+    const { createSchedule, updateSchedule, scheduleStore } = await buildTools(unified)
+
+    // Seed a row via the happy path
+    const created = await createSchedule.execute({ taskName: 'a-task', cron: '*/30 * * * *' }, ctx)
+    const id = JSON.parse(created as string).id as string
+
+    // Try to update with an invalid cadence
+    const result = await updateSchedule.execute({ id, cron: '*/7 * * * *' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toBe(CADENCE_ERROR_MESSAGE)
+
+    // Stored row still has the original cron
+    const row = scheduleStore.list().find(s => s.id === id)
+    expect(row?.cron).toBe('*/30 * * * *')
+  })
+
+  it('update_schedule accepts supported cadence', async () => {
+    const unified = await makeTmpUnified()
+    const { createSchedule, updateSchedule, scheduleStore } = await buildTools(unified)
+
+    const created = await createSchedule.execute({ taskName: 'a-task', cron: '*/30 * * * *' }, ctx)
+    const id = JSON.parse(created as string).id as string
+
+    const result = await updateSchedule.execute({ id, cron: '0 9 * * 1' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.ok).toBe(true)
+
+    const row = scheduleStore.list().find(s => s.id === id)
+    expect(row?.cron).toBe('0 9 * * 1')
   })
 })
 

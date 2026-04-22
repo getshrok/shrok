@@ -13,6 +13,7 @@ import type { NoteStore } from '../db/notes.js'
 import type { AppStateStore } from '../db/app_state.js'
 import type { UnifiedLoader } from '../skills/unified.js'
 import { generateId } from '../llm/util.js'
+import { isValidCadence, CADENCE_ERROR_MESSAGE } from '../scheduler/cadence.js'
 import { WEB_SEARCH_DEF, WEB_FETCH_DEF, executeWebSearch, executeWebFetch } from '../tools/web.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { BASELINE_ENV_KEYS } from './env.js'
@@ -723,7 +724,7 @@ export function buildScheduleTools(
           type: 'object',
           properties: {
             taskName: { type: 'string', description: 'Task name.' },
-            cron: { type: 'string', description: 'Cron expression for recurring schedules.' },
+            cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekly (M H * * D), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
             runAt: { type: 'string', description: 'ISO datetime for one-time schedules.' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
@@ -749,6 +750,9 @@ export function buildScheduleTools(
         const runAtArg = input['runAt'] as string | undefined
         let nextRun: string | undefined
         if (cronArg) {
+          if (!isValidCadence(cronArg)) {
+            return JSON.stringify({ error: true, message: CADENCE_ERROR_MESSAGE })
+          }
           const { nextRunAfter } = await import('../scheduler/cron.js')
           nextRun = nextRunAfter(cronArg, new Date(), timezone).toISOString()
         } else if (runAtArg) {
@@ -773,7 +777,7 @@ export function buildScheduleTools(
           type: 'object',
           properties: {
             id: { type: 'string' },
-            cron: { type: 'string' },
+            cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekly (M H * * D), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
             runAt: { type: 'string' },
             enabled: { type: 'boolean' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
@@ -785,9 +789,13 @@ export function buildScheduleTools(
       execute: async (input, _ctx) => {
         const patch: import('../db/schedules.js').SchedulePatch = {}
         if (input['cron'] !== undefined) {
+          const cronArg = input['cron'] as string
+          if (!isValidCadence(cronArg)) {
+            return JSON.stringify({ error: true, message: CADENCE_ERROR_MESSAGE })
+          }
           const { nextRunAfter } = await import('../scheduler/cron.js')
-          const next = nextRunAfter(input['cron'] as string, new Date(), timezone)  // throws on invalid expression
-          patch.cron = input['cron'] as string
+          const next = nextRunAfter(cronArg, new Date(), timezone)  // throws on invalid expression
+          patch.cron = cronArg
           patch.nextRun = next.toISOString()
         }
         if (input['runAt'] !== undefined) patch.runAt = input['runAt'] as string
