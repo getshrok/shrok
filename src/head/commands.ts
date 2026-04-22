@@ -56,13 +56,14 @@ export function buildCommandRegistry(): Map<string, SlashCommand> {
     handler: async (args, ctx) => {
       const arg = args.trim().toLowerCase()
       const cfg = ctx.config
-      const anyOn = cfg.visAgentWork || cfg.visHeadTools || cfg.visSystemEvents || cfg.visStewardRuns
+      const anyOn = cfg.visAgentWork || cfg.visHeadTools || cfg.visSystemEvents || cfg.visStewardRuns || cfg.visMemoryRetrievals
       const turnOn = arg === 'on' ? true : arg === 'off' ? false : !anyOn
       updateUserConfig({
         visAgentWork: turnOn,
         visHeadTools: turnOn,
         visSystemEvents: turnOn,
         visStewardRuns: turnOn,
+        visMemoryRetrievals: turnOn,
         // visAgentPills intentionally not touched — dashboard UI concern
       }, cfg.workspacePath)
       await ctx.send(`Debug visibility **${turnOn ? 'on' : 'off'}**.`)
@@ -127,8 +128,8 @@ export function buildCommandRegistry(): Map<string, SlashCommand> {
       const m = Math.floor((s.uptimeSeconds % 3600) / 60)
       const uptime = h > 0 ? `${h}h ${m}m` : `${m}m`
       const c = ctx.config
-      const debugAllOn = c.visAgentWork && c.visHeadTools && c.visSystemEvents && c.visStewardRuns
-      const debugAnyOn = c.visAgentWork || c.visHeadTools || c.visSystemEvents || c.visStewardRuns
+      const debugAllOn = c.visAgentWork && c.visHeadTools && c.visSystemEvents && c.visStewardRuns && c.visMemoryRetrievals
+      const debugAnyOn = c.visAgentWork || c.visHeadTools || c.visSystemEvents || c.visStewardRuns || c.visMemoryRetrievals
       const debugMode = debugAllOn ? 'on' : debugAnyOn ? 'partial' : 'off'
       const blockingSuffix = s.blockingThresholds > 0
         ? ` (${s.blockingThresholds} block threshold${s.blockingThresholds === 1 ? '' : 's'} active)`
