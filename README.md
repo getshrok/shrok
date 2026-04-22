@@ -14,7 +14,7 @@ Shrok is a self-hosted personal agent that is:
 - Designed for its capabilities to be extended through skills (curated repo at [getshrok/skills](https://github.com/getshrok/skills) to avoid malicious skills) 
 - Can be set to do anything on a smart schedule (it can decide when something is appropriate to run)
 
-Check out [the full overview](docs/overview.md),  [cheatsheet](docs/cheatsheet.md), and [the rest of the docs](docs/).
+Check out [the full overview](docs/overview.md), [the cheatsheet](docs/cheatsheet.md), and [the rest of the docs](docs/).
 
 ## Install
 
