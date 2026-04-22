@@ -3,7 +3,7 @@ import type { DraftState, SettingsTabProps } from './draft'
 import { Field, ComboInput, ProviderCard } from './components'
 
 const ANTHROPIC_MODELS = ['claude-haiku-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6']
-const GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3-flash', 'gemini-3.1-pro']
+const GEMINI_MODELS = ['gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-3.1-pro-preview']
 const OPENAI_MODELS = ['gpt-5.4-nano', 'gpt-5.4-mini', 'gpt-5.4', 'gpt-5.4-pro']
 const TIER_OPTIONS = ['standard', 'capable', 'expert']
 
