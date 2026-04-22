@@ -524,7 +524,7 @@ export default function ConversationsPage() {
   })
 
   // Agents query drives the pill bar data — enable if either developer mode OR the agent pills category is on
-  const agentsEnabled = isDeveloper || visibility.agentPills
+  const agentsEnabled = isDeveloper || visibility.agentPills || visibility.agentWork
   const agentsQuery = useQuery({
     queryKey: ['agents'],
     queryFn: api.agents.list,
