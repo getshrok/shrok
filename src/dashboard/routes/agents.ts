@@ -3,7 +3,6 @@ import type { Request, Response } from 'express'
 import { requireAuth } from '../auth.js'
 import type { AgentStore } from '../../db/agents.js'
 import type { AgentRunner } from '../../types/agent.js'
-import { shortAgentId } from '../../llm/util.js'
 
 export function createAgentsRouter(agents: AgentStore, agentRunner?: AgentRunner) {
   const router = Router()
@@ -69,7 +68,6 @@ export function createAgentsRouter(agents: AgentStore, agentRunner?: AgentRunner
     for (const agent of recent) {
       if (agent.trigger !== 'manual') continue  // xray only shows head-spawned agents
       if (!agent.history?.length) continue
-      const shortId = shortAgentId(agent.id)
       for (const msg of agent.history) {
         if (msg.kind === 'tool_call') {
           // Filter out agent management tool calls
@@ -81,7 +79,7 @@ export function createAgentsRouter(agents: AgentStore, agentRunner?: AgentRunner
           if (filtered.length === 0) continue
         }
         if (msg.kind === 'tool_call' || msg.kind === 'tool_result') {
-          messages.push({ agentId: shortId, message: msg })
+          messages.push({ agentId: agent.id, message: msg })
         }
       }
     }

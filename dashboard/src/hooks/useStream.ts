@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { connectSSE } from '../lib/sse'
-import { shortAgentId } from '../lib/agentId'
 import type { DashboardEvent, Message, StewardRun } from '../types/api'
 
 export function useStream() {
@@ -38,11 +37,10 @@ export function useStream() {
         // Only accumulate head-spawned agent tool calls/results for xray timeline
         // (skip text messages — agent thinking/responses are noise, head relays the result)
         if ((!trigger || trigger === 'manual') && (message.kind === 'tool_call' || message.kind === 'tool_result')) {
-          const shortId = shortAgentId(agentId)
           qc.setQueryData(
             ['xray-messages'],
             (old: Array<{ agentId: string; message: Message }> | undefined) =>
-              [...(old ?? []), { agentId: shortId, message }],
+              [...(old ?? []), { agentId, message }],
           )
         }
       }
