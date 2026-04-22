@@ -24,9 +24,9 @@ Skills can also be manually placed in the ~/.shrok/workspace/skills folder. In t
 
 ## Tasks
 
-Tasks are the main way that Shrok acts on its own. They are essentially just messages that you want to send to Shrok automatically at a future time, instructing it to do something. You might tell it to check your email once a day, or to check if your flight is delayed as a one time task.
+Tasks are the main way that Shrok acts on its own. They are essentially just messages that you want to send to Shrok automatically at a future time, instructing it to do something. You might tell it to check your email once a day, or to check to make sure your flight hasn't been delayed as a one time task.
 
-Shrok decides if a scheduled task should run as planned, so for the email example you could say something like "Don't bother checking on weekends". Or for the flight example, it might decide not to bother checking if you had just mentioned the day before that the trip was cancelled.
+Shrok decides if a scheduled task should run as planned, so for the email example you could say something like "Don't bother checking on weekends" when you schedule that task. Or for the flight example, it might decide not to bother checking if you had just mentioned the day before that the trip was cancelled.
 
 ## Memory
 
