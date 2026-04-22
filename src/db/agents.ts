@@ -79,7 +79,7 @@ export class AgentStore {
     `)
 
     this.stmtListActiveSlots = db.prepare(
-      "SELECT color_slot, updated_at FROM agents WHERE status IN ('running','suspended') AND color_slot IS NOT NULL"
+      `SELECT color_slot, updated_at FROM agents WHERE color_slot IS NOT NULL ORDER BY updated_at DESC LIMIT ${AGENT_COLOR_SLOT_COUNT * 3}`
     )
 
     this.stmtGet = db.prepare('SELECT * FROM agents WHERE id = ?')
