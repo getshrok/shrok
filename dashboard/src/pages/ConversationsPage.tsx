@@ -13,7 +13,7 @@ import type { Message, StewardRun, EventUsageSummary, SettingsData } from '../ty
 import { formatInTz, useConfigTimezone } from '../lib/formatTime'
 
 // Stable color palette for agent IDs — deterministic hash to one of 8 distinct colors
-const AGENT_COLORS = ['#f87171', '#fb923c', '#fbbf24', '#4ade80', '#2dd4bf', '#3b82f6', '#a855f7', '#d946ef']
+const AGENT_COLORS = ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00', '#CC79A7']
 function agentColor(id: string): string {
   let hash = 0
   for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0
