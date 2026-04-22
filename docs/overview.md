@@ -1,12 +1,10 @@
 # Overview
 
-Shrok can be powerful once you get to know the pieces, but agent-driven stuff is deceptively complex, and can easily get wild, so here's what you need to know
+Shrok can be powerful once you get to know the pieces, but agent-driven stuff is deceptively complex, and can easily become chaotic, so here's what you need to know
 
 ## Talking to Shrok
 
 No matter where you talk to it from, whether it's the built-in web dashboard (http://localhost:8888) or chat apps like Discord and WhatsApp, you are talking to the same Shrok.
-
-## The Unified Session
 
 Anytime you ask Shrok to do something that requires real work, it creates a background agent to do it. So it is always available to talk and take on more requests. It will create more agents as needed to take on multiple tasks at once.
 
@@ -40,7 +38,7 @@ For details on the inner workings of the memory system, check out [getshrok/infi
 
 Shrok also saves info about you and the people in your life as those things come up in conversation. The better it knows you, the more helpful it can be. It saves these to its SOUL.md and USER.md files, so you can tell it explicitly to write something to them if you want to make sure it is saved. Unlike memories, these files are visible to Shrok at all times.
 
-## Providers and Cost
+## LLM Providers and Cost
 
 Shrok uses your own API keys to function. Anthropic, OpenAI, and Google Gemini are supported, and you can add keys for multiple providers and set a priority order so Shrok falls back automatically.
 
