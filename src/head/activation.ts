@@ -477,8 +477,22 @@ export class ActivationLoop {
       ...('id' in event && event.id ? { event_id: event.id } : {}),
     })
 
-    // Phase 17: re-read config per event so dashboard/~debug changes take effect live.
-    const config = loadConfig()
+    // Phase 17: re-read mutable preference fields per event so dashboard/~debug changes
+    // take effect live. We merge over this.opts.config so path-derived fields (workspacePath,
+    // dbPath, skillsDir, etc.) remain stable and cannot diverge if loadConfig() returns a
+    // different path value due to future settable path support.
+    const livePrefs = loadConfig()
+    const config = {
+      ...this.opts.config,
+      visAgentWork:        livePrefs.visAgentWork,
+      visHeadTools:        livePrefs.visHeadTools,
+      visSystemEvents:     livePrefs.visSystemEvents,
+      visStewardRuns:      livePrefs.visStewardRuns,
+      visAgentPills:       livePrefs.visAgentPills,
+      visMemoryRetrievals: livePrefs.visMemoryRetrievals,
+      usageFootersEnabled: livePrefs.usageFootersEnabled,
+      logLevel:            livePrefs.logLevel,
+    }
 
     if (event.type === 'schedule_trigger') {
       await this.handleScheduleTrigger(event)
