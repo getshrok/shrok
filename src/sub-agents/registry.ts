@@ -802,7 +802,10 @@ export function buildScheduleTools(
         if (input['enabled'] !== undefined) patch.enabled = input['enabled'] as boolean
         if (input['conditions'] !== undefined) patch.conditions = input['conditions'] as string
         if (input['agentContext'] !== undefined) patch.agentContext = input['agentContext'] as string
-        scheduleStore.update(input['id'] as string, patch)
+        const updated = scheduleStore.update(input['id'] as string, patch)
+        if (!updated) {
+          return JSON.stringify({ error: true, message: `Schedule '${input['id'] as string}' not found.` })
+        }
         return JSON.stringify({ ok: true })
       },
     },
