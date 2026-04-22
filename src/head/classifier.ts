@@ -15,6 +15,7 @@ import type { UsageStore } from '../db/usage.js'
 import type { Message, TextMessage, ToolCallMessage, ToolResultMessage } from '../types/core.js'
 
 import { log } from '../logger.js'
+import { estimateCost } from '../llm/pricing.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -167,7 +168,7 @@ export async function classifyMessages(
           model: response.model,
           inputTokens: response.inputTokens,
           outputTokens: response.outputTokens,
-          costUsd: 0,
+          costUsd: estimateCost(response.model, response.inputTokens, response.outputTokens),
         })
       }
 
@@ -281,7 +282,7 @@ export async function classifyAndCompose(
           model: response.model,
           inputTokens: response.inputTokens,
           outputTokens: response.outputTokens,
-          costUsd: 0,
+          costUsd: estimateCost(response.model, response.inputTokens, response.outputTokens),
         })
       }
 
