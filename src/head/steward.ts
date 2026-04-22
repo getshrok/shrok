@@ -567,44 +567,6 @@ export async function runHeadRelaySteward(
   }
 }
 
-// ─── Identity filter steward ──────────────────────────────────────────────────
-
-export interface IdentityFilterResult {
-  keep: string
-  reject: string
-}
-
-export async function runIdentityFilterSteward(
-  content: string,
-  skillList: string,
-  router: LLMRouter,
-  model: string,
-  usageStore?: UsageStore,
-): Promise<IdentityFilterResult | null> {
-  const prompt = interpolate(loadStewardPrompt('identity-filter'), {
-    SKILL_LIST: skillList,
-    CONTENT: content,
-  })
-  try {
-    const response = await stewardComplete('steward-identity-filter', router, model, prompt, 4000, usageStore, undefined, undefined,
-      { name: 'identity_filter_steward', schema: {
-        type: 'object',
-        properties: {
-          keep: { type: 'string' },
-          reject: { type: 'string' },
-        },
-        required: ['keep', 'reject'],
-        additionalProperties: false,
-      } })
-    const parsed = extractJson(response.content) as IdentityFilterResult
-    if (typeof parsed.keep !== 'string') return null
-    return parsed
-  } catch (err) {
-    log.warn('[steward:identity-filter] failed, passing through:', (err as Error).message)
-    return null  // fail-open: write as-is
-  }
-}
-
 // ─── Context Relevance Steward ───────────────────────────────────────────────
 
 /** Pre-activation filter: trims older head history to only relevant messages.

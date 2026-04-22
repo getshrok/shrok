@@ -15,7 +15,6 @@ const warnings = (name: string): Record<string, string> => ({
   'stewards/agent-completion.md': 'Classifies an agent\'s final output as a completion or a question needing user input.',
   'stewards/bootstrap.md': 'Checks whether onboarding is complete and nudges the head if BOOTSTRAP.md still has content.',
   'stewards/head-relay.md': 'Post-processes outgoing messages to rewrite internal language (agent leaks, third-person references) into first person before they reach the user.',
-  'stewards/identity-filter.md': 'Filters content being written to USER.md — strips anything that describes how a specific skill or integration should behave, since that belongs in the skill definition, not user preferences.',
   'stewards/message-agent.md': 'Gates message_agent calls — blocks impatient head check-ins on running agents.',
   'stewards/preference.md': 'Detects user preferences that should be saved to USER.md.',
   'stewards/relay.md': 'Decides whether a scheduled agent\'s output is worth surfacing to the user.',

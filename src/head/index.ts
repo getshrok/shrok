@@ -12,7 +12,7 @@ import type { ToolExecutor } from '../llm/tool-loop.js'
 import type { IdentityLoader } from '../identity/loader.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
-import { runResumeSteward, runMessageAgentSteward, runIdentityFilterSteward } from './steward.js'
+import { runResumeSteward, runMessageAgentSteward } from './steward.js'
 import { VIEW_IMAGE_DEF, executeViewImage } from '../sub-agents/registry.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { timingMark } from '../timing.js'
@@ -287,22 +287,6 @@ export class HeadToolExecutor implements ToolExecutor {
           return JSON.stringify({ error: true, message: `Identity file "${baseName}" does not exist. Use list_identity_files to see available files.` })
         }
 
-        // Identity filter steward: strip skill-specific preferences from USER.md
-        let rejected = ''
-        if (baseName === 'USER.md' && content && this.opts.llmRouter) {
-          const skills = this.opts.skillLoader.listAll()
-          const skillList = skills.map(s => `- ${s.name}: ${s.frontmatter.description}`).join('\n')
-          const result = await runIdentityFilterSteward(
-            content, skillList,
-            this.opts.llmRouter, this.opts.stewardModel ?? 'standard',
-            this.opts.usageStore,
-          )
-          if (result && result.reject) {
-            content = result.keep
-            rejected = result.reject
-          }
-        }
-
         const filePath = path.join(this.opts.identityDir, baseName)
         const tempPath = path.join(this.opts.identityDir, `.tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.md`)
         await fs.promises.writeFile(tempPath, content, 'utf8')
@@ -311,13 +295,6 @@ export class HeadToolExecutor implements ToolExecutor {
           this.opts.onIdentityChanged(baseName, content)
         }
 
-        if (rejected) {
-          return JSON.stringify({
-            ok: true,
-            rejected,
-            note: 'These preferences were removed from USER.md because they belong in the relevant skill\'s MEMORY.md. Spawn an agent with the skill to save them there.',
-          })
-        }
         return JSON.stringify({ ok: true })
       }
 
