@@ -4,6 +4,7 @@ import { requireAuth } from '../auth.js'
 import type { ScheduleStore } from '../../db/schedules.js'
 import type { UnifiedLoader } from '../../skills/unified.js'
 import { nextRunAfter } from '../../scheduler/cron.js'
+import { isValidCadence, CADENCE_ERROR_MESSAGE } from '../../scheduler/cadence.js'
 import { generateId } from '../../llm/util.js'
 
 export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: string, unifiedLoader?: UnifiedLoader) {
@@ -46,6 +47,10 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
 
     let nextRun: string | undefined
     if (typeof cron === 'string' && cron) {
+      if (!isValidCadence(cron)) {
+        res.status(400).json({ error: CADENCE_ERROR_MESSAGE })
+        return
+      }
       try {
         nextRun = nextRunAfter(cron, new Date(), timezone).toISOString()
       } catch {
@@ -98,6 +103,10 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
 
     // Recompute nextRun if cron changed (overrides runAt-derived nextRun if both sent)
     if (typeof cron === 'string' && cron) {
+      if (!isValidCadence(cron)) {
+        res.status(400).json({ error: CADENCE_ERROR_MESSAGE })
+        return
+      }
       try {
         patch.nextRun = nextRunAfter(cron, new Date(), timezone).toISOString()
       } catch {
