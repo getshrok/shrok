@@ -348,3 +348,25 @@ export const ENV_KEY_ALLOWLIST = [
   'BRAVE_API_KEY',
   'WEBHOOK_SECRET',
 ] as const
+
+/**
+ * Merge `patch` into {workspacePath}/config.json, preserving all other existing keys.
+ * Creates the file (and parent directory) if missing. No-op if patch is empty.
+ *
+ * Used by the dashboard Settings PUT handler and by slash commands that mutate
+ * behavioral config (e.g. ~debug, ~xray). Single write path keeps the file-format
+ * concerns (2-space indent, trailing newline) in one place.
+ */
+export function updateUserConfig(patch: Partial<Config>, workspacePath: string): void {
+  const keys = Object.keys(patch)
+  if (keys.length === 0) return
+  const resolvedWorkspace = workspacePath.replace(/^~/, os.homedir())
+  const configPath = path.join(resolvedWorkspace, 'config.json')
+  const current = loadJsonFile(configPath)
+  const merged: Record<string, unknown> = { ...current }
+  for (const k of keys) {
+    merged[k] = (patch as Record<string, unknown>)[k]
+  }
+  fs.mkdirSync(path.dirname(configPath), { recursive: true })
+  fs.writeFileSync(configPath, JSON.stringify(merged, null, 2) + '\n', { encoding: 'utf8' })
+}
