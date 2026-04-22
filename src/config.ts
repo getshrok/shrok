@@ -132,6 +132,17 @@ const ConfigSchema = z.object({
   resumeStewardEnabled: z.coerce.boolean().default(true),
   // Steward that nudges the head to finish first-time onboarding.
   bootstrapStewardEnabled: z.coerce.boolean().default(true),
+  // Conversation detail (moved from app_state in Phase 17). Each flag controls a
+  // category of behind-the-scenes activity surfaced in the dashboard conversation
+  // view and debug channel echo. All default off — user opts in per category.
+  visAgentWork: z.coerce.boolean().default(false),
+  visHeadTools: z.coerce.boolean().default(false),
+  visSystemEvents: z.coerce.boolean().default(false),
+  visStewardRuns: z.coerce.boolean().default(false),
+  visAgentPills: z.coerce.boolean().default(false),
+  visMemoryRetrievals: z.coerce.boolean().default(false),
+  // Per-message footer showing estimated cost + token usage on assistant messages.
+  usageFootersEnabled: z.coerce.boolean().default(false),
   // Post-activation steward: nudges the head to call write_identity when the user stated
   // a fact or preference that wasn't captured. On by default — prompt is conservative.
   preferenceStewardEnabled: z.coerce.boolean().default(true),
