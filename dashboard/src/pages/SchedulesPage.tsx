@@ -6,17 +6,9 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Schedule } from '../types/api'
 import { formatInTz, useConfigTimezone } from '../lib/formatTime'
+import CronPicker from '../components/CronPicker'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function isValidCron(expr: string): boolean {
-  try {
-    cronstrue.toString(expr.trim())
-    return true
-  } catch {
-    return false
-  }
-}
 
 function formatCron(cron: string): string {
   try {
@@ -78,7 +70,6 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     const agentContextUnchanged = editAgentContext === (schedule.agentContext ?? '')
     if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
     if (schedule.cron !== null) {
-      if (!isValidCron(trimmed)) return
       updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext })
       return
     }
@@ -141,34 +132,20 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
               <h3 className="text-sm font-semibold text-zinc-100 mb-3">Edit schedule</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">
-                    {schedule.cron !== null ? 'Cron expression' : 'Run at'}
-                  </label>
                   {schedule.cron !== null ? (
+                    <CronPicker value={editValue} onChange={setEditValue} />
+                  ) : (
                     <>
+                      <label className="text-xs text-zinc-500 mb-1 block">Run at</label>
                       <input
                         autoFocus
+                        type="datetime-local"
                         value={editValue}
                         onChange={e => setEditValue(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
-                        placeholder="*/30 * * * *"
-                        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 font-mono outline-none focus:border-zinc-600"
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
                       />
-                      {editValue && (
-                        <div className={`text-xs mt-1 ${isValidCron(editValue) ? 'text-zinc-500' : 'text-red-400'}`}>
-                          {isValidCron(editValue) ? formatCron(editValue) : 'Invalid cron — use 5 fields (min hour dom mon dow)'}
-                        </div>
-                      )}
                     </>
-                  ) : (
-                    <input
-                      autoFocus
-                      type="datetime-local"
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
-                    />
                   )}
                 </div>
                 <div>
@@ -307,16 +284,7 @@ function AddScheduleForm({
       </div>
 
       {type === 'repeating' ? (
-        <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Cron expression</label>
-          <input
-            value={cron}
-            onChange={e => setCron(e.target.value)}
-            placeholder="*/30 * * * *"
-            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 font-mono"
-          />
-          {cron && <div className="text-xs text-zinc-500 mt-0.5">{formatCron(cron)}</div>}
-        </div>
+        <CronPicker value={cron} onChange={setCron} />
       ) : (
         <div>
           <label className="text-xs text-zinc-500 mb-1 block">Run at</label>
@@ -414,7 +382,6 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     const messageUnchanged = trimmedMessage === (schedule.agentContext ?? '')
     if (schedule.cron !== null) {
       if (trimmedValue === schedule.cron && conditionsUnchanged && messageUnchanged) { setEditing(false); return }
-      if (!isValidCron(trimmedValue)) return
       updateMutation.mutate({ cron: trimmedValue, conditions: editConditions, agentContext: trimmedMessage })
       return
     }
@@ -492,32 +459,19 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">
-                    {schedule.cron !== null ? 'Cron expression' : 'Remind at'}
-                  </label>
                   {schedule.cron !== null ? (
+                    <CronPicker value={editValue} onChange={setEditValue} />
+                  ) : (
                     <>
+                      <label className="text-xs text-zinc-500 mb-1 block">Remind at</label>
                       <input
+                        type="datetime-local"
                         value={editValue}
                         onChange={e => setEditValue(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
-                        placeholder="0 9 * * *"
-                        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 font-mono outline-none focus:border-zinc-600"
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
                       />
-                      {editValue && (
-                        <div className={`text-xs mt-1 ${isValidCron(editValue) ? 'text-zinc-500' : 'text-red-400'}`}>
-                          {isValidCron(editValue) ? formatCron(editValue) : 'Invalid cron — use 5 fields (min hour dom mon dow)'}
-                        </div>
-                      )}
                     </>
-                  ) : (
-                    <input
-                      type="datetime-local"
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
-                    />
                   )}
                 </div>
                 <div>
@@ -630,16 +584,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
           <div className="text-[11px] text-zinc-500 mt-0.5">Browser local time (workspace timezone: {tz})</div>
         </div>
       ) : (
-        <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Cron expression</label>
-          <input
-            value={cron}
-            onChange={e => setCron(e.target.value)}
-            placeholder="0 9 * * *"
-            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 font-mono"
-          />
-          {cron && <div className="text-xs text-zinc-500 mt-0.5">{formatCron(cron)}</div>}
-        </div>
+        <CronPicker value={cron} onChange={setCron} />
       )}
 
       <div>
