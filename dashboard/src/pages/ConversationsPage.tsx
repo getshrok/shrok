@@ -560,7 +560,7 @@ export default function ConversationsPage() {
   }, [agentsQuery.data])
 
   // ── Input state ─────────────────────────────────────────────────────────────
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(() => sessionStorage.getItem('conv-draft') ?? '')
   const [sending, setSending] = useState(false)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -573,6 +573,7 @@ export default function ConversationsPage() {
     const savedInput = input
     const savedFiles = [...pendingFiles]
     setInput('')
+    sessionStorage.removeItem('conv-draft')
     setPendingFiles([])
     setSelectedStream('head') // Switch to head when sending
     if (inputRef.current) inputRef.current.style.height = 'auto'
@@ -915,6 +916,7 @@ export default function ConversationsPage() {
             value={input}
             onChange={e => {
               setInput(e.target.value)
+              sessionStorage.setItem('conv-draft', e.target.value)
               const el = e.target
               el.style.height = 'auto'
               el.style.height = el.scrollHeight + 'px'
