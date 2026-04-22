@@ -77,7 +77,9 @@ export function ComboInput({ value, onChange, options, placeholder, disabled }: 
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [highlighted, setHighlighted] = useState(-1)
+  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Only filter when the user has typed something; otherwise show all options
   const filtered = filter ? options.filter(o => o.toLowerCase().includes(filter.toLowerCase())) : options
@@ -91,11 +93,19 @@ export function ComboInput({ value, onChange, options, placeholder, disabled }: 
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  function openDropdown() {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect()
+      setDropdownRect({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    }
+    setOpen(true)
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setHighlighted(h => Math.min(h + 1, filtered.length - 1))
-      setOpen(true)
+      openDropdown()
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setHighlighted(h => Math.max(h - 1, 0))
@@ -117,18 +127,22 @@ export function ComboInput({ value, onChange, options, placeholder, disabled }: 
   return (
     <div ref={containerRef} className="relative">
       <input
+        ref={inputRef}
         type="text"
         value={filter !== '' ? filter : value}
-        onChange={e => { setFilter(e.target.value); onChange(e.target.value); setOpen(true); setHighlighted(-1) }}
-        onFocus={() => { setFilter(''); setOpen(true) }}
+        onChange={e => { setFilter(e.target.value); onChange(e.target.value); openDropdown(); setHighlighted(-1) }}
+        onFocus={() => { setFilter(''); openDropdown() }}
         onBlur={() => { setFilter('') }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder={placeholder}
         className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-600 disabled:opacity-50"
       />
-      {open && filtered.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+      {open && filtered.length > 0 && dropdownRect && createPortal(
+        <div
+          style={{ position: 'fixed', top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}
+          className="bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto z-[9999]"
+        >
           {filtered.map((opt, i) => (
             <div
               key={opt}
@@ -139,7 +153,8 @@ export function ComboInput({ value, onChange, options, placeholder, disabled }: 
               {opt}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
