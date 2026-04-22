@@ -55,6 +55,8 @@ Six test jobs run in parallel after `lint`:
 
 `build` only runs after all six test shards and lint pass.
 
+**Push conflicts in `dashboard/dist/`:** Because CI rebuilds and commits `dashboard/dist/` on every passing run, pushing local commits that also touch `dashboard/dist/` will often be rejected. Always `git pull --rebase` before pushing. If a rebase conflict lands in `dashboard/dist/index.html` or `dashboard/dist/assets/`, resolve it by keeping the version from your commit (the incoming side) — it corresponds to the JS asset file your commit staged. The remote's dist will be overwritten again by the next CI run anyway.
+
 ## TypeScript
 
 - `moduleResolution: bundler` — import paths use `.js` extensions that resolve to `.ts` files
