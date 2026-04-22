@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 16 context gathered
-last_updated: "2026-04-21T16:27:14.966Z"
-last_activity: 2026-04-21
+status: executing
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-04-22T03:10:45.544Z"
+last_activity: 2026-04-22
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_plans: 12
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-04-20 for v1.1)
 See: .planning/MILESTONES.md (v1.0 shipped 2026-04-11)
 
 **Core value:** Agents discover and run jobs autonomously without operator-level knowledge of what jobs exist.
-**Current focus:** Phase 15 — re-enable-preference-steward-with-dashboard-toggle
+**Current focus:** Phase 16 — replace-cron-expression-text-field-in-schedules-dashboard-wi
 
 ## Current Position
 
-Phase: 15 (re-enable-preference-steward-with-dashboard-toggle) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-04-21
+Phase: 16 (replace-cron-expression-text-field-in-schedules-dashboard-wi) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-04-22
 
 Progress: [██████████] 100%
 
@@ -52,6 +52,7 @@ Progress: [██████████] 100%
 | Phase 11 P01 | 30 | 7 tasks | 14 files |
 | Phase 15-re-enable-preference-steward-with-dashboard-toggle P01 | 8 | 2 tasks | 5 files |
 | Phase 15-re-enable-preference-steward-with-dashboard-toggle P02 | 10 | 3 tasks | 7 files |
+| Phase 16 P01 | 94 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,7 @@ Progress: [██████████] 100%
 - [Phase 15]: spawnStewardEnabled is distinct from existing spawnAgentStewardEnabled — both coexist in config.ts
 - [Phase 15]: preferenceSteward placed in stable section, spawnSteward and actionComplianceSteward in experimental — registry iteration auto-populates dashboard cards without touching StewardsTab.tsx or ExperimentalTab.tsx
 - [Phase 15]: Three new steward flags added to CONFIG_JSON_FIELDS (not ENV_KEY_ALLOWLIST) — they live in config.json, consistent with all other *StewardEnabled flags
+- [Phase 16]: Field-parse approach for isValidCadence: N ∈ {5,10,15,30,45,60} Set lookup + integer range checks per field — cleaner and more auditable than a single regex for bounded validation
 
 ### Pending Todos
 
@@ -99,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-21T16:27:14.959Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-replace-cron-expression-text-field-in-schedules-dashboard-wi/16-CONTEXT.md
+Last session: 2026-04-22T03:10:45.536Z
+Stopped at: Completed 16-01-PLAN.md
+Resume file: None

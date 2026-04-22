@@ -132,15 +132,30 @@ Plans:
 - [x] 15-01-PLAN.md — Backend: add preferenceStewardEnabled/spawnStewardEnabled/actionComplianceStewardEnabled to ConfigSchema; add all three to DEFAULT_STEWARDS; add three filter clauses in activation.ts mirroring bootstrapSteward (D-03/D-04/D-05/D-06/D-07)
 - [x] 15-02-PLAN.md — Dashboard + API: add three descriptors to both steward registries; thread flags through DraftState/SettingsData/initDraft/isDirty/buildBody; extend CONFIG_JSON_FIELDS and GET /api/settings; update settings.test.ts factory + add regression tests; refresh docs/internals/stewards.md summary sentence (D-08/D-09/D-10/D-11/D-12)
 
-### Phase 16: Replace cron expression text field in schedules dashboard with react-cron-generator visual picker
+### Phase 16: Replace cron expression text field in schedules dashboard with visual cron picker
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Replace all four raw cron `<input>` fields in `dashboard/src/pages/SchedulesPage.tsx` (ScheduleRow edit modal, AddScheduleForm, ReminderRow edit modal, AddReminderForm) with a custom Tailwind `CronPicker` component that exposes six canonical cadences (every N minutes, hourly, daily, weekly, monthly, yearly) and never shows a raw cron string to the user. Add a shared `isValidCadence` backend utility that gates both the REST API (`POST`/`PATCH /api/schedules`) and the agent tools (`create_schedule`, `update_schedule`) so the system accepts only the six supported shapes — agents receiving a non-cadence cron see a structured error pointing them to the `conditions` argument for custom timing nuance. Zero new npm dependencies.
+
+**Requirements:**
+- **D-01** — Custom Tailwind frequency picker; zero new npm dependencies (no react-js-cron/antd, no react-cron-generator)
+- **D-02** — UI never shows a cron string; picker produces cron internally; `cronstrue`/`formatCron` stays only in list-row display
+- **D-03** — Six supported cadences: `*/N * * * *` (N ∈ {5,10,15,30,45,60}), `M * * * *`, `M H * * *`, `M H * * D`, `M H D * *` (D ∈ 1..28), `M H D Mo *`
+- **D-04** — Shared `isValidCadence(cron: string): boolean` at `src/scheduler/cadence.ts`, imported by both `src/dashboard/routes/schedules.ts` and `src/sub-agents/registry.ts`
+- **D-05** — Canonical agent error: `"Invalid cron frequency. Supported cadences: every N minutes (*/N * * * *), hourly, daily, weekly, monthly, yearly. For custom timing logic (e.g. weekdays only, skip holidays), use the conditions argument instead of a custom cron expression."`
+- **D-06** — `update_schedule` tool gated identically to `create_schedule`
+- **D-07** — All four cron inputs in `SchedulesPage.tsx` replaced
+- **D-08** — Complex/unparseable crons silently snap to Daily 09:00 on edit-modal open
+- **D-09** — `CronPicker` props: `{ value: string; onChange: (cron: string) => void }`; parse-on-mount via `useState(() => parseCronToState(value))`; never fires `onChange` during initialization
+- **D-10** — Picker fits `max-w-sm` (384px); no modal widening
+
 **Depends on:** Phase 15
-**Plans:** 0 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 16 to break down)
+- [x] 16-01-PLAN.md — Backend utility: create `src/scheduler/cadence.ts` with `isValidCadence` + `CADENCE_ERROR_MESSAGE`; full unit-test matrix in `cadence.test.ts` (D-03/D-04/D-05/D-06)
+- [ ] 16-02-PLAN.md — Frontend component: create `dashboard/src/components/CronPicker.tsx` with six-cadence Tailwind UI; visual verification checkpoint (D-01/D-02/D-03/D-08/D-09/D-10)
+- [ ] 16-03-PLAN.md — Backend wiring: gate POST/PATCH `/api/schedules` and `create_schedule`/`update_schedule` tools with `isValidCadence`; integration + unit tests (D-04/D-05/D-06)
+- [ ] 16-04-PLAN.md — Integration: replace all 4 cron text inputs in `SchedulesPage.tsx` with `<CronPicker>`; remove dead `isValidCron` helper; end-to-end browser verification (D-02/D-07/D-08/D-09/D-10)
 
 ### Phase 17: Move config preferences out of app_state into config.json with per-activation config reads
 
