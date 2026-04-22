@@ -149,11 +149,11 @@ Plans:
 - **D-10** — Picker fits `max-w-sm` (384px); no modal widening
 
 **Depends on:** Phase 15
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] 16-01-PLAN.md — Backend utility: create `src/scheduler/cadence.ts` with `isValidCadence` + `CADENCE_ERROR_MESSAGE`; full unit-test matrix in `cadence.test.ts` (D-03/D-04/D-05/D-06)
-- [ ] 16-02-PLAN.md — Frontend component: create `dashboard/src/components/CronPicker.tsx` with six-cadence Tailwind UI; visual verification checkpoint (D-01/D-02/D-03/D-08/D-09/D-10)
+- [x] 16-02-PLAN.md — Frontend component: create `dashboard/src/components/CronPicker.tsx` with six-cadence Tailwind UI; visual verification checkpoint (D-01/D-02/D-03/D-08/D-09/D-10)
 - [ ] 16-03-PLAN.md — Backend wiring: gate POST/PATCH `/api/schedules` and `create_schedule`/`update_schedule` tools with `isValidCadence`; integration + unit tests (D-04/D-05/D-06)
 - [ ] 16-04-PLAN.md — Integration: replace all 4 cron text inputs in `SchedulesPage.tsx` with `<CronPicker>`; remove dead `isValidCron` helper; end-to-end browser verification (D-02/D-07/D-08/D-09/D-10)
 
