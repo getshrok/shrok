@@ -13,7 +13,7 @@ import type { Message, StewardRun, EventUsageSummary, SettingsData } from '../ty
 import { formatInTz, useConfigTimezone } from '../lib/formatTime'
 
 // Stable color palette for agent IDs — deterministic hash to one of 8 distinct colors
-const AGENT_COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#818cf8', '#c084fc', '#f472b6']
+const AGENT_COLORS = ['#f87171', '#fb923c', '#fbbf24', '#4ade80', '#2dd4bf', '#3b82f6', '#a855f7', '#d946ef']
 function agentColor(id: string): string {
   let hash = 0
   for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0
@@ -187,7 +187,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
               ? 'bg-zinc-800/60 text-zinc-400 border border-zinc-700 font-mono text-xs'
               : 'bg-[var(--accent)] text-white border border-[var(--accent)] saturate-[1.06] brightness-[0.85]'
           }`}
-          style={borderColor ? { borderColor: borderColor } : undefined}
+          style={borderColor ? { border: 'none', borderLeft: `10px solid ${borderColor}` } : undefined}
           title={formatTime(message.createdAt)}
         >
           {!isUser && !message.injected
@@ -249,7 +249,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
               <details
                 key={key}
                 className="max-w-2xl bg-amber-950/40 border border-amber-900/50 rounded-lg text-xs font-mono"
-                style={borderColor ? { borderColor: borderColor } : undefined}
+                style={borderColor ? { border: 'none', borderLeft: `10px solid ${borderColor}` } : undefined}
               >
                 <summary className="px-3 py-2 cursor-pointer text-amber-500 select-none break-words">
                   {agentPrefix && <>{agentPrefix}<br /></>}🔧 {summary}
@@ -272,7 +272,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
         <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono"
-          style={borderColor ? { borderColor: borderColor } : undefined}>
+          style={borderColor ? { border: 'none', borderLeft: `10px solid ${borderColor}` } : undefined}>
           <summary className="px-3 py-2 cursor-pointer text-emerald-500 select-none">
             {agentPrefix && <>{agentPrefix}<br /></>}🔧 {message.toolResults.map(tr => toolResultSummary(tr)).join(' · ')}
           </summary>
@@ -314,7 +314,7 @@ function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_
           <details
             key={key}
             className="max-w-2xl bg-zinc-800/60 border border-zinc-700 rounded-lg text-xs font-mono"
-            style={borderColor ? { borderColor: borderColor } : undefined}
+            style={borderColor ? { border: 'none', borderLeft: `10px solid ${borderColor}` } : undefined}
           >
             <summary className="px-3 py-2 cursor-pointer select-none break-words text-zinc-400">
               {agentPrefix && <>{agentPrefix}<br /></>}<span className="text-amber-500">🔧 {callSummary}</span>
