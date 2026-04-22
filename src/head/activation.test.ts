@@ -159,7 +159,6 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
     setLastActiveChannel: vi.fn(),
     tryAcquireArchivalLock: vi.fn().mockReturnValue(false),
     releaseArchivalLock: vi.fn(),
-    getConversationVisibility: vi.fn().mockReturnValue({}),
     getAllThresholdFiredAt: vi.fn().mockReturnValue({}),
   } as unknown as AppStateStore
   const usageStore = { record: vi.fn(), getCostSince: vi.fn().mockReturnValue(0), getBySource: vi.fn().mockReturnValue([]), summarize: vi.fn().mockReturnValue({ inputTokens: 0, outputTokens: 0 }) } as unknown as UsageStore

@@ -16,7 +16,7 @@ import type { UsageStore, UsageEntry } from '../db/usage.js'
 import type { ScheduleStore } from '../db/schedules.js'
 import type { McpRegistry } from '../mcp/registry.js'
 import type { ChannelRouter } from '../types/channel.js'
-import type { Config } from '../config.js'
+import { loadConfig, type Config } from '../config.js'
 import { findBlockingThresholds, formatThresholdBlock } from '../usage-threshold.js'
 import type { ContextAssembler } from './assembler.js'
 import type { Injector } from './injector.js'
@@ -476,6 +476,10 @@ export class ActivationLoop {
       ...('channel' in event && event.channel ? { channel: event.channel } : {}),
       ...('id' in event && event.id ? { event_id: event.id } : {}),
     })
+
+    // Phase 17: re-read config per event so dashboard/~debug changes take effect live.
+    const config = loadConfig()
+
     if (event.type === 'schedule_trigger') {
       await this.handleScheduleTrigger(event)
       return
@@ -542,7 +546,7 @@ export class ActivationLoop {
       // Routing steward: hint at the best approach for this message.
       // Runs after the user message is appended so the dashboard shows it immediately.
       let routingHint: string | null = null
-      if (this.opts.config.routingStewardEnabled && event.text.length >= 10 && !event.text.includes('type="greeting"')) {
+      if (config.routingStewardEnabled && event.text.length >= 10 && !event.text.includes('type="greeting"')) {
         const skills = this.opts.toolExecutorOpts.skillLoader.listAll()
         const skillList = skills.map(s => `- ${s.name}: ${s.frontmatter.description}`).join('\n')
         const recent = this.opts.messages.getRecent(2000)
@@ -550,7 +554,7 @@ export class ActivationLoop {
           .slice(-5)
           .map(m => ({ role: m.role, content: m.content }))
         // Pass recently completed agents so the steward can suggest continuation
-        const completedAgents = this.opts.config.agentContinuationEnabled
+        const completedAgents = config.agentContinuationEnabled
           ? this.opts.agentStore.getRecent(5)
               .filter(a => a.status === 'completed')
               .slice(0, 3)
@@ -564,7 +568,7 @@ export class ActivationLoop {
         })) ?? []
         routingHint = await runRoutingSteward(
           event.text, skillList, recent,
-          this.opts.llmRouter, this.opts.config.stewardModel,
+          this.opts.llmRouter, config.stewardModel,
           this.opts.usageStore, event.id,
           completedAgents,
           attachments,
@@ -613,7 +617,7 @@ export class ActivationLoop {
     // (no retroactive delete needed).
     const suppressedEventIds = new Set<string>()
     let primarySuppressed = false
-    if (event.type !== 'user_message' && this.opts.config.scheduledRelayStewardEnabled) {
+    if (event.type !== 'user_message' && config.scheduledRelayStewardEnabled) {
       const { identityLoader, skillLoader } = this.opts.toolExecutorOpts
       for (const ce of completedEvents) {
         const a = this.opts.agentStore.get(ce.agentId)
@@ -625,8 +629,8 @@ export class ActivationLoop {
           skillInstructions: skill?.instructions ?? '',
           userMd: identityLoader.readFile('USER.md') ?? '',
           soulMd: identityLoader.readFile('SOUL.md') ?? '',
-          currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
-        }, this.opts.llmRouter, this.opts.config.stewardModel, this.opts.usageStore, ce.id)
+          currentTime: formatIanaTimeLine(new Date(), config.timezone),
+        }, this.opts.llmRouter, config.stewardModel, this.opts.usageStore, ce.id)
         if (!relay) {
           suppressedEventIds.add(ce.id)
           if (ce.id === event.id) primarySuppressed = true
@@ -659,12 +663,12 @@ export class ActivationLoop {
         if (ownWork.length === 0) { log.info(`${tag} skip: empty ownWork (workStart=${a.workStart}, history len=${a.history?.length ?? 0})`); continue }
         const formatted = formatWorkForSummary(ownWork)
         if (!formatted) { log.info(`${tag} skip: empty formatted (ownWork=${ownWork.length})`); continue }
-        if (this.opts.config.relaySummary === false) { log.info(`${tag} skip: relaySummary disabled`); continue }
+        if (config.relaySummary === false) { log.info(`${tag} skip: relaySummary disabled`); continue }
         const inTokens = estimateStringTokens(formatted)
         log.info(`${tag} running: ownWork=${ownWork.length} msgs, formatted=${formatted.length} chars (~${inTokens} tokens)`)
         const summary = await runWorkSummarySteward(
           { task: a.task, work: formatted },
-          this.opts.llmRouter, this.opts.config.stewardModel,
+          this.opts.llmRouter, config.stewardModel,
           this.opts.usageStore, ce.id,
         )
         if (summary) {
@@ -703,7 +707,14 @@ export class ActivationLoop {
     const debugChannel = event.type === 'user_message'
       ? event.channel
       : this.opts.appState.getLastActiveChannel()
-    const visibility = this.opts.appState.getConversationVisibility()
+    const visibility = {
+      agentWork: config.visAgentWork,
+      headTools: config.visHeadTools,
+      systemEvents: config.visSystemEvents,
+      stewardRuns: config.visStewardRuns,
+      agentPills: config.visAgentPills,
+      memoryRetrievals: config.visMemoryRetrievals,
+    }
     const onVerbose = debugChannel && visibility.agentWork
       ? (msg: string) => this.opts.channelRouter.sendDebug(debugChannel, msg)
       : null
@@ -759,7 +770,7 @@ export class ActivationLoop {
 
     // Context-relevance steward: trim history before the head LLM call
     let filteredBuildHistory = buildHistory
-    if (this.opts.config.contextRelevanceStewardEnabled) {
+    if (config.contextRelevanceStewardEnabled) {
       const fullHistory = buildHistory()
       if (fullHistory.length > 5) {  // No point filtering tiny histories
         try {
@@ -772,7 +783,7 @@ export class ActivationLoop {
             })),
             event.type === 'user_message' ? event.text : (event as { text?: string }).text ?? '',
             this.opts.llmRouter,
-            this.opts.config.stewardModel,
+            config.stewardModel,
             this.opts.usageStore,
             event.id,
             onDebug ?? undefined,
@@ -795,8 +806,8 @@ export class ActivationLoop {
     }
 
     const toolLoopOpts = {
-      model: this.opts.config.headModel,
-      stewardModel: this.opts.config.stewardModel,
+      model: config.headModel,
+      stewardModel: config.stewardModel,
       tools: this.opts.headTools ?? HEAD_TOOLS,
       terminalTools: this.opts.terminalToolNames ?? [],
       systemPrompt: context.systemPrompt,
@@ -815,11 +826,11 @@ export class ActivationLoop {
           if (!cleaned) return  // all marker content, nothing to store
           msg = { ...msg, content: cleaned }
 
-          if (this.opts.config.headRelaySteward && !isGreeting) {
-            const recent = this.opts.messages.getRecent(this.opts.config.headRelayStewardContextTokens)
+          if (config.headRelaySteward && !isGreeting) {
+            const recent = this.opts.messages.getRecent(config.headRelayStewardContextTokens)
               .filter((m): m is TextMessage => m.kind === 'text' && !m.injected && !m.content.includes('type="greeting"'))
               .map(m => ({ role: m.role, content: m.content }))
-            const relayed = await runHeadRelaySteward(msg.content, recent, this.opts.llmRouter, this.opts.config.stewardModel, this.opts.usageStore, onDebug ?? undefined)
+            const relayed = await runHeadRelaySteward(msg.content, recent, this.opts.llmRouter, config.stewardModel, this.opts.usageStore, onDebug ?? undefined)
             msg = { ...msg, content: relayed }
           }
 
@@ -858,13 +869,13 @@ export class ActivationLoop {
       // onVerbose intentionally not passed to the head's tool loop —
       // head text goes through appendMessage → relay steward → DB → SSE.
       // Agent tool loops get onVerbose via local.ts for xray output.
-      loopSameArgsTrigger: this.opts.config.loopSameArgsTrigger,
-      loopErrorTrigger: this.opts.config.loopErrorTrigger,
-      loopPostNudgeErrorTrigger: this.opts.config.loopPostNudgeErrorTrigger,
-      loopStewardToolInputChars: this.opts.config.loopStewardToolInputChars,
-      loopStewardToolResultChars: this.opts.config.loopStewardToolResultChars,
-      loopStewardSystemPromptChars: this.opts.config.loopStewardSystemPromptChars,
-      loopStewardMaxTokens: this.opts.config.loopStewardMaxTokens,
+      loopSameArgsTrigger: config.loopSameArgsTrigger,
+      loopErrorTrigger: config.loopErrorTrigger,
+      loopPostNudgeErrorTrigger: config.loopPostNudgeErrorTrigger,
+      loopStewardToolInputChars: config.loopStewardToolInputChars,
+      loopStewardToolResultChars: config.loopStewardToolResultChars,
+      loopStewardSystemPromptChars: config.loopStewardSystemPromptChars,
+      loopStewardMaxTokens: config.loopStewardMaxTokens,
       refreshHistory: filteredBuildHistory,
     }
 
@@ -945,7 +956,7 @@ export class ActivationLoop {
       const recentHistory = buildStewardHistory(
         this.opts.messages.getAll()
           .filter((m): m is TextMessage => m.kind === 'text' && m.createdAt < activationStart),
-        this.opts.config.stewardContextTokenBudget,
+        config.stewardContextTokenBudget,
       )
 
       // Note: schedule_trigger is handled by handleScheduleTrigger and returns early above,
@@ -973,10 +984,10 @@ export class ActivationLoop {
       // own *StewardEnabled flag in Config; add a clause here when wiring a new one.
       const rawStewards = this.opts.stewards ?? DEFAULT_STEWARDS
       const stewards = rawStewards.filter(s => {
-        if (s.name === 'bootstrapSteward' && !this.opts.config.bootstrapStewardEnabled) return false
-        if (s.name === 'preferenceSteward' && !this.opts.config.preferenceStewardEnabled) return false
-        if (s.name === 'spawnSteward' && !this.opts.config.spawnStewardEnabled) return false
-        if (s.name === 'actionComplianceSteward' && !this.opts.config.actionComplianceStewardEnabled) return false
+        if (s.name === 'bootstrapSteward' && !config.bootstrapStewardEnabled) return false
+        if (s.name === 'preferenceSteward' && !config.preferenceStewardEnabled) return false
+        if (s.name === 'spawnSteward' && !config.spawnStewardEnabled) return false
+        if (s.name === 'actionComplianceSteward' && !config.actionComplianceStewardEnabled) return false
         return true
       })
 
@@ -991,7 +1002,7 @@ export class ActivationLoop {
           activationStart,
           toolsCalledThisTurn,
           recentHistory,
-        }, this.opts.llmRouter, this.opts.config.stewardModel, this.opts.queueStore, stewardChannel, this.opts.usageStore, event.id, onDebug ?? undefined, (results) => {
+        }, this.opts.llmRouter, config.stewardModel, this.opts.queueStore, stewardChannel, this.opts.usageStore, event.id, onDebug ?? undefined, (results) => {
           this.opts.stewardRunStore?.append({
             id: generateId('jr'),
             stewards: results,

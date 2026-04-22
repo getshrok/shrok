@@ -559,7 +559,6 @@ function makeActivationLoopFixture() {
     getLastActiveChannel: vi.fn().mockReturnValue('discord'),
     tryAcquireArchivalLock: vi.fn().mockReturnValue(false),
     releaseArchivalLock: vi.fn(),
-    getConversationVisibility: vi.fn().mockReturnValue({ agentWork: false, headTools: false, systemEvents: false, stewardRuns: false, agentPills: false, memoryRetrievals: false }),
     getThresholds: vi.fn().mockReturnValue([]),
     getAllThresholdFiredAt: vi.fn().mockReturnValue({}),
   } as unknown as AppStateStore
