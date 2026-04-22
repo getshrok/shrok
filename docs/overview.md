@@ -1,6 +1,6 @@
 # Overview
 
-Shrok can be powerful once you get to know the pieces, but agent-driven stuff can easily get wild, so here's what you need to know
+Shrok can be powerful once you get to know the pieces, but agent-driven stuff is deceptively complex, and can easily get wild, so here's what you need to know
 
 ## Talking to Shrok
 
