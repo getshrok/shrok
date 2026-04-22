@@ -56,7 +56,7 @@ function listRootMarkdown(docsRoot: string): Array<{ path: string; title: string
   const files = entries
     .filter(e => e.isFile() && e.name.endsWith('.md') && !e.name.startsWith('.'))
     .map(e => e.name)
-  files.sort((a, b) => a.localeCompare(b))
+  files.sort((a, b) => b.localeCompare(a))
   return files.map(name => ({
     path: name,
     title: extractTitle(path.join(docsRoot, name)),

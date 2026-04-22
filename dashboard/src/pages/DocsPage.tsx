@@ -58,7 +58,7 @@ const MD_PROSE_CLASSES = [
 // Groups collapsed by default — the Internals section is reference material
 // most users won't need unless they ask for it. The group containing the
 // currently-selected file auto-expands so deep links still land visibly.
-const DEFAULT_COLLAPSED_GROUPS = new Set<string>(['Internals'])
+const DEFAULT_COLLAPSED_GROUPS = new Set<string>(['Internals', 'Development'])
 
 export default function DocsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
