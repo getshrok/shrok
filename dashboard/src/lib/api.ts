@@ -62,7 +62,7 @@ export const api = {
   },
   agents: {
     list: () =>
-      request<{ agents: Array<{ id: string; task: string; status: string; skillName: string | null; trigger: string; model: string; parentAgentId: string | null; pendingQuestion: string | null; createdAt: string; updatedAt: string; completedAt: string | null }> }>('/api/agents'),
+      request<{ agents: Array<{ id: string; task: string; status: string; skillName: string | null; trigger: string; model: string; parentAgentId: string | null; pendingQuestion: string | null; createdAt: string; updatedAt: string; completedAt: string | null; colorSlot: number | null }> }>('/api/agents'),
     history: (id: string) =>
       request<{ history: Message[]; status: string; task: string; pendingQuestion: string | null }>(`/api/agents/${encodeURIComponent(id)}/history`),
     cancel: (id: string) =>

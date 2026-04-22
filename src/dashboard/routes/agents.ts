@@ -23,6 +23,7 @@ export function createAgentsRouter(agents: AgentStore, agentRunner?: AgentRunner
       createdAt: a.createdAt,
       updatedAt: a.updatedAt,
       completedAt: a.completedAt ?? null,
+      colorSlot: a.colorSlot ?? null,
     })) })
   })
 
