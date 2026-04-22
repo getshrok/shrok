@@ -75,6 +75,13 @@ function makeTestConfig(overrides: Partial<Config> = {}): Config {
     loopStewardSystemPromptChars: 500,
     loopStewardMaxTokens: 128,
     timezone: 'UTC',
+    visAgentWork: false,
+    visHeadTools: false,
+    visSystemEvents: false,
+    visStewardRuns: false,
+    visAgentPills: false,
+    visMemoryRetrievals: false,
+    usageFootersEnabled: false,
     ...overrides,
   } as Config
 }
@@ -262,5 +269,32 @@ describe('GET /api/settings — config-derived defaults', () => {
     fs.writeFileSync(path.join(workspace, 'config.json'), JSON.stringify({ preferenceStewardEnabled: false }), 'utf8')
     const b = await getBody()
     expect(b['preferenceStewardEnabled']).toBe(false)
+  })
+
+  it('returns the seven Phase 17 vis/footers flags with config-derived defaults (all false on fresh workspace)', async () => {
+    await startWithConfig(makeTestConfig())
+    const b = await getBody()
+    expect(b['visAgentWork']).toBe(false)
+    expect(b['visHeadTools']).toBe(false)
+    expect(b['visSystemEvents']).toBe(false)
+    expect(b['visStewardRuns']).toBe(false)
+    expect(b['visAgentPills']).toBe(false)
+    expect(b['visMemoryRetrievals']).toBe(false)
+    expect(b['usageFootersEnabled']).toBe(false)
+    // nested shape must not leak back in:
+    expect(b['conversationVisibility']).toBeUndefined()
+  })
+
+  it('workspace config.json override wins for visAgentWork (Phase 17 D-01/D-04)', async () => {
+    await startWithConfig(makeTestConfig())
+    fs.writeFileSync(
+      path.join(workspace, 'config.json'),
+      JSON.stringify({ visAgentWork: true, usageFootersEnabled: true }),
+      'utf8',
+    )
+    const b = await getBody()
+    expect(b['visAgentWork']).toBe(true)
+    expect(b['usageFootersEnabled']).toBe(true)
+    expect(b['visHeadTools']).toBe(false)  // others still default
   })
 })

@@ -67,6 +67,9 @@ const CONFIG_JSON_FIELDS = new Set([
   'loopStewardToolInputChars', 'loopStewardToolResultChars', 'loopStewardSystemPromptChars', 'loopStewardMaxTokens',
   'accentColor', 'logoPath',
   'webhookHost', 'webhookPort',
+  // Phase 17: conversation visibility + usage footers (moved from app_state)
+  'visAgentWork', 'visHeadTools', 'visSystemEvents', 'visStewardRuns',
+  'visAgentPills', 'visMemoryRetrievals', 'usageFootersEnabled',
 ])
 
 const VALID_PROVIDERS = new Set(['anthropic', 'gemini', 'openai'])
@@ -238,8 +241,13 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       loopStewardSystemPromptChars: num('loopStewardSystemPromptChars', config.loopStewardSystemPromptChars),
       loopStewardMaxTokens: num('loopStewardMaxTokens', config.loopStewardMaxTokens),
       assistantName: str('assistantName', 'Shrok'),
-      conversationVisibility: appState?.getConversationVisibility() ?? { agentWork: false, headTools: false, systemEvents: false, stewardRuns: false, agentPills: false, memoryRetrievals: false },
-      usageFootersEnabled: appState?.getUsageFootersEnabled() ?? false,
+      visAgentWork:        bool('visAgentWork',        config.visAgentWork),
+      visHeadTools:        bool('visHeadTools',        config.visHeadTools),
+      visSystemEvents:     bool('visSystemEvents',     config.visSystemEvents),
+      visStewardRuns:      bool('visStewardRuns',      config.visStewardRuns),
+      visAgentPills:       bool('visAgentPills',       config.visAgentPills),
+      visMemoryRetrievals: bool('visMemoryRetrievals', config.visMemoryRetrievals),
+      usageFootersEnabled: bool('usageFootersEnabled', config.usageFootersEnabled),
       accentColor: str('accentColor', '#8C51CD'),
       logoPath: str('logoPath', ''),
       timezone: str('timezone', config.timezone),
@@ -346,28 +354,6 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       // Hot-reload logLevel so it takes effect without a restart
       if ('logLevel' in body) {
         setLogLevel(body['logLevel'] as Config['logLevel'])
-      }
-    }
-
-    // Persist conversation visibility categories and usage footers toggle
-    if (body['conversationVisibility'] || 'usageFootersEnabled' in body) {
-      if (!appState) {
-        // appState is optional (e.g. test mounts) — silently skip persistence
-      } else {
-        if (body['conversationVisibility'] && typeof body['conversationVisibility'] === 'object') {
-          const v = body['conversationVisibility'] as Record<string, unknown>
-          appState.setConversationVisibility({
-            agentWork: !!v['agentWork'],
-            headTools: !!v['headTools'],
-            systemEvents: !!v['systemEvents'],
-            stewardRuns: !!v['stewardRuns'],
-            agentPills: !!v['agentPills'],
-            memoryRetrievals: !!v['memoryRetrievals'],
-          })
-        }
-        if ('usageFootersEnabled' in body) {
-          appState.setUsageFootersEnabled(!!body['usageFootersEnabled'])
-        }
       }
     }
 
