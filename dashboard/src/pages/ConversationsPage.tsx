@@ -1,6 +1,6 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Paperclip, X } from 'lucide-react'
@@ -12,12 +12,42 @@ import { useAssistantName } from '../lib/assistant-name'
 import type { Message, StewardRun, EventUsageSummary, SettingsData } from '../types/api'
 import { formatInTz, useConfigTimezone } from '../lib/formatTime'
 
-// Stable color palette for agent IDs — deterministic hash to one of 8 distinct colors
+// Okabe-Ito palette — maximally distinguishable, colorblind-safe
 const AGENT_COLORS = ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00', '#CC79A7']
-function agentColor(id: string): string {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0
-  return AGENT_COLORS[Math.abs(hash) % AGENT_COLORS.length]!
+
+// Assign colors by LRU: new agents steal the color last seen longest ago,
+// so active agents keep their color and quiet/finished ones give it up.
+function buildAgentColorMap(messages: Array<{ createdAt: string; _agentId?: string; injected?: boolean; kind: string; content?: string }>): Map<string, string> {
+  const agentToColor = new Map<string, string>()
+  const colorLastSeen = new Map<string, number>()
+  for (const color of AGENT_COLORS) colorLastSeen.set(color, -1)
+
+  for (const msg of messages) {
+    let agentId: string | null = null
+    if (msg._agentId) {
+      agentId = msg._agentId
+    } else if (msg.injected && msg.kind === 'text' && msg.content) {
+      const m = msg.content.match(/^\[agent:([^\]]+)\]/)
+      if (m) agentId = m[1]!
+    }
+    if (!agentId) continue
+
+    if (!agentToColor.has(agentId)) {
+      // Pick the color whose agent made a tool call least recently
+      let lruColor = AGENT_COLORS[0]!
+      let lruTs = Infinity
+      for (const [color, last] of colorLastSeen) {
+        if (last < lruTs) { lruTs = last; lruColor = color }
+      }
+      agentToColor.set(agentId, lruColor)
+    }
+    // Only advance recency on tool calls — that's the "agent is actively working" signal
+    if (msg.kind === 'tool_call') {
+      const ts = new Date(msg.createdAt).getTime()
+      colorLastSeen.set(agentToColor.get(agentId)!, ts)
+    }
+  }
+  return agentToColor
 }
 
 function parseAgentPrefix(content: string): { agentId: string | null; text: string } {
@@ -162,7 +192,7 @@ function isSystemEventText(content: string): boolean {
   return SYSTEM_MARKER_PREFIXES.some(p => content.startsWith(p))
 }
 
-function MessageBubble({ message, usage, showUsage, showToolMessages, showSystemEvents, tz }: { message: Message; usage?: EventUsageSummary; showUsage?: boolean; showToolMessages?: boolean; showSystemEvents?: boolean; tz: string }) {
+function MessageBubble({ message, usage, showUsage, showToolMessages, showSystemEvents, tz, colorMap }: { message: Message; usage?: EventUsageSummary; showUsage?: boolean; showToolMessages?: boolean; showSystemEvents?: boolean; tz: string; colorMap?: Map<string, string> }) {
   const formatTime = (iso: string) => formatInTz(iso, tz, { includeSeconds: true })
   if ((message.kind === 'tool_call' || message.kind === 'tool_result') && !showToolMessages && !message.injected) {
     return null
@@ -176,7 +206,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
     const isUser = message.role === 'user'
     const attachments = message.attachments ?? []
     const { agentId, text: displayText } = message.injected ? parseAgentPrefix(message.content) : { agentId: null, text: message.content }
-    const borderColor = agentId ? agentColor(agentId) : undefined
+    const borderColor = agentId ? colorMap?.get(agentId) : undefined
     return (
       <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
         <div
@@ -238,7 +268,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
   if (message.kind === 'tool_call') {
     const aid = (message as Message & { _agentId?: string })._agentId
     const agentPrefix = aid ? agentDisplayName(aid) : ''
-    const borderColor = aid ? agentColor(aid) : undefined
+    const borderColor = aid ? colorMap?.get(aid) : undefined
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
         <div className="flex flex-col gap-1">
@@ -268,7 +298,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
   if (message.kind === 'tool_result') {
     const aid = (message as Message & { _agentId?: string })._agentId
     const agentPrefix = aid ? agentDisplayName(aid) : ''
-    const borderColor = aid ? agentColor(aid) : undefined
+    const borderColor = aid ? colorMap?.get(aid) : undefined
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
         <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono"
@@ -297,11 +327,11 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
   return null
 }
 
-function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_call' }; result: Message & { kind: 'tool_result' }; tz: string }) {
+function MergedToolBubble({ call, result, tz, colorMap }: { call: Message & { kind: 'tool_call' }; result: Message & { kind: 'tool_result' }; tz: string; colorMap?: Map<string, string> }) {
   const formatTime = (iso: string) => formatInTz(iso, tz, { includeSeconds: true })
   const aid = (call as Message & { _agentId?: string })._agentId
   const agentPrefix = aid ? agentDisplayName(aid) : ''
-  const borderColor = aid ? agentColor(aid) : undefined
+  const borderColor = aid ? colorMap?.get(aid) : undefined
 
   return (
     <div className="flex flex-col items-start" title={formatTime(call.createdAt)}>
@@ -670,6 +700,10 @@ export default function ConversationsPage() {
     ...stewardRunsList.map(r => ({ _type: 'stewardRun' as const, ...r })),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 
+  const agentColorMap = useMemo(() => buildAgentColorMap(
+    timeline.filter((t): t is TimelineItem & { _type: 'message' } => t._type === 'message')
+  ), [timeline])
+
   const isLoading = messagesQuery.isLoading || stewardRunsQuery.isLoading
   const perEvent = usageQuery.data?.perEvent ?? {}
   const perEventCount = Object.keys(perEvent).length
@@ -814,7 +848,7 @@ export default function ConversationsPage() {
                     if (hasMatch) {
                       skipIndices.add(i + 1)
                       renderedTimeline.push(
-                        <MergedToolBubble key={item.id} call={item} result={next} tz={tz} />
+                        <MergedToolBubble key={item.id} call={item} result={next} tz={tz} colorMap={agentColorMap} />
                       )
                       continue
                     }
@@ -824,7 +858,7 @@ export default function ConversationsPage() {
                 renderedTimeline.push(
                   <React.Fragment key={item.id}>
                     {memEntry && <MemoryRetrievalRow text={memEntry.text} tokens={memEntry.tokens} />}
-                    <MessageBubble message={item} showUsage={usageFootersEnabled} showToolMessages={visibility.headTools} showSystemEvents={visibility.systemEvents} usage={item.kind === 'text' && item.role === 'assistant' && item.eventId ? perEvent[item.eventId] : undefined} tz={tz} />
+                    <MessageBubble message={item} showUsage={usageFootersEnabled} showToolMessages={visibility.headTools} showSystemEvents={visibility.systemEvents} usage={item.kind === 'text' && item.role === 'assistant' && item.eventId ? perEvent[item.eventId] : undefined} tz={tz} colorMap={agentColorMap} />
                   </React.Fragment>
                 )
               }
