@@ -128,8 +128,8 @@ describe('createDocsRouter handlers', () => {
       root: Array<{ path: string }>
       groups: Array<{ name: string; files: Array<{ path: string }> }>
     }
-    // Root files alphabetical
-    expect(body.root.map(f => f.path)).toEqual(['alpha.md', 'concepts.md', 'zeta.md'])
+    // Root files reverse-alphabetical
+    expect(body.root.map(f => f.path)).toEqual(['zeta.md', 'concepts.md', 'alpha.md'])
     // Groups reverse-alphabetical
     const names = body.groups.map(g => g.name)
     expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)))
