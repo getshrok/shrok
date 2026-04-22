@@ -806,16 +806,18 @@ export class LocalAgentRunner implements AgentRunner {
       const abortController = this.abortControllers.get(agentId)
       const executor = this.buildAgentExecutor(agentId, options, toolEntries, history, emitter, state, abortController?.signal)
 
-      const shortId = agentId.slice(-8)
       const displayName = shortAgentId(agentId).replace(/-/g, ' ')
       const AGENT_CIRCLES = ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤', '⚫']
-      const circleIdx = Math.abs([...shortId].reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0)) % AGENT_CIRCLES.length
+      // Phase 18 D-08/D-09: use the persisted color_slot instead of a per-invocation hash.
+      // Null slot (pre-Phase-18 agents) → no circle prefix (no hash fallback — see RESEARCH.md).
+      const circleIdx = this.agentStore.get(agentId)?.colorSlot ?? null
+      const circlePrefix = circleIdx != null ? `${AGENT_CIRCLES[circleIdx] ?? ''} ` : ''
       // Only send xray output for head-spawned agents — scheduled/reminder/webhook agents are background noise.
       // onDebug is intentionally NOT threaded into the agent tool loop: agent internals belong to xray
       // (onVerbose). onDebug is for head-level internals only; passing both would duplicate every
       // thinking block / tool call / tool result into the channel.
       const agentVerbose = options.onVerbose && options.trigger === 'manual'
-        ? (msg: string) => options.onVerbose!(`\`\`\`\n${AGENT_CIRCLES[circleIdx]} [${displayName}] ${msg}\n\`\`\``)
+        ? (msg: string) => options.onVerbose!(`\`\`\`\n${circlePrefix}[${displayName}] ${msg}\n\`\`\``)
         : undefined
 
       await runToolLoop(this.llmRouter, {
