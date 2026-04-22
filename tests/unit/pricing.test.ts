@@ -9,15 +9,15 @@ describe('estimateCost', () => {
   })
 
   it('returns correct USD for a cheap model', () => {
-    // gemini-2.0-flash: $0.10 in + $0.40 out per 1M
-    const cost = estimateCost('gemini-2.0-flash', 500_000, 500_000)
-    expect(cost).toBeCloseTo(0.25, 5)
+    // gemini-3.1-flash-lite-preview: $0.25 in + $1.50 out per 1M
+    const cost = estimateCost('gemini-3.1-flash-lite-preview', 500_000, 500_000)
+    expect(cost).toBeCloseTo(0.875, 5)
   })
 
-  it('returns correct USD for gpt-4o-mini', () => {
-    // $0.15 in + $0.60 out per 1M
-    const cost = estimateCost('gpt-4o-mini', 1_000_000, 1_000_000)
-    expect(cost).toBeCloseTo(0.75, 5)
+  it('returns correct USD for gpt-5.4-mini', () => {
+    // $0.75 in + $4.50 out per 1M
+    const cost = estimateCost('gpt-5.4-mini', 1_000_000, 1_000_000)
+    expect(cost).toBeCloseTo(5.25, 5)
   })
 
   it('falls back to most expensive pricing for unknown model', () => {
@@ -56,8 +56,8 @@ describe('estimateCostFromSummary', () => {
   })
 
   it('handles single model summary', () => {
-    const direct  = estimateCost('gpt-4o', 50_000, 20_000)
-    const summary = estimateCostFromSummary({ 'gpt-4o': { input: 50_000, output: 20_000 } })
+    const direct  = estimateCost('gpt-5.4', 50_000, 20_000)
+    const summary = estimateCostFromSummary({ 'gpt-5.4': { input: 50_000, output: 20_000 } })
     expect(summary).toBe(direct)
   })
 
