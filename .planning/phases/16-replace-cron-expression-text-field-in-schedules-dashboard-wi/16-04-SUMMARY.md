@@ -40,7 +40,7 @@ All four raw cron text inputs in `SchedulesPage.tsx` replaced with `<CronPicker 
 | Task | Name | Commit | Files |
 |------|------|--------|-------|
 | 1 | Replace all 4 cron text inputs with CronPicker + remove dead helpers | a5adb0f | dashboard/src/pages/SchedulesPage.tsx |
-| 2 | End-to-end visual and functional verification in browser | — | Awaiting human checkpoint |
+| 2 | End-to-end visual and functional verification in browser | — | Approved (all 8 browser scenarios passed) |
 
 ## CronPicker Usage Line Numbers (post-edit)
 
@@ -79,7 +79,7 @@ cronstrue import:           1  (expected 1)
 
 ## D-08 Complex-Cron Edit Fallback
 
-Plan specifies: opening a complex cron (e.g. `0 9 * * 1-5`) in the edit modal triggers `parseCronToState` parse failure → silent fallback to `DEFAULT_STATE` (Daily 09:00). If user saves without change, the stored cron becomes `0 9 * * *`. This behavior is designed and accepted; browser scenario 4 will verify it visually.
+Plan specifies: opening a complex cron (e.g. `0 9 * * 1-5`) in the edit modal triggers `parseCronToState` parse failure → silent fallback to `DEFAULT_STATE` (Daily 09:00). If user saves without change, the stored cron becomes `0 9 * * *`. This behavior is designed and accepted. Browser scenario 4 verified visually — silent fallback confirmed.
 
 ## Deviations from Plan
 
