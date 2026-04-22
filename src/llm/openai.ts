@@ -133,7 +133,7 @@ export class OpenAIProvider implements LLMProvider {
       const response = await withRetry(
         () => this.client.chat.completions.create({
           model: options.model,
-          max_tokens: maxTokens,
+          max_completion_tokens: maxTokens,
           messages: openaiMessages,
           ...(options.systemPrompt ? {
             messages: [{ role: 'system' as const, content: options.systemPrompt }, ...openaiMessages],
