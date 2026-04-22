@@ -75,7 +75,7 @@ function makeTestConfig(overrides: Partial<Config> = {}): Config {
     loopStewardSystemPromptChars: 500,
     loopStewardMaxTokens: 128,
     timezone: 'UTC',
-    visAgentWork: false,
+    visAgentWork: true,
     visHeadTools: false,
     visSystemEvents: false,
     visStewardRuns: false,
@@ -271,10 +271,10 @@ describe('GET /api/settings — config-derived defaults', () => {
     expect(b['preferenceStewardEnabled']).toBe(false)
   })
 
-  it('returns the seven Phase 17 vis/footers flags with config-derived defaults (all false on fresh workspace)', async () => {
+  it('returns the seven Phase 17 vis/footers flags with config-derived defaults (visAgentWork true on fresh workspace)', async () => {
     await startWithConfig(makeTestConfig())
     const b = await getBody()
-    expect(b['visAgentWork']).toBe(false)
+    expect(b['visAgentWork']).toBe(true)
     expect(b['visHeadTools']).toBe(false)
     expect(b['visSystemEvents']).toBe(false)
     expect(b['visStewardRuns']).toBe(false)

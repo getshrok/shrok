@@ -51,9 +51,3 @@ Tasks that process feeds (email, messages, tickets) use a watermark in their `ME
 ```
 last_checked: 2026-04-21T07:00:00-04:00
 ```
-
-Why local time with offset: using a bare Z-suffix UTC timestamp (e.g., `2026-04-21T07:00:00Z`) risks a 4-hour error if the agent reads the system clock as local time but appends Z. Including the offset (like `-04:00` for Eastern Daylight Time) makes the timestamp unambiguous regardless of how the agent formats it.
-
-When reading the watermark back, pass it directly to `--since`; the scripts handle ISO strings with offsets correctly.
-
-Update the watermark after each service is checked, not at the end of the full scan — so a partial run still advances the position for services that completed.

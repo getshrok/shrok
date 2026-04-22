@@ -12,6 +12,8 @@ data/
 /notes/
 /.planning/
 /.planning-archive/
+/.clod/
+/.claude/
 ~/
 
 # ── Baseline skill runtime state ─────────────────────────────────────────

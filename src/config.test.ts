@@ -262,9 +262,9 @@ describe('Phase 17 ConfigSchema additions — vis/footers fields', () => {
     process.env = { ...ORIGINAL_ENV }
   })
 
-  it('fresh workspace: all seven new fields default to false', () => {
+  it('fresh workspace: visAgentWork defaults true, other vis fields default false', () => {
     const cfg = loadConfig()
-    expect(cfg.visAgentWork).toBe(false)
+    expect(cfg.visAgentWork).toBe(true)
     expect(cfg.visHeadTools).toBe(false)
     expect(cfg.visSystemEvents).toBe(false)
     expect(cfg.visStewardRuns).toBe(false)

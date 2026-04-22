@@ -135,8 +135,8 @@ const ConfigSchema = z.object({
   bootstrapStewardEnabled: z.coerce.boolean().default(true),
   // Conversation detail (moved from app_state in Phase 17). Each flag controls a
   // category of behind-the-scenes activity surfaced in the dashboard conversation
-  // view and debug channel echo. All default off — user opts in per category.
-  visAgentWork: z.coerce.boolean().default(false),
+  // view and debug channel echo. visAgentWork defaults on; others default off.
+  visAgentWork: z.coerce.boolean().default(true),
   visHeadTools: z.coerce.boolean().default(false),
   visSystemEvents: z.coerce.boolean().default(false),
   visStewardRuns: z.coerce.boolean().default(false),

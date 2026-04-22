@@ -5,7 +5,7 @@ description: How Shrok tasks work — structure, scheduling, and best practices.
 
 ## What tasks are
 
-Tasks are things the assistant runs on a schedule without user prompting. Unlike skills (which agents use on demand), tasks fire on a timer and run silently in the background — the user is only notified when the task produces something worth reporting.
+Tasks are saved prompts that can be run in the future (on demand, recurring, or one-time).
 
 Common examples: inbox monitoring, daily briefings, news alerts, system health checks, report generation.
 
@@ -23,22 +23,16 @@ Use `$SHROK_TASKS_DIR` in all paths. Resolve it via `bash` before using in file 
 ```yaml
 ---
 name: my-task
-description: What the task checks and when it should surface results.
+description: What the task does.
 skill-deps:
   - system-stats
   - email
 ---
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | yes | Task name (kebab-case) |
-| `description` | yes | What the task does — shown to the scheduler when deciding whether to run or skip |
-| `skill-deps` | no | Skills whose SKILL.md + MEMORY.md get auto-loaded into the task agent's context when it runs |
-
 ## Scheduling
 
-Tasks are scheduled through the dashboard Schedules page. A schedule can be:
+Tasks can be scheduled through the dashboard Schedules page or by using the create_schedule tool. A schedule can be:
 - **Recurring** — cron expression or interval (e.g., "every 30 min", "daily at 9am")
 - **One-time** — fires once at a specific time, then never again
 
@@ -46,7 +40,7 @@ A task can have multiple schedules (e.g., a news monitor that runs hourly on wee
 
 ## The bundled-skills pattern
 
-Most tasks are orchestrators — they wire together one or more skills to perform a routine task. Rather than duplicating how those skills work, list them under `skill-deps` and the task agent automatically gets their instructions and state on spawn.
+Most tasks are orchestrators — they wire together one or more skills to perform a routine task. Rather than duplicating how those skills work, list them under `skill-deps` and the task agent automatically gets them loaded from the start.
 
 This keeps the task's TASK.md focused on what only the task knows: **what matters, and what to report** — not how to use each underlying tool.
 
@@ -71,17 +65,9 @@ That's the whole task. The agent knows how to use `system-stats` because its ins
 
 Good task instructions answer two questions:
 1. **What matters** — thresholds and criteria for "worth reporting"
-2. **What to report** — format and tone when there is something to say
+2. **What to report** — if scheduled, not everything done or found while executing a task is worth reporting to the user
 
 Time windows and skip conditions belong on the schedule's `conditions` field, not in the task — see the `scheduling` skill.
-
-Use ALL CAPS and assertive phrasing for hard rules the agent must not hedge on. Tasks run unattended; ambiguity leads to the agent asking questions into a void or wasting tokens second-guessing itself.
-
-## Output behavior
-
-Tasks run as background agents. Their output goes through a relay steward that decides whether the result is worth surfacing to the user. Write instructions so that "nothing to report" is a valid outcome — the relay steward will suppress empty or uneventful results automatically.
-
-If a task should always notify (e.g., a daily briefing), say so explicitly.
 
 ## MEMORY.md patterns
 
@@ -90,13 +76,3 @@ Same conventions as skills:
 - **Watermarks** — For tasks that process a feed, store a last-checked timestamp instead of item ID lists. See the `scheduling` skill for the correct format. Prevents unbounded growth.
 - **Thresholds and state** — Store the current threshold and last known value.
 - **Credentials** — API keys, resolved user IDs. Though for tasks using `skill-deps`, credentials usually live in the dep skill's MEMORY.md, not the task's.
-
-## Differences from skills
-
-| | Skills | Tasks |
-|---|---|---|
-| **Triggered by** | User request or agent decision | Schedule (recurring or one-time) |
-| **Visible to agents** | Yes — included in system prompts | No — never shown to agents |
-| **Output** | Direct response to user | Filtered through relay steward |
-| **Directory** | `$SHROK_SKILLS_DIR` | `$SHROK_TASKS_DIR` |
-| **Marker file** | `SKILL.md` | `TASK.md` |

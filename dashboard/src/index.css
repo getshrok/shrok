@@ -11,6 +11,7 @@
 }
 
 /* Markdown inside chat bubbles */
+.markdown-content { white-space: normal; }
 .markdown-content p { margin: 0; }
 .markdown-content p + p { margin-top: 0.5em; }
 .markdown-content strong { font-weight: 600; }
