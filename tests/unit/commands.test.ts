@@ -313,16 +313,16 @@ describe('~status', () => {
     expect(ctx.sent[0]).not.toMatch(/\dh/)
   })
 
-  it('shows debug mode "on" when all 4 debug-relevant categories are on', async () => {
+  it('shows debug mode "on" when all 5 debug-relevant categories are on', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ config: makeFakeConfig({ visAgentWork: true, visHeadTools: true, visSystemEvents: true, visStewardRuns: true }) })
+    const ctx = makeCtx({ config: makeFakeConfig({ visAgentWork: true, visHeadTools: true, visSystemEvents: true, visStewardRuns: true, visMemoryRetrievals: true }) })
     await registry.get('status')!.handler('', ctx)
     expect(ctx.sent[0]).toContain('Debug mode:         on')
   })
 
   it('shows debug mode "partial" when only some debug-relevant categories are on', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ config: makeFakeConfig({ visAgentWork: true }) })
+    const ctx = makeCtx({ config: makeFakeConfig({ visAgentWork: true, visHeadTools: false, visSystemEvents: false, visStewardRuns: false, visMemoryRetrievals: false }) })
     await registry.get('status')!.handler('', ctx)
     expect(ctx.sent[0]).toContain('Debug mode:         partial')
   })
