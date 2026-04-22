@@ -1,8 +1,8 @@
 {
   "name": "shrok",
-  "version": "0.4.0",
+  "version": "0.1.0",
   "description": "A tiny purple alien that is happy to be your personal agent.",
-  "author": "Shrok <ashley@shrok.ai>",
+  "author": "Ashley <ashley@shrok.ai>",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
