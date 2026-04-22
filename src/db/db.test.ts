@@ -310,12 +310,12 @@ describe('AgentStore', () => {
     expect(c.colorSlot).toBe(2)
   })
 
-  it('create reuses slots freed by non-active agents (Phase 18 D-04)', () => {
+  it('create picks next sequential slot even after an agent completes (color cycle fix)', () => {
     store.create('c-a', baseOptions)           // slot 0
     store.create('c-b', baseOptions)           // slot 1
-    store.complete('c-b', 'done', [])          // frees slot 1 (completed is not active)
-    const c = store.create('c-c', baseOptions) // should take slot 1
-    expect(c.colorSlot).toBe(1)
+    store.complete('c-b', 'done', [])          // completed, but still in recent window
+    const c = store.create('c-c', baseOptions) // slot 1 still "occupied" in LRU window → takes slot 2
+    expect(c.colorSlot).toBe(2)
   })
 
   it('create steals the LRU slot when all 7 are occupied (Phase 18 D-04/D-05)', async () => {
