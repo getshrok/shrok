@@ -2,7 +2,7 @@
 
 Shrok can be powerful once you get to know the pieces, but agent-driven stuff is deceptively complex, and can easily become chaotic, so here's what you need to know
 
-## Talking to Shrok
+## 💬 Talking to Shrok
 
 No matter where you talk to it from, whether it's the built-in web dashboard (http://localhost:8888) or chat apps like Discord and WhatsApp, you are talking to the same Shrok.
 
@@ -10,7 +10,7 @@ Anytime you ask Shrok to do something that requires real work, it creates a back
 
 Communication is bi-directional with agents. When an agent has a question mid-task, it gets passed through to you while it waits for the answer. And when you want to check the status of an agent or give them additional instructions, just tell Shrok and it will relay the message.
 
-## Skills
+## ⚡ Skills
 
 Skills teach Shrok new capabilities. They come in the form of text files (SKILL.md). Sometimes they include extra pieces like helper scripts, and many of them store persistent info in MEMORY.md files (like API keys, things agents have learned about using the skill over time, etc)
 
@@ -20,7 +20,7 @@ Skills can also be manually placed in the ~/.shrok/workspace/skills folder. In t
 
 **⚠️ Skills can come from anywhere, but be careful to only install skills from sources you trust. Many publicly available on the internet have been found to be malicious, and depending on where Shrok is installed, these malicious skills could easily gain access to your sensitive data. ⚠️**
 
-## Tasks
+## ☑️ Tasks
 
 Tasks are the main way that Shrok acts on its own. They are essentially just messages that you want to send to Shrok automatically at a future time, instructing it to do something. You might tell it to check your email once a day, or to check to make sure your flight hasn't been delayed as a one time task.
 
@@ -28,17 +28,17 @@ Shrok decides if a scheduled task should run as planned, so for the email exampl
 
 Task templates can be found at [getshrok/tasks](https://github.com/getshrok/tasks).
 
-## Memory
+## 🧠 Memory
 
 Shrok remembers all past conversations you've had with it, and automatically pulls them from memory as needed when you talk. 
 
 For details on the inner workings of the memory system, check out [getshrok/infinite-context-window](https://github.com/getshrok/infinite-context-window).
 
-## Identity
+## 🧑 Identity
 
 Shrok also saves info about you and the people in your life as those things come up in conversation. The better it knows you, the more helpful it can be. It saves these to its SOUL.md and USER.md files, so you can tell it explicitly to write something to them if you want to make sure it is saved. Unlike memories, these files are visible to Shrok at all times.
 
-## LLM Providers and Cost
+## 💲 LLM Providers and Cost
 
 Shrok uses your own API keys to function. Anthropic, OpenAI, and Google Gemini are supported, and you can add keys for multiple providers and set a priority order so Shrok falls back automatically.
 
