@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-04-22T03:16:23.264Z"
+status: verifying
+stopped_at: Completed 16-03-PLAN.md
+last_updated: "2026-04-22T03:22:21.866Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 12
-  completed_plans: 10
-  percent: 83
+  completed_plans: 11
+  percent: 92
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/MILESTONES.md (v1.0 shipped 2026-04-11)
 
 Phase: 16 (replace-cron-expression-text-field-in-schedules-dashboard-wi) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-22
 
 Progress: [██████████] 100%
@@ -55,6 +55,7 @@ Progress: [██████████] 100%
 | Phase 16 P01 | 94 | 2 tasks | 2 files |
 | Phase 16 P02 | 81 | 1 tasks | 1 files |
 | Phase 16 P02 | 3 | 2 tasks | 1 files |
+| Phase 16 P03 | 200 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,7 @@ Progress: [██████████] 100%
 - [Phase 16]: Field-parse approach for isValidCadence: N ∈ {5,10,15,30,45,60} Set lookup + integer range checks per field — cleaner and more auditable than a single regex for bounded validation
 - [Phase 16]: useState lazy initializer (not useEffect) used to parse incoming cron on mount — prevents onChange-on-mount loop (D-09/Pitfall 1)
 - [Phase 16]: CronPicker: buildCron exhaustive switch produces only the six isValidCadence-accepted shapes; no cronstrue in picker (D-02)
+- [Phase 16]: cadence gate placed BEFORE nextRunAfter in all four cron-accepting server-side paths (Pitfall 4); defense-in-depth try/catch retained around nextRunAfter in REST handlers
 
 ### Pending Todos
 
@@ -105,6 +107,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-22T03:16:23.259Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-04-22T03:22:21.861Z
+Stopped at: Completed 16-03-PLAN.md
 Resume file: None
