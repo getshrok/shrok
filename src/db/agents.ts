@@ -3,6 +3,9 @@ import type { Message, TextMessage } from '../types/core.js'
 import type { AgentState, AgentStatus, SpawnOptions } from '../types/agent.js'
 import type { DashboardEventBus } from '../dashboard/events.js'
 
+/** Number of distinct color slots available to active agents. Matches dashboard Okabe-Ito palette length. */
+export const AGENT_COLOR_SLOT_COUNT = 7
+
 interface AgentRow {
   id: string
   skill_name: string | null
@@ -23,6 +26,7 @@ interface AgentRow {
   created_at: string
   updated_at: string
   completed_at: string | null
+  color_slot: number | null
 }
 
 function rowToState(row: AgentRow): AgentState {
@@ -43,6 +47,7 @@ function rowToState(row: AgentRow): AgentState {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.completed_at != null ? { completedAt: row.completed_at } : {}),
+    ...(row.color_slot != null ? { colorSlot: row.color_slot } : {}),
   }
 }
 
@@ -63,14 +68,19 @@ export class AgentStore {
   private stmtGetDescendantIds: StatementSync
   private stmtCount: StatementSync
   private stmtCancelAllActive: StatementSync
+  private stmtListActiveSlots: StatementSync
 
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
     this.stmtCreate = db.prepare(`
       INSERT INTO agents
-        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, history, created_at, updated_at)
+        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, history, color_slot, created_at, updated_at)
       VALUES
-        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @history, datetime('now'), datetime('now'))
+        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @history, @color_slot, datetime('now'), datetime('now'))
     `)
+
+    this.stmtListActiveSlots = db.prepare(
+      "SELECT color_slot, updated_at FROM agents WHERE status IN ('running','suspended') AND color_slot IS NOT NULL"
+    )
 
     this.stmtGet = db.prepare('SELECT * FROM agents WHERE id = ?')
 
@@ -134,7 +144,32 @@ export class AgentStore {
     )
   }
 
+  /** Pick the color slot for a new agent: lowest-index unoccupied slot, else the slot
+   *  among active (running/suspended) agents whose holder has the oldest updated_at.
+   *  See CONTEXT.md D-03/D-04/D-05. */
+  private pickColorSlot(): number {
+    const rows = this.stmtListActiveSlots.all() as unknown as { color_slot: number; updated_at: string }[]
+    const occupied = new Map<number, string>()
+    for (const r of rows) {
+      const prev = occupied.get(r.color_slot)
+      // Keep the newest updated_at per slot (a slot could in theory appear twice across races)
+      if (prev === undefined || r.updated_at > prev) occupied.set(r.color_slot, r.updated_at)
+    }
+    for (let s = 0; s < AGENT_COLOR_SLOT_COUNT; s++) {
+      if (!occupied.has(s)) return s
+    }
+    // All slots occupied — steal the one with the oldest updated_at (lexicographic order
+    // on ISO-8601 `datetime('now')` strings matches chronological order).
+    let lruSlot = 0
+    let lruTs: string | null = null
+    for (const [slot, ts] of occupied) {
+      if (lruTs === null || ts < lruTs) { lruTs = ts; lruSlot = slot }
+    }
+    return lruSlot
+  }
+
   create(id: string, options: SpawnOptions): AgentState {
+    const colorSlot = this.pickColorSlot()
     this.stmtCreate.run({
       id,
       skill_name: options.skillName ?? null,
@@ -146,6 +181,7 @@ export class AgentStore {
       trigger: options.trigger,
       parent_agent_id: options.parentAgentId ?? null,
       history: null,
+      color_slot: colorSlot,
     })
     return this.get(id)!
   }

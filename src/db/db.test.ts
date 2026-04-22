@@ -295,6 +295,46 @@ describe('AgentStore', () => {
     expect(t?.history).toHaveLength(1)
     expect(t?.history[0]?.id).toBe('n1')
   })
+
+  it('create assigns colorSlot 0 to the first agent (Phase 18 D-03)', () => {
+    const a = store.create('c-1', baseOptions)
+    expect(a.colorSlot).toBe(0)
+  })
+
+  it('create assigns sequential unoccupied slots (Phase 18 D-04)', () => {
+    const a = store.create('c-a', baseOptions)
+    const b = store.create('c-b', baseOptions)
+    const c = store.create('c-c', baseOptions)
+    expect(a.colorSlot).toBe(0)
+    expect(b.colorSlot).toBe(1)
+    expect(c.colorSlot).toBe(2)
+  })
+
+  it('create reuses slots freed by non-active agents (Phase 18 D-04)', () => {
+    store.create('c-a', baseOptions)           // slot 0
+    store.create('c-b', baseOptions)           // slot 1
+    store.complete('c-b', 'done', [])          // frees slot 1 (completed is not active)
+    const c = store.create('c-c', baseOptions) // should take slot 1
+    expect(c.colorSlot).toBe(1)
+  })
+
+  it('create steals the LRU slot when all 7 are occupied (Phase 18 D-04/D-05)', async () => {
+    const ids = ['s0','s1','s2','s3','s4','s5','s6']
+    for (const id of ids) {
+      store.create(id, baseOptions)
+      // Ensure each insert has a strictly increasing updated_at via a 2ms gap.
+      await new Promise(r => setTimeout(r, 2))
+    }
+    // All 7 slots occupied by running agents; s0 has the oldest updated_at.
+    const overflow = store.create('s7', baseOptions)
+    expect(overflow.colorSlot).toBe(0)
+  })
+
+  it('getRecent includes colorSlot on returned agents (Phase 18)', () => {
+    store.create('r-1', baseOptions)
+    const recent = store.getRecent(5)
+    expect(recent[0]?.colorSlot).toBe(0)
+  })
 })
 
 // ─── AgentInboxStore ───────────────────────────────────────────────────────
