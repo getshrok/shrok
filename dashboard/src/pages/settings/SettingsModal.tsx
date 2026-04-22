@@ -91,14 +91,12 @@ export default function SettingsModal({ open, onClose, onSaved }: { open: boolea
       if (draft && window.confirm('Also show all internals in the conversation view? (Agent work, head tools, system events, steward runs, agent pills)')) {
         setDraft(d => d ? {
           ...d,
-          conversationVisibility: {
-            agentWork: true,
-            headTools: true,
-            systemEvents: true,
-            stewardRuns: true,
-            agentPills: true,
-            memoryRetrievals: true,
-          },
+          visAgentWork: true,
+          visHeadTools: true,
+          visSystemEvents: true,
+          visStewardRuns: true,
+          visAgentPills: true,
+          visMemoryRetrievals: true,
         } : d)
       }
     }

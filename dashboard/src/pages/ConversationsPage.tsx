@@ -5,7 +5,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Paperclip, X } from 'lucide-react'
 import { api } from '../lib/api'
-import { agentDisplayName, agentDot } from '../lib/agentId'
+import { agentDisplayName } from '../lib/agentId'
 import { useStream } from '../hooks/useStream'
 import { useMode } from '../context/ModeContext'
 import { useAssistantName } from '../lib/assistant-name'
@@ -187,7 +187,7 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
               ? 'bg-zinc-800/60 text-zinc-400 border border-zinc-700 font-mono text-xs'
               : 'bg-[var(--accent)] text-white border border-[var(--accent)] saturate-[1.06] brightness-[0.85]'
           }`}
-          style={borderColor ? { borderLeftColor: borderColor, borderLeftWidth: '3px' } : undefined}
+          style={borderColor ? { borderColor: borderColor } : undefined}
           title={formatTime(message.createdAt)}
         >
           {!isUser && !message.injected
@@ -237,7 +237,8 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 
   if (message.kind === 'tool_call') {
     const aid = (message as Message & { _agentId?: string })._agentId
-    const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
+    const agentPrefix = aid ? agentDisplayName(aid) : ''
+    const borderColor = aid ? agentColor(aid) : undefined
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
         <div className="flex flex-col gap-1">
@@ -248,9 +249,10 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
               <details
                 key={key}
                 className="max-w-2xl bg-amber-950/40 border border-amber-900/50 rounded-lg text-xs font-mono"
+                style={borderColor ? { borderColor: borderColor } : undefined}
               >
                 <summary className="px-3 py-2 cursor-pointer text-amber-500 select-none break-words">
-                  {agentPrefix && <>{agentPrefix.trim()}<br /></>}🔧 {summary}
+                  {agentPrefix && <>{agentPrefix}<br /></>}🔧 {summary}
                 </summary>
                 <pre className="px-3 pb-2 text-amber-400/80 overflow-auto">
                   {JSON.stringify(_displayInput(tc), null, 2)}
@@ -265,12 +267,14 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 
   if (message.kind === 'tool_result') {
     const aid = (message as Message & { _agentId?: string })._agentId
-    const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
+    const agentPrefix = aid ? agentDisplayName(aid) : ''
+    const borderColor = aid ? agentColor(aid) : undefined
     return (
       <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
-        <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono">
+        <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono"
+          style={borderColor ? { borderColor: borderColor } : undefined}>
           <summary className="px-3 py-2 cursor-pointer text-emerald-500 select-none">
-            {agentPrefix && <>{agentPrefix.trim()}<br /></>}🔧 {message.toolResults.map(tr => toolResultSummary(tr)).join(' · ')}
+            {agentPrefix && <>{agentPrefix}<br /></>}🔧 {message.toolResults.map(tr => toolResultSummary(tr)).join(' · ')}
           </summary>
           <pre className="px-3 pb-2 text-emerald-400/80 overflow-auto">
             {JSON.stringify(message.toolResults, null, 2)}
@@ -296,7 +300,8 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
 function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_call' }; result: Message & { kind: 'tool_result' }; tz: string }) {
   const formatTime = (iso: string) => formatInTz(iso, tz, { includeSeconds: true })
   const aid = (call as Message & { _agentId?: string })._agentId
-  const agentPrefix = aid ? `${agentDot(aid)} ${agentDisplayName(aid)} ` : ''
+  const agentPrefix = aid ? agentDisplayName(aid) : ''
+  const borderColor = aid ? agentColor(aid) : undefined
 
   return (
     <div className="flex flex-col items-start" title={formatTime(call.createdAt)}>
@@ -309,9 +314,10 @@ function MergedToolBubble({ call, result, tz }: { call: Message & { kind: 'tool_
           <details
             key={key}
             className="max-w-2xl bg-zinc-800/60 border border-zinc-700 rounded-lg text-xs font-mono"
+            style={borderColor ? { borderColor: borderColor } : undefined}
           >
             <summary className="px-3 py-2 cursor-pointer select-none break-words text-zinc-400">
-              {agentPrefix && <>{agentPrefix.trim()}<br /></>}<span className="text-amber-500">🔧 {callSummary}</span>
+              {agentPrefix && <>{agentPrefix}<br /></>}<span className="text-amber-500">🔧 {callSummary}</span>
               {resultSummary && <><br /><span className="text-emerald-500">🔧 {resultSummary}</span></>}
             </summary>
             <pre className="px-3 pb-2 text-amber-400/80 overflow-auto">
@@ -481,8 +487,16 @@ export default function ConversationsPage() {
   const assistantName = useAssistantName()
   const { data: isTyping } = useQuery({ queryKey: ['typing'], initialData: false, staleTime: Infinity })
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.settings.get })
-  const visibility = (settings as SettingsData | undefined)?.conversationVisibility ?? { agentWork: false, headTools: false, systemEvents: false, stewardRuns: false, agentPills: false, memoryRetrievals: false }
-  const usageFootersEnabled = (settings as Record<string, unknown> | undefined)?.usageFootersEnabled === true
+  const s = settings as SettingsData | undefined
+  const visibility = {
+    agentWork:        s?.visAgentWork        ?? false,
+    headTools:        s?.visHeadTools        ?? false,
+    systemEvents:     s?.visSystemEvents     ?? false,
+    stewardRuns:      s?.visStewardRuns      ?? false,
+    agentPills:       s?.visAgentPills       ?? false,
+    memoryRetrievals: s?.visMemoryRetrievals ?? false,
+  }
+  const usageFootersEnabled = s?.usageFootersEnabled === true
   const tz = (settings as SettingsData | undefined)?.timezone || 'UTC'
 
   // Agent work backfill + live stream (gated by the agentWork category)

@@ -60,17 +60,13 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
     </div>
 
     {d && set && (() => {
-      const vis = d.conversationVisibility
-      const setVis = (key: keyof typeof vis, value: boolean) => {
-        set('conversationVisibility', { ...vis, [key]: value })
-      }
-      const categories: Array<{ key: keyof typeof vis; label: string; tooltip: string }> = [
-        { key: 'agentWork',    label: 'Agent work',             tooltip: "See what agents are doing as they work — which tools they call and what comes back. In chat apps, tool calls start collapsed. Add any reaction to expand, remove it to collapse." },
-        { key: 'headTools',    label: 'Head tool activity',     tooltip: "See when agents are being created, messaged, or cancelled behind the scenes." },
-        { key: 'systemEvents', label: 'System events',          tooltip: "See system-level activity like agent completions, scheduled task triggers, and internal nudges." },
-        { key: 'stewardRuns',  label: 'Steward runs',           tooltip: "See the behind-the-scenes decisions stewards made on each turn — what they checked and whether they acted." },
-        { key: 'agentPills',   label: 'Agent stream selector',  tooltip: "Adds a row of pills at the top of the conversation for switching between the main view and individual agent work streams." },
-        { key: 'memoryRetrievals', label: 'Memory retrievals',   tooltip: "See which past conversations were pulled from memory to inform each response." },
+      const categories: Array<{ key: 'visAgentWork' | 'visHeadTools' | 'visSystemEvents' | 'visStewardRuns' | 'visAgentPills' | 'visMemoryRetrievals'; label: string; tooltip: string }> = [
+        { key: 'visAgentWork',        label: 'Agent work',             tooltip: "See what agents are doing as they work — which tools they call and what comes back. In chat apps, tool calls start collapsed. Add any reaction to expand, remove it to collapse." },
+        { key: 'visHeadTools',        label: 'Head tool activity',     tooltip: "See when agents are being created, messaged, or cancelled behind the scenes." },
+        { key: 'visSystemEvents',     label: 'System events',          tooltip: "See system-level activity like agent completions, scheduled task triggers, and internal nudges." },
+        { key: 'visStewardRuns',      label: 'Steward runs',           tooltip: "See the behind-the-scenes decisions stewards made on each turn — what they checked and whether they acted." },
+        { key: 'visAgentPills',       label: 'Agent stream selector',  tooltip: "Adds a row of pills at the top of the conversation for switching between the main view and individual agent work streams." },
+        { key: 'visMemoryRetrievals', label: 'Memory retrievals',      tooltip: "See which past conversations were pulled from memory to inform each response." },
       ]
       return (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
@@ -80,11 +76,11 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={vis[c.key]}
-                  onChange={e => setVis(c.key, e.target.checked)}
+                  checked={d[c.key]}
+                  onChange={e => set(c.key, e.target.checked)}
                   className="accent-[var(--accent)]"
                 />
-                <span className="text-sm text-zinc-300">{vis[c.key] ? 'On' : 'Off'}</span>
+                <span className="text-sm text-zinc-300">{d[c.key] ? 'On' : 'Off'}</span>
               </label>
             </Field>
           ))}

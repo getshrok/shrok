@@ -325,14 +325,12 @@ export interface SettingsData {
   memoryBudgetPercent: number
   memoryQueryContextTokens: number
   assistantName: string
-  conversationVisibility: {
-    agentWork: boolean
-    headTools: boolean
-    systemEvents: boolean
-    stewardRuns: boolean
-    agentPills: boolean
-    memoryRetrievals: boolean
-  }
+  visAgentWork: boolean
+  visHeadTools: boolean
+  visSystemEvents: boolean
+  visStewardRuns: boolean
+  visAgentPills: boolean
+  visMemoryRetrievals: boolean
   usageFootersEnabled: boolean
   accentColor: string
   logoPath: string

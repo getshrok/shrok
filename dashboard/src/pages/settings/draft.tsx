@@ -63,14 +63,12 @@ export interface DraftState {
   accentColor: string
   logoDataUrl: string | null
   logLevel: string
-  conversationVisibility: {
-    agentWork: boolean
-    headTools: boolean
-    systemEvents: boolean
-    stewardRuns: boolean
-    agentPills: boolean
-    memoryRetrievals: boolean
-  }
+  visAgentWork: boolean
+  visHeadTools: boolean
+  visSystemEvents: boolean
+  visStewardRuns: boolean
+  visAgentPills: boolean
+  visMemoryRetrievals: boolean
   usageFootersEnabled: boolean
   traceHistoryTokens: number
   // Advanced
@@ -141,7 +139,12 @@ export function initDraft(s: SettingsData): DraftState {
     accentColor: s.accentColor,
     logoDataUrl: null,
     logLevel: s.logLevel,
-    conversationVisibility: s.conversationVisibility,
+    visAgentWork:        s.visAgentWork,
+    visHeadTools:        s.visHeadTools,
+    visSystemEvents:     s.visSystemEvents,
+    visStewardRuns:      s.visStewardRuns,
+    visAgentPills:       s.visAgentPills,
+    visMemoryRetrievals: s.visMemoryRetrievals,
     usageFootersEnabled: s.usageFootersEnabled,
     traceHistoryTokens: s.traceHistoryTokens,
     llmMaxTokens: s.llmMaxTokens,
@@ -217,7 +220,12 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.accentColor !== s.accentColor) return true
   if (draft.logoDataUrl !== null) return true
   if (draft.logLevel !== s.logLevel) return true
-  if (JSON.stringify(draft.conversationVisibility) !== JSON.stringify(s.conversationVisibility)) return true
+  if (draft.visAgentWork        !== s.visAgentWork)        return true
+  if (draft.visHeadTools        !== s.visHeadTools)        return true
+  if (draft.visSystemEvents     !== s.visSystemEvents)     return true
+  if (draft.visStewardRuns      !== s.visStewardRuns)      return true
+  if (draft.visAgentPills       !== s.visAgentPills)       return true
+  if (draft.visMemoryRetrievals !== s.visMemoryRetrievals) return true
   if (draft.usageFootersEnabled !== s.usageFootersEnabled) return true
   if (draft.traceHistoryTokens !== s.traceHistoryTokens) return true
   if (draft.llmMaxTokens !== s.llmMaxTokens) return true
@@ -281,7 +289,12 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.accentColor !== s.accentColor) body.accentColor = draft.accentColor
   if (draft.logoDataUrl !== null) body.logoDataUrl = draft.logoDataUrl
   if (draft.logLevel !== s.logLevel) body.logLevel = draft.logLevel
-  if (JSON.stringify(draft.conversationVisibility) !== JSON.stringify(s.conversationVisibility)) body.conversationVisibility = draft.conversationVisibility
+  if (draft.visAgentWork        !== s.visAgentWork)        body.visAgentWork        = draft.visAgentWork
+  if (draft.visHeadTools        !== s.visHeadTools)        body.visHeadTools        = draft.visHeadTools
+  if (draft.visSystemEvents     !== s.visSystemEvents)     body.visSystemEvents     = draft.visSystemEvents
+  if (draft.visStewardRuns      !== s.visStewardRuns)      body.visStewardRuns      = draft.visStewardRuns
+  if (draft.visAgentPills       !== s.visAgentPills)       body.visAgentPills       = draft.visAgentPills
+  if (draft.visMemoryRetrievals !== s.visMemoryRetrievals) body.visMemoryRetrievals = draft.visMemoryRetrievals
   if (draft.usageFootersEnabled !== s.usageFootersEnabled) body.usageFootersEnabled = draft.usageFootersEnabled
   if (draft.traceHistoryTokens !== s.traceHistoryTokens) body.traceHistoryTokens = draft.traceHistoryTokens
   if (draft.llmMaxTokens !== s.llmMaxTokens) body.llmMaxTokens = draft.llmMaxTokens
