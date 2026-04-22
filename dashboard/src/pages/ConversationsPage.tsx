@@ -15,40 +15,6 @@ import { formatInTz, useConfigTimezone } from '../lib/formatTime'
 // Okabe-Ito palette — maximally distinguishable, colorblind-safe
 const AGENT_COLORS = ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00', '#CC79A7']
 
-// Assign colors by LRU: new agents steal the color last seen longest ago,
-// so active agents keep their color and quiet/finished ones give it up.
-function buildAgentColorMap(messages: Array<{ createdAt: string; _agentId?: string; injected?: boolean; kind: string; content?: string }>): Map<string, string> {
-  const agentToColor = new Map<string, string>()
-  const colorLastSeen = new Map<string, number>()
-  for (const color of AGENT_COLORS) colorLastSeen.set(color, -1)
-
-  for (const msg of messages) {
-    let agentId: string | null = null
-    if (msg._agentId) {
-      agentId = msg._agentId
-    } else if (msg.injected && msg.kind === 'text' && msg.content) {
-      const m = msg.content.match(/^\[agent:([^\]]+)\]/)
-      if (m) agentId = m[1]!
-    }
-    if (!agentId) continue
-
-    if (!agentToColor.has(agentId)) {
-      // Pick the color whose agent made a tool call least recently
-      let lruColor = AGENT_COLORS[0]!
-      let lruTs = Infinity
-      for (const [color, last] of colorLastSeen) {
-        if (last < lruTs) { lruTs = last; lruColor = color }
-      }
-      agentToColor.set(agentId, lruColor)
-    }
-    // Only advance recency on tool calls — that's the "agent is actively working" signal
-    if (msg.kind === 'tool_call') {
-      const ts = new Date(msg.createdAt).getTime()
-      colorLastSeen.set(agentToColor.get(agentId)!, ts)
-    }
-  }
-  return agentToColor
-}
 
 function parseAgentPrefix(content: string): { agentId: string | null; text: string } {
   const match = content.match(/^\[agent:([^\]]+)\]\s*/)
@@ -700,9 +666,18 @@ export default function ConversationsPage() {
     ...stewardRunsList.map(r => ({ _type: 'stewardRun' as const, ...r })),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 
-  const agentColorMap = useMemo(() => buildAgentColorMap(
-    timeline.filter((t): t is TimelineItem & { _type: 'message' } => t._type === 'message')
-  ), [timeline])
+  // Phase 18 D-06/D-07: colors come from the persisted slot on each agent,
+  // not a timeline walk. `AGENT_COLORS` has exactly 7 entries; slots are 0..6.
+  const agentColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const a of agentsQuery.data?.agents ?? []) {
+      if (a.colorSlot != null) {
+        const color = AGENT_COLORS[a.colorSlot]
+        if (color) map.set(a.id, color)
+      }
+    }
+    return map
+  }, [agentsQuery.data])
 
   const isLoading = messagesQuery.isLoading || stewardRunsQuery.isLoading
   const perEvent = usageQuery.data?.perEvent ?? {}
