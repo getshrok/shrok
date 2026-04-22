@@ -1,38 +1,48 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
 import { buildCommandRegistry, type SlashCommandContext, type UsageMode } from '../../src/head/commands.js'
-import type { AppStateStore, ConversationVisibility } from '../../src/db/app_state.js'
+import type { AppStateStore } from '../../src/db/app_state.js'
+import type { Config } from '../../src/config.js'
 
-// ─── Context factory ──────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeAppState(initial?: Partial<ConversationVisibility>): AppStateStore {
-  let vis: ConversationVisibility = {
-    agentWork: false,
-    headTools: false,
-    systemEvents: false,
-    stewardRuns: false,
-    agentPills: false,
-    memoryRetrievals: false,
-    ...initial,
-  }
+function makeFakeConfig(overrides: Partial<Config> = {}): Config {
   return {
-    getConversationVisibility: () => vis,
-    setConversationVisibility: (v: ConversationVisibility) => { vis = v },
-    // Unused in these tests, but present on the real store
-    getLastActiveChannel: () => '',
-    setLastActiveChannel: vi.fn(),
-    tryAcquireArchivalLock: vi.fn().mockReturnValue(true),
-    releaseArchivalLock: vi.fn(),
-    getUsageFootersEnabled: () => false,
-    setUsageFootersEnabled: vi.fn(),
-  } as unknown as AppStateStore
+    workspacePath: '/tmp/nowhere',
+    visAgentWork: false,
+    visHeadTools: false,
+    visSystemEvents: false,
+    visStewardRuns: false,
+    visAgentPills: false,
+    visMemoryRetrievals: false,
+    usageFootersEnabled: false,
+    // Minimal other fields used by commands handlers
+    dbPath: '/tmp/nowhere.db',
+    llmProvider: 'anthropic',
+    contextWindowTokens: 100_000,
+    memoryBudgetPercent: 45,
+    ...overrides,
+  } as Config
 }
 
 function makeCtx(overrides?: Partial<SlashCommandContext>): SlashCommandContext & { sent: string[] } {
   const sent: string[] = []
+  // Minimal AppStateStore mock — only methods still used by SlashCommandContext paths
+  const appState = {
+    getLastActiveChannel: () => '',
+    setLastActiveChannel: vi.fn(),
+    tryAcquireArchivalLock: vi.fn().mockReturnValue(true),
+    releaseArchivalLock: vi.fn(),
+    getThresholds: vi.fn().mockReturnValue([]),
+    getAllThresholdFiredAt: vi.fn().mockReturnValue({}),
+  } as unknown as AppStateStore
+
   return {
     channel: 'test-channel',
     send: async (msg: string) => { sent.push(msg) },
-    appState: makeAppState(),
+    appState,
     usageModes: new Map(),
     stop: vi.fn(),
     restart: vi.fn(),
@@ -50,7 +60,7 @@ function makeCtx(overrides?: Partial<SlashCommandContext>): SlashCommandContext 
     clearQueue: vi.fn(),
     clearStewardRuns: vi.fn(),
     clearReminders: vi.fn(),
-    config: {} as SlashCommandContext['config'],
+    config: makeFakeConfig(),
     getTopicCount: vi.fn().mockResolvedValue(0),
     getDbStats: vi.fn().mockReturnValue({ messages: 0, agents: 0, schedules: 0, reminders: 0 }),
     getMcpCapabilities: vi.fn().mockReturnValue([]),
@@ -90,95 +100,132 @@ describe('~help', () => {
 })
 
 describe('~xray', () => {
-  it('toggles agentWork on when off', async () => {
+  let workspace: string
+
+  beforeEach(() => {
+    workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'cmd-xray-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(workspace, { recursive: true, force: true })
+  })
+
+  function readCfg(): Record<string, unknown> {
+    const p = path.join(workspace, 'config.json')
+    if (!fs.existsSync(p)) return {}
+    return JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>
+  }
+
+  it('toggles visAgentWork on when currently off', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx()
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace }) })
     await registry.get('xray')!.handler('', ctx)
-    expect(ctx.appState.getConversationVisibility().agentWork).toBe(true)
+    expect(readCfg()['visAgentWork']).toBe(true)
     expect(ctx.sent[0]).toContain('on')
   })
 
-  it('toggles agentWork off when on', async () => {
+  it('toggles visAgentWork off when currently on', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ appState: makeAppState({ agentWork: true }) })
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace, visAgentWork: true }) })
     await registry.get('xray')!.handler('', ctx)
-    expect(ctx.appState.getConversationVisibility().agentWork).toBe(false)
+    expect(readCfg()['visAgentWork']).toBe(false)
     expect(ctx.sent[0]).toContain('off')
   })
 
   it('forces on with explicit "on" arg', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx()
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace }) })
     await registry.get('xray')!.handler('on', ctx)
-    expect(ctx.appState.getConversationVisibility().agentWork).toBe(true)
+    expect(readCfg()['visAgentWork']).toBe(true)
   })
 
   it('does not touch other visibility categories', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ appState: makeAppState({ headTools: true, stewardRuns: true }) })
+    // visHeadTools is only in ctx.config, not in the disk config.json
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace, visAgentWork: false }) })
     await registry.get('xray')!.handler('on', ctx)
-    const v = ctx.appState.getConversationVisibility()
-    expect(v.agentWork).toBe(true)
-    expect(v.headTools).toBe(true)
-    expect(v.stewardRuns).toBe(true)
+    const cfg = readCfg()
+    expect(cfg['visAgentWork']).toBe(true)
+    // Other keys were not written by xray
+    expect(cfg['visHeadTools']).toBeUndefined()
+    expect(cfg['visStewardRuns']).toBeUndefined()
   })
 })
 
 describe('~debug', () => {
+  let workspace: string
+
+  beforeEach(() => {
+    workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'cmd-debug-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(workspace, { recursive: true, force: true })
+  })
+
+  function readCfg(): Record<string, unknown> {
+    const p = path.join(workspace, 'config.json')
+    if (!fs.existsSync(p)) return {}
+    return JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>
+  }
+
   it('turns all 4 debug-relevant categories on when all are off', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx()
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace }) })
     await registry.get('debug')!.handler('', ctx)
-    const v = ctx.appState.getConversationVisibility()
-    expect(v.agentWork).toBe(true)
-    expect(v.headTools).toBe(true)
-    expect(v.systemEvents).toBe(true)
-    expect(v.stewardRuns).toBe(true)
+    const cfg = readCfg()
+    expect(cfg['visAgentWork']).toBe(true)
+    expect(cfg['visHeadTools']).toBe(true)
+    expect(cfg['visSystemEvents']).toBe(true)
+    expect(cfg['visStewardRuns']).toBe(true)
     expect(ctx.sent[0]).toContain('on')
   })
 
-  it('does NOT touch agentPills', async () => {
+  it('does NOT touch visAgentPills', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx()
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace }) })
     await registry.get('debug')!.handler('on', ctx)
-    expect(ctx.appState.getConversationVisibility().agentPills).toBe(false)
+    const cfg = readCfg()
+    expect(cfg['visAgentPills']).toBeUndefined()
   })
 
-  it('also preserves agentPills when turning off', async () => {
+  it('also preserves visAgentPills when turning off', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ appState: makeAppState({ agentWork: true, headTools: true, agentPills: true }) })
+    // Pre-seed config.json with visAgentPills: true to simulate it being set separately
+    fs.writeFileSync(path.join(workspace, 'config.json'), JSON.stringify({ visAgentPills: true }), 'utf8')
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace, visAgentWork: true, visHeadTools: true, visAgentPills: true }) })
     await registry.get('debug')!.handler('off', ctx)
-    const v = ctx.appState.getConversationVisibility()
-    expect(v.agentWork).toBe(false)
-    expect(v.headTools).toBe(false)
-    expect(v.agentPills).toBe(true)  // untouched
+    const cfg = readCfg()
+    expect(cfg['visAgentWork']).toBe(false)
+    expect(cfg['visHeadTools']).toBe(false)
+    expect(cfg['visAgentPills']).toBe(true)  // untouched
   })
 
   it('toggles off when any debug-relevant category was on', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ appState: makeAppState({ agentWork: true }) })
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace, visAgentWork: true }) })
     await registry.get('debug')!.handler('', ctx)
-    const v = ctx.appState.getConversationVisibility()
-    expect(v.agentWork).toBe(false)
+    const cfg = readCfg()
+    expect(cfg['visAgentWork']).toBe(false)
     expect(ctx.sent[0]).toContain('off')
   })
 
   it('forces on with explicit "on" arg', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx()
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace }) })
     await registry.get('debug')!.handler('on', ctx)
-    expect(ctx.appState.getConversationVisibility().agentWork).toBe(true)
+    expect(readCfg()['visAgentWork']).toBe(true)
   })
 
   it('forces off with explicit "off" arg even when already on', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ appState: makeAppState({ agentWork: true, headTools: true, systemEvents: true, stewardRuns: true }) })
+    const ctx = makeCtx({ config: makeFakeConfig({ workspacePath: workspace, visAgentWork: true, visHeadTools: true, visSystemEvents: true, visStewardRuns: true }) })
     await registry.get('debug')!.handler('off', ctx)
-    const v = ctx.appState.getConversationVisibility()
-    expect(v.agentWork).toBe(false)
-    expect(v.headTools).toBe(false)
-    expect(v.systemEvents).toBe(false)
-    expect(v.stewardRuns).toBe(false)
+    const cfg = readCfg()
+    expect(cfg['visAgentWork']).toBe(false)
+    expect(cfg['visHeadTools']).toBe(false)
+    expect(cfg['visSystemEvents']).toBe(false)
+    expect(cfg['visStewardRuns']).toBe(false)
   })
 })
 
@@ -268,14 +315,14 @@ describe('~status', () => {
 
   it('shows debug mode "on" when all 4 debug-relevant categories are on', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ appState: makeAppState({ agentWork: true, headTools: true, systemEvents: true, stewardRuns: true }) })
+    const ctx = makeCtx({ config: makeFakeConfig({ visAgentWork: true, visHeadTools: true, visSystemEvents: true, visStewardRuns: true }) })
     await registry.get('status')!.handler('', ctx)
     expect(ctx.sent[0]).toContain('Debug mode:         on')
   })
 
   it('shows debug mode "partial" when only some debug-relevant categories are on', async () => {
     const registry = buildCommandRegistry()
-    const ctx = makeCtx({ appState: makeAppState({ agentWork: true }) })
+    const ctx = makeCtx({ config: makeFakeConfig({ visAgentWork: true }) })
     await registry.get('status')!.handler('', ctx)
     expect(ctx.sent[0]).toContain('Debug mode:         partial')
   })

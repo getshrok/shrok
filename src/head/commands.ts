@@ -3,6 +3,7 @@ import * as fsSync from 'node:fs'
 import * as path from 'node:path'
 import bcryptjs from 'bcryptjs'
 import type { Config } from '../config.js'
+import { updateUserConfig } from '../config.js'
 import type { AppStateStore } from '../db/app_state.js'
 
 // ─── Slash command registry ───────────────────────────────────────────────────
@@ -54,17 +55,16 @@ export function buildCommandRegistry(): Map<string, SlashCommand> {
     description: 'Toggle full debug visibility (agent work, head tools, system events, steward runs) across all channels and the dashboard. Args: `on` | `off`',
     handler: async (args, ctx) => {
       const arg = args.trim().toLowerCase()
-      const current = ctx.appState.getConversationVisibility()
-      const anyOn = current.agentWork || current.headTools || current.systemEvents || current.stewardRuns
+      const cfg = ctx.config
+      const anyOn = cfg.visAgentWork || cfg.visHeadTools || cfg.visSystemEvents || cfg.visStewardRuns
       const turnOn = arg === 'on' ? true : arg === 'off' ? false : !anyOn
-      ctx.appState.setConversationVisibility({
-        ...current,
-        agentWork: turnOn,
-        headTools: turnOn,
-        systemEvents: turnOn,
-        stewardRuns: turnOn,
-        // agentPills intentionally not touched — it's a dashboard UI concern
-      })
+      updateUserConfig({
+        visAgentWork: turnOn,
+        visHeadTools: turnOn,
+        visSystemEvents: turnOn,
+        visStewardRuns: turnOn,
+        // visAgentPills intentionally not touched — dashboard UI concern
+      }, cfg.workspacePath)
       await ctx.send(`Debug visibility **${turnOn ? 'on' : 'off'}**.`)
     },
   })
@@ -73,9 +73,8 @@ export function buildCommandRegistry(): Map<string, SlashCommand> {
     description: 'Toggle agent work visibility (agent tool calls and results) across all channels and the dashboard. Args: `on` | `off`',
     handler: async (args, ctx) => {
       const arg = args.trim().toLowerCase()
-      const current = ctx.appState.getConversationVisibility()
-      const turnOn = arg === 'on' ? true : arg === 'off' ? false : !current.agentWork
-      ctx.appState.setConversationVisibility({ ...current, agentWork: turnOn })
+      const turnOn = arg === 'on' ? true : arg === 'off' ? false : !ctx.config.visAgentWork
+      updateUserConfig({ visAgentWork: turnOn }, ctx.config.workspacePath)
       await ctx.send(`Agent work visibility **${turnOn ? 'on' : 'off'}**.`)
     },
   })
@@ -127,9 +126,9 @@ export function buildCommandRegistry(): Map<string, SlashCommand> {
       const h = Math.floor(s.uptimeSeconds / 3600)
       const m = Math.floor((s.uptimeSeconds % 3600) / 60)
       const uptime = h > 0 ? `${h}h ${m}m` : `${m}m`
-      const v = ctx.appState.getConversationVisibility()
-      const debugAllOn = v.agentWork && v.headTools && v.systemEvents && v.stewardRuns
-      const debugAnyOn = v.agentWork || v.headTools || v.systemEvents || v.stewardRuns
+      const c = ctx.config
+      const debugAllOn = c.visAgentWork && c.visHeadTools && c.visSystemEvents && c.visStewardRuns
+      const debugAnyOn = c.visAgentWork || c.visHeadTools || c.visSystemEvents || c.visStewardRuns
       const debugMode = debugAllOn ? 'on' : debugAnyOn ? 'partial' : 'off'
       const blockingSuffix = s.blockingThresholds > 0
         ? ` (${s.blockingThresholds} block threshold${s.blockingThresholds === 1 ? '' : 's'} active)`
@@ -139,7 +138,7 @@ export function buildCommandRegistry(): Map<string, SlashCommand> {
         `Uptime:                 ${uptime}`,
         `Est. spend today:  $${s.estimatedSpendToday.toFixed(2)}${blockingSuffix}`,
         `Active agents:       ${s.activeAgents}`,
-        `Xray mode:          ${v.agentWork ? 'on' : 'off'}`,
+        `Xray mode:          ${c.visAgentWork ? 'on' : 'off'}`,
         `Debug mode:         ${debugMode}`,
       ]
       await ctx.send(lines.join('\n'))
