@@ -89,7 +89,7 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
 
     const patch: Parameters<typeof scheduleStore.update>[1] = {}
     if (typeof enabled === 'boolean') patch.enabled = enabled
-    if (typeof cron === 'string') patch.cron = cron
+    if (typeof cron === 'string' && cron) patch.cron = cron
     if (typeof runAt === 'string') {
       if (runAt && isNaN(new Date(runAt).getTime())) {
         res.status(400).json({ error: 'Invalid runAt date' })
