@@ -23,7 +23,7 @@ decisions:
 metrics:
   duration: 81s
   completed: "2026-04-22"
-  tasks_completed: 1
+  tasks_completed: 2
   files_created: 1
   files_modified: 0
 requirements: [D-01, D-02, D-03, D-08, D-09, D-10]
@@ -38,7 +38,7 @@ CronPicker React component with parse-on-mount, six supported cadences, bounded 
 | Task | Name | Commit | Files |
 |------|------|--------|-------|
 | 1 | Create CronPicker.tsx with parse-on-mount, six cadences, and human-readable output | 301e1a3 | dashboard/src/components/CronPicker.tsx |
-| 2 | Visual verification checkpoint | — | (awaiting human verification) |
+| 2 | Visual verification checkpoint | — | Approved by user (all 6 sections passed) |
 
 ## Verification Results
 
