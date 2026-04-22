@@ -14,7 +14,7 @@ Communication is bi-directional with agents. When an agent has a question mid-ta
 
 ## Skills
 
-Skills are just text files (SKILL.md) that teach Shrok new capabilities. Sometimes they include extra pieces like helper scripts, and many of them store persistent info in MEMORY.md files (like API keys, things agents have learned about using the skill over time, etc)
+Skills teach Shrok new capabilities. They come in the form of text files (SKILL.md). Sometimes they include extra pieces like helper scripts, and many of them store persistent info in MEMORY.md files (like API keys, things agents have learned about using the skill over time, etc)
 
 Shrok comes with many skills for basic functionality, and more skills can be found at [getshrok/skills](https://github.com/getshrok/skills). You can ask Shrok to install a skill from that repo explicitly, or ask it to make you one for whatever capability you want to add.
 
@@ -27,6 +27,8 @@ Skills can also be manually placed in the ~/.shrok/workspace/skills folder. In t
 Tasks are the main way that Shrok acts on its own. They are essentially just messages that you want to send to Shrok automatically at a future time, instructing it to do something. You might tell it to check your email once a day, or to check to make sure your flight hasn't been delayed as a one time task.
 
 Shrok decides if a scheduled task should run as planned, so for the email example you could say something like "Don't bother checking on weekends" when you schedule that task. Or for the flight example, it might decide not to bother checking if you had just mentioned the day before that the trip was cancelled.
+
+Task templates can be found at [getshrok/tasks](https://github.com/getshrok/tasks).
 
 ## Memory
 
