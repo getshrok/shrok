@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-04-22T03:22:21.866Z"
+stopped_at: Completed 16-04-PLAN.md — awaiting human-verify checkpoint (Task 2)
+last_updated: "2026-04-22T03:27:00.168Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 12
-  completed_plans: 11
-  percent: 92
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -56,6 +56,7 @@ Progress: [██████████] 100%
 | Phase 16 P02 | 81 | 1 tasks | 1 files |
 | Phase 16 P02 | 3 | 2 tasks | 1 files |
 | Phase 16 P03 | 200 | 2 tasks | 4 files |
+| Phase 16 P04 | 175 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,7 @@ Progress: [██████████] 100%
 - [Phase 16]: useState lazy initializer (not useEffect) used to parse incoming cron on mount — prevents onChange-on-mount loop (D-09/Pitfall 1)
 - [Phase 16]: CronPicker: buildCron exhaustive switch produces only the six isValidCadence-accepted shapes; no cronstrue in picker (D-02)
 - [Phase 16]: cadence gate placed BEFORE nextRunAfter in all four cron-accepting server-side paths (Pitfall 4); defense-in-depth try/catch retained around nextRunAfter in REST handlers
+- [Phase 16]: isValidCron helper deleted from SchedulesPage (Pitfall 2); CronPicker picker guarantees valid cadences; backend isValidCadence gate from Plan 03 is the safety net
 
 ### Pending Todos
 
@@ -107,6 +109,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-22T03:22:21.861Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-04-22T03:27:00.162Z
+Stopped at: Completed 16-04-PLAN.md — awaiting human-verify checkpoint (Task 2)
 Resume file: None
