@@ -7,11 +7,13 @@ const CONTEXT_WINDOW_FALLBACKS: Record<string, number> = {
   'claude-sonnet-4-6': 200_000,
   'claude-haiku-4-5-20251001': 200_000,
   // Gemini
-  'gemini-2.5-pro': 1_048_576,
-  'gemini-2.0-flash': 1_048_576,
+  'gemini-3.1-pro-preview': 1_048_576,
+  'gemini-3-flash-preview': 1_048_576,
+  'gemini-3.1-flash-lite-preview': 1_048_576,
   // OpenAI
-  'gpt-4o': 128_000,
-  'gpt-4o-mini': 128_000,
+  'gpt-5.4': 128_000,
+  'gpt-5.4-mini': 128_000,
+  'gpt-5.4-pro': 128_000,
   'gpt-4.1': 1_047_576,
   'o3': 200_000,
   'o4-mini': 200_000,

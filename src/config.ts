@@ -20,13 +20,13 @@ const ConfigSchema = z.object({
   anthropicModelCapable: z.string().default('claude-sonnet-4-6'),
   anthropicModelExpert: z.string().default('claude-opus-4-6'),
   geminiApiKey: z.string().optional(),
-  geminiModelStandard: z.string().default('gemini-2.0-flash'),
-  geminiModelCapable: z.string().default('gemini-2.5-pro'),
-  geminiModelExpert: z.string().default('gemini-2.5-pro'),
+  geminiModelStandard: z.string().default('gemini-3.1-flash-lite-preview'),
+  geminiModelCapable: z.string().default('gemini-3-flash-preview'),
+  geminiModelExpert: z.string().default('gemini-3.1-pro-preview'),
   openaiApiKey: z.string().optional(),
-  openaiModelStandard: z.string().default('gpt-4o-mini'),
-  openaiModelCapable: z.string().default('gpt-4o'),
-  openaiModelExpert: z.string().default('gpt-4o'),
+  openaiModelStandard: z.string().default('gpt-5.4-mini'),
+  openaiModelCapable: z.string().default('gpt-5.4'),
+  openaiModelExpert: z.string().default('gpt-5.4-pro'),
 
   // Role-based model selection — each accepts a tier name ('standard','capable','expert')
   // or a direct model ID. Router resolves tier names to concrete model IDs transparently.

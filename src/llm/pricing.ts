@@ -19,11 +19,13 @@ const PRICING: Record<string, ModelPricing> = {
   'claude-sonnet-4-6':         { input: 3.00,  output: 15.00 },
   'claude-opus-4-6':           { input: 5.00,  output: 25.00 },
   // OpenAI
-  'gpt-4o-mini':               { input: 0.15,  output: 0.60  },
-  'gpt-4o':                    { input: 2.50,  output: 10.00 },
+  'gpt-5.4-mini':              { input: 0.75,  output: 4.50  },
+  'gpt-5.4':                   { input: 2.50,  output: 15.00 },
+  'gpt-5.4-pro':               { input: 5.00,  output: 25.00 },
   // Google
-  'gemini-2.0-flash':          { input: 0.10,  output: 0.40  },
-  'gemini-2.5-pro':            { input: 1.25,  output: 10.00 },
+  'gemini-3.1-flash-lite-preview': { input: 0.25,  output: 1.50  },
+  'gemini-3-flash-preview':        { input: 0.50,  output: 3.00  },
+  'gemini-3.1-pro-preview':        { input: 2.00,  output: 12.00 },
 }
 
 /** Fallback: most expensive known model, so unknown models are never underestimated */

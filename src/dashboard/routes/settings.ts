@@ -77,8 +77,8 @@ const VALID_PROVIDERS = new Set(['anthropic', 'gemini', 'openai'])
 
 const TEST_MODELS: Record<string, string> = {
   anthropic: 'claude-haiku-4-5-20251001',
-  gemini: 'gemini-2.0-flash',
-  openai: 'gpt-4o-mini',
+  gemini: 'gemini-3.1-flash-lite-preview',
+  openai: 'gpt-5.4-mini',
 }
 
 const ENV_KEY_MAP: Record<string, string> = {

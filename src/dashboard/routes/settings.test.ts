@@ -26,12 +26,12 @@ function makeTestConfig(overrides: Partial<Config> = {}): Config {
     anthropicModelStandard: 'claude-haiku-4-5-20251001',
     anthropicModelCapable: 'claude-sonnet-4-6',
     anthropicModelExpert: 'claude-opus-4-6',
-    geminiModelStandard: 'gemini-2.0-flash',
-    geminiModelCapable: 'gemini-2.5-pro',
-    geminiModelExpert: 'gemini-2.5-pro',
-    openaiModelStandard: 'gpt-4o-mini',
-    openaiModelCapable: 'gpt-4o',
-    openaiModelExpert: 'gpt-4o',
+    geminiModelStandard: 'gemini-3.1-flash-lite-preview',
+    geminiModelCapable: 'gemini-3-flash-preview',
+    geminiModelExpert: 'gemini-3.1-pro-preview',
+    openaiModelStandard: 'gpt-5.4-mini',
+    openaiModelCapable: 'gpt-5.4',
+    openaiModelExpert: 'gpt-5.4-pro',
     headModel: 'capable',
     agentModel: 'capable',
     stewardModel: 'standard',
@@ -229,17 +229,17 @@ describe('GET /api/settings — config-derived defaults', () => {
   it('returns corrected gemini model defaults from config', async () => {
     await startWithConfig(makeTestConfig())
     const b = await getBody()
-    expect(b['geminiModelStandard']).toBe('gemini-2.0-flash')
-    expect(b['geminiModelCapable']).toBe('gemini-2.5-pro')
-    expect(b['geminiModelExpert']).toBe('gemini-2.5-pro')
+    expect(b['geminiModelStandard']).toBe('gemini-3.1-flash-lite-preview')
+    expect(b['geminiModelCapable']).toBe('gemini-3-flash-preview')
+    expect(b['geminiModelExpert']).toBe('gemini-3.1-pro-preview')
   })
 
   it('returns corrected openai model defaults from config', async () => {
     await startWithConfig(makeTestConfig())
     const b = await getBody()
-    expect(b['openaiModelStandard']).toBe('gpt-4o-mini')
-    expect(b['openaiModelCapable']).toBe('gpt-4o')
-    expect(b['openaiModelExpert']).toBe('gpt-4o')
+    expect(b['openaiModelStandard']).toBe('gpt-5.4-mini')
+    expect(b['openaiModelCapable']).toBe('gpt-5.4')
+    expect(b['openaiModelExpert']).toBe('gpt-5.4-pro')
   })
 
   it('returns drift-corrected numeric and boolean defaults from config', async () => {
