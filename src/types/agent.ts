@@ -51,6 +51,7 @@ export interface AgentState {
   createdAt: string
   updatedAt: string
   completedAt?: string
+  colorSlot?: number              // 0–6 slot index; omitted when DB value is NULL (D-05)
 }
 
 // ─── Spawn options ────────────────────────────────────────────────────────────

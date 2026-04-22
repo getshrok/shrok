@@ -59,6 +59,16 @@ describe('initDb + runMigrations', () => {
     expect(tables).not.toContain('reminders')
   })
 
+  it('agents table has color_slot column (Phase 18)', () => {
+    const db = freshDb()
+    const cols = (db.prepare("PRAGMA table_info('agents')").all() as { name: string; type: string; notnull: number; dflt_value: unknown }[])
+    const slot = cols.find(c => c.name === 'color_slot')
+    expect(slot).toBeDefined()
+    expect(slot!.type).toBe('INTEGER')
+    expect(slot!.notnull).toBe(0)          // nullable
+    expect(slot!.dflt_value).toBeNull()    // no default → existing rows are NULL
+  })
+
   it('is idempotent — running twice does not fail', () => {
     const db = initDb(':memory:')
     expect(() => {
