@@ -102,10 +102,14 @@ Plans:
 
 ### Phase 23: Timezone-aware scheduling: bootstrap timezone collection via onboarding question + spawn_agent config write; add timezone to CONFIG_JSON_FIELDS and settings UI; add cronTimezone field (before cron in schema) to create_reminder and create_schedule tools with dynamic descriptions showing configured timezone; expand CronPicker with weekdays cadence and raw-text fallback for unrecognized patterns instead of silent DEFAULT_STATE; expand create_schedule grammar to allow 1-5 day ranges
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Establish timezone-awareness across scheduling: collect IANA timezone during bootstrap onboarding and persist it to config.json via spawn_agent; expose timezone in settings API + UI; add `cronTimezone` field (before `cron`) to `create_schedule` and `create_reminder` tool schemas with dynamic workspace-default descriptions; extend the canonical standard cron set and enforce it via isValidCadence with an actionable error message pointing agents at the `conditions` field; add weekdays (Mon–Fri) and every-N-days (N ∈ {1..7}) cadences to both the validator and the CronPicker so UI and LLM operate on the same grammar.
+**Requirements**: TZ-01, TZ-02, TZ-03, TZ-04, TZ-05, TZ-06, TZ-07, TZ-08
 **Depends on:** Phase 22
-**Plans:** 2/2 plans complete
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 23 to break down)
+- [x] 23-01-PLAN.md — Expand isValidCadence with weekdays (`M H * * 1-5`) and every-N-days (`0 H */N * *`) shapes; rewrite CADENCE_ERROR_MESSAGE; update cadence.test.ts lockstep
+- [ ] 23-02-PLAN.md — Add `cronTimezone` field (before `cron`) with dynamic description to create_schedule + create_reminder; add isValidCadence gate to create_reminder; expand update_schedule cron description
+- [ ] 23-03-PLAN.md — Extend CronPicker with weekdays + everyNDays cadences (type, state, parse, build, UI) — covers 100% of the new standard set
+- [ ] 23-04-PLAN.md — Allowlist `timezone` in CONFIG_JSON_FIELDS; plumb through DraftState/initDraft/isDirty/buildBody; add Scheduling card with IANA text input + UTC offset helper + inline validation in GeneralTab
+- [ ] 23-05-PLAN.md — Add conversational timezone question to BOOTSTRAP.md "About the user" section; add spawn_agent step to write timezone to config.json before the write_identity sequence
