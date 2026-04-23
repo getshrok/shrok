@@ -724,7 +724,11 @@ export function buildScheduleTools(
           type: 'object',
           properties: {
             taskName: { type: 'string', description: 'Task name.' },
-            cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekly (M H * * D), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
+            cronTimezone: {
+              type: 'string',
+              description: `Timezone the cron expression is relative to (workspace default: ${timezone}). Omit to use the workspace default. Must be a valid IANA timezone string (e.g. "America/New_York", "Europe/London", "Asia/Tokyo").`,
+            },
+            cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekdays Mon–Fri (M H * * 1-5), weekly (M H * * D), every N days (0 H */N * * with N ∈ {1..7}), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
             runAt: { type: 'string', description: 'ISO datetime for one-time schedules.' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
@@ -747,6 +751,8 @@ export function buildScheduleTools(
 
         const id = generateId('sched')
         const cronArg = input['cron'] as string | undefined
+        const cronTimezoneArg = input['cronTimezone'] as string | undefined
+        const effectiveTz = cronTimezoneArg ?? timezone
         const runAtArg = input['runAt'] as string | undefined
         let nextRun: string | undefined
         if (cronArg) {
@@ -754,7 +760,7 @@ export function buildScheduleTools(
             return JSON.stringify({ error: true, message: CADENCE_ERROR_MESSAGE })
           }
           const { nextRunAfter } = await import('../scheduler/cron.js')
-          nextRun = nextRunAfter(cronArg, new Date(), timezone).toISOString()
+          nextRun = nextRunAfter(cronArg, new Date(), effectiveTz).toISOString()
         } else if (runAtArg) {
           nextRun = runAtArg
         }
@@ -777,7 +783,7 @@ export function buildScheduleTools(
           type: 'object',
           properties: {
             id: { type: 'string' },
-            cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekly (M H * * D), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
+            cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekdays Mon–Fri (M H * * 1-5), weekly (M H * * D), every N days (0 H */N * * with N ∈ {1..7}), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
             runAt: { type: 'string' },
             enabled: { type: 'boolean' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
@@ -858,13 +864,17 @@ export function buildReminderTools(
               type: 'string',
               description: 'The reminder text to deliver to the user when the reminder fires.',
             },
+            cronTimezone: {
+              type: 'string',
+              description: `Timezone the cron expression is relative to (workspace default: ${timezone}). Omit to use the workspace default. Must be a valid IANA timezone string (e.g. "America/New_York", "Europe/London", "Asia/Tokyo"). Only applies when cron is provided.`,
+            },
             triggerAt: {
               type: 'string',
               description: 'ISO 8601 datetime for one-time reminders (e.g. "2026-04-01T09:00:00Z"). Required if cron is not provided.',
             },
             cron: {
               type: 'string',
-              description: 'Cron expression for recurring reminders (e.g. "0 9 * * 1" for every Monday at 9am). When provided, triggerAt is the first fire time; subsequent fires follow the cron schedule.',
+              description: 'Cron expression for recurring reminders. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekdays Mon–Fri (M H * * 1-5), weekly (M H * * D), every N days (0 H */N * * with N ∈ {1..7}), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.',
             },
             conditions: {
               type: 'string',
@@ -895,9 +905,14 @@ export function buildReminderTools(
         let triggerAt: string | null = null
         let cronExpression: string | null = null
         if (cronArg) {
+          if (!isValidCadence(cronArg)) {
+            return JSON.stringify({ error: true, message: CADENCE_ERROR_MESSAGE })
+          }
+          const cronTimezoneArg = input['cronTimezone'] as string | undefined
+          const effectiveTz = cronTimezoneArg ?? timezone
           const { nextRunAfter } = await import('../scheduler/cron.js')
           try {
-            const next = nextRunAfter(cronArg, new Date(), timezone)
+            const next = nextRunAfter(cronArg, new Date(), effectiveTz)
             if (triggerAtArg) {
               const d = new Date(triggerAtArg)
               if (isNaN(d.getTime())) {
