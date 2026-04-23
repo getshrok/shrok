@@ -772,6 +772,7 @@ export function buildScheduleTools(
         if (nextRun !== undefined) createOpts.nextRun = nextRun
         if (conditionsArg !== undefined) createOpts.conditions = conditionsArg
         if (agentContextArg !== undefined) createOpts.agentContext = agentContextArg
+        if (cronTimezoneArg !== undefined) createOpts.cronTimezone = cronTimezoneArg
         return JSON.stringify(scheduleStore.create(createOpts))
       },
     },

@@ -85,7 +85,8 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
       }
       try {
         if (schedule.cron) {
-          const next = nextRunAfter(schedule.cron, now, this.timezone)
+          const tz = schedule.cronTimezone ?? this.timezone
+          const next = nextRunAfter(schedule.cron, now, tz)
           this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
         } else if (enqueued) {
           // Disable so the tick won't re-fire, but keep the row — activation

@@ -78,6 +78,7 @@ function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
     lastSkipReason: null,
     conditions: null,
     agentContext: null,
+    cronTimezone: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,

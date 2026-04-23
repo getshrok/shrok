@@ -13,6 +13,7 @@ export interface Schedule {
   lastSkipReason: string | null
   conditions: string | null
   agentContext: string | null
+  cronTimezone: string | null  // per-schedule timezone override; null = use workspace default
   createdAt: string
   updatedAt: string
 }
@@ -26,9 +27,10 @@ export interface CreateScheduleOptions {
   nextRun?: string
   conditions?: string
   agentContext?: string
+  cronTimezone?: string
 }
 
-export type SchedulePatch = Partial<Pick<Schedule, 'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' | 'agentContext'>>
+export type SchedulePatch = Partial<Pick<Schedule, 'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' | 'agentContext' | 'cronTimezone'>>
 
 export class ScheduleStore {
   private store: ReturnType<typeof createFileStore<Schedule>>
@@ -52,6 +54,7 @@ export class ScheduleStore {
       lastSkipReason: null,
       conditions: options.conditions ?? null,
       agentContext: options.agentContext ?? null,
+      cronTimezone: options.cronTimezone ?? null,
       createdAt: now,
       updatedAt: now,
     }
@@ -82,6 +85,7 @@ export class ScheduleStore {
     if (patch.lastRun !== undefined) existing.lastRun = patch.lastRun
     if (patch.conditions !== undefined) existing.conditions = patch.conditions
     if (patch.agentContext !== undefined) existing.agentContext = patch.agentContext
+    if (patch.cronTimezone !== undefined) existing.cronTimezone = patch.cronTimezone
 
     existing.updatedAt = new Date().toISOString()
     this.store.save(existing)

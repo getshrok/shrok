@@ -1298,14 +1298,14 @@ describe('phase 23: cronTimezone field', () => {
 
     const tools = buildScheduleTools(scheduleStore, 'America/New_York', unified)
     const create = tools.find(t => t.definition.name === 'create_schedule')!
-    const ctzProp = (create.definition.inputSchema.properties as Record<string, { description: string }>).cronTimezone
-    expect(ctzProp.description).toContain('America/New_York')
+    const ctzProp = (create.definition.inputSchema.properties as Record<string, { description: string }>)['cronTimezone']
+    expect(ctzProp?.description).toContain('America/New_York')
 
     const tools2 = buildScheduleTools(scheduleStore, 'Asia/Tokyo', unified)
     const create2 = tools2.find(t => t.definition.name === 'create_schedule')!
-    const ctzProp2 = (create2.definition.inputSchema.properties as Record<string, { description: string }>).cronTimezone
-    expect(ctzProp2.description).toContain('workspace default: Asia/Tokyo')
-    expect(ctzProp2.description).not.toContain('workspace default: America/New_York')
+    const ctzProp2 = (create2.definition.inputSchema.properties as Record<string, { description: string }>)['cronTimezone']
+    expect(ctzProp2?.description).toContain('workspace default: Asia/Tokyo')
+    expect(ctzProp2?.description).not.toContain('workspace default: America/New_York')
   })
 
   it('create_schedule: cronTimezone is NOT required', async () => {
