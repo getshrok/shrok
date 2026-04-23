@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v0.1.1
 milestone_name: Voice Mode
 status: executing
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-04-23T11:48:02.566Z"
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-04-23T12:49:32.798Z"
 last_activity: 2026-04-23
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_plans: 10
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Followability of the live event stream — a user should know what shrok is doing and why without parsing tool arguments
-**Current focus:** Phase 21 — react-voice-ui-state-machine
+**Current focus:** Phase 22 — error-handling-accessibility
 
 ## Current Position
 
-Phase: 22
-Plan: Not started
+Phase: 22 (error-handling-accessibility) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
 Last activity: 2026-04-23
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 21 P02 | 168 | 3 tasks | 3 files |
 | Phase 21 P03 | 15 | 2 tasks | 1 files |
+| Phase 22 P01 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,11 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 21]: Loader2 icon from lucide-react@1.8.0 used for processing spinner (confirmed available)
 - [Phase 21]: voiceState alias used in ConversationsPage to avoid shadowing existing identifiers; onToggle voids toggleVoice promise; page owns no async voice logic (D-02)
 - [Phase 21]: Safari MSE audio/mpeg incompatibility confirmed out of scope for Phase 21 — Phase 22 follow-up if needed
+- [Phase 22]: voice-error-timer.ts extracted as pure module for testability; DOMException .name read prevents error message disclosure (T-22-01); unmount clear() prevents stale setState (T-22-02)
+
+### Roadmap Evolution
+
+- Phase 23 added: Timezone-aware scheduling — bootstrap onboarding question + spawn_agent config write, cronTimezone field in scheduling tools, CronPicker weekdays cadence + raw fallback, settings API timezone support
 
 ### Pending Todos
 
@@ -83,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T11:42:55.475Z
-Stopped at: Completed 21-03-PLAN.md
+Last session: 2026-04-23T12:49:32.792Z
+Stopped at: Completed 22-01-PLAN.md
 Resume file: None
