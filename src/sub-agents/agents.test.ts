@@ -1249,3 +1249,128 @@ describe('buildReminderTools', () => {
     expect(schema.properties.conditions!.type).toBe('string')
   })
 })
+
+// ─── phase 23: cronTimezone field ─────────────────────────────────────────────
+
+describe('phase 23: cronTimezone field', () => {
+  const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+
+  async function makeTmpUnified() {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const os = await import('node:os')
+    const { FileSystemKindLoader } = await import('../skills/loader.js')
+    const { UnifiedLoader } = await import('../skills/unified.js')
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tz-tool-'))
+    const tasksDir = path.join(tmp, 'tasks')
+    fs.mkdirSync(path.join(tasksDir, 'a-task'), { recursive: true })
+    fs.writeFileSync(path.join(tasksDir, 'a-task', 'TASK.md'), `---\nname: a-task\ndescription: j\n---\nbody`)
+    const skillsDir = path.join(tmp, 'skills')
+    fs.mkdirSync(skillsDir, { recursive: true })
+    const skillsLoader = new FileSystemKindLoader({ root: skillsDir, kind: 'skill', filename: 'SKILL.md' })
+    const tasksLoader = new FileSystemKindLoader({ root: tasksDir, kind: 'task', filename: 'TASK.md' })
+    return new UnifiedLoader(skillsLoader, tasksLoader)
+  }
+
+  async function makeScheduleStore() {
+    const nodeOs = await import('node:os')
+    const nodeFs = await import('node:fs')
+    const nodePath = await import('node:path')
+    const scheduleDir = nodeFs.mkdtempSync(nodePath.join(nodeOs.tmpdir(), 'tz-store-'))
+    const { ScheduleStore } = await import('../db/schedules.js')
+    return new ScheduleStore(scheduleDir)
+  }
+
+  it('create_schedule: cronTimezone appears BEFORE cron in property order', async () => {
+    const unified = await makeTmpUnified()
+    const scheduleStore = await makeScheduleStore()
+    const { buildScheduleTools } = await import('./registry.js')
+    const tools = buildScheduleTools(scheduleStore, 'America/New_York', unified)
+    const create = tools.find(t => t.definition.name === 'create_schedule')!
+    const keys = Object.keys(create.definition.inputSchema.properties as object)
+    expect(keys).toEqual(['taskName', 'cronTimezone', 'cron', 'runAt', 'conditions', 'agentContext'])
+  })
+
+  it('create_schedule: cronTimezone description includes the workspace timezone dynamically', async () => {
+    const unified = await makeTmpUnified()
+    const scheduleStore = await makeScheduleStore()
+    const { buildScheduleTools } = await import('./registry.js')
+
+    const tools = buildScheduleTools(scheduleStore, 'America/New_York', unified)
+    const create = tools.find(t => t.definition.name === 'create_schedule')!
+    const ctzProp = (create.definition.inputSchema.properties as Record<string, { description: string }>).cronTimezone
+    expect(ctzProp.description).toContain('America/New_York')
+
+    const tools2 = buildScheduleTools(scheduleStore, 'Asia/Tokyo', unified)
+    const create2 = tools2.find(t => t.definition.name === 'create_schedule')!
+    const ctzProp2 = (create2.definition.inputSchema.properties as Record<string, { description: string }>).cronTimezone
+    expect(ctzProp2.description).toContain('workspace default: Asia/Tokyo')
+    expect(ctzProp2.description).not.toContain('workspace default: America/New_York')
+  })
+
+  it('create_schedule: cronTimezone is NOT required', async () => {
+    const unified = await makeTmpUnified()
+    const scheduleStore = await makeScheduleStore()
+    const { buildScheduleTools } = await import('./registry.js')
+    const tools = buildScheduleTools(scheduleStore, 'UTC', unified)
+    const create = tools.find(t => t.definition.name === 'create_schedule')!
+    const required = (create.definition.inputSchema as { required: string[] }).required
+    expect(required).toEqual(['taskName'])
+    expect(required).not.toContain('cronTimezone')
+  })
+
+  it('create_schedule.execute: succeeds with cronTimezone supplied', async () => {
+    const unified = await makeTmpUnified()
+    const scheduleStore = await makeScheduleStore()
+    const { buildScheduleTools } = await import('./registry.js')
+    const tools = buildScheduleTools(scheduleStore, 'UTC', unified)
+    const create = tools.find(t => t.definition.name === 'create_schedule')!
+    const result = await create.execute({ taskName: 'a-task', cron: '0 9 * * *', cronTimezone: 'Europe/London' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBeUndefined()
+    expect(parsed.id).toBeDefined()
+  })
+
+  it('create_schedule.execute: succeeds without cronTimezone (fallback to workspace)', async () => {
+    const unified = await makeTmpUnified()
+    const scheduleStore = await makeScheduleStore()
+    const { buildScheduleTools } = await import('./registry.js')
+    const tools = buildScheduleTools(scheduleStore, 'UTC', unified)
+    const create = tools.find(t => t.definition.name === 'create_schedule')!
+    const result = await create.execute({ taskName: 'a-task', cron: '0 9 * * *' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBeUndefined()
+  })
+
+  it('create_reminder: cronTimezone appears BEFORE triggerAt in property order', async () => {
+    const scheduleStore = await makeScheduleStore()
+    const { buildReminderTools } = await import('./registry.js')
+    const tools = buildReminderTools(scheduleStore, 'UTC')
+    const create = tools.find(t => t.definition.name === 'create_reminder')!
+    const keys = Object.keys(create.definition.inputSchema.properties as object)
+    expect(keys).toEqual(['message', 'cronTimezone', 'triggerAt', 'cron', 'conditions'])
+  })
+
+  it('create_reminder.execute: rejects non-standard cron with CADENCE_ERROR_MESSAGE', async () => {
+    const scheduleStore = await makeScheduleStore()
+    const { buildReminderTools } = await import('./registry.js')
+    const tools = buildReminderTools(scheduleStore, 'UTC')
+    const create = tools.find(t => t.definition.name === 'create_reminder')!
+    // '* * * * *' is explicitly rejected by isValidCadence
+    const result = await create.execute({ message: 'hi', cron: '* * * * *' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toBe(CADENCE_ERROR_MESSAGE)
+  })
+
+  it('create_reminder.execute: accepts new weekdays cadence', async () => {
+    const scheduleStore = await makeScheduleStore()
+    const { buildReminderTools } = await import('./registry.js')
+    const tools = buildReminderTools(scheduleStore, 'UTC')
+    const create = tools.find(t => t.definition.name === 'create_reminder')!
+    const result = await create.execute({ message: 'hi', cron: '0 9 * * 1-5' }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBeUndefined()
+    expect(parsed.ok).toBe(true)
+  })
+})
