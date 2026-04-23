@@ -91,3 +91,35 @@ describe('voiceFSM — exhaustive action switch has no default leak', () => {
     expect(voiceFSM('listening', unknown)).toBe('listening')
   })
 })
+
+describe('voiceFSM — full happy-path sequence (idle → listening → processing → speaking → idle)', () => {
+  it('drives a complete conversation turn', () => {
+    let s: VoiceState = INITIAL_VOICE_STATE
+    expect(s).toBe('idle')
+    s = voiceFSM(s, { type: 'SPEECH_START' })
+    expect(s).toBe('listening')
+    s = voiceFSM(s, { type: 'SPEECH_END' })
+    expect(s).toBe('processing')
+    s = voiceFSM(s, { type: 'TTS_START' })
+    expect(s).toBe('speaking')
+    s = voiceFSM(s, { type: 'TTS_DONE' })
+    expect(s).toBe('idle')
+  })
+
+  it('handles barge-in: speaking → listening → processing (second user turn)', () => {
+    let s: VoiceState = 'speaking'
+    s = voiceFSM(s, { type: 'SPEECH_START' }) // barge-in
+    expect(s).toBe('listening')
+    s = voiceFSM(s, { type: 'SPEECH_END' })
+    expect(s).toBe('processing')
+  })
+
+  it('WS disconnect (ERROR) from any state returns to idle', () => {
+    const fromSpeaking = voiceFSM('speaking', { type: 'ERROR' })
+    const fromProcessing = voiceFSM('processing', { type: 'ERROR' })
+    const fromListening = voiceFSM('listening', { type: 'ERROR' })
+    expect(fromSpeaking).toBe('idle')
+    expect(fromProcessing).toBe('idle')
+    expect(fromListening).toBe('idle')
+  })
+})
