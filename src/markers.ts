@@ -4,14 +4,14 @@
 
 export function systemTrigger(type: string, attrs?: Record<string, string>, body?: string): string {
   const attrStr = attrs ? Object.entries(attrs).map(([k, v]) => ` ${k}="${v}"`).join('') : ''
-  if (body) return `<system-trigger type="${type}"${attrStr}>${escapeXmlBody(body)}</system-trigger>`
-  return `<system-trigger type="${type}"${attrStr} />`
+  if (body) return `<system-trigger type="${type}"${attrStr} user-visible="false">${escapeXmlBody(body)}</system-trigger>`
+  return `<system-trigger type="${type}"${attrStr} user-visible="false" />`
 }
 
 export function systemEvent(type: string, attrs?: Record<string, string>, body?: string): string {
   const attrStr = attrs ? Object.entries(attrs).map(([k, v]) => ` ${k}="${v}"`).join('') : ''
-  if (body) return `<system-event type="${type}"${attrStr}>${escapeXmlBody(body)}</system-event>`
-  return `<system-event type="${type}"${attrStr} />`
+  if (body) return `<system-event type="${type}"${attrStr} user-visible="false">${escapeXmlBody(body)}</system-event>`
+  return `<system-event type="${type}"${attrStr} user-visible="false" />`
 }
 
 const AGENT_RESULT_BODY_SEPARATOR = '\n\n---agent-output---\n\n'
@@ -22,7 +22,7 @@ const AGENT_RESULT_BODY_SEPARATOR = '\n\n---agent-output---\n\n'
 // `&lt;prior-tool&gt;` and destroy the structural delimiters the model parses.
 // Only `body` (the raw sub-agent output) is escaped. See WR-01 family plan.
 export function agentResult(type: string, agentId: string, workSection: string, body: string): string {
-  return `<agent-result type="${type}" agent="${agentId}">${workSection ? workSection + AGENT_RESULT_BODY_SEPARATOR : ''}${escapeXmlBody(body)}</agent-result>`
+  return `<agent-result type="${type}" agent="${agentId}" user-visible="false">${workSection ? workSection + AGENT_RESULT_BODY_SEPARATOR : ''}${escapeXmlBody(body)}</agent-result>`
 }
 
 export { AGENT_RESULT_BODY_SEPARATOR }
@@ -75,7 +75,7 @@ export function priorResult(name: string, output: string): string {
 }
 
 export function systemNudge(body: string): string {
-  return `<system-nudge>${escapeXmlBody(body)}</system-nudge>`
+  return `<system-nudge user-visible="false">${escapeXmlBody(body)}</system-nudge>`
 }
 
 // XML tag prefixes for detecting hallucinated markers in head output

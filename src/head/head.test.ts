@@ -126,7 +126,7 @@ describe('InjectorImpl', () => {
     const msg = messages.appended[0] as { kind: string; role: string; content: string; injected: boolean }
     expect(msg.kind).toBe('text')
     expect(msg.role).toBe('user')
-    expect(msg.content).toContain('<agent-result type="completed" agent="t1">')
+    expect(msg.content).toContain('<agent-result type="completed" agent="t1"')
     expect(msg.content).toContain('done')
     expect(msg.injected).toBe(true)
   })
