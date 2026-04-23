@@ -98,7 +98,7 @@ Plans:
 | 19. Backend Voice Pipeline | v0.1.1 Voice Mode | 4/4 | Complete    | 2026-04-23 |
 | 20. Vite Build Configuration | v0.1.1 Voice Mode | 1/1 | Complete    | 2026-04-23 |
 | 21. React Voice UI & State Machine | v0.1.1 Voice Mode | 3/3 | Complete    | 2026-04-23 |
-| 22. Error Handling & Accessibility | v0.1.1 Voice Mode | 2/2 | Complete   | 2026-04-23 |
+| 22. Error Handling & Accessibility | v0.1.1 Voice Mode | 2/2 | Complete    | 2026-04-23 |
 
 ### Phase 23: Timezone-aware scheduling: bootstrap timezone collection via onboarding question + spawn_agent config write; add timezone to CONFIG_JSON_FIELDS and settings UI; add cronTimezone field (before cron in schema) to create_reminder and create_schedule tools with dynamic descriptions showing configured timezone; expand CronPicker with weekdays cadence and raw-text fallback for unrecognized patterns instead of silent DEFAULT_STATE; expand create_schedule grammar to allow 1-5 day ranges
 
