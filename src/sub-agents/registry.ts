@@ -799,19 +799,33 @@ export function buildScheduleTools(
             enabled: { type: 'boolean' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
+            cronTimezone: { type: 'string', description: `Timezone the cron expression is relative to (workspace default: ${timezone}). Omit to use the workspace default. Must be a valid IANA timezone string (e.g. "America/New_York").` },
           },
           required: ['id'],
         },
       },
       execute: async (input, _ctx) => {
         const patch: import('../db/schedules.js').SchedulePatch = {}
+        const cronTimezoneArg = input['cronTimezone'] as string | undefined
+        if (cronTimezoneArg !== undefined) {
+          try {
+            Intl.DateTimeFormat(undefined, { timeZone: cronTimezoneArg })
+          } catch {
+            return JSON.stringify({
+              error: true,
+              message: `Invalid cronTimezone: '${cronTimezoneArg}'. Must be a valid IANA timezone string (e.g. "America/New_York").`,
+            })
+          }
+          patch.cronTimezone = cronTimezoneArg
+        }
         if (input['cron'] !== undefined) {
           const cronArg = input['cron'] as string
           if (!isValidCadence(cronArg)) {
             return JSON.stringify({ error: true, message: CADENCE_ERROR_MESSAGE })
           }
           const { nextRunAfter } = await import('../scheduler/cron.js')
-          const next = nextRunAfter(cronArg, new Date(), timezone)  // throws on invalid expression
+          const effectiveTz = cronTimezoneArg ?? timezone
+          const next = nextRunAfter(cronArg, new Date(), effectiveTz)
           patch.cron = cronArg
           patch.nextRun = next.toISOString()
         }
