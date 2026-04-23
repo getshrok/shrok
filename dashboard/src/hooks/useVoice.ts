@@ -96,8 +96,9 @@ export function useVoice(): UseVoiceReturn {
       vadRef.current = null
     }
     if (wsRef.current) {
-      try { wsRef.current.close() } catch { /* noop */ }
-      wsRef.current = null
+      const ws = wsRef.current
+      wsRef.current = null   // null first — close handler checks wsRef, not the event
+      try { ws.close() } catch { /* noop */ }
     }
     teardownMSE()
   }, [teardownMSE])
@@ -142,7 +143,8 @@ export function useVoice(): UseVoiceReturn {
       })
 
       ws.addEventListener('close', () => {
-        if (voiceActiveRef.current) {
+        // wsRef.current is null if WE closed it intentionally — skip spurious ERROR.
+        if (wsRef.current !== null && voiceActiveRef.current) {
           // Unexpected disconnect during active voice mode — D-10.
           dispatch({ type: 'ERROR' })
           void teardownAll()
@@ -171,8 +173,9 @@ export function useVoice(): UseVoiceReturn {
             // Barge-in (Pitfall 4): stop local playback + tell server to cancel TTS.
             teardownMSE()
             try { wsRef.current?.send(JSON.stringify({ type: 'cancel_tts' })) } catch { /* noop */ }
-            // Recreate MSE for the next turn.
-            setupMSE()
+            // Recreate MSE for the next turn; capture new element and start play.
+            const newAudioEl = setupMSE()
+            newAudioEl.play().catch(() => { /* autoplay policy may reject; retry on tts_start */ })
           }
           dispatch({ type: 'SPEECH_START' })
         },
@@ -205,6 +208,9 @@ export function useVoice(): UseVoiceReturn {
   useEffect(() => {
     return () => {
       void teardownAll()
+      dispatch({ type: 'TOGGLE_OFF' })
+      setVoiceActive(false)
+      voiceActiveRef.current = false
     }
   }, [teardownAll])
 
