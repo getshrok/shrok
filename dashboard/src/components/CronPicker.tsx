@@ -6,10 +6,12 @@ import { useState } from 'react'
 // project); the grammar is the contract.
 
 const ALLOWED_MINUTE_INTERVALS = [5, 10, 15, 30, 45, 60] as const
+const ALLOWED_DAY_INTERVALS = [1, 2, 3, 4, 5, 6, 7] as const
 
 type MinuteInterval = typeof ALLOWED_MINUTE_INTERVALS[number]
+type DayInterval = typeof ALLOWED_DAY_INTERVALS[number]
 
-type CadenceType = 'minutes' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+type CadenceType = 'minutes' | 'hourly' | 'daily' | 'weekdays' | 'weekly' | 'everyNDays' | 'monthly' | 'yearly'
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
 const MONTHS   = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -19,13 +21,14 @@ interface PickerState {
   cadence: CadenceType
   interval: MinuteInterval   // used when cadence === 'minutes'
   minute: number             // 0..59 — used in all non-'minutes' cadences
-  hour: number               // 0..23 — used in daily/weekly/monthly/yearly
+  hour: number               // 0..23 — used in daily/weekdays/weekly/everyNDays/monthly/yearly
   dayOfWeek: number          // 0..6 — used in 'weekly'
   dayOfMonth: number         // 1..28 — used in 'monthly' and 'yearly'
   month: number              // 1..12 — used in 'yearly' (1-indexed per cron spec — Pitfall 5)
+  everyNDaysInterval: DayInterval  // used when cadence === 'everyNDays'; minute field ignored (backend enforces 0)
 }
 
-const DEFAULT_STATE: PickerState = {
+export const DEFAULT_STATE: PickerState = {
   cadence: 'daily',
   interval: 30,
   minute: 0,
@@ -33,9 +36,10 @@ const DEFAULT_STATE: PickerState = {
   dayOfWeek: 1,     // Monday
   dayOfMonth: 1,
   month: 1,
+  everyNDaysInterval: 1,
 }
 
-function parseCronToState(value: string): PickerState {
+export function parseCronToState(value: string): PickerState {
   const trimmed = value.trim()
 
   // Shape 1: */N * * * * with N ∈ {5,10,15,30,45,60}
@@ -68,7 +72,18 @@ function parseCronToState(value: string): PickerState {
     return DEFAULT_STATE
   }
 
-  // Shape 4: M H * * D (weekly)
+  // Shape 4: M H * * 1-5 (weekdays Mon–Fri) — MUST be tested before weekly (\d+)
+  const weekdays = /^(\d+) (\d+) \* \* 1-5$/.exec(trimmed)
+  if (weekdays) {
+    const m = parseInt(weekdays[1] ?? '0', 10)
+    const h = parseInt(weekdays[2] ?? '9', 10)
+    if (m >= 0 && m <= 59 && h >= 0 && h <= 23) {
+      return { ...DEFAULT_STATE, cadence: 'weekdays', minute: m, hour: h }
+    }
+    return DEFAULT_STATE
+  }
+
+  // Shape 5: M H * * D (weekly)
   const weekly = /^(\d+) (\d+) \* \* (\d+)$/.exec(trimmed)
   if (weekly) {
     const m = parseInt(weekly[1] ?? '0', 10)
@@ -80,7 +95,18 @@ function parseCronToState(value: string): PickerState {
     return DEFAULT_STATE
   }
 
-  // Shape 5: M H D * * (monthly)
+  // Shape 6: 0 H */N * * (every N days) — MUST be tested before monthly (single digit dom)
+  const everyNDays = /^0 (\d+) \*\/(\d+) \* \*$/.exec(trimmed)
+  if (everyNDays) {
+    const h = parseInt(everyNDays[1] ?? '9', 10)
+    const n = parseInt(everyNDays[2] ?? '1', 10)
+    if (h >= 0 && h <= 23 && (ALLOWED_DAY_INTERVALS as readonly number[]).includes(n)) {
+      return { ...DEFAULT_STATE, cadence: 'everyNDays', hour: h, minute: 0, everyNDaysInterval: n as DayInterval }
+    }
+    return DEFAULT_STATE
+  }
+
+  // Shape 7: M H D * * (monthly)
   const monthly = /^(\d+) (\d+) (\d+) \* \*$/.exec(trimmed)
   if (monthly) {
     const m = parseInt(monthly[1] ?? '0', 10)
@@ -92,7 +118,7 @@ function parseCronToState(value: string): PickerState {
     return DEFAULT_STATE
   }
 
-  // Shape 6: M H D Mo * (yearly)
+  // Shape 8: M H D Mo * (yearly)
   const yearly = /^(\d+) (\d+) (\d+) (\d+) \*$/.exec(trimmed)
   if (yearly) {
     const m   = parseInt(yearly[1] ?? '0', 10)
@@ -109,14 +135,16 @@ function parseCronToState(value: string): PickerState {
   return DEFAULT_STATE
 }
 
-function buildCron(s: PickerState): string {
+export function buildCron(s: PickerState): string {
   switch (s.cadence) {
-    case 'minutes': return `*/${s.interval} * * * *`
-    case 'hourly':  return `${s.minute} * * * *`
-    case 'daily':   return `${s.minute} ${s.hour} * * *`
-    case 'weekly':  return `${s.minute} ${s.hour} * * ${s.dayOfWeek}`
-    case 'monthly': return `${s.minute} ${s.hour} ${s.dayOfMonth} * *`
-    case 'yearly':  return `${s.minute} ${s.hour} ${s.dayOfMonth} ${s.month} *`
+    case 'minutes':    return `*/${s.interval} * * * *`
+    case 'hourly':     return `${s.minute} * * * *`
+    case 'daily':      return `${s.minute} ${s.hour} * * *`
+    case 'weekdays':   return `${s.minute} ${s.hour} * * 1-5`
+    case 'weekly':     return `${s.minute} ${s.hour} * * ${s.dayOfWeek}`
+    case 'everyNDays': return `0 ${s.hour} */${s.everyNDaysInterval} * *`
+    case 'monthly':    return `${s.minute} ${s.hour} ${s.dayOfMonth} * *`
+    case 'yearly':     return `${s.minute} ${s.hour} ${s.dayOfMonth} ${s.month} *`
   }
 }
 
@@ -124,14 +152,16 @@ function pad(n: number): string {
   return n.toString().padStart(2, '0')
 }
 
-function formatHuman(s: PickerState): string {
+export function formatHuman(s: PickerState): string {
   switch (s.cadence) {
-    case 'minutes': return `Every ${s.interval} minutes`
-    case 'hourly':  return `Every hour at minute ${s.minute}`
-    case 'daily':   return `Every day at ${pad(s.hour)}:${pad(s.minute)}`
-    case 'weekly':  return `Every ${WEEKDAYS[s.dayOfWeek] ?? 'Monday'} at ${pad(s.hour)}:${pad(s.minute)}`
-    case 'monthly': return `Every month on day ${s.dayOfMonth} at ${pad(s.hour)}:${pad(s.minute)}`
-    case 'yearly':  return `Every year in ${MONTHS[s.month - 1] ?? 'January'} on day ${s.dayOfMonth} at ${pad(s.hour)}:${pad(s.minute)}`
+    case 'minutes':    return `Every ${s.interval} minutes`
+    case 'hourly':     return `Every hour at minute ${s.minute}`
+    case 'daily':      return `Every day at ${pad(s.hour)}:${pad(s.minute)}`
+    case 'weekdays':   return `Every weekday (Mon–Fri) at ${pad(s.hour)}:${pad(s.minute)}`
+    case 'weekly':     return `Every ${WEEKDAYS[s.dayOfWeek] ?? 'Monday'} at ${pad(s.hour)}:${pad(s.minute)}`
+    case 'everyNDays': return `Every ${s.everyNDaysInterval} day${s.everyNDaysInterval === 1 ? '' : 's'} at ${pad(s.hour)}:00`
+    case 'monthly':    return `Every month on day ${s.dayOfMonth} at ${pad(s.hour)}:${pad(s.minute)}`
+    case 'yearly':     return `Every year in ${MONTHS[s.month - 1] ?? 'January'} on day ${s.dayOfMonth} at ${pad(s.hour)}:${pad(s.minute)}`
   }
 }
 
@@ -162,18 +192,24 @@ export default function CronPicker({ value, onChange }: CronPickerProps) {
       update({ cadence, interval: 30 })
     } else if (cadence === 'weekly') {
       update({ cadence, hour: state.hour, minute: state.minute, dayOfWeek: state.dayOfWeek })
+    } else if (cadence === 'weekdays') {
+      update({ cadence, hour: state.hour, minute: state.minute })
+    } else if (cadence === 'everyNDays') {
+      update({ cadence, hour: state.hour, minute: 0, everyNDaysInterval: state.everyNDaysInterval })
     } else {
       update({ cadence })
     }
   }
 
   // Pitfall 6: <input type="time"> returns "HH:MM"; both parts must be null-checked.
+  // For everyNDays, minute is always 0 (backend enforces this shape constraint).
   function handleTimeChange(timeStr: string) {
     const [hh, mm] = timeStr.split(':')
     const h = parseInt(hh ?? '9', 10)
     const m = parseInt(mm ?? '0', 10)
     if (Number.isFinite(h) && h >= 0 && h <= 23 && Number.isFinite(m) && m >= 0 && m <= 59) {
-      update({ hour: h, minute: m })
+      const effectiveMinute = state.cadence === 'everyNDays' ? 0 : m
+      update({ hour: h, minute: effectiveMinute })
     }
   }
 
@@ -189,7 +225,9 @@ export default function CronPicker({ value, onChange }: CronPickerProps) {
         <option value="minutes">Every N minutes</option>
         <option value="hourly">Hourly</option>
         <option value="daily">Daily</option>
+        <option value="weekdays">Weekdays (Mon–Fri)</option>
         <option value="weekly">Weekly</option>
+        <option value="everyNDays">Every N days</option>
         <option value="monthly">Monthly</option>
         <option value="yearly">Yearly</option>
       </select>
@@ -228,6 +266,7 @@ export default function CronPicker({ value, onChange }: CronPickerProps) {
         )}
 
         {(state.cadence === 'daily' || state.cadence === 'weekly'
+          || state.cadence === 'weekdays' || state.cadence === 'everyNDays'
           || state.cadence === 'monthly' || state.cadence === 'yearly') && (
           <div>
             <label className={LABEL_CLASS}>At</label>
@@ -252,6 +291,22 @@ export default function CronPicker({ value, onChange }: CronPickerProps) {
             >
               {WEEKDAYS.map((name, idx) => (
                 <option key={idx} value={idx}>{name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {state.cadence === 'everyNDays' && (
+          <div>
+            <label className={LABEL_CLASS}>Every</label>
+            <select
+              aria-label="Day interval"
+              value={state.everyNDaysInterval}
+              onChange={e => update({ everyNDaysInterval: parseInt(e.target.value, 10) as DayInterval })}
+              className={SELECT_CLASS}
+            >
+              {ALLOWED_DAY_INTERVALS.map(n => (
+                <option key={n} value={n}>{n === 1 ? '1 day' : `${n} days`}</option>
               ))}
             </select>
           </div>
