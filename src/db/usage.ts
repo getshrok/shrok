@@ -9,7 +9,7 @@ export interface EventUsageSummary {
 }
 
 export interface UsageEntry {
-  sourceType: 'head' | 'agent' | 'curator' | 'archival'
+  sourceType: 'head' | 'agent' | 'curator' | 'archival' | 'steward' | 'memory'
   sourceId: string | null   // queue_event.id for head; agent.id for agent; null otherwise
   model: string
   inputTokens: number
@@ -54,7 +54,7 @@ export interface UsageSummary {
   byModel: Record<string, { input: number; output: number }>
 }
 
-export type BySourceBucket = 'head' | 'curator' | 'archival' | 'manual_agents' | 'scheduled_agent'
+export type BySourceBucket = 'head' | 'curator' | 'archival' | 'steward' | 'memory' | 'manual_agents' | 'scheduled_agent'
 
 export interface BySourceRow {
   bucket: BySourceBucket
@@ -320,7 +320,7 @@ export class UsageStore {
 
     // Seed head/curator/archival from bySourceType. Skip the legacy 'agent'
     // row — it's replaced by the per-bucket breakdown below.
-    for (const bucket of ['head', 'curator', 'archival'] as const) {
+    for (const bucket of ['head', 'curator', 'archival', 'steward', 'memory'] as const) {
       const st = bySourceType[bucket]
       if (!st || (st.inputTokens === 0 && st.outputTokens === 0 && st.costUsd === 0)) continue
       bySource.push({

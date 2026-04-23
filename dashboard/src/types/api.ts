@@ -93,7 +93,7 @@ export interface UsageTrendDay {
   outputTokens: number
 }
 
-export type BySourceBucket = 'head' | 'curator' | 'archival' | 'manual_agents' | 'scheduled_agent'
+export type BySourceBucket = 'head' | 'curator' | 'archival' | 'steward' | 'memory' | 'manual_agents' | 'scheduled_agent'
 
 export interface BySourceRow {
   bucket: BySourceBucket

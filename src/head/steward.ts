@@ -133,7 +133,7 @@ export async function stewardComplete(
   t.llmResponse(1, response)
   t.end(1, response)
   usageStore?.record({
-    sourceType: 'head',
+    sourceType: 'steward',
     sourceId: eventId ?? null,
     model: response.model,
     inputTokens: response.inputTokens,

@@ -386,6 +386,8 @@ export default function UsagePage() {
                   row.bucket === 'head' ? 'Head'
                   : row.bucket === 'curator' ? 'Curator'
                   : row.bucket === 'archival' ? 'Archival'
+                  : row.bucket === 'steward' ? 'Stewards'
+                  : row.bucket === 'memory' ? 'Memory'
                   : row.bucket === 'manual_agents' ? 'Manual agents'
                   : row.name
                 const hasCost = row.costUsd > 0

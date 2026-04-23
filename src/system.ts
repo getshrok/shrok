@@ -23,6 +23,7 @@ import { AppStateStore } from './db/app_state.js'
 import { writeAssistantName } from './config-file.js'
 import { StewardRunStore } from './db/steward_runs.js'
 import { createTopicMemory } from './memory/index.js'
+import { estimateCost } from './llm/pricing.js'
 import { FileSystemKindLoader, FileSystemSkillLoader } from './skills/loader.js'
 import { UnifiedLoader } from './skills/unified.js'
 import { LocalAgentRunner } from './sub-agents/local.js'
@@ -141,12 +142,24 @@ export function buildSystem(deps: SystemDeps): System {
   }
 
   // ── Topic Memory ────────────────────────────────────────────────────────
-  const makeMemoryLlm = (model: string) => (system: string, user: string) =>
-    llmRouter.complete(
+  const makeMemoryLlm = (model: string) => async (system: string, user: string) => {
+    const r = await llmRouter.complete(
       model,
       [{ kind: 'text' as const, id: 'mem-llm', role: 'user' as const, content: user, createdAt: new Date().toISOString() }],
       [], { systemPrompt: system, maxTokens: 8192 },
-    ).then(r => r.content)
+    )
+    stores.usage.record({
+      sourceType: 'memory',
+      sourceId: null,
+      model: r.model,
+      inputTokens: r.inputTokens,
+      outputTokens: r.outputTokens,
+      costUsd: estimateCost(r.model, r.inputTokens, r.outputTokens, r.cacheReadInputTokens, r.cacheCreationInputTokens),
+      cacheReadTokens: r.cacheReadInputTokens ?? 0,
+      cacheWriteTokens: r.cacheCreationInputTokens ?? 0,
+    })
+    return r.content
+  }
 
   // workspacePath already resolved above (before stores block)
 
