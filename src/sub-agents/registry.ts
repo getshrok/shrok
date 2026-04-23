@@ -962,7 +962,10 @@ export function buildReminderTools(
             return JSON.stringify({ error: true, message: `Invalid cron expression: ${(err as Error).message}` })
           }
         } else {
-          const d = new Date(triggerAtArg!)
+          if (!triggerAtArg) {
+            return JSON.stringify({ error: true, message: 'triggerAt is required when cron is not provided.' })
+          }
+          const d = new Date(triggerAtArg)
           if (isNaN(d.getTime())) {
             return JSON.stringify({ error: true, message: `Invalid triggerAt date: ${triggerAtArg}` })
           }
