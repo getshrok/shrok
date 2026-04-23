@@ -9,11 +9,13 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { MicVAD, utils } from '@ricky0123/vad-web'
 import { voiceFSM, INITIAL_VOICE_STATE, type VoiceState } from './voice-fsm'
+import { createErrorTimer, type VoiceErrorMessage, type ErrorTimerHandle } from './voice-error-timer'
 
 export interface UseVoiceReturn {
   state: VoiceState
   voiceActive: boolean
   toggleVoice: () => Promise<void>
+  errorMessage: string | null    // D-04: distinct message per failure class, 4s auto-dismiss
 }
 
 function buildWsUrl(): string {
@@ -25,6 +27,7 @@ function buildWsUrl(): string {
 export function useVoice(): UseVoiceReturn {
   const [state, dispatch] = useReducer(voiceFSM, INITIAL_VOICE_STATE)
   const [voiceActive, setVoiceActive] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Mutable handles — all accessed from VAD/WS callbacks which capture stale React state
   // (Pitfall 5). stateRef is kept in sync via a useEffect below.
@@ -36,9 +39,25 @@ export function useVoice(): UseVoiceReturn {
   const chunkQueueRef = useRef<ArrayBuffer[]>([])
   const stateRef = useRef<VoiceState>(INITIAL_VOICE_STATE)
   const voiceActiveRef = useRef(false)
+  const errorTimerRef = useRef<ErrorTimerHandle | null>(null)
 
   useEffect(() => { stateRef.current = state }, [state])
   useEffect(() => { voiceActiveRef.current = voiceActive }, [voiceActive])
+
+  // Initialise the error timer once on mount; clear on unmount (T-22-02).
+  useEffect(() => {
+    errorTimerRef.current = createErrorTimer(
+      (m) => setErrorMessage(m),
+      () => setErrorMessage(null),
+    )
+    return () => { errorTimerRef.current?.clear() }
+  }, [])
+
+  // --- Error signalling -----------------------------------------------------
+
+  const signalError = useCallback((message: VoiceErrorMessage) => {
+    errorTimerRef.current?.setError(message)
+  }, [])
 
   // --- MSE plumbing ---------------------------------------------------------
 
@@ -70,11 +89,12 @@ export function useVoice(): UseVoiceReturn {
         sb.addEventListener('updateend', flushChunkQueue)
       } catch {
         // MSE not supported at all — signal error; caller will tear down.
+        signalError('Voice error — please try again')
         dispatch({ type: 'ERROR' })
       }
     })
     return audioEl
-  }, [flushChunkQueue])
+  }, [flushChunkQueue, signalError])
 
   const teardownMSE = useCallback(() => {
     const ms = mediaSourceRef.current
@@ -146,12 +166,14 @@ export function useVoice(): UseVoiceReturn {
         // wsRef.current is null if WE closed it intentionally — skip spurious ERROR.
         if (wsRef.current !== null && voiceActiveRef.current) {
           // Unexpected disconnect during active voice mode — D-10.
+          signalError('Voice disconnected')
           dispatch({ type: 'ERROR' })
           void teardownAll()
           setVoiceActive(false)
         }
       })
       ws.addEventListener('error', () => {
+        signalError('Voice disconnected')
         dispatch({ type: 'ERROR' })
         void teardownAll()
         setVoiceActive(false)
@@ -196,17 +218,22 @@ export function useVoice(): UseVoiceReturn {
 
       dispatch({ type: 'TOGGLE_ON' })
       setVoiceActive(true)
-    } catch {
+    } catch (err) {
       // Any failure during setup → full teardown + ERROR (FSM returns to idle).
+      const isPermissionDenial =
+        err instanceof DOMException &&
+        (err.name === 'NotAllowedError' || err.name === 'NotFoundError')
+      signalError(isPermissionDenial ? 'Microphone access denied' : 'Voice error — please try again')
       dispatch({ type: 'ERROR' })
       await teardownAll()
       setVoiceActive(false)
     }
-  }, [flushChunkQueue, setupMSE, teardownAll, teardownMSE])
+  }, [flushChunkQueue, setupMSE, signalError, teardownAll, teardownMSE])
 
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
+      errorTimerRef.current?.clear()
       void teardownAll()
       dispatch({ type: 'TOGGLE_OFF' })
       setVoiceActive(false)
@@ -214,5 +241,5 @@ export function useVoice(): UseVoiceReturn {
     }
   }, [teardownAll])
 
-  return { state, voiceActive, toggleVoice }
+  return { state, voiceActive, toggleVoice, errorMessage }
 }
