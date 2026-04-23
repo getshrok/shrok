@@ -67,13 +67,22 @@ export async function streamTts(
     return
   }
 
-  const readable = Readable.fromWeb(body as import('node:stream/web').ReadableStream<Uint8Array>)
+  // Thread signal into Readable.fromWeb so that AbortController.abort() interrupts
+  // the async iteration directly — Node.js emits an AbortError on the readable
+  // when the signal fires, which is caught by the existing isAbortError() check.
+  const readable = Readable.fromWeb(
+    body as import('node:stream/web').ReadableStream<Uint8Array>,
+    { signal },
+  )
   for await (const chunk of readable) {
     if (signal.aborted) {
-      // Caller aborted; stop without tts_done. The SDK should also throw,
-      // but some runtime paths deliver abort via signal before the SDK
-      // throws — guard defensively.
-      return
+      // Caller aborted; stop without tts_done and re-throw a typed
+      // AbortError so the caller's isAbortError() branch runs. Some runtime
+      // paths deliver abort via signal polling before the SDK stream
+      // throws APIUserAbortError — we must not let those paths resolve
+      // silently, or the plan's re-throw contract breaks and the adapter's
+      // abort-logging branch is unreachable.
+      throw Object.assign(new Error('TTS aborted by signal'), { name: 'AbortError' })
     }
     if (ws.readyState !== 1 /* OPEN */) return
     // chunk is Buffer under node:stream when consumed via for-await
@@ -81,6 +90,14 @@ export async function streamTts(
   }
   // Errors (including abort errors from the SDK) propagate to caller naturally.
   // Caller uses isAbortError() to distinguish abort from real upstream failures.
+
+  // Post-loop abort check: if the signal was aborted while the last chunk was
+  // being consumed (abort fires concurrently with the final pull cycle), the
+  // polling guard inside the loop never observes it. Re-check here so we never
+  // emit tts_done or resolve cleanly after an abort.
+  if (signal.aborted) {
+    throw Object.assign(new Error('TTS aborted by signal'), { name: 'AbortError' })
+  }
 
   // Only emit tts_done on clean completion and only if the socket is still open.
   if (ws.readyState === 1 /* OPEN */) {
