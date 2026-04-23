@@ -71,6 +71,8 @@ const CONFIG_JSON_FIELDS = new Set([
   // Phase 17: conversation visibility + usage footers (moved from app_state)
   'visAgentWork', 'visHeadTools', 'visSystemEvents', 'visStewardRuns',
   'visAgentPills', 'visMemoryRetrievals', 'usageFootersEnabled',
+  // Phase 23: timezone (IANA string, drives scheduling + tool descriptions)
+  'timezone',
 ])
 
 const VALID_PROVIDERS = new Set(['anthropic', 'gemini', 'openai'])

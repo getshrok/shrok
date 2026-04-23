@@ -71,6 +71,7 @@ export interface DraftState {
   visMemoryRetrievals: boolean
   usageFootersEnabled: boolean
   traceHistoryTokens: number
+  timezone: string
   // Advanced
   llmMaxTokens: number
   snapshotTokenBudget: number
@@ -147,6 +148,7 @@ export function initDraft(s: SettingsData): DraftState {
     visMemoryRetrievals: s.visMemoryRetrievals,
     usageFootersEnabled: s.usageFootersEnabled,
     traceHistoryTokens: s.traceHistoryTokens,
+    timezone: s.timezone,
     llmMaxTokens: s.llmMaxTokens,
     snapshotTokenBudget: s.snapshotTokenBudget,
     archivalThresholdFraction: s.archivalThresholdFraction,
@@ -240,6 +242,7 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.loopStewardToolResultChars !== s.loopStewardToolResultChars) return true
   if (draft.loopStewardSystemPromptChars !== s.loopStewardSystemPromptChars) return true
   if (draft.loopStewardMaxTokens !== s.loopStewardMaxTokens) return true
+  if (draft.timezone !== s.timezone) return true
   return false
 }
 
@@ -309,6 +312,7 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.loopStewardToolResultChars !== s.loopStewardToolResultChars) body.loopStewardToolResultChars = draft.loopStewardToolResultChars
   if (draft.loopStewardSystemPromptChars !== s.loopStewardSystemPromptChars) body.loopStewardSystemPromptChars = draft.loopStewardSystemPromptChars
   if (draft.loopStewardMaxTokens !== s.loopStewardMaxTokens) body.loopStewardMaxTokens = draft.loopStewardMaxTokens
+  if (draft.timezone !== s.timezone) body.timezone = draft.timezone
   // API key pending changes
   if (draft.anthropicApiKey !== null) body.anthropicApiKey = draft.anthropicApiKey
   if (draft.geminiApiKey !== null) body.geminiApiKey = draft.geminiApiKey
