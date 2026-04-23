@@ -68,26 +68,19 @@ export async function streamTts(
   }
 
   const readable = Readable.fromWeb(body as import('node:stream/web').ReadableStream<Uint8Array>)
-  try {
-    for await (const chunk of readable) {
-      if (signal.aborted) {
-        // Caller aborted; stop without tts_done. The SDK should also throw,
-        // but some runtime paths deliver abort via signal before the SDK
-        // throws — guard defensively.
-        return
-      }
-      if (ws.readyState !== 1 /* OPEN */) return
-      // chunk is Buffer under node:stream when consumed via for-await
-      ws.send(chunk as Buffer)
+  for await (const chunk of readable) {
+    if (signal.aborted) {
+      // Caller aborted; stop without tts_done. The SDK should also throw,
+      // but some runtime paths deliver abort via signal before the SDK
+      // throws — guard defensively.
+      return
     }
-  } catch (err) {
-    if (isAbortError(err)) {
-      // D-07: propagate as-is so adapter-level catch can distinguish abort
-      // from a real upstream failure without logging noise.
-      throw err
-    }
-    throw err
+    if (ws.readyState !== 1 /* OPEN */) return
+    // chunk is Buffer under node:stream when consumed via for-await
+    ws.send(chunk as Buffer)
   }
+  // Errors (including abort errors from the SDK) propagate to caller naturally.
+  // Caller uses isAbortError() to distinguish abort from real upstream failures.
 
   // Only emit tts_done on clean completion and only if the socket is still open.
   if (ws.readyState === 1 /* OPEN */) {
