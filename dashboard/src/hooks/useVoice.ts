@@ -1,0 +1,212 @@
+// dashboard/src/hooks/useVoice.ts
+//
+// Single owner of voice-mode side effects: FSM, VAD, WebSocket, MSE playback, barge-in.
+// VoiceButton is purely presentational — it renders the state this hook exposes.
+//
+// Implements locked decisions D-01, D-03, D-07, D-09, D-10 from 21-CONTEXT.md
+// and mitigates Pitfalls 1-6 from 21-RESEARCH.md.
+
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { MicVAD, utils } from '@ricky0123/vad-web'
+import { voiceFSM, INITIAL_VOICE_STATE, type VoiceState } from './voice-fsm'
+
+export interface UseVoiceReturn {
+  state: VoiceState
+  voiceActive: boolean
+  toggleVoice: () => Promise<void>
+}
+
+function buildWsUrl(): string {
+  // /api/voice/ws is proxied in dev by vite.config.ts (ws: true) to localhost:8888
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  return `${proto}://${window.location.host}/api/voice/ws`
+}
+
+export function useVoice(): UseVoiceReturn {
+  const [state, dispatch] = useReducer(voiceFSM, INITIAL_VOICE_STATE)
+  const [voiceActive, setVoiceActive] = useState(false)
+
+  // Mutable handles — all accessed from VAD/WS callbacks which capture stale React state
+  // (Pitfall 5). stateRef is kept in sync via a useEffect below.
+  const vadRef = useRef<MicVAD | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const audioElRef = useRef<HTMLAudioElement | null>(null)
+  const mediaSourceRef = useRef<MediaSource | null>(null)
+  const sourceBufferRef = useRef<SourceBuffer | null>(null)
+  const chunkQueueRef = useRef<ArrayBuffer[]>([])
+  const stateRef = useRef<VoiceState>(INITIAL_VOICE_STATE)
+  const voiceActiveRef = useRef(false)
+
+  useEffect(() => { stateRef.current = state }, [state])
+  useEffect(() => { voiceActiveRef.current = voiceActive }, [voiceActive])
+
+  // --- MSE plumbing ---------------------------------------------------------
+
+  const flushChunkQueue = useCallback(() => {
+    const sb = sourceBufferRef.current
+    if (!sb || sb.updating) return
+    const next = chunkQueueRef.current.shift()
+    if (!next) return
+    try {
+      sb.appendBuffer(new Uint8Array(next))
+    } catch {
+      // Pitfall 2: if appendBuffer throws (rare race), drop this chunk; the next
+      // updateend will pull the next one.
+    }
+  }, [])
+
+  const setupMSE = useCallback((): HTMLAudioElement => {
+    const audioEl = new Audio()
+    const ms = new MediaSource()
+    audioEl.src = URL.createObjectURL(ms)
+    audioElRef.current = audioEl
+    mediaSourceRef.current = ms
+    ms.addEventListener('sourceopen', () => {
+      // Pitfall 1: Safari does not support 'audio/mpeg' in MSE. Runtime gate:
+      const mime = MediaSource.isTypeSupported('audio/mpeg') ? 'audio/mpeg' : 'audio/mp4'
+      try {
+        const sb = ms.addSourceBuffer(mime)
+        sourceBufferRef.current = sb
+        sb.addEventListener('updateend', flushChunkQueue)
+      } catch {
+        // MSE not supported at all — signal error; caller will tear down.
+        dispatch({ type: 'ERROR' })
+      }
+    })
+    return audioEl
+  }, [flushChunkQueue])
+
+  const teardownMSE = useCallback(() => {
+    const ms = mediaSourceRef.current
+    const audioEl = audioElRef.current
+    try { audioEl?.pause() } catch { /* noop */ }
+    if (ms && ms.readyState === 'open') { try { ms.endOfStream() } catch { /* noop */ } }
+    if (audioEl?.src) { try { URL.revokeObjectURL(audioEl.src) } catch { /* noop */ }; audioEl.src = '' }
+    chunkQueueRef.current = []
+    sourceBufferRef.current = null
+    mediaSourceRef.current = null
+    audioElRef.current = null
+  }, [])
+
+  // --- Teardown (shared by explicit toggle-off, ERROR, and unmount) ---------
+
+  const teardownAll = useCallback(async () => {
+    if (vadRef.current) {
+      try { await vadRef.current.destroy() } catch { /* noop */ }
+      vadRef.current = null
+    }
+    if (wsRef.current) {
+      try { wsRef.current.close() } catch { /* noop */ }
+      wsRef.current = null
+    }
+    teardownMSE()
+  }, [teardownMSE])
+
+  // --- Toggle ---------------------------------------------------------------
+
+  const toggleVoice = useCallback(async (): Promise<void> => {
+    if (voiceActiveRef.current) {
+      // --- EXIT voice mode ---
+      await teardownAll()
+      dispatch({ type: 'TOGGLE_OFF' })
+      setVoiceActive(false)
+      return
+    }
+
+    // --- ENTER voice mode (user-gesture context — D-09, Pattern 2) ---
+    // MicVAD.new must be called from a user gesture; we do so synchronously here.
+    try {
+      // 1. Open WS first so we can send audio as soon as speech ends.
+      const ws = new WebSocket(buildWsUrl())
+      ws.binaryType = 'arraybuffer' // Pitfall 6 — MUST be set before any binary frames arrive.
+      wsRef.current = ws
+
+      ws.addEventListener('message', (evt: MessageEvent) => {
+        if (evt.data instanceof ArrayBuffer) {
+          // Binary = MP3 chunk; queue and flush.
+          chunkQueueRef.current.push(evt.data)
+          flushChunkQueue()
+          return
+        }
+        if (typeof evt.data === 'string') {
+          try {
+            const msg = JSON.parse(evt.data) as { type?: string }
+            if (msg.type === 'tts_start') dispatch({ type: 'TTS_START' })
+            else if (msg.type === 'tts_done') {
+              const ms = mediaSourceRef.current
+              if (ms && ms.readyState === 'open') { try { ms.endOfStream() } catch { /* noop */ } }
+              dispatch({ type: 'TTS_DONE' })
+            }
+          } catch { /* malformed JSON — ignore */ }
+        }
+      })
+
+      ws.addEventListener('close', () => {
+        if (voiceActiveRef.current) {
+          // Unexpected disconnect during active voice mode — D-10.
+          dispatch({ type: 'ERROR' })
+          void teardownAll()
+          setVoiceActive(false)
+        }
+      })
+      ws.addEventListener('error', () => {
+        dispatch({ type: 'ERROR' })
+        void teardownAll()
+        setVoiceActive(false)
+      })
+
+      // 2. Set up MSE audio element (does nothing until tts_start arrives).
+      const audioEl = setupMSE()
+      // Pitfall 3: tie play() to the user gesture. Start a silent play() that
+      // resolves once MSE source is ready; rejection is fine here.
+      audioEl.play().catch(() => { /* autoplay policy may reject; retry on tts_start */ })
+
+      // 3. Initialise MicVAD with callbacks that use refs (Pitfall 5).
+      const vad = await MicVAD.new({
+        model: 'legacy',
+        baseAssetPath: '/',
+        onnxWASMBasePath: '/',
+        onSpeechStart: () => {
+          if (stateRef.current === 'speaking') {
+            // Barge-in (Pitfall 4): stop local playback + tell server to cancel TTS.
+            teardownMSE()
+            try { wsRef.current?.send(JSON.stringify({ type: 'cancel_tts' })) } catch { /* noop */ }
+            // Recreate MSE for the next turn.
+            setupMSE()
+          }
+          dispatch({ type: 'SPEECH_START' })
+        },
+        onSpeechEnd: (audio: Float32Array) => {
+          try {
+            const wav = utils.encodeWAV(audio)
+            wsRef.current?.send(wav)
+          } catch { /* noop — if WS dropped, the close handler already dispatched ERROR */ }
+          dispatch({ type: 'SPEECH_END' })
+        },
+        onVADMisfire: () => {
+          // Speech too short — no audio sent. FSM stays in 'listening'; the next
+          // speech turn will re-trigger SPEECH_START (idempotent no-op per voiceFSM).
+        },
+      })
+      vadRef.current = vad
+      await vad.start()
+
+      dispatch({ type: 'TOGGLE_ON' })
+      setVoiceActive(true)
+    } catch {
+      // Any failure during setup → full teardown + ERROR (FSM returns to idle).
+      dispatch({ type: 'ERROR' })
+      await teardownAll()
+      setVoiceActive(false)
+    }
+  }, [flushChunkQueue, setupMSE, teardownAll, teardownMSE])
+
+  // Cleanup on unmount.
+  useEffect(() => {
+    return () => {
+      void teardownAll()
+    }
+  }, [teardownAll])
+
+  return { state, voiceActive, toggleVoice }
+}
