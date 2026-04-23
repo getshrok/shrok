@@ -109,9 +109,11 @@ describe('streamTts', () => {
     const { client } = makeMockOpenAI(body)
     const ws = new MockWS() as unknown as import('ws').WebSocket
 
-    // Abort after the first chunk is consumed
+    // Abort immediately — fires before Readable.fromWeb processes any chunks.
+    // The signal is aborted by the time streamTts resumes after await asResponse(),
+    // so Node.js destroys the readable instantly and the for-await throws AbortError.
     const p = streamTts('hi', client, ws, ac.signal)
-    setTimeout(() => ac.abort(), 5)
+    ac.abort()
 
     await expect(p).rejects.toSatisfy((e: unknown) => isAbortError(e))
 
