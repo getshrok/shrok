@@ -315,6 +315,18 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
     }
 
     // --- config.json updates ---
+    if ('timezone' in body && typeof body['timezone'] === 'string') {
+      const tz = body['timezone'] as string
+      if (tz !== '') {
+        try {
+          Intl.DateTimeFormat('en-US', { timeZone: tz })
+        } catch {
+          res.status(400).json({ error: `Invalid IANA timezone: '${tz}'` })
+          return
+        }
+      }
+    }
+
     const configPath = path.join(workspacePath, 'config.json')
     const configJson = loadConfigJson(workspacePath)
     let configChanged = false
