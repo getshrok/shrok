@@ -24,7 +24,7 @@ Phases 11-18: Various hardening and features (shipped through 2026-04-22)
 
 - [x] **Phase 19: Backend Voice Pipeline** - WebSocket audio endpoint, STT, TTS streaming, VoiceChannelAdapter wired into the existing queue and router (completed 2026-04-23)
 - [x] **Phase 20: Vite Build Configuration** - VAD WASM/ONNX files in production build output, Vite dev proxy for WebSocket upgrades (completed 2026-04-23)
-- [ ] **Phase 21: React Voice UI & State Machine** - Mic toggle, four-state useReducer FSM, VAD on user gesture, MSE playback, barge-in
+- [x] **Phase 21: React Voice UI & State Machine** - Mic toggle, four-state useReducer FSM, VAD on user gesture, MSE playback, barge-in (completed 2026-04-23)
 - [ ] **Phase 22: Error Handling & Accessibility** - All error paths return to idle with visible feedback, ARIA labels, disconnect recovery
 
 ## Phase Details
@@ -73,7 +73,7 @@ Plans:
 Plans:
 - [x] 21-01-PLAN.md — Dashboard vitest config + pure voiceFSM reducer + exhaustive transition tests
 - [x] 21-02-PLAN.md — useVoice hook (FSM + VAD + WebSocket + MSE + barge-in) and pure VoiceButton component
-- [ ] 21-03-PLAN.md — Mount VoiceButton in ConversationsPage input row + manual E2E browser verification checkpoint
+- [x] 21-03-PLAN.md — Mount VoiceButton in ConversationsPage input row + manual E2E browser verification checkpoint
 **UI hint**: yes
 
 ### Phase 22: Error Handling & Accessibility
@@ -94,5 +94,5 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 19. Backend Voice Pipeline | v0.1.1 Voice Mode | 4/4 | Complete    | 2026-04-23 |
 | 20. Vite Build Configuration | v0.1.1 Voice Mode | 1/1 | Complete    | 2026-04-23 |
-| 21. React Voice UI & State Machine | v0.1.1 Voice Mode | 2/3 | In Progress|  |
+| 21. React Voice UI & State Machine | v0.1.1 Voice Mode | 3/3 | Complete   | 2026-04-23 |
 | 22. Error Handling & Accessibility | v0.1.1 Voice Mode | 0/TBD | Not started | - |
