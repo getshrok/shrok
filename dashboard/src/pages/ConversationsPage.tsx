@@ -9,6 +9,8 @@ import { agentDisplayName } from '../lib/agentId'
 import { useStream } from '../hooks/useStream'
 import { useMode } from '../context/ModeContext'
 import { useAssistantName } from '../lib/assistant-name'
+import { useVoice } from '../hooks/useVoice'
+import { VoiceButton } from '../components/VoiceButton'
 import type { Message, StewardRun, EventUsageSummary, SettingsData } from '../types/api'
 import { formatInTz, useConfigTimezone } from '../lib/formatTime'
 
@@ -481,6 +483,7 @@ export default function ConversationsPage() {
   useStream()
   const { isDeveloper } = useMode()
   const assistantName = useAssistantName()
+  const { state: voiceState, voiceActive, toggleVoice } = useVoice()
   const { data: isTyping } = useQuery({ queryKey: ['typing'], initialData: false, staleTime: Infinity })
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.settings.get })
   const s = settings as SettingsData | undefined
@@ -908,6 +911,11 @@ export default function ConversationsPage() {
           >
             <Paperclip size={16} />
           </button>
+          <VoiceButton
+            state={voiceState}
+            voiceActive={voiceActive}
+            onToggle={() => { void toggleVoice() }}
+          />
           <textarea
             ref={inputRef}
             className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-xl px-4 py-2.5 resize-none outline-none placeholder:text-zinc-500 focus:ring-1 focus:ring-[var(--accent)]/50 max-h-40 overflow-y-auto"
