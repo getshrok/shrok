@@ -95,6 +95,13 @@ export class DashboardServer {
   /** Revoke all dashboard sessions (e.g. after password change). */
   revokeAllSessions(): void { this.tokenStore.revokeAll() }
 
+  /** Expose the underlying http.Server so channel adapters (e.g. VoiceChannelAdapter)
+   *  can attach a WebSocket upgrade listener. Returns null before .start() resolves
+   *  or after .stop() runs. (Phase 19 D-01) */
+  getHttpServer(): Server | null {
+    return this.server
+  }
+
   async start(): Promise<void> {
     const { config, messages, agents, stewardRuns, events, controls } = this.opts
     const workspacePath = config.workspacePath.replace(/^~/, os.homedir())
