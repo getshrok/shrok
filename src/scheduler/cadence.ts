@@ -1,5 +1,5 @@
 /**
- * Validates whether a cron expression matches one of the six supported cadence
+ * Validates whether a cron expression matches one of the eight supported cadence
  * shapes (D-03). The UI picker only produces these shapes, and both the REST
  * API (`src/dashboard/routes/schedules.ts`) and agent tools
  * (`src/sub-agents/registry.ts`) gate on this function so the system never
@@ -10,12 +10,15 @@
  *   1. every N minutes:  * /N * * * *     N ∈ {5, 10, 15, 30, 45, 60}
  *   2. hourly:           M * * * *        M ∈ 0..59
  *   3. daily:            M H * * *        M ∈ 0..59, H ∈ 0..23
- *   4. weekly:           M H * * D        D ∈ 0..6
- *   5. monthly:          M H D * *        D ∈ 1..28
- *   6. yearly:           M H D Mo *       Mo ∈ 1..12, D ∈ 1..28
+ *   4. weekdays (Mon–Fri): M H * * 1-5    M ∈ 0..59, H ∈ 0..23
+ *   5. weekly:           M H * * D        D ∈ 0..6
+ *   6. every N days:     0 H * /N * *      H ∈ 0..23, N ∈ {1..7}
+ *   7. monthly:          M H D * *        D ∈ 1..28
+ *   8. yearly:           M H D Mo *       Mo ∈ 1..12, D ∈ 1..28
  */
 
 const ALLOWED_MINUTE_INTERVALS = new Set([5, 10, 15, 30, 45, 60])
+const ALLOWED_DAY_INTERVALS = new Set([1, 2, 3, 4, 5, 6, 7])
 
 function isIntInRange(token: string, min: number, max: number): boolean {
   // Reject empty, negative, leading-plus, decimals, and non-digit tokens.
@@ -36,33 +39,44 @@ export function isValidCadence(cron: string): boolean {
     return ALLOWED_MINUTE_INTERVALS.has(n)
   }
 
+  // Shape 6: every N days — 0 H */N * *  (N ∈ {1..7})
+  const everyNDaysMatch = /^\*\/(\d+)$/.exec(dom)
+  if (min === '0' && everyNDaysMatch && mon === '*' && dow === '*') {
+    if (!isIntInRange(hour, 0, 23)) return false
+    const n = parseInt(everyNDaysMatch[1]!, 10)
+    return ALLOWED_DAY_INTERVALS.has(n)
+  }
+
   // All remaining shapes require a literal numeric minute in 0..59
   if (!isIntInRange(min, 0, 59)) return false
 
   // Shape 2: hourly — M * * * *
   if (hour === '*' && dom === '*' && mon === '*' && dow === '*') return true
 
-  // Shapes 3–6 require a literal numeric hour in 0..23
+  // Shapes 3–8 require a literal numeric hour in 0..23
   if (!isIntInRange(hour, 0, 23)) return false
 
   // Shape 3: daily — M H * * *
   if (dom === '*' && mon === '*' && dow === '*') return true
 
-  // Shape 4: weekly — M H * * D  (D ∈ 0..6)
+  // Shape 4: weekdays Mon–Fri — M H * * 1-5
+  if (dom === '*' && mon === '*' && dow === '1-5') return true
+
+  // Shape 5: weekly — M H * * D  (D ∈ 0..6)
   if (dom === '*' && mon === '*' && dow !== '*') {
     return isIntInRange(dow, 0, 6)
   }
 
-  // Shapes 5 & 6 require dow === '*' and dom ∈ 1..28
+  // Shapes 7 & 8 require dow === '*' and dom ∈ 1..28
   if (dow !== '*') return false
   if (!isIntInRange(dom, 1, 28)) return false
 
-  // Shape 5: monthly — M H D * *
+  // Shape 7: monthly — M H D * *
   if (mon === '*') return true
 
-  // Shape 6: yearly — M H D Mo *
+  // Shape 8: yearly — M H D Mo *
   return isIntInRange(mon, 1, 12)
 }
 
 export const CADENCE_ERROR_MESSAGE =
-  'Invalid cron frequency. Supported cadences: every N minutes (*/N * * * *), hourly, daily, weekly, monthly, yearly. For custom timing logic (e.g. weekdays only, skip holidays), use the conditions argument instead of a custom cron expression.'
+  'Invalid cron frequency. Supported cadences: every N minutes (*/N * * * *), hourly, daily, weekdays (Mon–Fri), every N days, weekly, monthly, yearly. For custom timing logic, use the conditions argument instead of a custom cron expression.'

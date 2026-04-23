@@ -20,10 +20,25 @@ describe('isValidCadence', () => {
     it('00:00', () => expect(isValidCadence('0 0 * * *')).toBe(true))
   })
 
+  describe('accepts: weekdays (Mon–Fri)', () => {
+    it('09:00',  () => expect(isValidCadence('0 9 * * 1-5')).toBe(true))
+    it('14:30',  () => expect(isValidCadence('30 14 * * 1-5')).toBe(true))
+    it('00:00',  () => expect(isValidCadence('0 0 * * 1-5')).toBe(true))
+    it('23:59',  () => expect(isValidCadence('59 23 * * 1-5')).toBe(true))
+  })
+
   describe('accepts: weekly', () => {
     it.each([0, 1, 2, 3, 4, 5, 6])('day-of-week %i', (d) => {
       expect(isValidCadence(`0 9 * * ${d}`)).toBe(true)
     })
+  })
+
+  describe('accepts: every N days', () => {
+    it.each([1, 2, 3, 4, 5, 6, 7])('every %i days at 09:00: 0 9 */%i * *', (n) => {
+      expect(isValidCadence(`0 9 */${n} * *`)).toBe(true)
+    })
+    it('midnight every 3 days', () => expect(isValidCadence('0 0 */3 * *')).toBe(true))
+    it('23:00 every 5 days',    () => expect(isValidCadence('0 23 */5 * *')).toBe(true))
   })
 
   describe('accepts: monthly', () => {
@@ -51,10 +66,20 @@ describe('isValidCadence', () => {
   })
 
   describe('rejects: complex expressions', () => {
-    it('weekday range 1-5',       () => expect(isValidCadence('0 9 * * 1-5')).toBe(false))
     it('comma list hours',        () => expect(isValidCadence('0 9,17 * * *')).toBe(false))
     it('every minute * * * * *',  () => expect(isValidCadence('* * * * *')).toBe(false))
     it('all-numeric yearly-shape', () => expect(isValidCadence('0 0 1 1 0')).toBe(false))
+  })
+
+  describe('rejects: every N days with invalid N or fields', () => {
+    it('N=0',        () => expect(isValidCadence('0 9 */0 * *')).toBe(false))
+    it('N=8',        () => expect(isValidCadence('0 9 */8 * *')).toBe(false))
+    it('N=10',       () => expect(isValidCadence('0 9 */10 * *')).toBe(false))
+    it('min not 0',  () => expect(isValidCadence('* 9 */3 * *')).toBe(false))
+    it('min=30',     () => expect(isValidCadence('30 9 */3 * *')).toBe(false))
+    it('hour=24',    () => expect(isValidCadence('0 24 */3 * *')).toBe(false))
+    it('dow not *',  () => expect(isValidCadence('0 9 */3 * 1')).toBe(false))
+    it('mon not *',  () => expect(isValidCadence('0 9 */3 5 *')).toBe(false))
   })
 
   describe('rejects: out-of-bounds fields', () => {
@@ -78,13 +103,18 @@ describe('isValidCadence', () => {
 })
 
 describe('CADENCE_ERROR_MESSAGE', () => {
-  it('is the exact locked D-05 string', () => {
+  it('is the exact locked string (phase 23 expansion)', () => {
     expect(CADENCE_ERROR_MESSAGE).toBe(
-      'Invalid cron frequency. Supported cadences: every N minutes (*/N * * * *), hourly, daily, weekly, monthly, yearly. For custom timing logic (e.g. weekdays only, skip holidays), use the conditions argument instead of a custom cron expression.'
+      'Invalid cron frequency. Supported cadences: every N minutes (*/N * * * *), hourly, daily, weekdays (Mon–Fri), every N days, weekly, monthly, yearly. For custom timing logic, use the conditions argument instead of a custom cron expression.'
     )
   })
 
   it('mentions the conditions argument (agent guidance)', () => {
     expect(CADENCE_ERROR_MESSAGE).toContain('conditions')
+  })
+
+  it('mentions weekdays and every N days (phase 23 expansions)', () => {
+    expect(CADENCE_ERROR_MESSAGE).toContain('weekdays (Mon–Fri)')
+    expect(CADENCE_ERROR_MESSAGE).toContain('every N days')
   })
 })

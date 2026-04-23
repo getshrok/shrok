@@ -212,10 +212,9 @@ describe('cadence validation (POST + PATCH /api/schedules)', () => {
     expect(store.list().length).toBe(before)
   })
 
-  it('POST rejects 0 9 * * 1-5 (weekday range) with 400', async () => {
+  it('POST accepts 0 9 * * 1-5 (weekdays Mon–Fri, phase 23 expansion) with 200', async () => {
     const r = await post({ taskName: 'existing-task', kind: 'task', cron: '0 9 * * 1-5' })
-    expect(r.status).toBe(400)
-    expect((r.data as { error: string }).error).toBe(CADENCE_ERROR_MESSAGE)
+    expect(r.status).toBe(200)
   })
 
   it('POST rejects 0 9 29 * * (day-of-month > 28) with 400', async () => {

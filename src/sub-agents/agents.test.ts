@@ -1073,13 +1073,14 @@ describe('cadence validation (create_schedule + update_schedule)', () => {
     expect(scheduleStore.list().length).toBe(before)  // no row persisted
   })
 
-  it('create_schedule rejects 0 9 * * 1-5 (weekday range)', async () => {
+  it('create_schedule accepts 0 9 * * 1-5 (weekdays Mon–Fri, phase 23 expansion)', async () => {
     const unified = await makeTmpUnified()
-    const { createSchedule } = await buildTools(unified)
+    const { createSchedule, scheduleStore } = await buildTools(unified)
     const result = await createSchedule.execute({ taskName: 'a-task', cron: '0 9 * * 1-5' }, ctx)
     const parsed = JSON.parse(result as string)
-    expect(parsed.error).toBe(true)
-    expect(parsed.message).toBe(CADENCE_ERROR_MESSAGE)
+    expect(parsed.error).toBeUndefined()
+    expect(scheduleStore.list().length).toBe(1)
+    expect(scheduleStore.list()[0]!.cron).toBe('0 9 * * 1-5')
   })
 
   it('create_schedule accepts */30 * * * * (supported cadence)', async () => {
