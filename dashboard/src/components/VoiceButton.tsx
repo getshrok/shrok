@@ -12,22 +12,40 @@ export interface VoiceButtonProps {
   voiceActive: boolean
   onToggle: () => void
   disabled?: boolean
+  errorMessage?: string | null
 }
 
 // Exactly matches the Paperclip button at ConversationsPage.tsx line 906.
 const OFF_CLASSES = 'pl-0 pr-1 py-2.5 text-zinc-500 hover:text-zinc-300 disabled:opacity-40 transition-colors'
 
-function ariaLabelFor(voiceActive: boolean, state: VoiceState): string {
-  if (!voiceActive) return 'Activate voice mode'
-  switch (state) {
-    case 'idle':       return 'Voice mode on — waiting for speech'
-    case 'listening':  return 'Voice mode — listening'
-    case 'processing': return 'Voice mode — processing'
-    case 'speaking':   return 'Voice mode — assistant speaking'
+function ariaLabelFor(
+  voiceActive: boolean,
+  state: VoiceState,
+  errorMessage?: string | null,
+): string {
+  const base = (() => {
+    if (!voiceActive) return 'Activate voice mode'
+    switch (state) {
+      case 'idle':       return 'Voice mode on — waiting for speech'
+      case 'listening':  return 'Voice mode — listening'
+      case 'processing': return 'Voice mode — processing'
+      case 'speaking':   return 'Voice mode — assistant speaking'
+    }
+  })()
+  if (errorMessage && errorMessage.length > 0) {
+    // D-08 belt-and-suspenders: overlay the error on top of the state label.
+    return `${errorMessage} — ${base}`
   }
+  return base
 }
 
-export function VoiceButton({ state, voiceActive, onToggle, disabled = false }: VoiceButtonProps): JSX.Element {
+export function VoiceButton({
+  state,
+  voiceActive,
+  onToggle,
+  disabled = false,
+  errorMessage = null,
+}: VoiceButtonProps): JSX.Element {
   const handleClick = (): void => {
     if (disabled) return
     onToggle()
@@ -40,7 +58,7 @@ export function VoiceButton({ state, voiceActive, onToggle, disabled = false }: 
         type="button"
         onClick={handleClick}
         disabled={disabled}
-        aria-label={ariaLabelFor(false, state)}
+        aria-label={ariaLabelFor(false, state, errorMessage)}
         className={OFF_CLASSES}
         title="Activate voice mode"
       >
@@ -59,9 +77,9 @@ export function VoiceButton({ state, voiceActive, onToggle, disabled = false }: 
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      aria-label={ariaLabelFor(true, state)}
+      aria-label={ariaLabelFor(true, state, errorMessage)}
       className={commonButtonClass}
-      title={ariaLabelFor(true, state)}
+      title={ariaLabelFor(true, state, errorMessage)}
     >
       {state === 'idle' && (
         <span className="relative inline-flex items-center justify-center">
