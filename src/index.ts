@@ -46,6 +46,7 @@ function loadEnvFile(overwrite = false): void {
 
 loadEnvFile()
 
+import OpenAI from 'openai'
 import { loadConfig, extractSecretValues } from './config.js'
 import { setLogLevel, setLogFile, log, registerSecrets } from './logger.js'
 import { initTracer } from './tracer.js'
@@ -67,6 +68,7 @@ import { ZohoCliqAdapter } from './channels/zoho-cliq/adapter.js'
 import { ZohoCliqStateStore } from './db/zoho_cliq_state.js'
 // WhatsApp adapter is dynamically imported — Baileys is an optional dependency
 import { DashboardChannelAdapter } from './channels/dashboard/adapter.js'
+import { VoiceChannelAdapter } from './channels/voice/adapter.js'
 import { ScheduleEvaluatorImpl } from './scheduler/index.js'
 import { WebhookListenerImpl } from './webhook/index.js'
 import { DashboardServer } from './dashboard/server.js'
@@ -421,6 +423,27 @@ async function main() {
   })
   await dashboard.start()
   log.info(`[startup] Dashboard listening on port ${config.dashboardPort}`)
+
+  // ── Voice channel (optional — only if OPENAI_API_KEY is configured) ────────
+  // Phase 19 D-01: attach AFTER dashboard.start() resolves so getHttpServer()
+  // returns a live http.Server. Gated on openaiApiKey — without it, Whisper/TTS
+  // calls cannot succeed, so skip startup rather than fail at first voice turn.
+  if (config.openaiApiKey) {
+    const httpServer = dashboard.getHttpServer()
+    if (httpServer) {
+      const voiceOpenai = new OpenAI({ apiKey: config.openaiApiKey })
+      const voiceAdapter = new VoiceChannelAdapter(httpServer, voiceOpenai)
+      voiceAdapter.onMessage(routeMessage)
+      channelRouter.register(voiceAdapter)
+      await voiceAdapter.start()
+      channelAdapters.push(voiceAdapter)
+      log.info('[startup] Voice WebSocket adapter ready at /api/voice/ws')
+    } else {
+      log.warn('[startup] Voice adapter skipped: dashboard.getHttpServer() returned null')
+    }
+  } else {
+    log.debug('[startup] Voice adapter skipped: OPENAI_API_KEY not set')
+  }
 
   // Wire session revocation so ~changedashboardpassword invalidates all sessions
   activationLoop.setRevokeDashboardSessions(() => dashboard.revokeAllSessions())
