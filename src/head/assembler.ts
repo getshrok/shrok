@@ -99,6 +99,12 @@ export class ContextAssemblerImpl implements ContextAssembler {
     // land in the cached prefix that toAnthropicSystem splits on.
     let systemPrompt = this.identityLoader.loadSystemPrompt()
 
+    // Resolve {workspacePath} placeholder used in identity files (e.g. BOOTSTRAP.md)
+    if (this.config.workspacePath) {
+      const resolvedWorkspace = this.config.workspacePath.replace(/^~/, os.homedir())
+      systemPrompt = systemPrompt.replaceAll('{workspacePath}', resolvedWorkspace)
+    }
+
     // Ambient context — cached situational snapshot
     if (this.config.workspacePath) {
       try {
