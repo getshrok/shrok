@@ -173,6 +173,8 @@ export function useVoice(): UseVoiceReturn {
         }
       })
       ws.addEventListener('error', () => {
+        // wsRef is nulled by teardownAll before ws.close() — guard mirrors the close handler.
+        if (wsRef.current === null || !voiceActiveRef.current) return
         signalError('Voice disconnected')
         dispatch({ type: 'ERROR' })
         void teardownAll()
@@ -233,7 +235,6 @@ export function useVoice(): UseVoiceReturn {
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
-      errorTimerRef.current?.clear()
       void teardownAll()
       dispatch({ type: 'TOGGLE_OFF' })
       setVoiceActive(false)
