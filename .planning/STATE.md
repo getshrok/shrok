@@ -1,0 +1,84 @@
+---
+gsd_state_version: 1.0
+milestone: v0.1.1
+milestone_name: Voice Mode
+status: executing
+stopped_at: Completed 21-02-PLAN.md
+last_updated: "2026-04-23T11:36:47.064Z"
+last_activity: 2026-04-23
+progress:
+  total_phases: 4
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 7
+  percent: 88
+---
+
+# Project State
+
+## Project Reference
+
+See: .planning/PROJECT.md (updated 2026-04-22)
+
+**Core value:** Followability of the live event stream — a user should know what shrok is doing and why without parsing tool arguments
+**Current focus:** Phase 21 — react-voice-ui-state-machine
+
+## Current Position
+
+Phase: 21 (react-voice-ui-state-machine) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-23
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+
+- Total plans completed: 5 (this milestone)
+- Average duration: —
+- Total execution time: —
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 19 | 4 | - | - |
+| 20 | 1 | - | - |
+
+**Recent Trend:** No data yet
+
+*Updated after each plan completion*
+| Phase 21 P02 | 168 | 3 tasks | 3 files |
+
+## Accumulated Context
+
+### Decisions
+
+- Voice = transport layer on top of existing text pipeline; queue/activation loop/assembler untouched
+- VoiceChannelAdapter implements ChannelAdapter interface; registered with channelRouter
+- WebSocket server in noServer:true mode attached to existing Express HTTP server (port 8888)
+- Binary WS frames = audio (WAV in, MP3 out); JSON frames = control messages (tts_start, tts_done, cancel_tts)
+- TTS playback uses MediaSource Extensions (MSE) — not decodeAudioData (cannot decode partial MP3 chunks)
+- VAD (MicVAD.new()) must be gated behind user gesture — not bare useEffect — to avoid suspended AudioContext
+- WASM/ONNX files require vite-plugin-static-copy; do Phase 20 before React UI work
+- voicePort (8765) in config.ts is defined but unused — leave it alone
+- Phase numbering continues from Phase 18
+- [Phase 21]: MicVAD.new() in user-gesture context (toggleVoice callback), never in bare useEffect — satisfies AudioContext gesture requirement
+- [Phase 21]: Loader2 icon from lucide-react@1.8.0 used for processing spinner (confirmed available)
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+- MSE Safari compatibility with audio/mpeg not fully verified — validate in Phase 21 before committing
+- @ricky0123/vad-web exact version to pin after install (check changelog for encodeWAV/onSpeechEnd breaking changes)
+
+## Session Continuity
+
+Last session: 2026-04-23T11:36:47.056Z
+Stopped at: Completed 21-02-PLAN.md
+Resume file: None
