@@ -28,8 +28,9 @@ export function parseWavDuration(buf: Buffer): number | null {
     const chunkId = buf.toString('ascii', offset, offset + 4)
     const chunkSize = buf.readUInt32LE(offset + 4)
     if (chunkId === 'data') {
-      // Guard: reported data_size must not exceed remaining buffer
-      if (chunkSize > buf.length) return null
+      // Guard: reported data_size must not exceed bytes remaining after the chunk header
+      const payloadStart = offset + 8
+      if (chunkSize > buf.length - payloadStart) return null
       return chunkSize / byteRate
     }
     offset += 8 + chunkSize

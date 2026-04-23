@@ -115,4 +115,18 @@ describe('parseWavDuration', () => {
     // or null — but must never throw or read out of bounds.
     expect(() => parseWavDuration(truncated)).not.toThrow()
   })
+
+  it('returns null when data chunk header is present but declared size exceeds remaining payload bytes', () => {
+    // Build a WAV where the data chunk header exists but the buffer is truncated
+    // so the declared chunkSize exceeds the bytes actually present after the header.
+    // This catches the bug where chunkSize was compared to buf.length rather than
+    // buf.length - payloadStart — a crafted WAV could pass the old guard and return
+    // an inflated duration that bypasses the 500 ms gate.
+    const wav = buildWav({ byteRate: 32000, dataBytes: 16000 })
+    // Find where the data chunk header starts (fmt chunk at 12, size 16 → data at 36)
+    // Truncate to 36 + 8 + 10 = 54: data chunk header is fully present (8 bytes),
+    // but only 10 bytes of the claimed 16000-byte payload exist.
+    const truncated = wav.subarray(0, 54)
+    expect(parseWavDuration(truncated)).toBeNull()
+  })
 })
