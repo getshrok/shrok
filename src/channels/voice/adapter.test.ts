@@ -8,37 +8,57 @@ import type { InboundMessage } from '../../types/channel.js'
 // ─── Mock http.Server ──────────────────────────────────────────────────────────
 class MockHttpServer extends EventEmitter {}
 
-// ─── Mock WebSocket + WebSocketServer via vi.mock ──────────────────────────────
-// We need to intercept `ws` so adapter.test.ts can control connections.
-class MockWS extends EventEmitter {
-  static readonly OPEN = 1
-  static readonly CLOSED = 3
-  readyState: 0 | 1 | 2 | 3 = 1
-  sent: Array<{ kind: 'text' | 'binary'; value: string | Buffer }> = []
-  closedWith: { code?: number; reason?: string } | null = null
-  send(data: unknown): void {
-    if (typeof data === 'string') this.sent.push({ kind: 'text', value: data })
-    else this.sent.push({ kind: 'binary', value: data as Buffer })
-  }
-  close(code?: number, reason?: string): void {
-    this.closedWith = { code, reason }
-    this.readyState = MockWS.CLOSED
-    this.emit('close', code ?? 1000, Buffer.from(reason ?? ''))
-  }
-}
+// ─── Shared mock state ────────────────────────────────────────────────────────
+// vi.mock factories are hoisted before imports. To share class references
+// between the factory and the test body, we use a mutable container set by
+// vi.hoisted (synchronous) and populated by the factory itself.
 
-class MockWSS extends EventEmitter {
-  handleUpgrade(_req: unknown, _socket: unknown, _head: unknown, cb: (ws: MockWS) => void): void {
-    const ws = new MockWS()
-    cb(ws)
-  }
-  close(): void { /* noop */ }
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const wsMocks = vi.hoisted(() => ({ MockWS: null as any, MockWSS: null as any }))
 
-vi.mock('ws', () => ({
-  WebSocket: MockWS,
-  WebSocketServer: MockWSS,
-}))
+vi.mock('ws', () => {
+  // vi.mock factories are hoisted before imports, so we must use require() to
+  // get EventEmitter synchronously inside the factory (top-level imports are
+  // not yet initialized when the factory runs).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { EventEmitter } = require('node:events') as { EventEmitter: typeof import('node:events').EventEmitter }
+
+  // Define mock classes inside the factory (runs at hoist time).
+  class MockWS extends EventEmitter {
+    static readonly OPEN = 1
+    static readonly CLOSED = 3
+    readyState: 0 | 1 | 2 | 3 = 1
+    sent: Array<{ kind: 'text' | 'binary'; value: string | Buffer }> = []
+    closedWith: { code?: number; reason?: string } | null = null
+    send(data: unknown): void {
+      if (typeof data === 'string') this.sent.push({ kind: 'text', value: data as string })
+      else this.sent.push({ kind: 'binary', value: data as Buffer })
+    }
+    close(code?: number, reason?: string): void {
+      // exactOptionalPropertyTypes: must not set optional props to undefined explicitly
+      const closed: { code?: number; reason?: string } = {}
+      if (code !== undefined) closed.code = code
+      if (reason !== undefined) closed.reason = reason
+      this.closedWith = closed
+      this.readyState = MockWS.CLOSED
+      this.emit('close', code ?? 1000, Buffer.from(reason ?? ''))
+    }
+  }
+
+  class MockWSS extends EventEmitter {
+    handleUpgrade(_req: unknown, _socket: unknown, _head: unknown, cb: (ws: MockWS) => void): void {
+      const ws = new MockWS()
+      cb(ws)
+    }
+    close(): void { /* noop */ }
+  }
+
+  // Expose to the test body via the shared container.
+  wsMocks.MockWS = MockWS
+  wsMocks.MockWSS = MockWSS
+
+  return { WebSocket: MockWS, WebSocketServer: MockWSS }
+})
 
 // ─── WAV builder (duplicated from wav.test.ts — intentional, keeps tests hermetic) ─
 function buildWav(byteRate: number, dataBytes: number): Buffer {
@@ -84,8 +104,10 @@ async function setupAdapter(transcriptText = 'hello world') {
 }
 
 // Access private state via a test-only type assertion (no plan-level API exposure).
-function getActiveSocket(adapter: VoiceChannelAdapter): MockWS | null {
-  return (adapter as unknown as { activeSocket: MockWS | null }).activeSocket
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getActiveSocket(adapter: VoiceChannelAdapter): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (adapter as any).activeSocket
 }
 
 function getTtsAbortController(adapter: VoiceChannelAdapter): AbortController | null {
@@ -121,7 +143,7 @@ describe('VoiceChannelAdapter', () => {
     triggerUpgrade(httpServer as unknown as MockHttpServer)
     const ws = getActiveSocket(adapter)
     expect(ws).not.toBeNull()
-    expect(ws!.readyState).toBe(MockWS.OPEN)
+    expect(ws.readyState).toBe(wsMocks.MockWS.OPEN)
   })
 
   it('ignores upgrade events whose URL is not /api/voice/ws', async () => {
@@ -133,23 +155,20 @@ describe('VoiceChannelAdapter', () => {
   it('rejects a second connection with close code 4001 and preserves the existing socket (D-03)', async () => {
     const { adapter, httpServer } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const first = getActiveSocket(adapter)!
+    const first = getActiveSocket(adapter)
 
-    // Capture the next constructed MockWS so we can see its close() args.
-    // MockWSS.handleUpgrade constructs a new MockWS per call and emits 'connection'
-    // on the adapter's WSS, where handleConnection sees activeSocket !== null and closes it.
-    // We observe first.closedWith stays null and the second ws was closed with 4001.
-    let secondWs: MockWS | null = null
-    const origHandle = MockWSS.prototype.handleUpgrade
-    MockWSS.prototype.handleUpgrade = function (req, socket, head, cb) {
-      const ws = new MockWS()
+    // Capture the second WS by temporarily overriding handleUpgrade on the prototype
+    let secondWs: InstanceType<typeof wsMocks.MockWS> | null = null
+    const origHandle = wsMocks.MockWSS.prototype.handleUpgrade
+    wsMocks.MockWSS.prototype.handleUpgrade = function (_req: unknown, _socket: unknown, _head: unknown, cb: (ws: unknown) => void) {
+      const ws = new wsMocks.MockWS()
       secondWs = ws
       cb(ws)
     }
     try {
       triggerUpgrade(httpServer as unknown as MockHttpServer)
     } finally {
-      MockWSS.prototype.handleUpgrade = origHandle
+      wsMocks.MockWSS.prototype.handleUpgrade = origHandle
     }
 
     expect(first.closedWith).toBeNull()            // existing session NOT dropped
@@ -165,7 +184,7 @@ describe('VoiceChannelAdapter', () => {
   it('routes a valid binary WAV frame as { channel: "voice", text } via the onMessage handler (VOICE-IN-06)', async () => {
     const { adapter, httpServer, messages, transcribe } = await setupAdapter('  hello world  ')
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     const wav = buildWav(32000, 16000)  // 0.5s — above 500ms gate
 
     ws.emit('message', wav, true)
@@ -179,7 +198,7 @@ describe('VoiceChannelAdapter', () => {
   it('silently drops sub-500ms WAV frames without calling Whisper (VOICE-IN-05)', async () => {
     const { adapter, httpServer, messages, transcribe } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     const wav = buildWav(32000, 8000)  // 0.25s
 
     ws.emit('message', wav, true)
@@ -192,7 +211,7 @@ describe('VoiceChannelAdapter', () => {
   it('silently drops oversize (>10 MB) binary frames without parsing', async () => {
     const { adapter, httpServer, messages, transcribe } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     const huge = Buffer.alloc(MAX_WAV_BYTES + 1)  // just over the limit
 
     ws.emit('message', huge, true)
@@ -205,7 +224,7 @@ describe('VoiceChannelAdapter', () => {
   it('silently drops empty-transcript results (whitespace-only)', async () => {
     const { adapter, httpServer, messages } = await setupAdapter('   \n  ')
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     ws.emit('message', buildWav(32000, 16000), true)
     await new Promise(r => setImmediate(r))
     expect(messages).toHaveLength(0)
@@ -214,7 +233,7 @@ describe('VoiceChannelAdapter', () => {
   it('aborts in-flight TTS when a cancel_tts JSON frame arrives (VOICE-OUT-03, D-07)', async () => {
     const { adapter, httpServer } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     // Simulate an in-flight TTS by injecting an AbortController
     const ac = new AbortController()
     ;(adapter as unknown as { ttsAbortController: AbortController }).ttsAbortController = ac
@@ -227,16 +246,16 @@ describe('VoiceChannelAdapter', () => {
   it('ignores malformed JSON control frames without closing the socket', async () => {
     const { adapter, httpServer } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     ws.emit('message', Buffer.from('not valid json {{{'), false)
-    expect(ws.readyState).toBe(MockWS.OPEN)
+    expect(ws.readyState).toBe(wsMocks.MockWS.OPEN)
     expect(ws.closedWith).toBeNull()
   })
 
   it('on ws close: clears activeSocket AND aborts ttsAbortController (T-19-13)', async () => {
     const { adapter, httpServer } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     const ac = new AbortController()
     ;(adapter as unknown as { ttsAbortController: AbortController }).ttsAbortController = ac
 
@@ -265,7 +284,7 @@ describe('VoiceChannelAdapter', () => {
   it('stop() aborts TTS, closes the socket with 1001, and removes the upgrade listener', async () => {
     const { adapter, httpServer } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
-    const ws = getActiveSocket(adapter)!
+    const ws = getActiveSocket(adapter)
     const ac = new AbortController()
     ;(adapter as unknown as { ttsAbortController: AbortController }).ttsAbortController = ac
 
