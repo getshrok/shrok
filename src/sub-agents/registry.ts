@@ -752,6 +752,16 @@ export function buildScheduleTools(
         const id = generateId('sched')
         const cronArg = input['cron'] as string | undefined
         const cronTimezoneArg = input['cronTimezone'] as string | undefined
+        if (cronTimezoneArg !== undefined) {
+          try {
+            Intl.DateTimeFormat(undefined, { timeZone: cronTimezoneArg })
+          } catch {
+            return JSON.stringify({
+              error: true,
+              message: `Invalid cronTimezone: '${cronTimezoneArg}'. Must be a valid IANA timezone string (e.g. "America/New_York").`,
+            })
+          }
+        }
         const effectiveTz = cronTimezoneArg ?? timezone
         const runAtArg = input['runAt'] as string | undefined
         let nextRun: string | undefined
@@ -910,6 +920,16 @@ export function buildReminderTools(
             return JSON.stringify({ error: true, message: CADENCE_ERROR_MESSAGE })
           }
           const cronTimezoneArg = input['cronTimezone'] as string | undefined
+          if (cronTimezoneArg !== undefined) {
+            try {
+              Intl.DateTimeFormat(undefined, { timeZone: cronTimezoneArg })
+            } catch {
+              return JSON.stringify({
+                error: true,
+                message: `Invalid cronTimezone: '${cronTimezoneArg}'. Must be a valid IANA timezone string (e.g. "America/New_York").`,
+              })
+            }
+          }
           const effectiveTz = cronTimezoneArg ?? timezone
           const { nextRunAfter } = await import('../scheduler/cron.js')
           try {
