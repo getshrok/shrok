@@ -94,5 +94,5 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 19. Backend Voice Pipeline | v0.1.1 Voice Mode | 4/4 | Complete    | 2026-04-23 |
 | 20. Vite Build Configuration | v0.1.1 Voice Mode | 1/1 | Complete    | 2026-04-23 |
-| 21. React Voice UI & State Machine | v0.1.1 Voice Mode | 3/3 | Complete   | 2026-04-23 |
+| 21. React Voice UI & State Machine | v0.1.1 Voice Mode | 3/3 | Complete    | 2026-04-23 |
 | 22. Error Handling & Accessibility | v0.1.1 Voice Mode | 0/TBD | Not started | - |
