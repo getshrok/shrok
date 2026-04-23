@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.1
 milestone_name: Voice Mode
-status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-04-23T12:49:32.798Z"
+status: verifying
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-04-23T12:55:08.907Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 Phase: 22 (error-handling-accessibility) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-23
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 21 P02 | 168 | 3 tasks | 3 files |
 | Phase 21 P03 | 15 | 2 tasks | 1 files |
 | Phase 22 P01 | 3 | 2 tasks | 3 files |
+| Phase 22 P02 | 12 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 21]: voiceState alias used in ConversationsPage to avoid shadowing existing identifiers; onToggle voids toggleVoice promise; page owns no async voice logic (D-02)
 - [Phase 21]: Safari MSE audio/mpeg incompatibility confirmed out of scope for Phase 21 — Phase 22 follow-up if needed
 - [Phase 22]: voice-error-timer.ts extracted as pure module for testability; DOMException .name read prevents error message disclosure (T-22-01); unmount clear() prevents stale setState (T-22-02)
+- [Phase 22]: ariaLabelFor extended with optional third arg (errorMessage) — existing call sites unaffected, backward-compatible
+- [Phase 22]: Error bar always in DOM (min-h-[1rem]) so aria-live assertive announces on content change not element insertion
 
 ### Roadmap Evolution
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T12:49:32.792Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-04-23T12:55:08.902Z
+Stopped at: Completed 22-02-PLAN.md
 Resume file: None

@@ -25,7 +25,7 @@ Phases 11-18: Various hardening and features (shipped through 2026-04-22)
 - [x] **Phase 19: Backend Voice Pipeline** - WebSocket audio endpoint, STT, TTS streaming, VoiceChannelAdapter wired into the existing queue and router (completed 2026-04-23)
 - [x] **Phase 20: Vite Build Configuration** - VAD WASM/ONNX files in production build output, Vite dev proxy for WebSocket upgrades (completed 2026-04-23)
 - [x] **Phase 21: React Voice UI & State Machine** - Mic toggle, four-state useReducer FSM, VAD on user gesture, MSE playback, barge-in (completed 2026-04-23)
-- [ ] **Phase 22: Error Handling & Accessibility** - All error paths return to idle with visible feedback, ARIA labels, disconnect recovery
+- [x] **Phase 22: Error Handling & Accessibility** - All error paths return to idle with visible feedback, ARIA labels, disconnect recovery (completed 2026-04-23)
 
 ## Phase Details
 
@@ -88,7 +88,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 22-01-PLAN.md — useVoice hook error surface (errorMessage field, distinct messages per failure path, 4s auto-dismiss timer + unit tests)
-- [ ] 22-02-PLAN.md — VoiceButton ARIA override + ConversationsPage error bar render + manual browser E2E checkpoint
+- [x] 22-02-PLAN.md — VoiceButton ARIA override + ConversationsPage error bar render + manual browser E2E checkpoint
 **UI hint**: yes
 
 ## Progress
@@ -98,14 +98,14 @@ Plans:
 | 19. Backend Voice Pipeline | v0.1.1 Voice Mode | 4/4 | Complete    | 2026-04-23 |
 | 20. Vite Build Configuration | v0.1.1 Voice Mode | 1/1 | Complete    | 2026-04-23 |
 | 21. React Voice UI & State Machine | v0.1.1 Voice Mode | 3/3 | Complete    | 2026-04-23 |
-| 22. Error Handling & Accessibility | v0.1.1 Voice Mode | 1/2 | In Progress|  |
+| 22. Error Handling & Accessibility | v0.1.1 Voice Mode | 2/2 | Complete   | 2026-04-23 |
 
 ### Phase 23: Timezone-aware scheduling: bootstrap timezone collection via onboarding question + spawn_agent config write; add timezone to CONFIG_JSON_FIELDS and settings UI; add cronTimezone field (before cron in schema) to create_reminder and create_schedule tools with dynamic descriptions showing configured timezone; expand CronPicker with weekdays cadence and raw-text fallback for unrecognized patterns instead of silent DEFAULT_STATE; expand create_schedule grammar to allow 1-5 day ranges
 
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 22
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 23 to break down)
