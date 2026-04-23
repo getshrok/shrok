@@ -483,7 +483,7 @@ export default function ConversationsPage() {
   useStream()
   const { isDeveloper } = useMode()
   const assistantName = useAssistantName()
-  const { state: voiceState, voiceActive, toggleVoice } = useVoice()
+  const { state: voiceState, voiceActive, toggleVoice, errorMessage: voiceError } = useVoice()
   const { data: isTyping } = useQuery({ queryKey: ['typing'], initialData: false, staleTime: Infinity })
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.settings.get })
   const s = settings as SettingsData | undefined
@@ -901,6 +901,15 @@ export default function ConversationsPage() {
             ))}
           </div>
         )}
+        {/* Voice error bar (D-01, D-02, D-07) — always in the DOM so aria-live announcements fire reliably */}
+        <div
+          role="status"
+          aria-live="assertive"
+          aria-atomic="true"
+          className="min-h-[1rem] mb-1 text-red-400 text-xs"
+        >
+          {voiceError ? `⚠️ ${voiceError}` : ''}
+        </div>
         <div className="flex gap-2">
           <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
           <button
@@ -915,6 +924,7 @@ export default function ConversationsPage() {
             state={voiceState}
             voiceActive={voiceActive}
             onToggle={() => { void toggleVoice() }}
+            errorMessage={voiceError}
           />
           <textarea
             ref={inputRef}
