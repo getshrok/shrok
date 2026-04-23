@@ -1,0 +1,96 @@
+// src/channels/voice/tts.ts
+import type OpenAI from 'openai'
+import { Readable } from 'node:stream'
+import type { WebSocket } from 'ws'
+
+/** OpenAI TTS voice used for assistant speech. `alloy` is the SDK default and works
+ *  across all `tts-*` models. Change here if the phase 21 UI exposes a picker. */
+export const TTS_VOICE = 'alloy'
+
+/** OpenAI TTS model. `tts-1` is the low-latency option appropriate for real-time voice;
+ *  `tts-1-hd` trades latency for fidelity and is NOT what we want here. */
+export const TTS_MODEL = 'tts-1'
+
+/** Control-frame payloads sent to the browser around the MP3 byte stream. */
+export const TTS_START_FRAME = { type: 'tts_start' } as const
+export const TTS_DONE_FRAME = { type: 'tts_done' } as const
+
+/** True if `err` is the OpenAI SDK's abort error OR a native AbortError. */
+export function isAbortError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as { name?: string }
+  return e.name === 'APIUserAbortError' || e.name === 'AbortError'
+}
+
+/**
+ * Stream OpenAI TTS audio to a connected WebSocket as MP3 binary frames.
+ *
+ * Emits `tts_start` JSON frame before the first chunk, pipes raw MP3 chunks
+ * as binary frames (no buffering — MediaSource Extensions on the client needs
+ * a live stream), and emits `tts_done` JSON frame after clean completion.
+ *
+ * Cancellation (D-07, VOICE-OUT-04):
+ *   - The `signal` parameter is threaded into the OpenAI request options so
+ *     `AbortController.abort()` closes the upstream HTTPS connection.
+ *   - On abort, this function re-throws a typed AbortError (caller distinguishes
+ *     via `isAbortError`); no `tts_done` is sent because the stream was
+ *     interrupted, not completed.
+ *
+ * Client disconnect (Pitfall 3): every chunk is guarded by `ws.readyState === OPEN`
+ * so async-iteration gaps that coincide with disconnect do not throw.
+ */
+export async function streamTts(
+  text: string,
+  openai: OpenAI,
+  ws: WebSocket,
+  signal: AbortSignal,
+): Promise<void> {
+  // D-07: thread the AbortSignal into the SDK's request options so abort()
+  // cancels the upstream HTTP request rather than just the local stream.
+  const response = await openai.audio.speech
+    .create(
+      { model: TTS_MODEL, voice: TTS_VOICE, input: text, response_format: 'mp3' },
+      { signal },
+    )
+    .asResponse()
+
+  // Open-state check: if the socket closed between SDK call and first chunk,
+  // bail without sending tts_start at all.
+  if (ws.readyState !== 1 /* OPEN */) return
+
+  ws.send(JSON.stringify(TTS_START_FRAME))
+
+  const body = response.body
+  if (!body) {
+    // No stream body — treat as immediate completion (highly unusual for TTS).
+    ws.send(JSON.stringify(TTS_DONE_FRAME))
+    return
+  }
+
+  const readable = Readable.fromWeb(body as import('node:stream/web').ReadableStream<Uint8Array>)
+  try {
+    for await (const chunk of readable) {
+      if (signal.aborted) {
+        // Caller aborted; stop without tts_done. The SDK should also throw,
+        // but some runtime paths deliver abort via signal before the SDK
+        // throws — guard defensively.
+        return
+      }
+      if (ws.readyState !== 1 /* OPEN */) return
+      // chunk is Buffer under node:stream when consumed via for-await
+      ws.send(chunk as Buffer)
+    }
+  } catch (err) {
+    if (isAbortError(err)) {
+      // D-07: propagate as-is so adapter-level catch can distinguish abort
+      // from a real upstream failure without logging noise.
+      throw err
+    }
+    throw err
+  }
+
+  // Only emit tts_done on clean completion and only if the socket is still open.
+  if (ws.readyState === 1 /* OPEN */) {
+    ws.send(JSON.stringify(TTS_DONE_FRAME))
+  }
+}
