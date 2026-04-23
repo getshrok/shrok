@@ -15,6 +15,22 @@ const developerWarning = (name: string) =>
   `deep debug output, and other things that can cost money or have side effects.\n\n` +
   `Only enable this if you're working on ${name} itself or know what you're doing.`
 
+function formatTimezoneHelper(tz: string): string {
+  const trimmed = tz.trim()
+  if (trimmed === '') return 'Required — enter an IANA timezone name.'
+  try {
+    // Intl.DateTimeFormat throws RangeError for invalid IANA zones — no other runtime cost
+    const test = new Intl.DateTimeFormat('en-US', { timeZone: trimmed, timeZoneName: 'short' })
+    const formatted = test.format(new Date())
+    // Extract the trailing timezone abbreviation from the formatted output
+    const match = /(GMT[+-]\d+(?::\d+)?|UTC[+-]\d+|[A-Z]{2,5})$/.exec(formatted)
+    const offset = match ? match[0] : 'valid'
+    return `Resolved: ${offset}`
+  } catch {
+    return 'Invalid IANA timezone — see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones'
+  }
+}
+
 export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode: Mode; onSetMode: (m: Mode) => void; d?: DraftState; set?: <K extends keyof DraftState>(key: K, value: DraftState[K]) => void }) {
   const assistantName = useAssistantName()
   const { logoUrl } = useTheme()
@@ -115,6 +131,28 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
             </button>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
             {d.logoDataUrl && <span className="text-[11px] text-zinc-500">New logo selected</span>}
+          </div>
+        </Field>
+      </div>
+    )}
+
+    {d && set && (
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-4">
+        <div className="text-sm font-semibold text-zinc-300">Scheduling</div>
+
+        <Field label="Timezone" tooltip="IANA timezone used for scheduled tasks and reminders. The cron expressions you (and agents) create are interpreted in this zone. Example: America/New_York, Europe/London, Asia/Tokyo.">
+          <div className="space-y-1">
+            <input
+              type="text"
+              value={d.timezone}
+              onChange={e => set('timezone', e.target.value)}
+              placeholder="America/New_York"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-600 outline-none font-mono"
+              aria-label="IANA timezone"
+            />
+            <div className="text-[11px] text-zinc-500">
+              {formatTimezoneHelper(d.timezone)}
+            </div>
           </div>
         </Field>
       </div>
