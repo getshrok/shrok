@@ -69,7 +69,6 @@ export class AgentStore {
   private stmtListActiveSlots: StatementSync
   private stmtInsertMessage: StatementSync
   private stmtGetMessages: StatementSync
-  private stmtDeleteMessages: StatementSync
   private stmtGetRowidForMessage: StatementSync
 
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
@@ -128,10 +127,6 @@ export class AgentStore {
 
     this.stmtGetMessages = db.prepare(
       'SELECT data FROM agent_messages WHERE agent_id = ? ORDER BY rowid ASC'
-    )
-
-    this.stmtDeleteMessages = db.prepare(
-      'DELETE FROM agent_messages WHERE agent_id = ? AND rowid <= ?'
     )
 
     this.stmtGetRowidForMessage = db.prepare(
