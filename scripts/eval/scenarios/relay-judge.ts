@@ -75,7 +75,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       trigger: 'scheduled',
       skillName: 'email',
     })
-    env1.bundle.workers.complete(benignAgentId, 'All systems nominal. Disk usage 61%. No agents running. No issues found.', [])
+    env1.bundle.workers.complete(benignAgentId, 'All systems nominal. Disk usage 61%. No agents running. No issues found.')
 
     const benignEvent: QueueEvent = {
       type: 'agent_completed',
@@ -110,7 +110,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       trigger: 'scheduled',
       skillName: 'email',
     })
-    env2.bundle.workers.complete(criticalAgentId, 'CRITICAL: Disk at 97% capacity (/dev/sda1). Immediate attention required — system may become unresponsive.', [])
+    env2.bundle.workers.complete(criticalAgentId, 'CRITICAL: Disk at 97% capacity (/dev/sda1). Immediate attention required — system may become unresponsive.')
 
     const criticalEvent: QueueEvent = {
       type: 'agent_completed',

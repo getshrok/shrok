@@ -96,7 +96,7 @@ function seedConversation(
   } as any)
   bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual' })
   if (variant.agentState === 'suspended' && variant.suspendQuestion) {
-    bundle.workers.suspend(agentId, [], variant.suspendQuestion)
+    bundle.workers.suspend(agentId, variant.suspendQuestion)
   }
 }
 

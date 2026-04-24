@@ -132,7 +132,7 @@ function seedConversation(bundle: HeadBundle, agentId: string, question: string,
     toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: JSON.stringify({ agentId }) }],
   } as any)
   bundle.workers.create(agentId, { prompt: agentPrompt, trigger: 'manual' })
-  bundle.workers.suspend(agentId, [], question)
+  bundle.workers.suspend(agentId, question)
 }
 
 export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boolean; runId?: string; variant?: EvalVariant }): Promise<void> {

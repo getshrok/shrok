@@ -834,7 +834,7 @@ export class LocalAgentRunner implements AgentRunner {
         ...(options.skillName ? { targetName: options.skillName } : {}),
         appendMessage: async (msg) => {
           history.push(msg)
-          this.agentStore.updateHistory(agentId, history)
+          this.agentStore.appendMessages(agentId, [msg])
           this.agentStore.emitMessageAdded(agentId, msg, options.trigger)
           // Auto-inject MEMORY.md when agent reads a SKILL.md inside the skills dir.
           if (msg.kind === 'tool_result') {
@@ -958,7 +958,7 @@ export class LocalAgentRunner implements AgentRunner {
     options: SpawnOptions,
     history: Message[],
   ): void {
-    this.agentStore.complete(agentId, output, history)
+    this.agentStore.complete(agentId, output)
     if (options.parentAgentId) {
       this.inboxStore.write(options.parentAgentId, 'sub_agent_completed',
         JSON.stringify({ subWorkerId: agentId, output }))
@@ -977,7 +977,7 @@ export class LocalAgentRunner implements AgentRunner {
   private suspendAsQuestion(
     agentId: string, question: string, options: SpawnOptions, history: Message[],
   ): void {
-    this.agentStore.suspend(agentId, history, question)
+    this.agentStore.suspend(agentId, question)
     if (options.parentAgentId) {
       this.inboxStore.write(options.parentAgentId, 'sub_agent_question',
         JSON.stringify({ subWorkerId: agentId, question }))
@@ -1007,7 +1007,7 @@ export class LocalAgentRunner implements AgentRunner {
       agentId,
       suspend: () => { state.suspended = true },
       complete: (output: string) => {
-        this.agentStore.complete(agentId, output, history)
+        this.agentStore.complete(agentId, output)
         this.queueStore.enqueue({
           type: 'agent_completed',
           id: generateId('qe'),

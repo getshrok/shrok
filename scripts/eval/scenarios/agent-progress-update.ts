@@ -170,7 +170,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     const sentBefore2 = env.bundle.channelRouter.sent.length
 
     // Mark agent as completed with output
-    env.bundle.workers.complete(agentId, pv.agentOutput, [])
+    env.bundle.workers.complete(agentId, pv.agentOutput)
 
     // Inject agent_completed event
     const completionEvent: QueueEvent = {
