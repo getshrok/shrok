@@ -870,13 +870,16 @@ export class LocalAgentRunner implements AgentRunner {
           for (const msg of msgs) {
             if (msg.type === 'update') {
               this.inboxStore.markProcessed(msg.id)
-              history.push({
+              const injectedMsg: TextMessage = {
                 kind: 'text', role: 'user',
                 id: generateId('msg'),
                 content: `[Message received: ${msg.payload ?? ''}]\nContinue your current task, addressing this update if relevant.`,
                 injected: true,
                 createdAt: now(),
-              } satisfies TextMessage)
+              }
+              history.push(injectedMsg)
+              // Persist to DB so the mid-loop update survives a process restart.
+              this.agentStore.appendMessages(agentId, [injectedMsg])
             }
             // Other types (signal, check_status, sub_agent_completed/question/failed)
             // are intentionally NOT handled here — the outer loopIteration's top-of-loop
