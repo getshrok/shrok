@@ -120,7 +120,7 @@ describe('agentDefaults allowedTools via resolveOptional', () => {
     expect(names).toContain('write_file')
   })
 
-  it('unknown tool names do not warn — resolveOptional is lenient', () => {
+  it('known tool names do not produce a warning', () => {
     const registry = new AgentToolRegistryImpl()
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const entries = registry.resolveOptional(['bash', 'read_file'])
@@ -139,7 +139,7 @@ describe('AgentToolRegistryImpl', () => {
     registry = new AgentToolRegistryImpl()
   })
 
-  it('builtins() returns all 4 built-in tools', () => {
+  it('builtins() returns all 3 built-in tools', () => {
     const builtins = registry.builtins()
     const names = builtins.map(e => e.definition.name)
     expect(names).toContain('spawn_agent')
