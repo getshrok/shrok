@@ -121,6 +121,18 @@ export interface ToolLoopOptions {
    *  and before tool execution) by throwing AgentAbortedError. In-flight tool calls are
    *  separately aborted via ctx.abortSignal on the executor side. */
   abortSignal?: AbortSignal
+
+  /** Called between rounds, after tool results are appended and after loop detection runs,
+   *  before the terminal-tools exit check and before the next llmRouter.complete call.
+   *  The callback receives no arguments — it closes over the caller's `history` array
+   *  (passed in via ToolLoopOptions.history) and may mutate it directly to inject
+   *  user-role messages mid-loop.
+   *
+   *  Return `true` to abort the loop immediately — runToolLoop throws AgentAbortedError,
+   *  the same error class as the abortSignal path. Return `false` to continue normally.
+   *  Head activation callers (src/head/activation.ts) leave this undefined and behavior
+   *  is byte-equivalent to today. */
+  onRoundComplete?: () => Promise<boolean>
 }
 
 // ─── responseToMessage ────────────────────────────────────────────────────────
@@ -417,6 +429,17 @@ export async function runToolLoop(
         log.info(`[tool-loop] loop steward: continue — ${verdict.reason}`)
         if (options.onDebug) await options.onDebug(`[loop-steward] continue: ${verdict.reason}`)
       }
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // ── Mid-loop callback (Plan 24-01) ────────────────────────────────────────
+    // Fired after tool results are in history and after loop detection. The
+    // callback may mutate `history` directly (it closes over the same array
+    // refreshHistory returns). Returning true throws AgentAbortedError — same
+    // error class as the abortSignal path, handled identically by callers.
+    if (options.onRoundComplete) {
+      const shouldAbort = await options.onRoundComplete()
+      if (shouldAbort) throw new AgentAbortedError()
     }
     // ──────────────────────────────────────────────────────────────────────────
 

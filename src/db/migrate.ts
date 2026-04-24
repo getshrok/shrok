@@ -27,7 +27,10 @@ export function runMigrations(db: DatabaseSync, migrationsDir: string): void {
   for (const file of files) {
     if (applied.has(file)) continue
 
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8')
+    const rawSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8')
+    // Strip standalone BEGIN/COMMIT statements — the transaction() wrapper already
+    // provides a transaction boundary, and nested transactions throw in node:sqlite.
+    const sql = rawSql.replace(/^\s*BEGIN\s*;\s*$/gim, '').replace(/^\s*COMMIT\s*;\s*$/gim, '')
     transaction(db, () => {
       db.exec(sql)
       insertMigration.run(file)
