@@ -207,6 +207,85 @@ describe('AgentToolRegistryImpl', () => {
     expect(readFileSync(tmpPath, 'utf8')).toBe('hello world')
   })
 
+  it('write_file executor accepts valid SKILL.md frontmatter', async () => {
+    const entries = registry.resolveOptional(['write_file'])
+    const writeFile = entries[0]!
+    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const fs = await import('node:fs')
+    const dir = `/tmp/agent_test_skill_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const tmpPath = `${dir}/SKILL.md`
+    const content = '---\nname: test-skill\ndescription: A valid test skill\n---\n\n# Body\n'
+    try {
+      const result = await writeFile.execute({ path: tmpPath, content }, ctx)
+      expect(result).toContain('Written')
+      expect(fs.readFileSync(tmpPath, 'utf8')).toBe(content)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('write_file executor rejects SKILL.md with invalid YAML frontmatter', async () => {
+    const entries = registry.resolveOptional(['write_file'])
+    const writeFile = entries[0]!
+    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const fs = await import('node:fs')
+    const dir = `/tmp/agent_test_skill_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const tmpPath = `${dir}/SKILL.md`
+    // Unquoted colon inside a YAML value breaks the parser
+    const content = '---\nname: broken\ndescription: hello: world\n---\n\nBody\n'
+    try {
+      const result = await writeFile.execute({ path: tmpPath, content }, ctx)
+      expect(typeof result).toBe('string')
+      expect(result as string).toContain('write_file rejected')
+      expect(result as string).toContain('SKILL.md')
+      expect(fs.existsSync(tmpPath)).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('write_file executor accepts valid TASK.md frontmatter', async () => {
+    const entries = registry.resolveOptional(['write_file'])
+    const writeFile = entries[0]!
+    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const fs = await import('node:fs')
+    const dir = `/tmp/agent_test_task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const tmpPath = `${dir}/TASK.md`
+    const content = '---\nname: test-task\ndescription: A valid test task\nmodel: standard\n---\n\n# Body\n'
+    try {
+      const result = await writeFile.execute({ path: tmpPath, content }, ctx)
+      expect(result).toContain('Written')
+      expect(fs.readFileSync(tmpPath, 'utf8')).toBe(content)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('edit_file executor rejects edits that break TASK.md frontmatter', async () => {
+    const entries = registry.resolveOptional(['edit_file'])
+    const editFile = entries[0]!
+    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const fs = await import('node:fs')
+    const dir = `/tmp/agent_test_task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const tmpPath = `${dir}/TASK.md`
+    const original = '---\nname: test-task\ndescription: Valid task\n---\n\n# Body\n'
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(tmpPath, original, 'utf8')
+    try {
+      const result = await editFile.execute({
+        path: tmpPath,
+        edits: [{ oldText: 'description: Valid task', newText: 'description: hello: world' }],
+      }, ctx)
+      expect(typeof result).toBe('string')
+      expect(result as string).toContain('edit_file rejected')
+      expect(result as string).toContain('TASK.md')
+      // File must be untouched on disk
+      expect(fs.readFileSync(tmpPath, 'utf8')).toBe(original)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('all built-in definitions have required inputSchema fields', () => {
     for (const entry of registry.builtins()) {
       expect(entry.definition.name).toBeTruthy()
