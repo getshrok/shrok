@@ -1,4 +1,4 @@
-import { type DatabaseSync, type StatementSync } from './index.js'
+import { type DatabaseSync, type StatementSync, transaction } from './index.js'
 import type { Message, TextMessage } from '../types/core.js'
 import type { AgentState, AgentStatus, SpawnOptions } from '../types/agent.js'
 import type { DashboardEventBus } from '../dashboard/events.js'
@@ -17,7 +17,6 @@ interface AgentRow {
   capabilities: string
   trigger: string
   work_start: number
-  history: string | null
   pending_question: string | null
   status_text: string | null
   output: string | null
@@ -29,7 +28,7 @@ interface AgentRow {
   color_slot: number | null
 }
 
-function rowToState(row: AgentRow): AgentState {
+function rowToState(row: AgentRow, history: Message[]): AgentState {
   return {
     id: row.id,
     ...(row.skill_name != null ? { skillName: row.skill_name } : {}),
@@ -38,7 +37,7 @@ function rowToState(row: AgentRow): AgentState {
     workStart: row.work_start ?? 0,
     model: row.tier,
     trigger: row.trigger as AgentState['trigger'],
-    history: row.history ? JSON.parse(row.history) : [],
+    history,
     ...(row.pending_question != null ? { pendingQuestion: row.pending_question } : {}),
     ...(row.status_text != null ? { statusText: row.status_text } : {}),
     ...(row.output != null ? { output: row.output } : {}),
@@ -63,19 +62,22 @@ export class AgentStore {
   private stmtFail: StatementSync
   private stmtGetByStatus: StatementSync
   private stmtGetActive: StatementSync
-  private stmtAppendToHistory: StatementSync
   private stmtHasRunningChildren: StatementSync
   private stmtGetDescendantIds: StatementSync
   private stmtCount: StatementSync
   private stmtCancelAllActive: StatementSync
   private stmtListActiveSlots: StatementSync
+  private stmtInsertMessage: StatementSync
+  private stmtGetMessages: StatementSync
+  private stmtDeleteMessages: StatementSync
+  private stmtGetRowidForMessage: StatementSync
 
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
     this.stmtCreate = db.prepare(`
       INSERT INTO agents
-        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, history, color_slot, created_at, updated_at)
+        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, color_slot, created_at, updated_at)
       VALUES
-        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @history, @color_slot, datetime('now'), datetime('now'))
+        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @color_slot, datetime('now'), datetime('now'))
     `)
 
     this.stmtListActiveSlots = db.prepare(
@@ -97,7 +99,7 @@ export class AgentStore {
     )
 
     this.stmtSuspend = db.prepare(
-      "UPDATE agents SET status = 'suspended', history = ?, pending_question = ? WHERE id = ?"
+      "UPDATE agents SET status = 'suspended', pending_question = ? WHERE id = ?"
     )
 
     this.stmtResume = db.prepare(
@@ -105,7 +107,7 @@ export class AgentStore {
     )
 
     this.stmtComplete = db.prepare(
-      "UPDATE agents SET status = 'completed', output = ?, history = ?, completed_at = datetime('now') WHERE id = ?"
+      "UPDATE agents SET status = 'completed', output = ?, completed_at = datetime('now') WHERE id = ?"
     )
 
     this.stmtFail = db.prepare(
@@ -120,8 +122,20 @@ export class AgentStore {
       "SELECT * FROM agents WHERE status IN ('running', 'suspended')"
     )
 
-    this.stmtAppendToHistory = db.prepare(
-      'UPDATE agents SET history = ? WHERE id = ?'
+    this.stmtInsertMessage = db.prepare(
+      'INSERT INTO agent_messages (id, agent_id, data) VALUES (?, ?, ?)'
+    )
+
+    this.stmtGetMessages = db.prepare(
+      'SELECT data FROM agent_messages WHERE agent_id = ? ORDER BY rowid ASC'
+    )
+
+    this.stmtDeleteMessages = db.prepare(
+      'DELETE FROM agent_messages WHERE agent_id = ? AND rowid <= ?'
+    )
+
+    this.stmtGetRowidForMessage = db.prepare(
+      'SELECT rowid FROM agent_messages WHERE agent_id = ? AND id = ?'
     )
 
     this.stmtHasRunningChildren = db.prepare(
@@ -180,7 +194,6 @@ export class AgentStore {
       capabilities: JSON.stringify([]),
       trigger: options.trigger,
       parent_agent_id: options.parentAgentId ?? null,
-      history: null,
       color_slot: colorSlot,
     })
     return this.get(id)!
@@ -188,7 +201,10 @@ export class AgentStore {
 
   get(id: string): AgentState | null {
     const row = this.stmtGet.get(id) as unknown as AgentRow | undefined
-    return row ? rowToState(row) : null
+    if (!row) return null
+    const msgRows = this.stmtGetMessages.all(id) as unknown as { data: string }[]
+    const history: Message[] = msgRows.map(r => JSON.parse(r.data) as Message)
+    return rowToState(row, history)
   }
 
   updateStatus(id: string, status: AgentStatus): void {
@@ -204,8 +220,8 @@ export class AgentStore {
     this.stmtUpdateWorkStart.run(workStart, id)
   }
 
-  suspend(id: string, history: Message[], question: string): void {
-    this.stmtSuspend.run(JSON.stringify(history), question, id)
+  suspend(id: string, question: string): void {
+    this.stmtSuspend.run(question, id)
     this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'suspended' } })
   }
 
@@ -219,8 +235,8 @@ export class AgentStore {
     this.eventBus?.emit('dashboard', { type: 'agent_message_added', payload: { agentId, message, trigger: trigger ?? 'manual' } })
   }
 
-  complete(id: string, output: string, history: Message[]): void {
-    this.stmtComplete.run(output, JSON.stringify(history), id)
+  complete(id: string, output: string): void {
+    this.stmtComplete.run(output, id)
     this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'completed' } })
   }
 
@@ -230,7 +246,12 @@ export class AgentStore {
   }
 
   getActive(): AgentState[] {
-    return (this.stmtGetActive.all() as unknown as AgentRow[]).map(rowToState)
+    const rows = this.stmtGetActive.all() as unknown as AgentRow[]
+    return rows.map(row => {
+      const msgRows = this.stmtGetMessages.all(row.id) as unknown as { data: string }[]
+      const history: Message[] = msgRows.map(r => JSON.parse(r.data) as Message)
+      return rowToState(row, history)
+    })
   }
 
   /** Cancel all running and suspended agents. Returns the number of agents cancelled. */
@@ -248,36 +269,73 @@ export class AgentStore {
   }
 
   deleteAll(): void {
-    this.db.exec('DELETE FROM agent_inbox; DELETE FROM agents')
+    this.db.exec('DELETE FROM agent_messages; DELETE FROM agent_inbox; DELETE FROM agents')
   }
 
   getByStatus(status: AgentStatus): AgentState[] {
-    return (this.stmtGetByStatus.all(status) as unknown as AgentRow[]).map(rowToState)
+    const rows = this.stmtGetByStatus.all(status) as unknown as AgentRow[]
+    return rows.map(row => {
+      const msgRows = this.stmtGetMessages.all(row.id) as unknown as { data: string }[]
+      const history: Message[] = msgRows.map(r => JSON.parse(r.data) as Message)
+      return rowToState(row, history)
+    })
   }
 
-  /** Overwrite the stored history for an agent with the current in-memory array. */
-  updateHistory(id: string, history: Message[]): void {
-    this.stmtAppendToHistory.run(JSON.stringify(history), id)
+  /** Returns the N most recently updated agents, newest first. */
+  getRecent(limit: number): AgentState[] {
+    const rows = this.db.prepare('SELECT * FROM agents ORDER BY updated_at DESC LIMIT ?').all(limit) as unknown as AgentRow[]
+    return rows.map(row => {
+      const msgRows = this.stmtGetMessages.all(row.id) as unknown as { data: string }[]
+      const history: Message[] = msgRows.map(r => JSON.parse(r.data) as Message)
+      return rowToState(row, history)
+    })
   }
 
-  /** Deserialize history, append message, re-serialize. Used for startup recovery injection. */
+  /** Back-compat shim — delegates to appendMessages. Direct callers should prefer appendMessages. */
   appendToHistory(id: string, message: TextMessage): void {
-    const row = this.stmtGet.get(id) as unknown as AgentRow | undefined
-    if (!row) return
-    const history: Message[] = row.history ? JSON.parse(row.history) : []
-    history.push(message)
-    this.stmtAppendToHistory.run(JSON.stringify(history), id)
+    this.appendMessages(id, [message])
+  }
+
+  /** Append one or more messages to an agent's history as new rows (append-only — no blob rewrite). */
+  appendMessages(id: string, messages: Message[]): void {
+    for (const msg of messages) {
+      this.stmtInsertMessage.run(msg.id, id, JSON.stringify(msg))
+    }
+  }
+
+  /** Atomically compact history: delete all messages with rowid <= the rowid of `deleteBeforeId`,
+   *  then optionally INSERT a summary message followed by re-inserting any messages that came
+   *  after `deleteBeforeId`. This preserves ORDER BY rowid as the chronological ordering invariant:
+   *  summary appears before the retained tail messages. Both steps run inside a single transaction
+   *  so a failure rolls back cleanly (Phase 25 pitfall #5). Passing `summaryMsg=null` performs
+   *  delete-only (used by archival's empty-text trim path). No-op if `deleteBeforeId` is not
+   *  present in agent_messages. */
+  compactHistory(agentId: string, deleteBeforeId: string, summaryMsg: Message | null): void {
+    const rowidRow = this.stmtGetRowidForMessage.get(agentId, deleteBeforeId) as { rowid: number } | undefined
+    if (!rowidRow) return
+    const cutoff = rowidRow.rowid
+    // Load messages that come AFTER the cutoff — these must be re-inserted after summary
+    const tail = (this.db.prepare(
+      'SELECT data FROM agent_messages WHERE agent_id = ? AND rowid > ? ORDER BY rowid ASC'
+    ).all(agentId, cutoff)) as unknown as { data: string }[]
+    transaction(this.db, () => {
+      // Delete the compacted range AND the tail (they will be re-inserted in correct order)
+      this.db.prepare('DELETE FROM agent_messages WHERE agent_id = ?').run(agentId)
+      // Insert summary first (gets a low rowid), then re-insert tail
+      if (summaryMsg !== null) {
+        this.stmtInsertMessage.run(summaryMsg.id, agentId, JSON.stringify(summaryMsg))
+      }
+      for (const row of tail) {
+        const msg = JSON.parse(row.data) as Message
+        this.stmtInsertMessage.run(msg.id, agentId, JSON.stringify(msg))
+      }
+    })
   }
 
   /** Returns true if this agent has any sub-agents still running or suspended. */
   hasRunningChildren(agentId: string): boolean {
     const row = this.stmtHasRunningChildren.get(agentId) as { n: number } | undefined
     return (row?.n ?? 0) > 0
-  }
-
-  /** Returns the N most recently updated agents, newest first. */
-  getRecent(limit: number): AgentState[] {
-    return (this.db.prepare('SELECT * FROM agents ORDER BY updated_at DESC LIMIT ?').all(limit) as unknown as AgentRow[]).map(rowToState)
   }
 
   /** Returns IDs of this agent and all its descendants (recursive). */
