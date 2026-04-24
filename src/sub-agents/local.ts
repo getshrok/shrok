@@ -855,14 +855,19 @@ export class LocalAgentRunner implements AgentRunner {
           // check_status, sub_agent_*) are left for the outer loopIteration to handle
           // after runToolLoop returns.
           const msgs = this.inboxStore.poll(agentId)
+          // Check for retract first. If a retract is present we skip injecting
+          // updates entirely — injecting then immediately aborting would mark the
+          // update processed in the inbox but never persist it to DB history
+          // (appendMessage is not called on the abort path), creating a ghost.
+          // When we're about to abort, delivering a concurrent update is also
+          // semantically pointless.
+          const hasRetract = msgs.some(m => m.type === 'retract')
+          if (hasRetract) {
+            // Do NOT markProcessed the retract — runLoopFrom's error handler needs
+            // the unprocessed retract to distinguish 'retracted' from 'failed'.
+            return true
+          }
           for (const msg of msgs) {
-            if (msg.type === 'retract') {
-              // Do NOT markProcessed — runLoopFrom's error handler needs the unprocessed
-              // retract to distinguish 'retracted' from 'failed'. Returning true causes
-              // runToolLoop to throw AgentAbortedError; the outer error handler then
-              // polls the inbox and finds this message.
-              return true
-            }
             if (msg.type === 'update') {
               this.inboxStore.markProcessed(msg.id)
               history.push({

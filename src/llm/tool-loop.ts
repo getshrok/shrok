@@ -432,23 +432,26 @@ export async function runToolLoop(
     }
     // ──────────────────────────────────────────────────────────────────────────
 
-    // ── Mid-loop callback (Plan 24-01) ────────────────────────────────────────
-    // Fired after tool results are in history and after loop detection. The
-    // callback may mutate `history` directly (it closes over the same array
-    // refreshHistory returns). Returning true throws AgentAbortedError — same
-    // error class as the abortSignal path, handled identically by callers.
-    if (options.onRoundComplete) {
-      const shouldAbort = await options.onRoundComplete()
-      if (shouldAbort) throw new AgentAbortedError()
-    }
-    // ──────────────────────────────────────────────────────────────────────────
-
     // Step 7b: if a terminal tool was called, stop here — no follow-up LLM call
+    // Terminal-tool check runs BEFORE onRoundComplete so a concurrent retract on
+    // a terminal-tool round exits cleanly (response already dispatched) rather
+    // than being interrupted mid-side-effect.
     if (options.terminalTools?.some(name => response.toolCalls!.some((tc: ToolCall) => tc.name === name))) {
       const terminalResponse = { ...response, toolCalls: [] as ToolCall[], stopReason: 'end_turn' as const }
       t.end(rounds + 1, terminalResponse)
       return terminalResponse
     }
+
+    // ── Mid-loop callback (Plan 24-01) ────────────────────────────────────────
+    // Fired after tool results are in history and after loop detection (and after
+    // the terminal-tools exit). The callback may mutate `history` directly (it
+    // closes over the same array refreshHistory returns). Returning true throws
+    // AgentAbortedError — same error class as the abortSignal path.
+    if (options.onRoundComplete) {
+      const shouldAbort = await options.onRoundComplete()
+      if (shouldAbort) throw new AgentAbortedError()
+    }
+    // ──────────────────────────────────────────────────────────────────────────
 
     // Step 8: refresh history
     history = options.refreshHistory()
