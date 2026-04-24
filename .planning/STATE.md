@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.1.1
 milestone_name: Voice Mode
-status: executing
-stopped_at: Phase 25 context gathered
-last_updated: "2026-04-24T12:28:42.767Z"
+status: verifying
+stopped_at: Completed 26-01-PLAN.md
+last_updated: "2026-04-24T15:36:22.920Z"
 last_activity: 2026-04-24
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 21
+  completed_plans: 21
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Followability of the live event stream — a user should know what shrok is doing and why without parsing tool arguments
-**Current focus:** Phase 25 — migrate-agent-history-from-json-blob-to-agent-messages-rows
+**Current focus:** Phase 26 — validate-skill-md-and-task-md-frontmatter-on-write-file-and-
 
 ## Current Position
 
-Phase: 25
-Plan: Not started
-Status: Executing Phase 25
+Phase: 26 (validate-skill-md-and-task-md-frontmatter-on-write-file-and-) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
 Last activity: 2026-04-24
 
 Progress: [░░░░░░░░░░] 0%
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 22 P02 | 12 | 3 tasks | 2 files |
 | Phase 23 P01 | 3 | 2 tasks | 4 files |
 | Phase 23 P02 | 15 | 2 tasks | 2 files |
+| Phase 26 P01 | 10 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -84,11 +85,13 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 22]: Error bar always in DOM (min-h-[1rem]) so aria-live assertive announces on content change not element insertion
 - [Phase 23]: weekdays shape checked before weekly branch (1-5 rejected by isIntInRange); everyNDays uses min==='0'+dom-regex as discriminator; ALLOWED_DAY_INTERVALS Set gates N to {1..7}
 - [Phase 23]: cronTimezone not persisted in Schedule row (Open Question #1 scope) — first-run nextRun only; tick uses workspace timezone
+- [Phase 26]: Guard uses validateSkillFrontmatterIfGated helper shared by both executors — parseSkillFile called once, returns string (never throws) so agent sees error in tool_result
 
 ### Roadmap Evolution
 
 - Phase 23 added: Timezone-aware scheduling — bootstrap onboarding question + spawn_agent config write, cronTimezone field in scheduling tools, CronPicker weekdays cadence + raw fallback, settings API timezone support
 - Phase 25 added: Migrate agent history from JSON blob to agent_messages rows — eliminate large-BLOB writes that caused node:sqlite B-tree corruption; append-only row inserts per agent round
+- Phase 26 added: Validate SKILL.md and TASK.md frontmatter on write_file and edit_file — reject writes with invalid YAML before they hit disk, returning a clear error message so the agent can retry with corrected content
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T11:17:32.379Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-migrate-agent-history-from-json-blob-to-agent-messages-rows/25-CONTEXT.md
+Last session: 2026-04-24T15:36:22.914Z
+Stopped at: Completed 26-01-PLAN.md
+Resume file: None

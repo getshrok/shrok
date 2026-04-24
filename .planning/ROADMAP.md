@@ -89,7 +89,6 @@ Plans:
 Plans:
 - [x] 22-01-PLAN.md — useVoice hook error surface (errorMessage field, distinct messages per failure path, 4s auto-dismiss timer + unit tests)
 - [x] 22-02-PLAN.md — VoiceButton ARIA override + ConversationsPage error bar render + manual browser E2E checkpoint
-**UI hint**: yes
 
 ### Phase 24: message_agent Mid-Loop Delivery
 
@@ -137,3 +136,13 @@ Plans:
 - [x] 25-01-PLAN.md — sql/004_agent_messages.sql migration + AgentStore refactor (appendMessages, compactHistory, drop history from create/suspend/complete, 6 new db.test.ts cases)
 - [x] 25-02-PLAN.md — archival.ts: replace 3 updateHistory calls with compactHistory (empty-text trim → null summary; success → summaryMsg; fallback → noticeMsg)
 - [x] 25-03-PLAN.md — local.ts: hot-path appendMessages(agentId, [msg]); drop history arg from suspend/complete call sites; full-suite vitest green
+
+### Phase 26: Validate SKILL.md and TASK.md frontmatter on write_file and edit_file — reject writes with invalid YAML before they hit disk, returning a clear error message so the agent can retry with corrected content
+
+**Goal:** When an agent calls `write_file` or `edit_file` with a path whose basename is `SKILL.md` or `TASK.md`, validate the resulting content's YAML frontmatter via `parseSkillFile` before writing to disk. On validation failure, return a rejection string (do NOT write, do NOT throw) so the agent sees the error as its tool result and retries with corrected frontmatter. Guard lives in `src/sub-agents/registry.ts` (`executeWriteFile` and `executeEditFile`); tests in `src/sub-agents/agents.test.ts`.
+**Requirements**: SKILL-VALIDATE-01
+**Depends on:** Phase 25
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 26-01-PLAN.md — Add `validateSkillFrontmatterIfGated` helper calling `parseSkillFile` from both `executeWriteFile` and `executeEditFile` with basename gate; 4 new tests covering valid SKILL.md write, invalid SKILL.md rejection, valid TASK.md write, edit_file breaking TASK.md rejection
