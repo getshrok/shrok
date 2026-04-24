@@ -42,8 +42,9 @@ export async function maybeArchiveHistory(
   }).join('\n')
 
   if (!summaryText) {
+    const lastCompactedId = toCompact[cutoff - 1]!.id
     history.splice(0, cutoff)
-    deps.agentStore.updateHistory(deps.agentId, history)
+    deps.agentStore.compactHistory(deps.agentId, lastCompactedId, null)
     return
   }
 
@@ -81,20 +82,23 @@ export async function maybeArchiveHistory(
       createdAt: now(),
     }
 
+    const lastCompactedId = toCompact[cutoff - 1]!.id
     history.splice(0, cutoff, summaryMsg)
-    deps.agentStore.updateHistory(deps.agentId, history)
+    deps.agentStore.compactHistory(deps.agentId, lastCompactedId, summaryMsg)
     log.info(`[agent:${agentId}] Archived ${cutoff} messages into 1 summary.`)
   } catch (err) {
     log.warn(`[agent:${agentId}] Archival failed, trimming instead:`, (err as Error).message)
-    history.splice(0, cutoff)
-    history.unshift({
+    const lastCompactedId = toCompact[cutoff - 1]!.id
+    const noticeMsg: TextMessage = {
       kind: 'text',
       role: 'user',
       id: generateId('msg'),
       content: '[System notice: Some earlier context was trimmed due to a memory error. Recent context is intact.]',
       injected: true,
       createdAt: now(),
-    } as TextMessage)
-    deps.agentStore.updateHistory(deps.agentId, history)
+    }
+    history.splice(0, cutoff)
+    history.unshift(noticeMsg)
+    deps.agentStore.compactHistory(deps.agentId, lastCompactedId, noticeMsg)
   }
 }

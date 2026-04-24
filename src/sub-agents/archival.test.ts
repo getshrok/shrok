@@ -81,9 +81,8 @@ describe('maybeArchiveHistory — compactHistory call sites (Plan 25-02)', () =>
     agentStore.appendMessages(agentId, history)
 
     const spy = vi.spyOn(agentStore, 'compactHistory')
-    // Ensure updateHistory does not exist — if this test compiles and compactHistory is called,
-    // the migration is correct. We also verify updateHistory is NOT called.
-    const updateHistorySpy = vi.spyOn(agentStore as unknown as { updateHistory?: (...args: unknown[]) => void }, 'updateHistory' as never)
+    // updateHistory was deleted in Plan 01 — its absence is verified at the type level
+    // (tsc would fail if archival.ts still referenced it). No runtime spy needed.
 
     const llmRouter = makeLLMRouter(makeSuccessResponse())
     const deps = makeDeps(agentStore, agentId, llmRouter)
@@ -92,9 +91,6 @@ describe('maybeArchiveHistory — compactHistory call sites (Plan 25-02)', () =>
 
     // compactHistory must have been called exactly once
     expect(spy).toHaveBeenCalledTimes(1)
-
-    // updateHistory must NOT have been called (it's deleted in Plan 01)
-    expect(updateHistorySpy).not.toHaveBeenCalled()
   })
 
   it('success path passes the summaryMsg (not null) as the third argument to compactHistory', async () => {
@@ -150,29 +146,29 @@ describe('maybeArchiveHistory — compactHistory call sites (Plan 25-02)', () =>
   // ─── EMPTY-TEXT TRIM PATH: compactHistory called with null ────────────────
 
   it('empty-text trim path calls compactHistory with null as third argument', async () => {
-    // Build a history where all messages produce empty summaryText
-    // tool_result messages with empty content produce empty string in the map
-    const emptyToolResult: Message = {
-      kind: 'tool_result',
-      id: 'tr0',
-      toolResults: [{ id: 'tc0', name: 'bash', content: '' }],
+    // The empty-text trim path fires when `summaryText` (the joined map result) is falsy.
+    // `[''].join('\n')` = '' (falsy), but `['', ''].join('\n')` = '\n' (truthy).
+    // So we need cutoff=1 (exactly one message in toCompact), achieved with 4 messages:
+    //   Math.floor(4 * 0.3) = 1.
+    // That single message must have empty content so its mapped string is ''.
+    // Use threshold=1 so even small token counts exceed the threshold.
+    const history: Message[] = Array.from({ length: 4 }, (_, i): Message => ({
+      kind: 'text',
+      role: 'user',
+      id: `et${i}`,
+      content: '',
       createdAt: new Date().toISOString(),
-    }
-    // Pad with many empty tool results to exceed threshold
-    const history: Message[] = Array.from({ length: 20 }, (_, i) => ({
-      ...emptyToolResult,
-      id: `tr${i}`,
-      toolResults: [{ id: `tc${i}`, name: 'bash', content: '' }],
     }))
     agentStore.appendMessages(agentId, history)
 
     const spy = vi.spyOn(agentStore, 'compactHistory')
     const llmRouter = makeLLMRouter(makeSuccessResponse())
-    const deps = makeDeps(agentStore, agentId, llmRouter)
+    // threshold=0 guarantees estimateTokens(history) > 0 always, so archival always fires
+    const deps = { ...makeDeps(agentStore, agentId, llmRouter), archivalThreshold: 0 }
 
     await maybeArchiveHistory(agentId, history, deps)
 
-    // compactHistory must have been called
+    // compactHistory must have been called once (empty-text trim path)
     expect(spy).toHaveBeenCalledTimes(1)
     // Third arg must be null (delete-only, no summary insert)
     const [, , summaryArg] = spy.mock.calls[0]!
@@ -180,28 +176,25 @@ describe('maybeArchiveHistory — compactHistory call sites (Plan 25-02)', () =>
   })
 
   it('empty-text trim path removes compacted messages from in-memory history (splice preserved)', async () => {
-    const emptyToolResult: Message = {
-      kind: 'tool_result',
-      id: 'tr0',
-      toolResults: [{ id: 'tc0', name: 'bash', content: '' }],
+    // Same 4-message setup: cutoff=1, single empty-content message → summaryText=''
+    const history: Message[] = Array.from({ length: 4 }, (_, i): Message => ({
+      kind: 'text',
+      role: 'user',
+      id: `et${i}`,
+      content: '',
       createdAt: new Date().toISOString(),
-    }
-    const history: Message[] = Array.from({ length: 20 }, (_, i) => ({
-      ...emptyToolResult,
-      id: `tr${i}`,
-      toolResults: [{ id: `tc${i}`, name: 'bash', content: '' }],
     }))
     agentStore.appendMessages(agentId, history)
 
     const llmRouter = makeLLMRouter(makeSuccessResponse())
-    const deps = makeDeps(agentStore, agentId, llmRouter)
+    const deps = { ...makeDeps(agentStore, agentId, llmRouter), archivalThreshold: 0 }
 
-    const originalLength = history.length
-    const cutoff = Math.floor(originalLength * 0.3)
+    const originalLength = history.length  // 4
+    const cutoff = Math.floor(originalLength * 0.3)  // 1
 
     await maybeArchiveHistory(agentId, history, deps)
 
-    // In-memory: history should have (originalLength - cutoff) items (no summary inserted)
+    // In-memory: history should have (4 - 1) = 3 items (no summary inserted)
     expect(history.length).toBe(originalLength - cutoff)
   })
 
