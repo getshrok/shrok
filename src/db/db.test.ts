@@ -235,8 +235,9 @@ describe('AgentStore', () => {
 
   it('suspends and resumes', () => {
     store.create('t-2', baseOptions)
-    const msgs: TextMessage[] = [{ kind: 'text', id: 'm1', role: 'user', content: 'hi', createdAt: '2025-01-01' }]
-    store.suspend('t-2', msgs, 'should I continue?')
+    const msg: TextMessage = { kind: 'text', id: 'm1', role: 'user', content: 'hi', createdAt: '2025-01-01' }
+    store.appendMessages('t-2', [msg])
+    store.suspend('t-2', 'should I continue?')
     const suspended = store.get('t-2')
     expect(suspended?.status).toBe('suspended')
     expect(suspended?.pendingQuestion).toBe('should I continue?')
@@ -250,7 +251,7 @@ describe('AgentStore', () => {
 
   it('completes with output', () => {
     store.create('t-3', baseOptions)
-    store.complete('t-3', 'done!', [])
+    store.complete('t-3', 'done!')
     const t = store.get('t-3')
     expect(t?.status).toBe('completed')
     expect(t?.output).toBe('done!')
@@ -277,9 +278,9 @@ describe('AgentStore', () => {
   it('getActive returns running and suspended', () => {
     store.create('t-7', baseOptions)
     store.create('t-8', baseOptions)
-    store.suspend('t-8', [], 'question?')
+    store.suspend('t-8', 'question?')
     store.create('t-9', baseOptions)
-    store.complete('t-9', 'done', [])
+    store.complete('t-9', 'done')
     const active = store.getActive()
     const ids = active.map(t => t.id)
     expect(ids).toContain('t-7')
@@ -287,13 +288,16 @@ describe('AgentStore', () => {
     expect(ids).not.toContain('t-9')
   })
 
-  it('appendToHistory adds a message to serialized history', () => {
+  it('appendMessages inserts rows and get() retrieves them in rowid order', () => {
     store.create('t-10', baseOptions)
-    const note: TextMessage = { kind: 'text', id: 'n1', role: 'user', content: 'note', createdAt: '2025-01-01' }
-    store.appendToHistory('t-10', note)
+    const m1: TextMessage = { kind: 'text', id: 'n1', role: 'user', content: 'first', createdAt: '2025-01-01T00:00:00Z' }
+    const m2: TextMessage = { kind: 'text', id: 'n2', role: 'assistant', content: 'second', createdAt: '2025-01-01T00:00:01Z' }
+    store.appendMessages('t-10', [m1])
+    store.appendMessages('t-10', [m2])
     const t = store.get('t-10')
-    expect(t?.history).toHaveLength(1)
+    expect(t?.history).toHaveLength(2)
     expect(t?.history[0]?.id).toBe('n1')
+    expect(t?.history[1]?.id).toBe('n2')
   })
 
   it('create assigns colorSlot 0 to the first agent (Phase 18 D-03)', () => {
@@ -313,7 +317,7 @@ describe('AgentStore', () => {
   it('create picks next sequential slot even after an agent completes (color cycle fix)', () => {
     store.create('c-a', baseOptions)           // slot 0
     store.create('c-b', baseOptions)           // slot 1
-    store.complete('c-b', 'done', [])          // completed, but still in recent window
+    store.complete('c-b', 'done')              // completed, but still in recent window
     const c = store.create('c-c', baseOptions) // slot 1 still "occupied" in LRU window → takes slot 2
     expect(c.colorSlot).toBe(2)
   })
@@ -334,6 +338,77 @@ describe('AgentStore', () => {
     store.create('r-1', baseOptions)
     const recent = store.getRecent(5)
     expect(recent[0]?.colorSlot).toBe(0)
+  })
+
+  it('compactHistory atomically deletes old rows and inserts the summary', () => {
+    store.create('t-compact', baseOptions)
+    const m1: TextMessage = { kind: 'text', id: 'c1', role: 'user', content: 'a', createdAt: '2025-01-01T00:00:00Z' }
+    const m2: TextMessage = { kind: 'text', id: 'c2', role: 'assistant', content: 'b', createdAt: '2025-01-01T00:00:01Z' }
+    const m3: TextMessage = { kind: 'text', id: 'c3', role: 'user', content: 'c', createdAt: '2025-01-01T00:00:02Z' }
+    store.appendMessages('t-compact', [m1, m2, m3])
+    const summary: SummaryMessage = {
+      kind: 'summary', id: 'sum-1', content: 'summary of c1+c2',
+      summarySpan: ['2025-01-01T00:00:00Z', '2025-01-01T00:00:01Z'],
+      createdAt: '2025-01-01T00:00:03Z',
+    }
+    // Delete rows up to and including m2, then insert summary.
+    store.compactHistory('t-compact', 'c2', summary)
+    const t = store.get('t-compact')
+    expect(t?.history).toHaveLength(2)
+    expect(t?.history[0]?.id).toBe('sum-1')
+    expect(t?.history[0]?.kind).toBe('summary')
+    expect(t?.history[1]?.id).toBe('c3')
+  })
+
+  it('compactHistory with null summaryMsg performs delete-only (no insert)', () => {
+    store.create('t-trim', baseOptions)
+    const m1: TextMessage = { kind: 'text', id: 'tr1', role: 'user', content: 'a', createdAt: '2025-01-01T00:00:00Z' }
+    const m2: TextMessage = { kind: 'text', id: 'tr2', role: 'user', content: 'b', createdAt: '2025-01-01T00:00:01Z' }
+    store.appendMessages('t-trim', [m1, m2])
+    store.compactHistory('t-trim', 'tr1', null)
+    const t = store.get('t-trim')
+    expect(t?.history).toHaveLength(1)
+    expect(t?.history[0]?.id).toBe('tr2')
+  })
+
+  it('compactHistory is a no-op when deleteBeforeId does not exist', () => {
+    store.create('t-nop', baseOptions)
+    const m1: TextMessage = { kind: 'text', id: 'n1', role: 'user', content: 'a', createdAt: '2025-01-01T00:00:00Z' }
+    store.appendMessages('t-nop', [m1])
+    store.compactHistory('t-nop', 'does-not-exist', null)
+    const t = store.get('t-nop')
+    expect(t?.history).toHaveLength(1)
+    expect(t?.history[0]?.id).toBe('n1')
+  })
+
+  it('deleteAll removes agent_messages rows before agents rows (FK-safe)', () => {
+    store.create('t-del', baseOptions)
+    const m1: TextMessage = { kind: 'text', id: 'd1', role: 'user', content: 'x', createdAt: '2025-01-01T00:00:00Z' }
+    store.appendMessages('t-del', [m1])
+    store.deleteAll()
+    expect(store.get('t-del')).toBeNull()
+    expect(store.count()).toBe(0)
+  })
+
+  it('get returns history=[] for a freshly created agent (no agent_messages rows)', () => {
+    const a = store.create('t-empty', baseOptions)
+    expect(a.history).toEqual([])
+    const fetched = store.get('t-empty')
+    expect(fetched?.history).toEqual([])
+  })
+
+  it('agent_messages table exists after migration with expected columns', () => {
+    // Use the shared freshDb() helper via the existing beforeEach-constructed store's db.
+    // Reach into the store constructor-time DB by creating a fresh one here.
+    const db = freshDb()
+    const cols = (db.prepare("PRAGMA table_info('agent_messages')").all() as { name: string }[])
+      .map(c => c.name)
+    expect(cols).toEqual(['id', 'agent_id', 'data', 'created_at'])
+    const idxRow = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_agent_messages_agent_rowid'").get()
+    expect(idxRow).toBeDefined()
+    // agents.history column MUST be gone
+    const agentCols = (db.prepare("PRAGMA table_info('agents')").all() as { name: string }[]).map(c => c.name)
+    expect(agentCols).not.toContain('history')
   })
 })
 
