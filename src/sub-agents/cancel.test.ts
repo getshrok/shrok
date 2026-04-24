@@ -257,3 +257,46 @@ describe('cancel propagation — ctx.abortSignal reaches child_process.execFile'
     }
   }, 5000)
 })
+
+// ─── Test 5: mid-loop retract via onRoundComplete callback (Phase 24) ─────────
+
+describe('mid-loop retract via onRoundComplete callback', () => {
+  it('retract written to inbox during a long tool-call sequence yields status=retracted (not failed)', async () => {
+    // Agent runs UNIQUE bash tool calls per round (loop steward does not fire).
+    // Mid-sequence we call runner.retract — the public method writes 'retract' to
+    // the inbox AND fires .abort(). The new onRoundComplete callback in
+    // loopIteration polls between rounds, finds the retract, returns true (which
+    // throws AgentAbortedError). runLoopFrom's error handler at lines 602–608
+    // polls the inbox for an UNPROCESSED retract; if Plan 24-02 wrongly called
+    // markProcessed in the callback, the handler would mark the run 'failed'.
+    // This test locks in the not-marking behavior.
+    let n = 0
+    const llmRouter: LLMRouter = {
+      complete: vi.fn().mockImplementation(async () => {
+        n++
+        // Sleep between rounds to give retract a window to land between LLM calls.
+        await new Promise(r => setTimeout(r, 60))
+        return makeToolCallResponse('bash', { description: `r${n}`, command: `echo r${n}` })
+      }),
+    }
+
+    const { runner, agentStore, inboxStore } = makeRunner(llmRouter)
+    const agentId = await runner.spawn({ prompt: 'tight loop for mid-loop retract', name: 'midloop-retract', trigger: 'manual' })
+
+    // Let the agent rip through 1–3 rounds.
+    await new Promise(r => setTimeout(r, 200))
+    await runner.retract(agentId)
+    await runner.awaitAll(2000)
+
+    // Primary assertion: status is 'retracted', NOT 'failed'. This proves the
+    // callback's retract branch did NOT call markProcessed (otherwise runLoopFrom's
+    // error handler would not find the retract and would mark the run 'failed').
+    expect(agentStore.get(agentId)?.status).toBe('retracted')
+
+    // Secondary assertion: after the agent reaches its terminal state, runLoopFrom's
+    // finally block calls inboxStore.deleteForAgent(agentId), so all inbox messages
+    // (including the retract) are gone. This is the cleanup guarantee of the
+    // existing terminal-state path (local.ts line 626).
+    expect(inboxStore.poll(agentId)).toHaveLength(0)
+  }, 5000)
+})
