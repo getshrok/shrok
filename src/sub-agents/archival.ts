@@ -43,8 +43,8 @@ export async function maybeArchiveHistory(
 
   if (!summaryText) {
     const lastCompactedId = toCompact[cutoff - 1]!.id
-    history.splice(0, cutoff)
     deps.agentStore.compactHistory(deps.agentId, lastCompactedId, null)
+    history.splice(0, cutoff)
     return
   }
 
@@ -83,8 +83,8 @@ export async function maybeArchiveHistory(
     }
 
     const lastCompactedId = toCompact[cutoff - 1]!.id
-    history.splice(0, cutoff, summaryMsg)
     deps.agentStore.compactHistory(deps.agentId, lastCompactedId, summaryMsg)
+    history.splice(0, cutoff, summaryMsg)
     log.info(`[agent:${agentId}] Archived ${cutoff} messages into 1 summary.`)
   } catch (err) {
     log.warn(`[agent:${agentId}] Archival failed, trimming instead:`, (err as Error).message)
@@ -97,8 +97,8 @@ export async function maybeArchiveHistory(
       injected: true,
       createdAt: now(),
     }
+    deps.agentStore.compactHistory(deps.agentId, lastCompactedId, noticeMsg)
     history.splice(0, cutoff)
     history.unshift(noticeMsg)
-    deps.agentStore.compactHistory(deps.agentId, lastCompactedId, noticeMsg)
   }
 }
