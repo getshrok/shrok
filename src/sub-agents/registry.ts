@@ -18,6 +18,7 @@ import { WEB_SEARCH_DEF, WEB_FETCH_DEF, executeWebSearch, executeWebFetch } from
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { BASELINE_ENV_KEYS } from './env.js'
 import { truncateToolOutput } from './output-cap.js'
+import { parseSkillFile } from '../skills/parser.js'
 
 // ─── Built-in tool definitions ────────────────────────────────────────────────
 
@@ -439,9 +440,34 @@ function executeReadMultipleFiles(input: Record<string, unknown>): string {
   return results.join('\n\n')
 }
 
+/**
+ * If `filePath` is a SKILL.md or TASK.md, validate `content` via parseSkillFile.
+ * Returns `null` when valid OR when filename is not gated. Returns a rejection
+ * message string when invalid. Callers should return the message as the tool
+ * result (do NOT throw) so the agent sees the error and can retry with fixed
+ * frontmatter.
+ */
+function validateSkillFrontmatterIfGated(
+  toolName: 'write_file' | 'edit_file',
+  filePath: string,
+  content: string,
+): string | null {
+  const base = path.basename(filePath)
+  if (base !== 'SKILL.md' && base !== 'TASK.md') return null
+  try {
+    parseSkillFile(content)
+    return null
+  } catch (err) {
+    const msg = (err as Error).message
+    return `${toolName} rejected: ${base} frontmatter is invalid — ${msg}. Fix the frontmatter and retry.`
+  }
+}
+
 function executeWriteFile(input: Record<string, unknown>): string {
   const filePath = resolvePath(input['path'] as string)
   const content = input['content'] as string
+  const rejection = validateSkillFrontmatterIfGated('write_file', filePath, content)
+  if (rejection !== null) return rejection
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(filePath, content, 'utf8')
   return `Written ${content.length} bytes to ${filePath}`
@@ -513,6 +539,9 @@ function executeEditFile(input: Record<string, unknown>): string {
     for (const l of normalizedOld.split('\n')) diffLines.push(`- ${l}`)
     for (const l of normalizedNew.split('\n')) diffLines.push(`+ ${l}`)
   }
+
+  const rejection = validateSkillFrontmatterIfGated('edit_file', filePath, modified)
+  if (rejection !== null) return rejection
 
   fs.writeFileSync(filePath, modified, 'utf8')
   return `Applied ${edits.length} edit${edits.length === 1 ? '' : 's'} to ${filePath}:\n${diffLines.join('\n')}`
