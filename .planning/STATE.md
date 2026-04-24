@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.1.1
 milestone_name: Voice Mode
 status: executing
-stopped_at: Completed 23-02-PLAN.md
-last_updated: "2026-04-23T15:38:41.290Z"
-last_activity: 2026-04-23
+stopped_at: Phase 25 context gathered
+last_updated: "2026-04-24T12:28:42.767Z"
+last_activity: 2026-04-24
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 20
+  completed_plans: 20
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Followability of the live event stream — a user should know what shrok is doing and why without parsing tool arguments
-**Current focus:** Phase 23 — timezone-aware-scheduling-bootstrap-timezone-collection-via-
+**Current focus:** Phase 25 — migrate-agent-history-from-json-blob-to-agent-messages-rows
 
 ## Current Position
 
-Phase: 23 (timezone-aware-scheduling-bootstrap-timezone-collection-via-) — EXECUTING
-Plan: 3 of 5
-Status: Ready to execute
-Last activity: 2026-04-23
+Phase: 25
+Plan: Not started
+Status: Executing Phase 25
+Last activity: 2026-04-24
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -36,7 +36,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 10 (this milestone)
+- Total plans completed: 20 (this milestone)
 - Average duration: —
 - Total execution time: —
 
@@ -48,6 +48,9 @@ Progress: [░░░░░░░░░░] 0%
 | 20 | 1 | - | - |
 | 21 | 3 | - | - |
 | 22 | 2 | - | - |
+| 23 | 5 | - | - |
+| 24 | 2 | - | - |
+| 25 | 3 | - | - |
 
 **Recent Trend:** No data yet
 
@@ -85,6 +88,7 @@ Progress: [░░░░░░░░░░] 0%
 ### Roadmap Evolution
 
 - Phase 23 added: Timezone-aware scheduling — bootstrap onboarding question + spawn_agent config write, cronTimezone field in scheduling tools, CronPicker weekdays cadence + raw fallback, settings API timezone support
+- Phase 25 added: Migrate agent history from JSON blob to agent_messages rows — eliminate large-BLOB writes that caused node:sqlite B-tree corruption; append-only row inserts per agent round
 
 ### Pending Todos
 
@@ -97,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T15:38:41.272Z
-Stopped at: Completed 23-02-PLAN.md
-Resume file: None
+Last session: 2026-04-24T11:17:32.379Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-migrate-agent-history-from-json-blob-to-agent-messages-rows/25-CONTEXT.md

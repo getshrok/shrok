@@ -48,6 +48,18 @@ A user skimming a shrok session — in any chat surface — should know what shr
 
 *(No active requirements — planning next milestone)*
 
+### Phase 25 Complete (2026-04-24)
+
+Agent history migrated from JSON blob to row-per-message `agent_messages` table. New `appendMessages(id, Message[])` API does append-only INSERTs; `compactHistory(agentId, deleteBeforeId, Message|null)` wraps DELETE + re-insert atomically inside `transaction()`. `suspend`/`complete` simplified to 2-arg signatures (history dropped). `local.ts` hot path wires to `appendMessages`; `archival.ts` 3 compaction paths wire to `compactHistory`. `deleteAll()` is FK-safe (child rows first). Full suite green: 1252 passed. Requirements D-01 through D-04 verified. 1 smoke test pending human verification (live DB row accumulation check).
+
+### Phase 24 Complete (2026-04-24)
+
+Mid-loop message delivery shipped. `onRoundComplete?: () => Promise<boolean>` added to `ToolLoopOptions` — fires after each tool-call round (after loop detection, after terminal-tools check), before the next LLM call. `LocalAgentRunner.loopIteration` wires the callback to poll `agent_inbox` between rounds: `update` messages are injected into history as user-role text (with `injected: true`, omitting `respond_to_message` from the instruction) and marked processed; `retract` messages return `true` to throw `AgentAbortedError` WITHOUT marking processed, so `runLoopFrom`'s error handler at lines 602–608 finds the unprocessed retract and correctly classifies the run as `retracted`. Closes MSG-01: agents receive updates and retracts within one round, not after `end_turn`. 11/11 must-haves verified; 1235 tests passing.
+
+### Phase 23 Complete (2026-04-23)
+
+Timezone-aware scheduling shipped. `isValidCadence` expanded to 8 standard-set cadences (weekdays `M H * * 1-5`, every-N-days `0 H */N * *` N∈{1..7}). `CronPicker` updated to match all 8 cadences with N-day interval selector. `timezone` exposed as a writable setting — allowlisted in `CONFIG_JSON_FIELDS`, plumbed through draft layer, with IANA validation input + UTC offset helper in GeneralTab. `create_schedule` and `create_reminder` tool schemas gain a `cronTimezone` field (before `cron`, chain-of-thought-by-construction) with dynamic workspace-timezone description; `create_reminder` now gates on `isValidCadence`. BOOTSTRAP.md collects timezone conversationally from location and delegates config.json write to a spawned `save-timezone` sub-agent. All 22 automated checks passed; 3 items pending human verification (UAT in `23-HUMAN-UAT.md`). Requirements TZ-01 through TZ-08 verified (note: CR-01 code review finding — `cronTimezone` not persisted beyond first `nextRun` — tracked for gap closure).
+
 ### Phase 22 Complete (2026-04-23)
 
 Voice error handling and accessibility shipped. `voice-error-timer.ts` pure helper with 4-second auto-dismiss and timer-reset-on-back-to-back semantics. `useVoice` extended with `errorMessage: string | null` — distinct messages for mic denial, API failure, and WebSocket disconnect. `VoiceButton` extended with `errorMessage` prop and `ariaLabelFor()` override. `ConversationsPage` renders always-present `aria-live="assertive"` error bar above input row. All four VOICE-ERR-* requirements (VOICE-ERR-01/02/03/04) verified in browser.
@@ -130,4 +142,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-23 after Phase 22 (error-handling-accessibility — errorMessage surface in useVoice, voice error bar + ARIA overrides in ConversationsPage/VoiceButton; human-verified in browser)*
+*Last updated: 2026-04-23 after Phase 23 (timezone-aware-scheduling — cadence expansion, CronPicker 8-cadence UI, timezone settings write path, cronTimezone tool schema field, bootstrap onboarding; 3 items pending human verification)*

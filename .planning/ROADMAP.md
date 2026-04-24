@@ -91,6 +91,17 @@ Plans:
 - [x] 22-02-PLAN.md — VoiceButton ARIA override + ConversationsPage error bar render + manual browser E2E checkpoint
 **UI hint**: yes
 
+### Phase 24: message_agent Mid-Loop Delivery
+
+**Goal:** Head messages sent via `message_agent` are delivered to long-running agents mid-execution — even when those agents are inside a multi-round `runToolLoop` invocation that has not yet returned `end_turn`. Currently, the inbox is only polled at the top of `loopIteration`, which only runs when `runToolLoop` returns. An agent making 47 consecutive tool calls without `end_turn` will never see a `message_agent` update until it stops — making `message_agent` effectively a no-op for the most common long-running agent pattern.
+**Requirements**: MSG-01
+**Depends on:** Phase 23
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 24-01-PLAN.md — Add `onRoundComplete?: () => Promise<boolean>` to `ToolLoopOptions`; invoke between rounds in `runToolLoop` (after loop detection, before terminal-tools check); 5 unit tests pinning callback behavior + AgentAbortedError abort path
+- [x] 24-02-PLAN.md — Wire `onRoundComplete` closure into `loopIteration`'s `runToolLoop` call: poll `agent_inbox`, inject `update` messages into history (no respond_to_message instruction), return `true` on `retract` without markProcessed (lets runLoopFrom error handler classify as `retracted`); 2 integration tests for mid-loop update delivery + mid-loop retract → status='retracted'
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -99,6 +110,7 @@ Plans:
 | 20. Vite Build Configuration | v0.1.1 Voice Mode | 1/1 | Complete    | 2026-04-23 |
 | 21. React Voice UI & State Machine | v0.1.1 Voice Mode | 3/3 | Complete    | 2026-04-23 |
 | 22. Error Handling & Accessibility | v0.1.1 Voice Mode | 2/2 | Complete    | 2026-04-23 |
+| 24. message_agent Mid-Loop Delivery | Bugfix | 2/2 | Complete    | 2026-04-24 |
 
 ### Phase 23: Timezone-aware scheduling: bootstrap timezone collection via onboarding question + spawn_agent config write; add timezone to CONFIG_JSON_FIELDS and settings UI; add cronTimezone field (before cron in schema) to create_reminder and create_schedule tools with dynamic descriptions showing configured timezone; expand CronPicker with weekdays cadence and raw-text fallback for unrecognized patterns instead of silent DEFAULT_STATE; expand create_schedule grammar to allow 1-5 day ranges
 
@@ -113,3 +125,15 @@ Plans:
 - [x] 23-03-PLAN.md — Extend CronPicker with weekdays + everyNDays cadences (type, state, parse, build, UI) — covers 100% of the new standard set
 - [x] 23-04-PLAN.md — Allowlist `timezone` in CONFIG_JSON_FIELDS; plumb through DraftState/initDraft/isDirty/buildBody; add Scheduling card with IANA text input + UTC offset helper + inline validation in GeneralTab
 - [x] 23-05-PLAN.md — Add conversational timezone question to BOOTSTRAP.md "About the user" section; add spawn_agent step to write timezone to config.json before the write_identity sequence
+
+### Phase 25: Migrate agent history from JSON blob to agent_messages rows
+
+**Goal:** Replace the `agents.history TEXT` JSON blob (rewritten on every LLM round and source of node:sqlite B-tree corruption) with an append-only `agent_messages` table — one row per Message. Each tool-call round becomes a single-row INSERT instead of a multi-MB blob rewrite. Compaction (archival summarization) becomes an atomic DELETE + INSERT inside a transaction. Clean-break migration: no backfill of existing blobs; the `history` column is dropped entirely via `ALTER TABLE agents DROP COLUMN history`.
+**Requirements**: D-01, D-02, D-03, D-04
+**Depends on:** Phase 24
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 25-01-PLAN.md — sql/004_agent_messages.sql migration + AgentStore refactor (appendMessages, compactHistory, drop history from create/suspend/complete, 6 new db.test.ts cases)
+- [x] 25-02-PLAN.md — archival.ts: replace 3 updateHistory calls with compactHistory (empty-text trim → null summary; success → summaryMsg; fallback → noticeMsg)
+- [x] 25-03-PLAN.md — local.ts: hot-path appendMessages(agentId, [msg]); drop history arg from suspend/complete call sites; full-suite vitest green
