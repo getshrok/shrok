@@ -842,6 +842,43 @@ export class LocalAgentRunner implements AgentRunner {
           }
         },
         refreshHistory: () => history,
+        onRoundComplete: async () => {
+          // Plan 24-02: deliver inbox messages mid-loop without waiting for end_turn.
+          // Polls the agent's inbox between LLM rounds. For 'update' messages, injects
+          // them into the in-memory history array (same pattern as the top-of-loop
+          // injection at lines 672–679, but with instruction text that omits
+          // respond_to_message — that tool is NOT in this runToolLoop's tool list).
+          // For 'retract' messages, returns true to throw AgentAbortedError WITHOUT
+          // calling markProcessed — the retract must remain in the inbox so
+          // runLoopFrom's error handler (lines 602–608) finds it and classifies the
+          // run as 'retracted' instead of 'failed'. Other inbox types (signal,
+          // check_status, sub_agent_*) are left for the outer loopIteration to handle
+          // after runToolLoop returns.
+          const msgs = this.inboxStore.poll(agentId)
+          for (const msg of msgs) {
+            if (msg.type === 'retract') {
+              // Do NOT markProcessed — runLoopFrom's error handler needs the unprocessed
+              // retract to distinguish 'retracted' from 'failed'. Returning true causes
+              // runToolLoop to throw AgentAbortedError; the outer error handler then
+              // polls the inbox and finds this message.
+              return true
+            }
+            if (msg.type === 'update') {
+              this.inboxStore.markProcessed(msg.id)
+              history.push({
+                kind: 'text', role: 'user',
+                id: generateId('msg'),
+                content: `[Message received: ${msg.payload ?? ''}]\nContinue your current task, addressing this update if relevant.`,
+                injected: true,
+                createdAt: now(),
+              } satisfies TextMessage)
+            }
+            // Other types (signal, check_status, sub_agent_completed/question/failed)
+            // are intentionally NOT handled here — the outer loopIteration's top-of-loop
+            // poll handles them when runToolLoop returns.
+          }
+          return false
+        },
         ...(agentVerbose ? { onVerbose: agentVerbose } : {}),
         ...(abortController ? { abortSignal: abortController.signal } : {}),
       })
