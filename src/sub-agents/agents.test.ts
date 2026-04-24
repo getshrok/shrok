@@ -1374,3 +1374,73 @@ describe('phase 23: cronTimezone field', () => {
     expect(parsed.ok).toBe(true)
   })
 })
+
+// ─── Phase 24 MSG-01: mid-loop update delivery ────────────────────────────────
+
+describe('mid-loop update delivery (Phase 24 MSG-01)', () => {
+  it('message_agent update arrives in agent history before end_turn', async () => {
+    // Agent runs 3 unique bash tool calls (no end_turn) so it stays inside
+    // runToolLoop. Mid-stream we fire runner.update — the new onRoundComplete
+    // callback in loopIteration must inject the update into history before the
+    // next LLM round, not after end_turn.
+    const db = freshDb()
+    let llmCallNum = 0
+    const capturedMessagesPerCall: Message[][] = []
+    const llmRouter: LLMRouter = {
+      complete: vi.fn().mockImplementation(async (_tier: string, msgs: Message[]) => {
+        capturedMessagesPerCall.push([...msgs])
+        llmCallNum++
+        // After 1st call we want time for the test to fire update before the 2nd LLM call.
+        // Sleep a bit between rounds to give the test a window to write to the inbox.
+        await new Promise(r => setTimeout(r, 80))
+        // Rounds 1..3 = unique bash calls; round 4 = end_turn.
+        if (llmCallNum <= 3) {
+          return makeToolCallResponse('bash', { description: `r${llmCallNum}`, command: `echo r${llmCallNum}` })
+        }
+        return makeEndTurnResponse()
+      }),
+    }
+
+    const { runner, agentStore, inboxStore } = makeRunner(llmRouter, db)
+    const agentId = await runner.spawn({ prompt: 'mid-loop test', name: 'midloop', trigger: 'manual' })
+
+    // Wait for the 1st LLM call + 1st bash call to complete, then fire update.
+    // Total budget: 80ms LLM + ~few ms bash + safety margin.
+    await new Promise(r => setTimeout(r, 200))
+    await runner.update(agentId, 'mid-loop hello')
+
+    // Let the agent finish its 4-round sequence.
+    await runner.awaitAll(5000)
+
+    // The injected message must appear in at least one LLM call's history snapshot.
+    // We search ALL captured calls because the completion steward makes a separate
+    // llmRouter.complete call with its own 1-message history; the last captured call
+    // may be the steward call rather than the agent's final tool-loop round.
+    let injectedTextMatch: Message | undefined
+    for (const msgs of capturedMessagesPerCall) {
+      const found = msgs.find(m => {
+        if (m.kind !== 'text') return false
+        const tm = m as TextMessage
+        return tm.role === 'user' && tm.content.includes('[Message received: mid-loop hello]')
+      })
+      if (found) { injectedTextMatch = found; break }
+    }
+    expect(injectedTextMatch).toBeDefined()
+
+    // The mid-loop injection text MUST NOT mention respond_to_message — that tool
+    // is not in the runToolLoop tool list. Plan 24-02 instruction differs from the
+    // top-of-loop injection at local.ts:677.
+    const tm = injectedTextMatch as TextMessage
+    expect(tm.content).not.toContain('respond_to_message')
+    expect(tm.content).toContain('Continue your current task')
+
+    // Inbox: the update message must be marked processed (callback called markProcessed).
+    const remainingUpdates = inboxStore.poll(agentId).filter(m => m.type === 'update')
+    expect(remainingUpdates).toHaveLength(0)
+
+    // Sanity: agent eventually reached a terminal state (completed, suspended, or
+    // failed are all acceptable — we are testing inbox delivery, not completion).
+    const finalState = agentStore.get(agentId)
+    expect(['completed', 'failed', 'retracted', 'suspended'].includes(finalState?.status ?? 'unknown')).toBe(true)
+  }, 10000)
+})
