@@ -42,7 +42,7 @@ for (const arg of args) {
   pairs.push({ key, value })
 }
 
-const ws = process.env['WORKSPACE_PATH'] ?? path.join(os.homedir(), '.shrok', 'workspace')
+const ws = process.env['SHROK_WORKSPACE_PATH'] ?? process.env['WORKSPACE_PATH'] ?? path.join(os.homedir(), '.shrok', 'workspace')
 const envFile = process.env['SHROK_ENV_FILE'] ?? path.join(ws, '.env')
 
 // Read existing file, or start empty

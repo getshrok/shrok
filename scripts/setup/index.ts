@@ -179,7 +179,7 @@ async function main() {
 
   const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '../..')
   const HOME = os.homedir()
-  const WORKSPACE_PATH = process.env['WORKSPACE_PATH'] ?? path.join(HOME, '.shrok', 'workspace')
+  const WORKSPACE_PATH = process.env['SHROK_WORKSPACE_PATH'] ?? process.env['WORKSPACE_PATH'] ?? path.join(HOME, '.shrok', 'workspace')
 
   const { execSync, spawn } = await import('node:child_process')
 
