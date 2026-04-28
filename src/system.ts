@@ -259,7 +259,7 @@ export function buildSystem(deps: SystemDeps): System {
         llmRouter,
         agentDefaults: config.workerDefaults,
         envOverrides: {
-          WORKSPACE_PATH: workspacePath,
+          SHROK_WORKSPACE_PATH: workspacePath,
           SHROK_SKILLS_DIR: skillsPath,
           // Expose the project's model/provider to every spawned agent so skills
           // can keep their own LLM calls in lock-step with shrok's config without

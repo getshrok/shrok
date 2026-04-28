@@ -20,10 +20,25 @@ function setupLinuxDaemon(shrokDir: string, workspacePath: string): void {
   const servicePath = path.join(serviceDir, 'shrok.service')
 
   // Check if already enabled
-  try {
-    execSync('systemctl --user is-enabled shrok', { stdio: 'pipe' })
-    return  // already set up
-  } catch { /* not enabled, proceed */ }
+  const alreadyEnabled = (() => {
+    try { execSync('systemctl --user is-enabled shrok', { stdio: 'pipe' }); return true }
+    catch { return false }
+  })()
+
+  if (alreadyEnabled) {
+    // If not under shrok-daemon (i.e. someone ran `npm start` directly while the systemd
+    // unit is installed), hand off to systemd so the CLI commands work correctly.
+    if (!process.env['SHROK_DAEMON']) {
+      try {
+        execSync('systemctl --user start shrok', { stdio: 'pipe' })
+        log.info('[first-boot] Handed off to systemd; exiting direct process')
+        process.exit(0)
+      } catch {
+        log.warn('[first-boot] systemd start failed; continuing as direct process')
+      }
+    }
+    return
+  }
 
   const daemon = path.join(shrokDir, 'bin', 'shrok-daemon')
   fs.mkdirSync(serviceDir, { recursive: true })
@@ -39,7 +54,7 @@ Type=simple
 ExecStart=${daemon}
 Restart=on-failure
 RestartSec=5
-Environment=WORKSPACE_PATH=${workspacePath}
+Environment=SHROK_WORKSPACE_PATH=${workspacePath}
 Environment=PATH=${process.env['PATH']}
 
 [Install]
@@ -48,8 +63,20 @@ WantedBy=default.target
 
   execSync('systemctl --user daemon-reload', { stdio: 'pipe' })
   execSync('systemctl --user enable shrok', { stdio: 'pipe' })
-  // Don't start — we're already running
   log.info('[first-boot] Installed systemd user service')
+
+  // If not under shrok-daemon, start via systemd now and let this process exit.
+  // On fresh installs the installer runs `npm start` directly; after this handoff
+  // the daemon manager owns the process and `shrok start/stop/status` all work.
+  if (!process.env['SHROK_DAEMON']) {
+    try {
+      execSync('systemctl --user start shrok', { stdio: 'pipe' })
+      log.info('[first-boot] Started via systemd; handing off')
+      process.exit(0)
+    } catch {
+      log.warn('[first-boot] systemd start failed; continuing as direct process')
+    }
+  }
 }
 
 function setupMacDaemon(shrokDir: string, workspacePath: string): void {
@@ -58,7 +85,12 @@ function setupMacDaemon(shrokDir: string, workspacePath: string): void {
   // Check if already loaded
   try {
     execSync(`launchctl print gui/${process.getuid!()}/com.shrok.agent`, { stdio: 'pipe' })
-    return  // already set up
+    // Already managed by launchd. If running directly (not via shrok-daemon), hand off.
+    if (!process.env['SHROK_DAEMON']) {
+      log.info('[first-boot] launchd already managing shrok; handing off')
+      process.exit(0)
+    }
+    return
   } catch { /* not loaded, proceed */ }
 
   const daemon = path.join(shrokDir, 'bin', 'shrok-daemon')
@@ -94,7 +126,7 @@ function setupMacDaemon(shrokDir: string, workspacePath: string): void {
   <string>${shrokDir}</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>WORKSPACE_PATH</key>
+    <key>SHROK_WORKSPACE_PATH</key>
     <string>${workspacePath}</string>
     <key>PATH</key>
     <string>${nodeBin}:/usr/local/bin:/usr/bin:/bin</string>
@@ -111,10 +143,16 @@ function setupMacDaemon(shrokDir: string, workspacePath: string): void {
 </plist>
 `)
 
-  // Don't bootstrap — we're already running. It'll load on next login via RunAtLoad.
   try { execSync(`launchctl bootout gui/${process.getuid!()}/com.shrok.agent`, { stdio: 'pipe' }) } catch {}
   execSync(`launchctl bootstrap gui/${process.getuid!()} ${plistPath}`, { stdio: 'pipe' })
   log.info('[first-boot] Installed launchd agent')
+
+  // bootstrap + RunAtLoad=true starts a new launchd-managed instance immediately.
+  // If we're not under shrok-daemon, exit so the launchd instance is the only one.
+  if (!process.env['SHROK_DAEMON']) {
+    log.info('[first-boot] Handed off to launchd; exiting direct process')
+    process.exit(0)
+  }
 }
 
 function setupWindowsDaemon(shrokDir: string): void {
