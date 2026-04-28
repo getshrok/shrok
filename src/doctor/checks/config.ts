@@ -41,7 +41,7 @@ export const configPathsCheck: Check = {
       return {
         status: 'fail',
         detail: `workspacePath does not exist: ${ws}`,
-        hint: 'create the workspace dir or set WORKSPACE_PATH',
+        hint: 'create the workspace dir or set SHROK_WORKSPACE_PATH',
       }
     }
     try {
