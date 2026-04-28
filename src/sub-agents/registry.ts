@@ -381,7 +381,7 @@ export function buildScopedBashTools(env: Record<string, string>, cap: number = 
 // ─── Filesystem executors ─────────────────────────────────────────────────────
 
 /** Safe allowlist for environment variable expansion in agent-supplied paths. */
-const SAFE_PATH_VARS = new Set(['HOME', 'TMPDIR', 'TMP', 'TEMP', 'SHROK_SKILLS_DIR', 'WORKSPACE_PATH', 'SHROK_ROOT'])
+const SAFE_PATH_VARS = new Set(['HOME', 'TMPDIR', 'TMP', 'TEMP', 'SHROK_SKILLS_DIR', 'SHROK_WORKSPACE_PATH', 'WORKSPACE_PATH', 'SHROK_ROOT'])
 
 /** Resolve environment variables ($VAR and ${VAR}) and ~ in file paths.
  *  Only variables in SAFE_PATH_VARS are expanded; others are left as-is to

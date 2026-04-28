@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { log } from '../logger.js'
 
-export const BASELINE_ENV_KEYS = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'TMP', 'TEMP', 'NODE_PATH', 'WORKSPACE_PATH', 'SHROK_ENV_FILE', 'SHROK_ROOT', 'SHROK_SKILLS_DIR']
+export const BASELINE_ENV_KEYS = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'TMP', 'TEMP', 'NODE_PATH', 'SHROK_WORKSPACE_PATH', 'WORKSPACE_PATH', 'SHROK_ENV_FILE', 'SHROK_ROOT', 'SHROK_SKILLS_DIR']
 
 export async function ensureSkillDeps(skillPath: string, deps: string[]): Promise<void> {
   const missing = deps.filter(dep => !fs.existsSync(path.join(skillPath, 'node_modules', dep)))

@@ -19,7 +19,7 @@ export function restartProcess(): never {
   } else if (process.platform === 'win32') {
     // Standalone Windows — spawn replacement via cmd
     const cleanEnv: Record<string, string> = {}
-    for (const key of ['PATH', 'NODE_ENV', 'WORKSPACE_PATH', 'SHROK_ENV_FILE', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'SystemRoot', 'COMSPEC', 'PATHEXT', 'HOMEDRIVE', 'HOMEPATH', 'TEMP', 'TMP']) {
+    for (const key of ['PATH', 'NODE_ENV', 'SHROK_WORKSPACE_PATH', 'WORKSPACE_PATH', 'SHROK_ENV_FILE', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'SystemRoot', 'COMSPEC', 'PATHEXT', 'HOMEDRIVE', 'HOMEPATH', 'TEMP', 'TMP']) {
       if (process.env[key]) cleanEnv[key] = process.env[key]!
     }
     spawn('cmd', ['/c', 'timeout /t 2 /nobreak >nul && npm start'], {
@@ -31,7 +31,7 @@ export function restartProcess(): never {
   } else {
     // Standalone Unix — spawn replacement via sh
     const cleanEnv: Record<string, string> = {}
-    for (const key of ['PATH', 'NODE_ENV', 'WORKSPACE_PATH', 'SHROK_ENV_FILE', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM']) {
+    for (const key of ['PATH', 'NODE_ENV', 'SHROK_WORKSPACE_PATH', 'WORKSPACE_PATH', 'SHROK_ENV_FILE', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM']) {
       if (process.env[key]) cleanEnv[key] = process.env[key]!
     }
     spawn('sh', ['-c', 'sleep 2 && npm start'], {

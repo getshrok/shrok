@@ -97,6 +97,30 @@ describe('buildScopedEnv', () => {
     const env = buildScopedEnv(['NONEXISTENT_VAR'])
     expect('NONEXISTENT_VAR' in env).toBe(false)
   })
+
+  it('propagates SHROK_WORKSPACE_PATH as a baseline key', () => {
+    process.env['SHROK_WORKSPACE_PATH'] = '/test/workspace'
+    const env = buildScopedEnv([])
+    expect(env['SHROK_WORKSPACE_PATH']).toBe('/test/workspace')
+    delete process.env['SHROK_WORKSPACE_PATH']
+  })
+
+  it('propagates legacy WORKSPACE_PATH as a baseline key', () => {
+    process.env['WORKSPACE_PATH'] = '/legacy/workspace'
+    const env = buildScopedEnv([])
+    expect(env['WORKSPACE_PATH']).toBe('/legacy/workspace')
+    delete process.env['WORKSPACE_PATH']
+  })
+
+  it('propagates both names when both are set', () => {
+    process.env['SHROK_WORKSPACE_PATH'] = '/new/workspace'
+    process.env['WORKSPACE_PATH'] = '/legacy/workspace'
+    const env = buildScopedEnv([])
+    expect(env['SHROK_WORKSPACE_PATH']).toBe('/new/workspace')
+    expect(env['WORKSPACE_PATH']).toBe('/legacy/workspace')
+    delete process.env['SHROK_WORKSPACE_PATH']
+    delete process.env['WORKSPACE_PATH']
+  })
 })
 
 // ─── agentDefaults — tool allowlist ──────────────────────────────────────────
