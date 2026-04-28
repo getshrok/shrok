@@ -19,4 +19,4 @@ You need a bot token and a channel ID from the user.
 
 Write credentials: `cd $SHROK_ROOT && npm run config:set -- DISCORD_BOT_TOKEN=<token> DISCORD_CHANNEL_ID=<channelId>`
 
-Hot-reload: `touch $WORKSPACE_PATH/.reload-discord`
+Hot-reload: `touch $SHROK_WORKSPACE_PATH/.reload-discord`

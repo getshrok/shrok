@@ -23,4 +23,4 @@ You need three things: a bot token (`xoxb-`), an app-level token (`xapp-`), and 
 
 Write credentials: `cd $SHROK_ROOT && npm run config:set -- SLACK_BOT_TOKEN=<token> SLACK_APP_TOKEN=<appToken> SLACK_CHANNEL_ID=<channelId>`
 
-Hot-reload: `touch $WORKSPACE_PATH/.reload-slack`
+Hot-reload: `touch $SHROK_WORKSPACE_PATH/.reload-slack`

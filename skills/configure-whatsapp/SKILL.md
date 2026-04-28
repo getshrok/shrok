@@ -15,12 +15,12 @@ Get the allowed phone number (digits only, with country code, no plus sign — e
 
 Write config: `cd $SHROK_ROOT && npm run config:set -- WHATSAPP_ALLOWED_JID=<number>@s.whatsapp.net`
 
-Start adapter: `touch $WORKSPACE_PATH/.reload-whatsapp`
+Start adapter: `touch $SHROK_WORKSPACE_PATH/.reload-whatsapp`
 
-**QR scanning:** After `touch $WORKSPACE_PATH/.reload-whatsapp`, wait ~5 seconds for the adapter to start. The QR code is saved as a PNG image at `$WORKSPACE_PATH/media/whatsapp-qr.png`.
+**QR scanning:** After `touch $SHROK_WORKSPACE_PATH/.reload-whatsapp`, wait ~5 seconds for the adapter to start. The QR code is saved as a PNG image at `$SHROK_WORKSPACE_PATH/media/whatsapp-qr.png`.
 
-Tell the user the exact file path (`$WORKSPACE_PATH/media/whatsapp-qr.png`). Do NOT paste the raw QR data as text. Do NOT use `view_image` — that only lets you see it, it doesn't deliver it to the user.
+Tell the user the exact file path (`$SHROK_WORKSPACE_PATH/media/whatsapp-qr.png`). Do NOT paste the raw QR data as text. Do NOT use `view_image` — that only lets you see it, it doesn't deliver it to the user.
 
 Along with the file path, tell the user: open WhatsApp → Settings → Linked Devices → Link a Device → scan the image. The QR expires after ~60 seconds and auto-regenerates — if they miss it, tell them to re-view the same file path.
 
-If session is invalidated ("Logged out" in logs), delete `$WORKSPACE_PATH/whatsapp/auth/` and reload to re-pair.
+If session is invalidated ("Logged out" in logs), delete `$SHROK_WORKSPACE_PATH/whatsapp/auth/` and reload to re-pair.

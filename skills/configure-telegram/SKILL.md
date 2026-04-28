@@ -11,4 +11,4 @@ You need a bot token and a chat ID.
 
 Write credentials: `cd $SHROK_ROOT && npm run config:set -- TELEGRAM_BOT_TOKEN=<token> TELEGRAM_CHAT_ID=<chatId>`
 
-Hot-reload: `touch $WORKSPACE_PATH/.reload-telegram`
+Hot-reload: `touch $SHROK_WORKSPACE_PATH/.reload-telegram`

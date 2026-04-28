@@ -16,4 +16,4 @@ You need Zoho OAuth credentials and a Cliq chat ID.
 
 Write credentials: `cd $SHROK_ROOT && npm run config:set -- ZOHO_CLIENT_ID=<id> ZOHO_CLIENT_SECRET=<secret> ZOHO_REFRESH_TOKEN=<token> ZOHO_CLIQ_CHAT_ID=<chatId>`
 
-Hot-reload: `touch $WORKSPACE_PATH/.reload-zoho-cliq`
+Hot-reload: `touch $SHROK_WORKSPACE_PATH/.reload-zoho-cliq`
