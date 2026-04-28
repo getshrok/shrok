@@ -24,9 +24,9 @@ const CODEX_API_URL = 'https://chatgpt.com/backend-api/codex/responses'
 
 // ─── Token persistence ────────────────────────────────────────────────────────
 
-/** Atomically write updated OAuth tokens back to $WORKSPACE_PATH/.env */
+/** Atomically write updated OAuth tokens back to $SHROK_WORKSPACE_PATH/.env */
 function persistOAuthTokens(accessToken: string, refreshToken: string, expiresAt: number): void {
-  const ws = process.env['WORKSPACE_PATH'] ?? path.join(os.homedir(), '.shrok', 'workspace')
+  const ws = process.env['SHROK_WORKSPACE_PATH'] ?? process.env['WORKSPACE_PATH'] ?? path.join(os.homedir(), '.shrok', 'workspace')
   const envFile = process.env['SHROK_ENV_FILE'] ?? path.join(ws, '.env')
 
   let lines: string[] = []

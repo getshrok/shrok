@@ -75,7 +75,7 @@ export async function runChecks(checks: Check[], ctx: Ctx, opts: RunOptions = {}
 /** Env-file loader replicated from src/index.ts:8-42 to avoid importing the main daemon. */
 function loadEnvFile(): void {
   if (!process.env['SHROK_ENV_FILE']) {
-    const ws = process.env['WORKSPACE_PATH'] ?? `${os.homedir()}/.shrok/workspace`
+    const ws = process.env['SHROK_WORKSPACE_PATH'] ?? process.env['WORKSPACE_PATH'] ?? `${os.homedir()}/.shrok/workspace`
     process.env['SHROK_ENV_FILE'] = `${ws}/.env`
   }
   const envFile = process.env['SHROK_ENV_FILE']!

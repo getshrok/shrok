@@ -219,6 +219,7 @@ export function loadConfig(): Config {
   const baseJsonPath = './config.json'
   const baseJson = loadJsonFile(baseJsonPath)
   const rawWorkspace =
+    process.env['SHROK_WORKSPACE_PATH'] ??
     process.env['WORKSPACE_PATH'] ??
     (baseJson['workspacePath'] as string | undefined) ??
     '~/.shrok/workspace'
@@ -279,7 +280,7 @@ export function loadConfig(): Config {
     whatsappAllowedJid: process.env['WHATSAPP_ALLOWED_JID'],
     webhookSecret: process.env['WEBHOOK_SECRET'],
     dashboardPasswordHash: process.env['DASHBOARD_PASSWORD_HASH'],
-    workspacePath: process.env['WORKSPACE_PATH'],  // bootstrap — also used above
+    workspacePath: process.env['SHROK_WORKSPACE_PATH'] ?? process.env['WORKSPACE_PATH'],  // bootstrap — also used above
   }
 
   const filteredSecrets = Object.fromEntries(
@@ -324,7 +325,7 @@ export function extractSecretValues(config: Config): string[] {
 }
 
 // Env vars that `config:set` is allowed to write. Mirrors the secrets read by
-// loadConfig (minus WORKSPACE_PATH which is a bootstrap path, not a credential).
+// loadConfig (minus SHROK_WORKSPACE_PATH which is a bootstrap path, not a credential).
 // Single source of truth — the setter and the reader cannot drift.
 export const ENV_KEY_ALLOWLIST = [
   'LLM_PROVIDER',

@@ -40,7 +40,7 @@ function loadDotEnv(filePath: string): Record<string, string> {
 
 /** Build the env for eval subprocesses: process.env + workspace .env file vars. */
 function buildEvalEnv(): Record<string, string> {
-  const ws = process.env['WORKSPACE_PATH'] ?? path.join(os.homedir(), '.shrok', 'workspace')
+  const ws = process.env['SHROK_WORKSPACE_PATH'] ?? process.env['WORKSPACE_PATH'] ?? path.join(os.homedir(), '.shrok', 'workspace')
   const envFile = process.env['SHROK_ENV_FILE'] ?? path.join(ws, '.env')
   const dotEnvVars = loadDotEnv(envFile)
   // Start with process.env, then let dotEnv fill in keys that are absent or empty string

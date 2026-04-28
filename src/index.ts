@@ -10,7 +10,7 @@ import { restartProcess } from './restart.js'
  *                   If false, only sets vars not already in process.env (used at boot). */
 function loadEnvFile(overwrite = false): void {
   if (!process.env['SHROK_ENV_FILE']) {
-    const ws = process.env['WORKSPACE_PATH'] ?? `${os.homedir()}/.shrok/workspace`
+    const ws = process.env['SHROK_WORKSPACE_PATH'] ?? process.env['WORKSPACE_PATH'] ?? `${os.homedir()}/.shrok/workspace`
     process.env['SHROK_ENV_FILE'] = `${ws}/.env`
   }
   const envFile = process.env['SHROK_ENV_FILE']
