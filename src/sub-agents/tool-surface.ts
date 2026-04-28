@@ -196,7 +196,7 @@ export async function assembleTools(
   // Scope bash tools when env is declared (null = unrestricted, [] = baseline only)
   const scopedEnv = effectiveEnv !== null ? buildScopedEnv(effectiveEnv) : null
 
-  // Merge any runner-level env overrides (e.g. WORKSPACE_PATH for eval isolation).
+  // Merge any runner-level env overrides (e.g. SHROK_WORKSPACE_PATH for eval isolation).
   // When there are overrides and no skill-declared scoping, build a full-env dict so
   // the overrides are visible to bash without dropping any real env vars.
   const hasOverrides = Object.keys(deps.envOverrides).length > 0

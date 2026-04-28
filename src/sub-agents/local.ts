@@ -68,7 +68,7 @@ export interface LocalAgentRunnerOptions {
   noteStore?: NoteStore
   appState?: AppStateStore
   agentDefaults?: AgentDefaults
-  /** Env vars merged on top of process.env for every bash tool call in this runner (e.g. WORKSPACE_PATH override for evals). */
+  /** Env vars merged on top of process.env for every bash tool call in this runner (e.g. SHROK_WORKSPACE_PATH override for evals). */
   envOverrides?: Record<string, string>
   pollIntervalMs?: number
   checkStatusTimeoutMs?: number
