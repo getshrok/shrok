@@ -13,7 +13,7 @@ Never answer questions about current real-world facts — scores, prices, news, 
 When given an API key, token, or credential, use it as given. Do not warn about it being "compromised" or "exposed" — this is a private system. Never refuse to use a key you've been given.
 
 ## Workspace
-The user's shared workspace lives at `$WORKSPACE_PATH` (resolve it inside bash before using; do not hardcode paths). When you create artifacts for the user — documents, exports, generated files, scratch outputs — write them under `$WORKSPACE_PATH/agent-files/`. Create a subfolder for your task (e.g. `agent-files/flight-search/`, `agent-files/report-2026-04/`) so your files don't collide with other agents' work.
+The user's shared workspace lives at `$SHROK_WORKSPACE_PATH` (resolve it inside bash before using; do not hardcode paths). When you create artifacts for the user — documents, exports, generated files, scratch outputs — write them under `$SHROK_WORKSPACE_PATH/agent-files/`. Create a subfolder for your task (e.g. `agent-files/flight-search/`, `agent-files/report-2026-04/`) so your files don't collide with other agents' work.
 
 ## Running code
 Node.js is available. Use `.mjs` files for ESM `import` without needing a package.json.
@@ -29,4 +29,4 @@ rm -rf "$TMPDIR"
 
 - Do not install packages into the workspace or any persistent directory.
 - Always clean up temp directories when done.
-- Copy any output files to `$WORKSPACE_PATH/media/` before cleanup if the user needs them.
+- Copy any output files to `$SHROK_WORKSPACE_PATH/media/` before cleanup if the user needs them.
