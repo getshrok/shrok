@@ -55,7 +55,7 @@ describe('configPathsCheck', () => {
     const cfg = { workspacePath: missing, dbPath: path.join(missing, 'data', 'shrok.db') } as unknown as Config
     const out = await configPathsCheck.run(makeCtx({ config: cfg }))
     expect(out.status).toBe('fail')
-    expect(out.hint).toMatch(/WORKSPACE_PATH/)
+    expect(out.hint).toMatch(/SHROK_WORKSPACE_PATH/)
   })
 
   it('returns fail when workspacePath is not writable', async () => {

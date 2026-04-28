@@ -31,6 +31,7 @@ describe('loadConfig', () => {
   })
 
   it('applies default paths', () => {
+    delete process.env['SHROK_WORKSPACE_PATH']
     delete process.env['WORKSPACE_PATH']
     const cfg = loadConfig()
     expect(cfg.dbPath).toBe(path.join(os.homedir(), '.shrok/workspace/data/shrok.db'))
@@ -102,10 +103,25 @@ describe('loadConfig', () => {
     expect(cfg.llmProvider).toBe('anthropic')
   })
 
-  it('WORKSPACE_PATH env overrides workspacePath', () => {
-    process.env['WORKSPACE_PATH'] = '/custom/workspace'
+  it('SHROK_WORKSPACE_PATH env overrides workspacePath', () => {
+    delete process.env['WORKSPACE_PATH']
+    process.env['SHROK_WORKSPACE_PATH'] = '/custom/workspace'
     const cfg = loadConfig()
     expect(cfg.workspacePath).toBe('/custom/workspace')
+  })
+
+  it('WORKSPACE_PATH env still works as legacy fallback when SHROK_WORKSPACE_PATH is unset', () => {
+    delete process.env['SHROK_WORKSPACE_PATH']
+    process.env['WORKSPACE_PATH'] = '/legacy/workspace'
+    const cfg = loadConfig()
+    expect(cfg.workspacePath).toBe('/legacy/workspace')
+  })
+
+  it('SHROK_WORKSPACE_PATH wins over WORKSPACE_PATH when both are set', () => {
+    process.env['SHROK_WORKSPACE_PATH'] = '/new/workspace'
+    process.env['WORKSPACE_PATH'] = '/old/workspace'
+    const cfg = loadConfig()
+    expect(cfg.workspacePath).toBe('/new/workspace')
   })
 })
 
@@ -253,7 +269,7 @@ describe('Phase 17 ConfigSchema additions — vis/footers fields', () => {
 
   beforeEach(() => {
     workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'config-ph17-'))
-    process.env['WORKSPACE_PATH'] = workspace
+    process.env['SHROK_WORKSPACE_PATH'] = workspace
     process.env['USER_CONFIG_PATH'] = path.join(workspace, 'config.json')
   })
 
