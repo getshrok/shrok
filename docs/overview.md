@@ -30,7 +30,7 @@ Task templates can be found at [getshrok/tasks](https://github.com/getshrok/task
 
 ## 🧠 Memory
 
-Shrok remembers all past conversations you've had with it, and automatically pulls them from memory as needed when you talk. 
+Shrok remembers all past conversations you've had with it, and passively pulls them from memory as needed when it responds. 
 
 For details on the inner workings of the memory system, check out [getshrok/infinite-context-window](https://github.com/getshrok/infinite-context-window).
 
