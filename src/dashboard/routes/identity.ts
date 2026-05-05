@@ -134,6 +134,10 @@ export function createIdentityRouter(
     }
 
     if (section === 'memory') {
+      if (!memoryPromptsWorkspaceDir) {
+        res.status(503).json({ error: 'Memory prompts workspace directory not configured' })
+        return
+      }
       const found = listMemoryPrompts().find(p => p.filename === filename)
       if (!found) {
         res.status(404).json({ error: 'Prompt file not found' })
