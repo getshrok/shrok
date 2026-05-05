@@ -1,9 +1,12 @@
 <h1><img src="dashboard/public/logo.svg" width="32" height="32" /> Shrok</h1>
 
-![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-blue)
-[![Node 22+](https://img.shields.io/badge/node-22%2B-blue)](https://nodejs.org)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/getshrok/shrok/blob/main/LICENSE)
-![status: alpha](https://img.shields.io/badge/status-alpha-red)
+![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-blue?style=for-the-badge)
+[![Node 22+](https://img.shields.io/badge/node-22%2B-blue?style=for-the-badge)](https://nodejs.org)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge)](https://github.com/getshrok/shrok/blob/main/LICENSE)
+![status: alpha](https://img.shields.io/badge/status-alpha-red?style=for-the-badge)
+[![Discord](https://img.shields.io/discord/1490578681599361136?style=for-the-badge&logo=discord&logoColor=white&label=discord&color=5865F2)](https://discord.gg/n9DHxSCJb)
+
+![Screenshot](.github/images/screenshot.png)
 
 Shrok is a self-hosted personal agent that is:
 
