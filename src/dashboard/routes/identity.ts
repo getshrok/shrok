@@ -60,13 +60,21 @@ export function createIdentityRouter(
       isDangerous: true,
     }))
 
-    const memoryFiles = listMemoryPrompts().map(entry => ({
-      filename: entry.filename,
-      section: 'memory' as const,
-      content: fs.readFileSync(entry.sourcePath, 'utf8'),
-      isWorkspace: entry.isWorkspace,
-      isDangerous: false,
-    }))
+    const memoryFiles = listMemoryPrompts().flatMap(entry => {
+      let content: string
+      try {
+        content = fs.readFileSync(entry.sourcePath, 'utf8')
+      } catch {
+        return []   // skip file that vanished between list and read
+      }
+      return [{
+        filename: entry.filename,
+        section: 'memory' as const,
+        content,
+        isWorkspace: entry.isWorkspace,
+        isDangerous: false,
+      }]
+    })
 
     res.json({ files: [...mainFiles, ...agentFiles, ...stewardFiles, ...proactiveFiles, ...memoryFiles] })
   })
