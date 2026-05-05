@@ -87,7 +87,7 @@ You can ask it to update (it comes with a skill for it and works through updates
 
 Run `shrok doctor` to check on which area might be malfunctioning, or `shrok doctor --help` for more options.
 
-## Contributing
+## License/Contributing
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge)](https://github.com/getshrok/shrok/blob/main/LICENSE)
 
