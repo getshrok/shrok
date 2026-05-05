@@ -13,6 +13,7 @@ import { toMemoryMessages } from '../memory/index.js'
 import type { MessageStore } from '../db/messages.js'
 import type { Topic } from '../icw/index.js'
 import { generateId, now } from '../llm/util.js'
+import { loadMemoryPromptOverrides } from '../memory/prompts.js'
 
 export interface ArchivalDeps {
   topicMemory: Memory
@@ -38,7 +39,8 @@ export async function archiveMessages(
 
   // Archive messages into topic memory before deletion
   const archivalStartTime = now()
-  await deps.topicMemory.chunk(toMemoryMessages(toArchive))
+  const prompts = loadMemoryPromptOverrides()
+  await deps.topicMemory.chunk(toMemoryMessages(toArchive), prompts)
 
   // Identify topics touched during this archival pass
   const touchedTopics = (await deps.topicMemory.getTopics())
