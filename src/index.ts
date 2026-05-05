@@ -409,6 +409,7 @@ async function main() {
       agentWorkspaceDir: path.join(workspacePath, 'sub-agents'),
       stewardsWorkspaceDir,
       proactiveWorkspaceDir,
+      memoryPromptsWorkspaceDir,
     },
     skills: {
       loader: skillLoader,

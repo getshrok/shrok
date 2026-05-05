@@ -68,6 +68,7 @@ export interface DashboardServerOptions {
     agentWorkspaceDir: string
     stewardsWorkspaceDir?: string
     proactiveWorkspaceDir?: string
+    memoryPromptsWorkspaceDir?: string
   }
   skills?: {
     loader: SkillLoader
@@ -138,8 +139,8 @@ export class DashboardServer {
       app.use('/api/memory', createMemoryRouter(this.opts.topicMemory, config.workspacePath))
     }
     if (this.opts.identity) {
-      const { mainLoader, mainWorkspaceDir, agentLoader, agentWorkspaceDir, stewardsWorkspaceDir, proactiveWorkspaceDir } = this.opts.identity
-      app.use('/api/identity', createIdentityRouter(mainLoader, mainWorkspaceDir, agentLoader, agentWorkspaceDir, stewardsWorkspaceDir ?? '', proactiveWorkspaceDir ?? ''))
+      const { mainLoader, mainWorkspaceDir, agentLoader, agentWorkspaceDir, stewardsWorkspaceDir, proactiveWorkspaceDir, memoryPromptsWorkspaceDir } = this.opts.identity
+      app.use('/api/identity', createIdentityRouter(mainLoader, mainWorkspaceDir, agentLoader, agentWorkspaceDir, stewardsWorkspaceDir ?? '', proactiveWorkspaceDir ?? '', memoryPromptsWorkspaceDir ?? ''))
     }
     if (this.opts.skills) {
       app.use('/api/skills', createSkillsRouter(this.opts.skills.loader, this.opts.skills.systemSkillNames))
