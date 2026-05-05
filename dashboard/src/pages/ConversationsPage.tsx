@@ -906,7 +906,7 @@ export default function ConversationsPage() {
           role="status"
           aria-live="assertive"
           aria-atomic="true"
-          className="min-h-[1rem] mb-1 text-red-400 text-xs"
+          className={`text-red-400 text-xs${voiceError ? ' min-h-[1rem] mb-1' : ''}`}
         >
           {voiceError ? `⚠️ ${voiceError}` : ''}
         </div>

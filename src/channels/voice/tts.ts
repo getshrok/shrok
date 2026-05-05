@@ -67,13 +67,14 @@ export async function streamTts(
     return
   }
 
-  // Thread signal into Readable.fromWeb so that AbortController.abort() interrupts
-  // the async iteration directly — Node.js emits an AbortError on the readable
-  // when the signal fires, which is caught by the existing isAbortError() check.
-  const readable = Readable.fromWeb(
-    body as import('node:stream/web').ReadableStream<Uint8Array>,
-    { signal },
-  )
+  // The OpenAI SDK may return either a WHATWG ReadableStream or a Node.js Readable
+  // (PassThrough) depending on the underlying transport. Readable.fromWeb() throws
+  // on a Node.js stream, so detect and use it directly in that case.
+  // Abort is handled by the signal.aborted checks in the loop below, and the
+  // OpenAI HTTP request is already cancelled via the signal passed to .create().
+  const readable: AsyncIterable<Buffer | Uint8Array> = body instanceof Readable
+    ? body
+    : Readable.fromWeb(body as import('node:stream/web').ReadableStream<Uint8Array>, { signal })
   for await (const chunk of readable) {
     if (signal.aborted) {
       // Caller aborted; stop without tts_done and re-throw a typed
