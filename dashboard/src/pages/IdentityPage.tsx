@@ -68,7 +68,7 @@ export default function IdentityPage() {
       setDraft(first.content)
       setSavedContent(first.content)
     }
-  }, [visibleFiles.length > 0 && selectedKey === null])
+  }, [visibleFiles, selectedKey])
 
   // When developer mode turns off and selected file becomes hidden, jump to first visible
   useEffect(() => {
