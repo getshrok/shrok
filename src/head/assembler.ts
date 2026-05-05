@@ -17,6 +17,7 @@ import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
 import { log } from '../logger.js'
 import { formatIanaTimeLine } from '../util/time.js'
+import { loadMemoryPromptOverrides } from '../memory/prompts.js'
 
 // ─���─ AssembledContext ───────────────────────��───────────────────────────��─────
 
@@ -159,7 +160,8 @@ export class ContextAssemblerImpl implements ContextAssembler {
         if (retrievalQuery !== rawTriggerText) {
           log.debug(`[assembler] retrieval query rewritten: "${rawTriggerText}" → "${retrievalQuery}"`)
         }
-        const retrieved = await this.topicMemory.retrieve(retrievalQuery, memoryBudget)
+        const memoryPrompts = loadMemoryPromptOverrides()
+        const retrieved = await this.topicMemory.retrieve(retrievalQuery, memoryBudget, memoryPrompts)
         if (retrieved.length > 0) {
           const topics = await this.topicMemory.getTopics()
           memoryBlock = formatMemoryBlock(retrieved, topics)
