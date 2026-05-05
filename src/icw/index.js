@@ -87,13 +87,15 @@ export class Memory {
             this.initialized = true;
         }
     }
-    async chunk(conversation) {
+    async chunk(conversation, prompts) {
         await this.ensureInit();
-        await doChunk(conversation, this.chunkingLlm, this.store, this.config, this.logger, this.prompts, this.graphStore);
+        const merged = prompts ? { ...this.prompts, ...prompts } : this.prompts;
+        await doChunk(conversation, this.chunkingLlm, this.store, this.config, this.logger, merged, this.graphStore);
     }
-    async retrieve(query, tokenBudget) {
+    async retrieve(query, tokenBudget, prompts) {
         await this.ensureInit();
-        return doRetrieve(query, this.retrievalLlm, this.store, this.config, this.logger, tokenBudget, this.prompts, this.graphStore);
+        const merged = prompts ? { ...this.prompts, ...prompts } : this.prompts;
+        return doRetrieve(query, this.retrievalLlm, this.store, this.config, this.logger, tokenBudget, merged, this.graphStore);
     }
     async retrieveByEntity(entityName, tokenBudget) {
         await this.ensureInit();
@@ -106,9 +108,10 @@ export class Memory {
         await this.ensureInit();
         return doRetrieveByTopicIds(requests, this.store, this.config.tokenCounter);
     }
-    async compact(topicId) {
+    async compact(topicId, prompts) {
         await this.ensureInit();
-        await doArchive(this.archivalLlm, this.store, this.config, this.logger, topicId, this.prompts);
+        const merged = prompts ? { ...this.prompts, ...prompts } : this.prompts;
+        await doArchive(this.archivalLlm, this.store, this.config, this.logger, topicId, merged);
     }
     async getTopics() {
         await this.ensureInit();
