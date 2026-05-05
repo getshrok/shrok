@@ -2,7 +2,6 @@
 
 ![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-blue?style=for-the-badge)
 [![Node 22+](https://img.shields.io/badge/node-22%2B-blue?style=for-the-badge)](https://nodejs.org)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge)](https://github.com/getshrok/shrok/blob/main/LICENSE)
 ![status: alpha](https://img.shields.io/badge/status-alpha-red?style=for-the-badge)
 [![Discord](https://img.shields.io/discord/1490578681599361136?style=for-the-badge&logo=discord&logoColor=white&label=discord&color=5865F2)](https://discord.gg/n9DHxSCJb)
 
@@ -89,5 +88,7 @@ You can ask it to update (it comes with a skill for it and works through updates
 Run `shrok doctor` to check on which area might be malfunctioning, or `shrok doctor --help` for more options.
 
 ## Contributing
+
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge)](https://github.com/getshrok/shrok/blob/main/LICENSE)
 
 I created this because I wanted my own OpenClaw to mess around with, but I am open to any feedback or suggestions!
