@@ -45,14 +45,14 @@ export default function IdentityPage() {
   })
 
   const saveMutation = useMutation({
-    mutationFn: ({ section, filename, content }: { section: 'main' | 'agent' | 'stewards' | 'proactive'; filename: string; content: string }) =>
+    mutationFn: ({ section, filename, content }: { section: 'main' | 'agent' | 'stewards' | 'proactive' | 'memory'; filename: string; content: string }) =>
       api.identity.save(section, filename, content),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['identity'] }),
   })
 
   const allFiles = data?.files ?? []
   const visibleFiles = allFiles.filter(f => {
-    if (f.section === 'stewards' || f.section === 'proactive') return isDeveloper
+    if (f.section === 'stewards' || f.section === 'proactive' || f.section === 'memory') return isDeveloper
     return true
   })
 
@@ -117,6 +117,7 @@ export default function IdentityPage() {
   const agentFiles = visibleFiles.filter(f => f.section === 'agent')
   const stewardFiles = visibleFiles.filter(f => f.section === 'stewards')
   const proactiveFiles = visibleFiles.filter(f => f.section === 'proactive')
+  const memoryFiles = visibleFiles.filter(f => f.section === 'memory')
 
   const warning = selectedFile ? WARNINGS[fileKey(selectedFile)] : null
 
@@ -178,6 +179,20 @@ export default function IdentityPage() {
             <div>
               <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Proactive Agents</div>
               {proactiveFiles.map(f => (
+                <FileListItem
+                  key={fileKey(f)}
+                  file={f}
+                  selected={fileKey(f) === selectedKey}
+                  onSelect={() => selectFile(f)}
+                />
+              ))}
+            </div>
+          )}
+
+          {memoryFiles.length > 0 && (
+            <div>
+              <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Memory</div>
+              {memoryFiles.map(f => (
                 <FileListItem
                   key={fileKey(f)}
                   file={f}

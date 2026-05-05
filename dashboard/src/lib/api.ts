@@ -179,7 +179,7 @@ export const api = {
   identity: {
     list: () =>
       request<{ files: IdentityFile[] }>('/api/identity'),
-    save: (section: 'main' | 'agent' | 'stewards' | 'proactive', filename: string, content: string) =>
+    save: (section: 'main' | 'agent' | 'stewards' | 'proactive' | 'memory', filename: string, content: string) =>
       request<{ ok: boolean }>(`/api/identity/${section}/${encodeURIComponent(filename)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

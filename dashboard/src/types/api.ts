@@ -192,7 +192,7 @@ export interface SkillDetail extends SkillInfo {
 
 export interface IdentityFile {
   filename: string
-  section: 'main' | 'agent' | 'stewards' | 'proactive'
+  section: 'main' | 'agent' | 'stewards' | 'proactive' | 'memory'
   content: string
   isWorkspace: boolean
   isDangerous: boolean
