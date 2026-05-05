@@ -80,6 +80,7 @@ import type { ChannelAdapter, InboundMessage } from './types/channel.js'
 import { fileURLToPath } from 'node:url'
 import { setStewardWorkspaceDir } from './head/steward.js'
 import { setProactiveWorkspaceDir } from './scheduler/proactive.js'
+import { setMemoryPromptsWorkspaceDir } from './memory/prompts.js'
 import { readAssistantName } from './config-file.js'
 
 async function main() {
@@ -189,6 +190,8 @@ async function main() {
   const proactiveWorkspaceDir = path.join(workspacePath, 'proactive')
   setStewardWorkspaceDir(stewardsWorkspaceDir)
   setProactiveWorkspaceDir(proactiveWorkspaceDir)
+  const memoryPromptsWorkspaceDir = path.join(workspacePath, 'memory-prompts')
+  setMemoryPromptsWorkspaceDir(memoryPromptsWorkspaceDir)
 
   // Set SHROK_SKILLS_DIR for agent bash tool env
   const skillsPath = config.skillsDir ? path.resolve(config.skillsDir) : path.join(workspacePath, 'skills')
