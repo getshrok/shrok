@@ -3,6 +3,7 @@ export type VoiceErrorMessage =
   | 'Microphone access denied'
   | 'Voice disconnected'
   | 'Voice error — please try again'
+  | 'Voice requires iOS 17.1+ or Chrome on Android'
 
 export interface ErrorTimerHandle {
   /** Set or replace the active error. Clears any pending dismiss timer and
