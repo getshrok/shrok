@@ -176,9 +176,9 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
     const { agentId, text: displayText } = message.injected ? parseAgentPrefix(message.content) : { agentId: null, text: message.content }
     const borderColor = agentId ? colorMap?.get(agentId) : undefined
     return (
-      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
         <div
-          className={`max-w-2xl px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words ${
+          className={`max-w-[min(42rem,100%)] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words ${
             isUser
               ? 'bg-zinc-800 text-zinc-100'
               : message.injected
@@ -238,15 +238,15 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
     const agentPrefix = aid ? agentDisplayName(aid) : ''
     const borderColor = aid ? colorMap?.get(aid) : undefined
     return (
-      <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col items-start min-w-0 w-full" title={formatTime(message.createdAt)}>
+        <div className="flex flex-col gap-1 min-w-0 w-full">
           {message.toolCalls.map((tc, i) => {
             const summary = toolCallSummary(tc)
             const key = tc.id || String(i)
             return (
               <details
                 key={key}
-                className="max-w-2xl bg-amber-950/40 border border-amber-900/50 rounded-lg text-xs font-mono"
+                className="max-w-[min(42rem,100%)] bg-amber-950/40 border border-amber-900/50 rounded-lg text-xs font-mono"
                 style={borderColor ? { border: 'none', borderLeft: `10px solid ${borderColor}` } : undefined}
               >
                 <summary className="px-3 py-2 cursor-pointer text-amber-500 select-none break-words">
@@ -268,8 +268,8 @@ function MessageBubble({ message, usage, showUsage, showToolMessages, showSystem
     const agentPrefix = aid ? agentDisplayName(aid) : ''
     const borderColor = aid ? colorMap?.get(aid) : undefined
     return (
-      <div className="flex flex-col items-start" title={formatTime(message.createdAt)}>
-        <details className="max-w-2xl bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono"
+      <div className="flex flex-col items-start min-w-0 w-full" title={formatTime(message.createdAt)}>
+        <details className="max-w-[min(42rem,100%)] bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs font-mono"
           style={borderColor ? { border: 'none', borderLeft: `10px solid ${borderColor}` } : undefined}>
           <summary className="px-3 py-2 cursor-pointer text-emerald-500 select-none">
             {agentPrefix && <>{agentPrefix}<br /></>}🔧 {message.toolResults.map(tr => toolResultSummary(tr)).join(' · ')}
@@ -302,7 +302,7 @@ function MergedToolBubble({ call, result, tz, colorMap }: { call: Message & { ki
   const borderColor = aid ? colorMap?.get(aid) : undefined
 
   return (
-    <div className="flex flex-col items-start" title={formatTime(call.createdAt)}>
+    <div className="flex flex-col items-start min-w-0 w-full" title={formatTime(call.createdAt)}>
       {call.toolCalls.map((tc, i) => {
         const callSummary = toolCallSummary(tc)
         const matchingResult = result.toolResults.find(tr => tr.toolCallId === tc.id)
@@ -311,7 +311,7 @@ function MergedToolBubble({ call, result, tz, colorMap }: { call: Message & { ki
         return (
           <details
             key={key}
-            className="max-w-2xl bg-zinc-800/60 border border-zinc-700 rounded-lg text-xs font-mono"
+            className="max-w-[min(42rem,100%)] bg-zinc-800/60 border border-zinc-700 rounded-lg text-xs font-mono"
             style={borderColor ? { border: 'none', borderLeft: `10px solid ${borderColor}` } : undefined}
           >
             <summary className="px-3 py-2 cursor-pointer select-none break-words text-zinc-400">
