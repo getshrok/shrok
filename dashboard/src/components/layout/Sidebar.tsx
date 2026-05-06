@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   MessageSquare, BrainCircuit, UserCircle, Zap, BarChart3,
   ScrollText, FlaskConical, ClipboardCheck, Settings, LogOut,
-  Clock, PanelLeftClose, PanelLeftOpen, CheckSquare, BookOpen, X,
+  Clock, PanelLeftClose, PanelLeftOpen, CheckSquare, BookOpen,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../auth/AuthContext'
@@ -167,32 +167,15 @@ export default function Sidebar({ onSettingsOpen, mobileOpen, onMobileClose }: {
       'bg-zinc-900 border-r border-zinc-800 flex flex-col',
     ].join(' ')}>
 
-      {/* Mobile header — always full, with X close button */}
-      <div className="md:hidden px-4 py-5 border-b border-zinc-800 flex items-center justify-between">
-        <span className="text-lg font-semibold text-[var(--accent)] flex items-center gap-2">
+      {/* Header: mobile always full-width; desktop respects collapsed */}
+      <div className={`${desktopCollapsed ? 'md:px-2 md:justify-center' : ''} px-4 justify-between py-5 border-b border-zinc-800 flex items-center`}>
+        <span className={`text-lg font-semibold text-[var(--accent)] flex items-center gap-2 ${desktopCollapsed ? 'md:hidden' : ''}`}>
           <img src={logoUrl} alt="" className="w-5 h-5" />{assistantName}
         </span>
-        <div className="flex items-center gap-1">
+        {desktopCollapsed && <img src={logoUrl} alt="" className="w-5 h-5 hidden md:block" />}
+        <span className={desktopCollapsed ? 'md:hidden' : ''}>
           <PowerMenu />
-          <button
-            onClick={onMobileClose}
-            className="w-6 h-6 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Desktop header */}
-      <div className={`hidden md:flex ${desktopCollapsed ? 'px-2 justify-center' : 'px-4 justify-between'} py-5 border-b border-zinc-800 items-center`}>
-        {desktopCollapsed ? (
-          <img src={logoUrl} alt="" className="w-5 h-5" />
-        ) : (
-          <>
-            <span className="text-lg font-semibold text-[var(--accent)] flex items-center gap-2"><img src={logoUrl} alt="" className="w-5 h-5" /> {assistantName}</span>
-            <PowerMenu />
-          </>
-        )}
+        </span>
       </div>
 
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
@@ -256,13 +239,13 @@ export default function Sidebar({ onSettingsOpen, mobileOpen, onMobileClose }: {
           <Settings size={16} className="shrink-0" />
           <span className={desktopCollapsed ? 'md:hidden' : ''}>Settings</span>
         </button>
-        {/* Collapse toggle — desktop only */}
         <button
-          onClick={toggleCollapsed}
+          onClick={() => { toggleCollapsed(); onMobileClose?.() }}
           title={desktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={`hidden md:flex w-full items-center ${desktopCollapsed ? 'justify-center' : 'gap-2.5'} px-3 py-2 my-[2px] rounded-md text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors`}
+          className={`w-full flex items-center ${desktopCollapsed ? 'md:justify-center' : ''} gap-2.5 px-3 py-2 my-[2px] rounded-md text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors`}
         >
-          {desktopCollapsed ? <PanelLeftOpen size={16} /> : <><PanelLeftClose size={16} className="shrink-0" /> Collapse</>}
+          <PanelLeftClose size={16} className={`shrink-0 ${desktopCollapsed ? 'md:hidden' : ''}`} />
+          <span className={desktopCollapsed ? 'md:hidden' : ''}>Collapse</span>
         </button>
       </div>
     </aside>
