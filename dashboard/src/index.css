@@ -3,8 +3,23 @@
 @tailwind utilities;
 
 @layer base {
-  html, body, #root {
-    background-color: #09090b; /* zinc-950 */
+  html {
+    background-color: #09090b;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    background-color: #09090b;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    /* Prevents iOS from scrolling the body behind fixed elements */
+    position: fixed;
+  }
+  #root {
+    background-color: #09090b;
     height: 100%;
     overflow: hidden;
   }
