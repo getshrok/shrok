@@ -24,6 +24,15 @@ function buildWsUrl(): string {
   return `${proto}://${window.location.host}/api/voice/ws`
 }
 
+// iOS PWA mode (home-screen web app) exposes ManagedMediaSource instead of the
+// standard MediaSource. They share the same interface so we treat them identically.
+type MediaSourceCtor = typeof MediaSource
+function getMediaSourceCtor(): MediaSourceCtor | null {
+  if (typeof MediaSource !== 'undefined') return MediaSource
+  const w = window as unknown as { ManagedMediaSource?: MediaSourceCtor }
+  return w.ManagedMediaSource ?? null
+}
+
 export function useVoice(): UseVoiceReturn {
   const [state, dispatch] = useReducer(voiceFSM, INITIAL_VOICE_STATE)
   const [voiceActive, setVoiceActive] = useState(false)
@@ -75,14 +84,15 @@ export function useVoice(): UseVoiceReturn {
   }, [])
 
   const setupMSE = useCallback((): HTMLAudioElement => {
+    const MS = getMediaSourceCtor()!  // null-checked in toggleVoice before this is called
     const audioEl = new Audio()
-    const ms = new MediaSource()
+    const ms = new MS()
     audioEl.src = URL.createObjectURL(ms)
     audioElRef.current = audioEl
     mediaSourceRef.current = ms
     ms.addEventListener('sourceopen', () => {
       // Pitfall 1: Safari does not support 'audio/mpeg' in MSE. Runtime gate:
-      const mime = MediaSource.isTypeSupported('audio/mpeg') ? 'audio/mpeg' : 'audio/mp4'
+      const mime = MS.isTypeSupported('audio/mpeg') ? 'audio/mpeg' : 'audio/mp4'
       try {
         const sb = ms.addSourceBuffer(mime)
         sourceBufferRef.current = sb
@@ -137,8 +147,8 @@ export function useVoice(): UseVoiceReturn {
     // --- ENTER voice mode (user-gesture context — D-09, Pattern 2) ---
     // MicVAD.new must be called from a user gesture; we do so synchronously here.
     try {
-      // Pre-flight: MediaSource is required for TTS playback; unavailable on iOS < 17.1.
-      if (typeof MediaSource === 'undefined') {
+      // Pre-flight: MediaSource (or ManagedMediaSource on iOS PWA) required for TTS playback.
+      if (!getMediaSourceCtor()) {
         signalError('Voice requires iOS 17.1+ or Chrome on Android')
         dispatch({ type: 'ERROR' })
         return
