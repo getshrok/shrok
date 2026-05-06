@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { createPortal } from 'react-dom'
+import { Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
 import SettingsModal from '../../pages/settings'
 import { useAssistantName } from '../../lib/assistant-name'
@@ -122,6 +123,8 @@ export default function AppShell() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [restartOpen, setRestartOpen] = useState(false)
   const [connectionLost, setConnectionLost] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const assistantName = useAssistantName()
   const failCountRef = useRef(0)
 
   // Heartbeat: poll the backend every 10s to detect unexpected downtime
@@ -145,11 +148,28 @@ export default function AppShell() {
   }, [restartOpen])
 
   return (
-    <div className="flex h-screen bg-zinc-950">
-      <Sidebar onSettingsOpen={() => setSettingsOpen(true)} />
-      <main className="flex-1 overflow-auto overflow-x-hidden">
-        <Outlet />
-      </main>
+    <div className="flex h-dvh bg-zinc-950">
+      {/* Mobile backdrop */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setMobileMenuOpen(false)} />
+      )}
+      <Sidebar
+        onSettingsOpen={() => setSettingsOpen(true)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+      />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile-only top bar */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-zinc-800 bg-zinc-900 shrink-0">
+          <button onClick={() => setMobileMenuOpen(true)} className="text-zinc-400 hover:text-zinc-200 transition-colors">
+            <Menu size={20} />
+          </button>
+          <span className="text-sm font-semibold text-zinc-100">{assistantName}</span>
+        </div>
+        <main className="flex-1 overflow-auto overflow-x-hidden">
+          <Outlet />
+        </main>
+      </div>
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
