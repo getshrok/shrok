@@ -40,6 +40,23 @@ if (Test-Path $envFile) {
 # --- Restart loop -------------------------------------------------------------
 
 while ($true) {
+  # Re-read .env on every (re)start so settings changes via the dashboard take effect.
+  if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+      $line = $_.Trim()
+      if ($line -and -not $line.StartsWith('#')) {
+        $eq = $line.IndexOf('=')
+        if ($eq -gt 0) {
+          $key = $line.Substring(0, $eq).Trim()
+          $val = $line.Substring($eq + 1)
+          if ($val -notmatch '^\s*["\x27]') { $val = $val -replace '#.*$', '' }
+          $val = $val.Trim().Trim('"').Trim("'")
+          [System.Environment]::SetEnvironmentVariable($key, $val, 'Process')
+        }
+      }
+    }
+  }
+
   $stderrLog = "$LogFile.err"
   [System.Environment]::SetEnvironmentVariable('SHROK_DAEMON', '1', 'Process')
   $nodeExe = (Get-Command node.exe).Source
