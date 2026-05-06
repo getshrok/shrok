@@ -137,6 +137,13 @@ export function useVoice(): UseVoiceReturn {
     // --- ENTER voice mode (user-gesture context — D-09, Pattern 2) ---
     // MicVAD.new must be called from a user gesture; we do so synchronously here.
     try {
+      // Pre-flight: MediaSource is required for TTS playback; unavailable on iOS < 17.1.
+      if (typeof MediaSource === 'undefined') {
+        signalError('Voice requires iOS 17.1+ or Chrome on Android')
+        dispatch({ type: 'ERROR' })
+        return
+      }
+
       // 1. Open WS first so we can send audio as soon as speech ends.
       const ws = new WebSocket(buildWsUrl())
       ws.binaryType = 'arraybuffer' // Pitfall 6 — MUST be set before any binary frames arrive.

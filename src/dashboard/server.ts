@@ -116,6 +116,15 @@ export class DashboardServer {
     }
 
     app.use(helmet({ contentSecurityPolicy: false })) // CSP off — dashboard is a SPA with inline styles
+    // Cross-origin isolation — required for SharedArrayBuffer (ONNX WASM used by voice VAD).
+    // Localhost gets a browser exemption automatically; remote access (phone, tablet) does not.
+    // 'credentialless' COEP allows cross-origin subresources that don't send credentials,
+    // which covers all the static assets we load without breaking cookie-authenticated API calls.
+    app.use((_req, res, next) => {
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+      res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless')
+      next()
+    })
     app.use(cookieParser())
     app.use(express.json({ limit: '50mb' }))
     app.use(sessionMiddleware(this.tokenStore))
