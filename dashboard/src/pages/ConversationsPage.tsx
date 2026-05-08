@@ -928,7 +928,7 @@ export default function ConversationsPage() {
           />
           <textarea
             ref={inputRef}
-            className="flex-1 bg-zinc-800 text-zinc-100 text-sm rounded-xl px-4 py-2.5 resize-none outline-none placeholder:text-zinc-500 focus:ring-1 focus:ring-[var(--accent)]/50 max-h-40 overflow-y-auto"
+            className="flex-1 bg-zinc-800 text-zinc-100 text-base md:text-sm rounded-xl px-4 py-2.5 resize-none outline-none placeholder:text-zinc-500 focus:ring-1 focus:ring-[var(--accent)]/50 max-h-40 overflow-y-auto"
             rows={1}
             placeholder={`Message ${assistantName}…`}
             value={input}
