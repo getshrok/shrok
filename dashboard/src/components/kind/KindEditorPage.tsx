@@ -460,7 +460,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
   kind: 'skill' | 'task'
 }) {
   const qc = useQueryClient()
-
+  const primaryFile = kind === 'task' ? 'TASK.md' : primaryFile
 
   const { data, isLoading } = useQuery({
     queryKey: [detailQueryKey, name],
@@ -480,7 +480,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
   })
 
   // Active file tab
-  const [activeFile, setActiveFile] = useState('SKILL.md')
+  const [activeFile, setActiveFile] = useState(primaryFile)
 
   // SKILL.md form state
   const [fields, setFields] = useState<SkillFormFields | null>(null)
@@ -522,7 +522,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
       // Seed SKILL.md file state
       setFileStates(prev => {
         const next = new Map(prev)
-        next.set('SKILL.md', { draft: data.rawContent, saved: data.rawContent })
+        next.set(primaryFile, { draft: data.rawContent, saved: data.rawContent })
         return next
       })
     }
@@ -530,7 +530,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
 
   // Reset active file when skill changes
   useEffect(() => {
-    setActiveFile('SKILL.md')
+    setActiveFile(primaryFile)
     setFileStates(new Map())
     setIsCreatingFile(false)
     setMenuFile(null)
@@ -540,7 +540,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
 
   // Load file content lazily when tab selected
   useEffect(() => {
-    if (activeFile === 'SKILL.md') return
+    if (activeFile === primaryFile) return
     if (fileStates.has(activeFile)) return
     apiClient.readFile(name, activeFile).then(({ content }) => {
       setFileStates(prev => {
@@ -584,7 +584,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
         next.delete(filename)
         return next
       })
-      if (activeFile === filename) setActiveFile('SKILL.md')
+      if (activeFile === filename) setActiveFile(primaryFile)
       void qc.invalidateQueries({ queryKey: [detailQueryKey, name] })
     },
   })
@@ -641,15 +641,15 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
   // ── Dirty state (computed before early return so hook count is stable) ───
 
   const skillMdDirty = data && fields && showRaw
-    ? (fileStates.get('SKILL.md')?.draft ?? data.rawContent) !== (fileStates.get('SKILL.md')?.saved ?? data.rawContent)
+    ? (fileStates.get(primaryFile)?.draft ?? data.rawContent) !== (fileStates.get(primaryFile)?.saved ?? data.rawContent)
     : data && fields
     ? JSON.stringify(fields) !== JSON.stringify(savedFields) || body !== savedBody
     : false
 
-  const activeFileState = activeFile !== 'SKILL.md' ? fileStates.get(activeFile) : null
+  const activeFileState = activeFile !== primaryFile ? fileStates.get(activeFile) : null
   const otherFileDirty = activeFileState ? activeFileState.draft !== activeFileState.saved : false
 
-  const isDirty = activeFile === 'SKILL.md' ? skillMdDirty : otherFileDirty
+  const isDirty = activeFile === primaryFile ? skillMdDirty : otherFileDirty
   useUnsavedGuard(isDirty)
 
   if (isLoading || !data || !fields) {
@@ -663,9 +663,9 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
 
   function handleSave() {
     if (!isDirty || !data) return
-    if (activeFile === 'SKILL.md') {
+    if (activeFile === primaryFile) {
       const content = showRaw
-        ? (fileStates.get('SKILL.md')?.draft ?? data.rawContent)
+        ? (fileStates.get(primaryFile)?.draft ?? data.rawContent)
         : serializeSkill(fields!, body)
       saveSkillMutation.mutate(content)
       if (!showRaw) {
@@ -673,14 +673,14 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
         setSavedBody(body)
         setFileStates(prev => {
           const next = new Map(prev)
-          next.set('SKILL.md', { draft: content, saved: content })
+          next.set(primaryFile, { draft: content, saved: content })
           return next
         })
       } else {
         setFileStates(prev => {
           const next = new Map(prev)
-          const s = next.get('SKILL.md')
-          if (s) next.set('SKILL.md', { ...s, saved: s.draft })
+          const s = next.get(primaryFile)
+          if (s) next.set(primaryFile, { ...s, saved: s.draft })
           return next
         })
       }
@@ -693,12 +693,12 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
   }
 
   function handleReset() {
-    if (activeFile === 'SKILL.md') {
+    if (activeFile === primaryFile) {
       if (showRaw) {
         setFileStates(prev => {
           const next = new Map(prev)
-          const s = next.get('SKILL.md')
-          if (s) next.set('SKILL.md', { ...s, draft: s.saved })
+          const s = next.get(primaryFile)
+          if (s) next.set(primaryFile, { ...s, draft: s.saved })
           return next
         })
       } else {
@@ -806,7 +806,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
           </span>
         )}
         <div className="flex-1" />
-        {activeFile === 'SKILL.md' && (
+        {activeFile === primaryFile && (
           <button
             onClick={() => handleToggleRaw(!showRaw)}
             className={`text-xs transition-colors ${showRaw ? 'text-zinc-300' : 'text-zinc-500 hover:text-zinc-400'}`}
@@ -936,14 +936,14 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
       )}
 
       {/* ── SKILL.md editor ────────────────────────────────────────────────── */}
-      {activeFile === 'SKILL.md' && (
+      {activeFile === primaryFile && (
         <>
           {/* Raw textarea (developer mode) */}
           {showRaw && (
             <div className="flex-1 p-5 min-h-0">
               <textarea
-                value={fileStates.get('SKILL.md')?.draft ?? data.rawContent}
-                onChange={e => updateFileDraft('SKILL.md', e.target.value)}
+                value={fileStates.get(primaryFile)?.draft ?? data.rawContent}
+                onChange={e => updateFileDraft(primaryFile, e.target.value)}
                 readOnly={!isEditable}
                 className="w-full h-full bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 font-mono leading-relaxed resize-none focus:outline-none focus:border-zinc-600"
                 spellCheck={false}
@@ -1104,7 +1104,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
       )}
 
       {/* ── Other file editor ──────────────────────────────────────────────── */}
-      {activeFile !== 'SKILL.md' && (
+      {activeFile !== primaryFile && (
         <div className="flex-1 p-5 min-h-0">
           {fileStates.has(activeFile) ? (
             <textarea
