@@ -93,6 +93,9 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
           {schedule.taskName ?? '—'}
         </div>
         <div className="text-xs text-zinc-500 mt-0.5">{scheduleLabel}</div>
+        {schedule.conditions && (
+          <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
+        )}
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
         <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
@@ -409,6 +412,9 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
       <div className="flex-1 min-w-0">
         <div className="text-sm text-zinc-100 truncate">{message}</div>
         <div className="text-xs text-zinc-500 mt-0.5">{scheduleLabel}</div>
+        {schedule.conditions && (
+          <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
+        )}
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
         <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
