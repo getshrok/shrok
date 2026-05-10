@@ -460,7 +460,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
   kind: 'skill' | 'task'
 }) {
   const qc = useQueryClient()
-  const primaryFile = kind === 'task' ? 'TASK.md' : primaryFile
+  const primaryFile = kind === 'task' ? 'TASK.md' : 'SKILL.md'
 
   const { data, isLoading } = useQuery({
     queryKey: [detailQueryKey, name],
