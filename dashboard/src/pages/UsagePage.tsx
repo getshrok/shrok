@@ -423,9 +423,7 @@ export default function UsagePage() {
                             : hasCost ? 'bg-indigo-500/60' : 'bg-zinc-700'
                         }`}
                         style={{
-                          width: row.maxPerMonthUsd != null
-                            ? `${Math.min(100, (row.costUsd / row.maxPerMonthUsd) * 100)}%`
-                            : `${(row.costUsd / maxSourceCost) * 100}%`
+                          width: `${(row.costUsd / maxSourceCost) * 100}%`
                         }}
                       />
                     </div>
