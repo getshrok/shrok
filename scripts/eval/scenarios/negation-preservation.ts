@@ -101,8 +101,8 @@ The service name is "AuditCore."`,
       await runHeadQuery({ bundle: env.bundle, topicMemory: memory, router, config: env.config, identityDir: env.identityDir, workspaceDir: env.workspaceDir, query: 'Hey, quick check-in.', stubAgentRunner: true, timeoutMs: 60_000 })
       const deadline = Date.now() + 30_000
       while (Date.now() < deadline) {
-        const acquired = env.bundle.appState.tryAcquireArchivalLock()
-        if (acquired) { env.bundle.appState.releaseArchivalLock(); break }
+        const acquired = env.bundle.appState.tryAcquireArchivalLock('default')
+        if (acquired) { env.bundle.appState.releaseArchivalLock('default'); break }
         await new Promise(r => setTimeout(r, 150))
       }
       const remaining = env.bundle.messages.count()

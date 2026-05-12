@@ -994,8 +994,8 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
   const sentBefore = bundle.channelRouter.sent.length
 
   // For non-user-message events, ensure there's an active channel to send responses to
-  if (event.type !== 'user_message' && !bundle.appState.getLastActiveChannel()) {
-    bundle.appState.setLastActiveChannel('eval')
+  if (event.type !== 'user_message' && !bundle.appState.getLastActiveChannel('default')) {
+    bundle.appState.setLastActiveChannel('default', 'eval')
   }
 
   const eventPriority = event.type === 'user_message' ? PRIORITY.USER_MESSAGE

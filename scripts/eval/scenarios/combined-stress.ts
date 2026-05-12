@@ -108,8 +108,8 @@ function countTopicsInPrompt(prompt: string): number {
 async function waitForArchival(bundle: HeadBundle): Promise<void> {
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
-    const acquired = bundle.appState.tryAcquireArchivalLock()
-    if (acquired) { bundle.appState.releaseArchivalLock(); return }
+    const acquired = bundle.appState.tryAcquireArchivalLock('default')
+    if (acquired) { bundle.appState.releaseArchivalLock('default'); return }
     await new Promise(r => setTimeout(r, 150))
   }
 }

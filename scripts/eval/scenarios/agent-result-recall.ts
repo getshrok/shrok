@@ -223,8 +223,8 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       // Wait for async archival to finish
       const deadline = Date.now() + 30_000
       while (Date.now() < deadline) {
-        const acquired = bundle.appState.tryAcquireArchivalLock()
-        if (acquired) { bundle.appState.releaseArchivalLock(); break }
+        const acquired = bundle.appState.tryAcquireArchivalLock('default')
+        if (acquired) { bundle.appState.releaseArchivalLock('default'); break }
         await new Promise(r => setTimeout(r, 150))
       }
       const topics = (await memory.getTopics()).length
