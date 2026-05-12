@@ -512,7 +512,7 @@ describe('QueueStore', () => {
 
   it('enqueues and claims events', () => {
     store.enqueue(makeEvent('e1'), 100)
-    const claimed = store.claimNext()
+    const claimed = store.claimNext('default')
     expect(claimed).not.toBeNull()
     expect(claimed!.event.type).toBe('user_message')
   })
@@ -529,29 +529,29 @@ describe('QueueStore', () => {
   })
 
   it('claimNext returns null when empty', () => {
-    expect(store.claimNext()).toBeNull()
+    expect(store.claimNext('default')).toBeNull()
   })
 
   it('claims highest priority first', () => {
     store.enqueue(makeEvent('e1'), 10)
     store.enqueue(makeEvent('e2'), 100)
-    const first = store.claimNext()
+    const first = store.claimNext('default')
     expect(first!.event.id).toBe('e2')
   })
 
   it('ack marks as done', () => {
     store.enqueue(makeEvent('e3'), 10)
-    const claimed = store.claimNext()!
+    const claimed = store.claimNext('default')!
     store.ack(claimed.rowId)
     // After ack, nothing left to claim
-    expect(store.claimNext()).toBeNull()
+    expect(store.claimNext('default')).toBeNull()
   })
 
   it('requeueStale resets processing events', () => {
     store.enqueue(makeEvent('e4'), 10)
-    store.claimNext()  // leaves it in 'processing'
+    store.claimNext('default')  // leaves it in 'processing'
     store.requeueStale()
-    const claimed = store.claimNext()
+    const claimed = store.claimNext('default')
     expect(claimed).not.toBeNull()
   })
 
@@ -560,27 +560,100 @@ describe('QueueStore', () => {
     store.enqueue(makeEvent('u2'), 100)
     store.enqueue({ type: 'agent_completed', id: 'w1', agentId: 'tent_1', output: 'done', createdAt: '2025-01-01' }, 30)
 
-    const claimed = store.claimAllPendingUserMessages()
+    const claimed = store.claimAllPendingUserMessages('default')
     expect(claimed).toHaveLength(2)
     expect(claimed.every(c => c.event.type === 'user_message')).toBe(true)
     // worker event is still pending
-    const next = store.claimNext()
+    const next = store.claimNext('default')
     expect(next!.event.type).toBe('agent_completed')
   })
 
   it('claimAllPendingUserMessages returns empty when no user messages pending', () => {
     store.enqueue({ type: 'agent_completed', id: 'w1', agentId: 'tent_1', output: 'done', createdAt: '2025-01-01' }, 30)
-    expect(store.claimAllPendingUserMessages()).toHaveLength(0)
+    expect(store.claimAllPendingUserMessages('default')).toHaveLength(0)
   })
 
   it('claimAllPendingUserMessages does not re-claim already-processing events', () => {
     store.enqueue(makeEvent('u1'), 100)
-    store.claimNext()  // u1 is now 'processing'
+    store.claimNext('default')  // u1 is now 'processing'
     store.enqueue(makeEvent('u2'), 100)
 
-    const claimed = store.claimAllPendingUserMessages()
+    const claimed = store.claimAllPendingUserMessages('default')
     expect(claimed).toHaveLength(1)
     expect(claimed[0]!.event.id).toBe('u2')
+  })
+
+  // ─── Phase 29: head_id isolation (DATA-03) ──────────────────────────────────
+
+  it('claimNext(headId) never returns an event with a different head_id (DATA-03)', () => {
+    const db = freshDb()
+    const localStore = new QueueStore(db)
+    // Insert two events with explicit head_ids via direct SQL since QueueStore.enqueue does not yet accept head_id.
+    db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', ?)`)
+      .run('e-personal', 'user_message', JSON.stringify({ type: 'user_message', id: 'e-personal', channel: 'discord', text: 'p', createdAt: '2025-01-01' }), 100, 'personal')
+    db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', ?)`)
+      .run('e-work', 'user_message', JSON.stringify({ type: 'user_message', id: 'e-work', channel: 'discord', text: 'w', createdAt: '2025-01-01' }), 100, 'work')
+
+    const claimed = localStore.claimNext('personal')
+    expect(claimed).not.toBeNull()
+    expect(claimed!.event.id).toBe('e-personal')
+    // The 'work' event must still be pending.
+    const stillPending = db.prepare("SELECT id, status FROM queue_events WHERE id = 'e-work'").get() as { id: string; status: string }
+    expect(stillPending.status).toBe('pending')
+    // And claimNext('work') retrieves it.
+    const workClaim = localStore.claimNext('work')
+    expect(workClaim!.event.id).toBe('e-work')
+  })
+
+  it('claimNext(headId) returns null when no events for that head (DATA-03)', () => {
+    const db = freshDb()
+    const localStore = new QueueStore(db)
+    db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', ?)`)
+      .run('e-work', 'user_message', JSON.stringify({ type: 'user_message', id: 'e-work', channel: 'x', text: 'w', createdAt: '2025-01-01' }), 100, 'work')
+    expect(localStore.claimNext('personal')).toBeNull()
+  })
+
+  it('claimAllPendingBackground(headId) scopes to head (DATA-03)', () => {
+    const db = freshDb()
+    const localStore = new QueueStore(db)
+    const bg = (id: string, head: string) =>
+      db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', ?)`)
+        .run(id, 'agent_completed', JSON.stringify({ type: 'agent_completed', id, agentId: 't1', output: 'x', createdAt: '2025-01-01' }), 30, head)
+    bg('bg-p1', 'personal')
+    bg('bg-p2', 'personal')
+    bg('bg-w1', 'work')
+
+    const personal = localStore.claimAllPendingBackground('personal')
+    expect(personal.map(c => c.event.id).sort()).toEqual(['bg-p1', 'bg-p2'])
+    const work = localStore.claimAllPendingBackground('work')
+    expect(work.map(c => c.event.id)).toEqual(['bg-w1'])
+  })
+
+  it('claimAllPendingUserMessages(headId) scopes to head (DATA-03)', () => {
+    const db = freshDb()
+    const localStore = new QueueStore(db)
+    const um = (id: string, head: string) =>
+      db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', ?)`)
+        .run(id, 'user_message', JSON.stringify({ type: 'user_message', id, channel: 'discord', text: 't', createdAt: '2025-01-01' }), 100, head)
+    um('um-p1', 'personal')
+    um('um-w1', 'work')
+
+    const personal = localStore.claimAllPendingUserMessages('personal')
+    expect(personal.map(c => c.event.id)).toEqual(['um-p1'])
+    const work = localStore.claimAllPendingUserMessages('work')
+    expect(work.map(c => c.event.id)).toEqual(['um-w1'])
+  })
+
+  it('claimNext(headId) respects priority within the head (DATA-03)', () => {
+    const db = freshDb()
+    const localStore = new QueueStore(db)
+    const ins = (id: string, prio: number) =>
+      db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', 'personal')`)
+        .run(id, 'user_message', JSON.stringify({ type: 'user_message', id, channel: 'discord', text: 't', createdAt: '2025-01-01' }), prio)
+    ins('low', 10)
+    ins('high', 100)
+    const first = localStore.claimNext('personal')
+    expect(first!.event.id).toBe('high')
   })
 })
 

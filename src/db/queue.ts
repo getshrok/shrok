@@ -9,6 +9,7 @@ export interface QueueRow {
   status: string
   created_at: string
   processed_at: string | null
+  head_id: string
 }
 
 export interface ClaimedEvent {
@@ -34,12 +35,14 @@ export class QueueStore {
 
     // Atomic claim: update a single pending event to 'processing' and return it.
     // ORDER BY priority DESC, created_at ASC — highest priority, oldest first.
+    // Phase 29: scoped to head_id via @headId (D-03, D-04).
     this.stmtClaimNext = db.prepare(`
       UPDATE queue_events
       SET status = 'processing'
       WHERE id = (
         SELECT id FROM queue_events
         WHERE status = 'pending'
+          AND head_id = @headId
         ORDER BY priority DESC, created_at ASC
         LIMIT 1
       )
@@ -71,21 +74,25 @@ export class QueueStore {
       UPDATE queue_events SET status = 'pending' WHERE status = 'processing'
     `)
 
-    // Claim all pending background events (non-user_message) at once for coalescing.
-    // No need to exclude the already-claimed primary event — it is already 'processing'
-    // and this query only touches 'pending' rows, so there is no risk of double-claiming it.
+    // Claim all pending background events (non-user_message) for coalescing.
+    // Phase 29: scoped to head_id via @headId.
     this.stmtClaimAllBackground = db.prepare(`
       UPDATE queue_events
       SET status = 'processing'
-      WHERE status = 'pending' AND type != 'user_message'
+      WHERE status = 'pending'
+        AND type != 'user_message'
+        AND head_id = @headId
       RETURNING *
     `)
 
-    // Claim all pending user_message events at once for the batching loop.
+    // Claim all pending user_message events for the batching loop.
+    // Phase 29: scoped to head_id via @headId.
     this.stmtClaimAllUserMessages = db.prepare(`
       UPDATE queue_events
       SET status = 'processing'
-      WHERE status = 'pending' AND type = 'user_message'
+      WHERE status = 'pending'
+        AND type = 'user_message'
+        AND head_id = @headId
       RETURNING *
     `)
   }
@@ -99,9 +106,9 @@ export class QueueStore {
     })
   }
 
-  /** Atomically claim the next pending event. Returns null if queue is empty. */
-  claimNext(): ClaimedEvent | null {
-    const row = this.stmtClaimNext.get() as unknown as QueueRow | undefined
+  /** Atomically claim the next pending event for the given head. Returns null if queue is empty for that head. */
+  claimNext(headId: string): ClaimedEvent | null {
+    const row = this.stmtClaimNext.get({ headId }) as unknown as QueueRow | undefined
     if (!row) return null
     return { rowId: row.id, event: JSON.parse(row.payload) as QueueEvent }
   }
@@ -130,15 +137,15 @@ export class QueueStore {
     this.stmtRequeueStale.run()
   }
 
-  /** Claim all pending background (non-user_message) events for coalescing. */
-  claimAllPendingBackground(): ClaimedEvent[] {
-    const rows = this.stmtClaimAllBackground.all() as unknown as QueueRow[]
+  /** Claim all pending background (non-user_message) events for coalescing, scoped to head. */
+  claimAllPendingBackground(headId: string): ClaimedEvent[] {
+    const rows = this.stmtClaimAllBackground.all({ headId }) as unknown as QueueRow[]
     return rows.map(row => ({ rowId: row.id, event: JSON.parse(row.payload) as QueueEvent }))
   }
 
-  /** Claim all pending user_message events — used by the batching loop. */
-  claimAllPendingUserMessages(): ClaimedEvent[] {
-    const rows = this.stmtClaimAllUserMessages.all() as unknown as QueueRow[]
+  /** Claim all pending user_message events — used by the batching loop, scoped to head. */
+  claimAllPendingUserMessages(headId: string): ClaimedEvent[] {
+    const rows = this.stmtClaimAllUserMessages.all({ headId }) as unknown as QueueRow[]
     return rows.map(row => ({ rowId: row.id, event: JSON.parse(row.payload) as QueueEvent }))
   }
 
