@@ -102,6 +102,7 @@ function makeLoop(router: ReturnType<typeof makeRealRouter>) {
   const agentRunner = makeRunner(router, bundle.db).runner
 
   const loop = new ActivationLoop({
+    headId: 'default',
     queueStore: bundle.queue,
     messages: bundle.messages,
     appState: bundle.appState,

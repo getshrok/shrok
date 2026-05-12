@@ -604,6 +604,7 @@ function makeActivationLoopFixture() {
   const mcpRegistry = { listCapabilities: vi.fn().mockReturnValue([]), loadTools: vi.fn().mockResolvedValue([]) } as unknown as McpRegistry
 
   const loop = new ActivationLoop({
+    headId: 'default',
     queueStore,
     messages,
     appState,

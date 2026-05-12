@@ -104,6 +104,7 @@ function makeLoop(router: LLMRouter) {
   const stubRunner = { spawn: async () => {} } as any
 
   const loop = new ActivationLoop({
+    headId: 'default',
     queueStore: queue,
     messages,
     appState,

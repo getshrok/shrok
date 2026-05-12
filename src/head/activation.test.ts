@@ -180,6 +180,7 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
   } as unknown as SkillLoader
 
   const loop = new ActivationLoop({
+    headId: 'default',
     queueStore,
     messages,
     appState,

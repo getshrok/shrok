@@ -31,10 +31,10 @@ function makeCtx(overrides?: Partial<SlashCommandContext>): SlashCommandContext 
   const sent: string[] = []
   // Minimal AppStateStore mock — only methods still used by SlashCommandContext paths
   const appState = {
-    getLastActiveChannel: () => '',
-    setLastActiveChannel: vi.fn(),
-    tryAcquireArchivalLock: vi.fn().mockReturnValue(true),
-    releaseArchivalLock: vi.fn(),
+    getLastActiveChannel: (_headId: string) => '',
+    setLastActiveChannel: vi.fn((_headId: string, _id: string) => {}),
+    tryAcquireArchivalLock: vi.fn((_headId: string) => true),
+    releaseArchivalLock: vi.fn((_headId: string) => {}),
     getThresholds: vi.fn().mockReturnValue([]),
     getAllThresholdFiredAt: vi.fn().mockReturnValue({}),
   } as unknown as AppStateStore

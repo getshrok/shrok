@@ -69,6 +69,7 @@ function makeLoop(getUptimeSeconds?: () => number) {
   const stubRunner = { spawn: async () => {} } as any
 
   const loop = new ActivationLoop({
+    headId: 'default',
     queueStore: queue,
     messages,
     appState,
@@ -177,7 +178,7 @@ describe('ActivationLoop — pre-event threshold block check', () => {
     const { loop, queue, channelRouter, appState, usage, messages } = makeLoop()
 
     // Set an active channel so the block message has a destination.
-    appState.setLastActiveChannel('test-channel')
+    appState.setLastActiveChannel('default', 'test-channel')
 
     // Configure a block-action threshold at $0.01.
     appState.addThreshold({ period: 'day', amountUsd: 0.01, action: 'block' })
