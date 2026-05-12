@@ -170,6 +170,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     }
 
     const topicsBeforeLiveLoad = 0  // no pre-archival; archival fires naturally during queries
+    const topicsBeforeLiveLoadLabel = 'deferred (fires during queries)'
     console.log(`[combined-stress] Fed ${overloadSessions.reduce((n, s) => n + s.length, 0)} messages from 25 short sessions.`)
 
     // ── Load 10 dense sessions as live context (do NOT archive) ────────────────
@@ -285,10 +286,10 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     const context = `
 SCENARIO: Combined stress test.
-- 25 pre-archived topics from short sessions (${topicsBeforeLiveLoad} topics in memory before live load)
+- 25 short sessions loaded; archival deferred — fires during queries (${topicsBeforeLiveLoadLabel} topics before live load)
 - 10 dense technical sessions loaded as live context (~${tokenCount.toLocaleString()} tokens, threshold: ${threshold.toLocaleString()})
 - Archival fired ${archivalFireCount} time(s) during ${CONTINUATION_QUERIES.length} continuation queries
-- Topics in memory after run: ${topicsAfterRun} (started at ${topicsBeforeLiveLoad})
+- Topics in memory after run: ${topicsAfterRun} (started at ${topicsBeforeLiveLoadLabel})
 
 PRE-LOADED SESSION FULL CONTENT — memory-overload-08 (${overloadSession08.length} turns — half marathon training, ground truth for pre-loaded recall):
 ${overloadSession08.map(m => `[${m.role.toUpperCase()}] ${m.content}`).join('\n\n')}
