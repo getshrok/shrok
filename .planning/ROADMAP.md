@@ -138,8 +138,13 @@ Plans:
   1. Dashboard renders a head selector listing all configured heads by name
   2. Selecting a head updates the conversation view to show only messages from that head
   3. After switching heads, messages from the previously selected head are no longer visible in the conversation list
-**Plans**: TBD
+**Plans:** 1/3 plans executed
 **UI hint**: yes
+
+Plans:
+- [x] 32-01-PLAN.md — Wave 0 RED tests: src/dashboard/routes/heads.test.ts + messages.test.ts (DASH-01, DASH-02)
+- [ ] 32-02-PLAN.md — Backend: createHeadsRouter + ?head= filtering on /api/messages + DashboardServerOptions.resolvedHeads wiring (DASH-01, DASH-02)
+- [ ] 32-03-PLAN.md — Frontend: api.heads + scoped messagesQuery + useStream(currentHeadId) + ConversationsPage head pill row + manual verify (DASH-01, DASH-02)
 
 ## Progress
 
@@ -147,5 +152,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
-| 31. Adapter Registry & Config & Startup | 3/3 | Complete   | 2026-05-12 |
-| 32. Dashboard Head Selector | 0/? | Not started | - |
+| 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
+| 32. Dashboard Head Selector | 1/3 | In Progress|  |

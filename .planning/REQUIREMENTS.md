@@ -32,8 +32,8 @@
 
 ### Dashboard
 
-- [ ] **DASH-01**: Dashboard displays a head selector so the user can switch the active head context
-- [ ] **DASH-02**: Conversation view returns only messages scoped to the currently selected head
+- [x] **DASH-01**: Dashboard displays a head selector so the user can switch the active head context
+- [x] **DASH-02**: Conversation view returns only messages scoped to the currently selected head
 
 ## Future Requirements
 
@@ -75,8 +75,8 @@
 | CONF-01 | Phase 31 | Pending |
 | CONF-02 | Phase 31 | Complete |
 | CONF-03 | Phase 31 | Complete |
-| DASH-01 | Phase 32 | Pending |
-| DASH-02 | Phase 32 | Pending |
+| DASH-01 | Phase 32 | Complete |
+| DASH-02 | Phase 32 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 15 total
