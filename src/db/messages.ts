@@ -20,6 +20,7 @@ interface MessageRow {
   summary_to: string | null
   event_id: string | null
   created_at: string
+  head_id: string
 }
 
 function rowToMessage(row: MessageRow): Message {
@@ -98,7 +99,9 @@ export class MessageStore {
   private stmtGetSince: StatementSync
   private stmtGetRecentBefore: StatementSync
   private stmtDeleteByIds: StatementSync
+  // Unscoped getAll — kept ONLY for sanitizeOrphans() global scan per D-06.
   private stmtGetAll: StatementSync
+  private stmtGetAllForHead: StatementSync
   private stmtCount: StatementSync
   private stmtFindTextByAgentId: StatementSync
   private stmtUpdateTextContent: StatementSync
@@ -112,23 +115,28 @@ export class MessageStore {
     `)
 
     this.stmtGetRecent = db.prepare(`
-      SELECT * FROM messages ORDER BY created_at DESC
+      SELECT * FROM messages WHERE head_id = ? ORDER BY created_at DESC
     `)
 
     this.stmtGetSince = db.prepare(`
-      SELECT * FROM messages WHERE created_at >= ? ORDER BY created_at ASC
+      SELECT * FROM messages WHERE head_id = ? AND created_at >= ? ORDER BY created_at ASC
     `)
 
     this.stmtGetRecentBefore = db.prepare(`
-      SELECT * FROM messages WHERE created_at < ? ORDER BY created_at DESC
+      SELECT * FROM messages WHERE head_id = ? AND created_at < ? ORDER BY created_at DESC
     `)
 
     this.stmtDeleteByIds = db.prepare(`
       DELETE FROM messages WHERE id IN (SELECT value FROM json_each(?))
     `)
 
+    // Unscoped getAll — kept ONLY for sanitizeOrphans() global scan per D-06.
     this.stmtGetAll = db.prepare(`
       SELECT * FROM messages ORDER BY created_at ASC
+    `)
+
+    this.stmtGetAllForHead = db.prepare(`
+      SELECT * FROM messages WHERE head_id = ? ORDER BY created_at ASC
     `)
 
     this.stmtDeleteAll = db.prepare(`DELETE FROM messages`)
@@ -170,9 +178,9 @@ export class MessageStore {
     this.eventBus?.emit('dashboard', { type: 'message_added', payload: msg })
   }
 
-  /** Fetch most-recent messages up to tokenBudget, returned in chronological order. */
-  getRecent(tokenBudget: number): Message[] {
-    const rows = this.stmtGetRecent.all() as unknown as MessageRow[]
+  /** Fetch most-recent messages for the given head up to tokenBudget, returned in chronological order. */
+  getRecent(headId: string, tokenBudget: number): Message[] {
+    const rows = this.stmtGetRecent.all(headId) as unknown as MessageRow[]
     const selected: Message[] = []
     let used = 0
     for (const row of rows) {
@@ -185,19 +193,19 @@ export class MessageStore {
     return selected
   }
 
-  /** All current in-context messages, in chronological order. */
-  getAll(): Message[] {
-    return (this.stmtGetAll.all() as unknown as MessageRow[]).map(rowToMessage)
+  /** All in-context messages for the given head, in chronological order. */
+  getAll(headId: string): Message[] {
+    return (this.stmtGetAllForHead.all(headId) as unknown as MessageRow[]).map(rowToMessage)
   }
 
-  /** All messages with created_at >= datetime, in chronological order. */
-  getSince(datetime: string): Message[] {
-    return (this.stmtGetSince.all(datetime) as unknown as MessageRow[]).map(rowToMessage)
+  /** All messages for the given head with created_at >= datetime, in chronological order. */
+  getSince(headId: string, datetime: string): Message[] {
+    return (this.stmtGetSince.all(headId, datetime) as unknown as MessageRow[]).map(rowToMessage)
   }
 
-  /** Messages before `before`, newest-to-oldest, up to tokenBudget. Returns in chronological order. */
-  getRecentBefore(before: string, tokenBudget: number): Message[] {
-    const rows = this.stmtGetRecentBefore.all(before) as unknown as MessageRow[]
+  /** Messages for the given head before `before`, newest-to-oldest, up to tokenBudget. Returns in chronological order. */
+  getRecentBefore(headId: string, before: string, tokenBudget: number): Message[] {
+    const rows = this.stmtGetRecentBefore.all(headId, before) as unknown as MessageRow[]
     const selected: Message[] = []
     let used = 0
     for (const row of rows) {
@@ -280,23 +288,23 @@ export class MessageStore {
     return (this.stmtCount.get() as { n: number }).n
   }
 
-  /** Returns the N most recent non-injected text messages (user + assistant), newest first. */
-  getRecentText(limit: number): Message[] {
+  /** Returns the N most recent non-injected text messages for the given head (user + assistant), newest first. */
+  getRecentText(headId: string, limit: number): Message[] {
     return (this.db.prepare(
-      "SELECT * FROM messages WHERE kind = 'text' AND injected = 0 ORDER BY created_at DESC LIMIT ?"
-    ).all(limit) as unknown as MessageRow[]).map(rowToMessage)
+      "SELECT * FROM messages WHERE head_id = ? AND kind = 'text' AND injected = 0 ORDER BY created_at DESC LIMIT ?"
+    ).all(headId, limit) as unknown as MessageRow[]).map(rowToMessage)
   }
 
-  /** Returns recent non-injected text messages fitting within a token budget, newest first. */
-  getRecentTextByTokens(tokenBudget: number, estimateTokensFn: (msgs: Message[]) => number): Message[] {
+  /** Returns recent non-injected text messages for the given head fitting within a token budget, newest first. */
+  getRecentTextByTokens(headId: string, tokenBudget: number, estimateTokensFn: (msgs: Message[]) => number): Message[] {
     const batchSize = 10
     let offset = 0
     const result: Message[] = []
     let totalTokens = 0
     while (totalTokens < tokenBudget) {
       const batch = (this.db.prepare(
-        "SELECT * FROM messages WHERE kind = 'text' AND injected = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?"
-      ).all(batchSize, offset) as unknown as MessageRow[]).map(rowToMessage)
+        "SELECT * FROM messages WHERE head_id = ? AND kind = 'text' AND injected = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?"
+      ).all(headId, batchSize, offset) as unknown as MessageRow[]).map(rowToMessage)
       if (batch.length === 0) break
       for (const msg of batch) {
         const msgTokens = estimateTokensFn([msg])

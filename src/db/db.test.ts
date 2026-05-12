@@ -142,7 +142,7 @@ describe('MessageStore', () => {
 
   it('appends and retrieves text messages', () => {
     store.append(textMsg)
-    const msgs = store.getRecent(10_000)
+    const msgs = store.getRecent('default', 10_000)
     expect(msgs).toHaveLength(1)
     const m = msgs[0] as TextMessage
     expect(m.kind).toBe('text')
@@ -169,7 +169,7 @@ describe('MessageStore', () => {
       createdAt: '2025-01-01T00:00:01Z',
     }
     store.append(msg)
-    const msgs = store.getRecent(10_000)
+    const msgs = store.getRecent('default', 10_000)
     expect(msgs[0]?.kind).toBe('tool_call')
   })
 
@@ -180,7 +180,7 @@ describe('MessageStore', () => {
       createdAt: '2025-01-01T00:00:02Z',
     }
     store.append(msg)
-    const msgs = store.getRecent(10_000)
+    const msgs = store.getRecent('default', 10_000)
     expect(msgs[0]?.kind).toBe('tool_result')
   })
 
@@ -195,14 +195,14 @@ describe('MessageStore', () => {
       })
     }
     // Budget fits at most 3 messages
-    const msgs = store.getRecent(costPerMsg * 3)
+    const msgs = store.getRecent('default', costPerMsg * 3)
     expect(msgs.length).toBeLessThanOrEqual(3)
   })
 
   it('getSince returns only messages at or after the datetime', () => {
     store.append({ kind: 'text', id: 'early', role: 'user', content: 'early', createdAt: '2025-01-01T00:00:00Z' })
     store.append({ kind: 'text', id: 'late', role: 'user', content: 'late', createdAt: '2025-01-02T00:00:00Z' })
-    const msgs = store.getSince('2025-01-02T00:00:00Z')
+    const msgs = store.getSince('default', '2025-01-02T00:00:00Z')
     expect(msgs).toHaveLength(1)
     expect(msgs[0]?.id).toBe('late')
   })
@@ -210,7 +210,7 @@ describe('MessageStore', () => {
   it('getRecentBefore returns messages before datetime', () => {
     store.append({ kind: 'text', id: 'a', role: 'user', content: 'a', createdAt: '2025-01-01T00:00:00Z' })
     store.append({ kind: 'text', id: 'b', role: 'user', content: 'b', createdAt: '2025-01-02T00:00:00Z' })
-    const msgs = store.getRecentBefore('2025-01-02T00:00:00Z', 10_000)
+    const msgs = store.getRecentBefore('default', '2025-01-02T00:00:00Z', 10_000)
     expect(msgs).toHaveLength(1)
     expect(msgs[0]?.id).toBe('a')
   })
@@ -225,7 +225,7 @@ describe('MessageStore', () => {
       ],
     }
     store.append(msg)
-    const msgs = store.getRecent(100_000)
+    const msgs = store.getRecent('default', 100_000)
     const m = msgs[0] as TextMessage
     expect(m.attachments).toHaveLength(2)
     expect(m.attachments![0]!.type).toBe('image')
@@ -236,7 +236,7 @@ describe('MessageStore', () => {
 
   it('message without attachments has no attachments key', () => {
     store.append({ kind: 'text', id: 'msg-noatt', role: 'user', content: 'plain', createdAt: '2025-01-01T00:00:10Z' })
-    const msgs = store.getRecent(100_000)
+    const msgs = store.getRecent('default', 100_000)
     const m = msgs[0] as TextMessage
     expect(m.attachments).toBeUndefined()
   })
@@ -249,9 +249,115 @@ describe('MessageStore', () => {
       createdAt: '2025-01-01T00:01:00Z',
     }
     store.replaceWithSummary(['msg-x'], summary)
-    const msgs = store.getRecent(10_000)
+    const msgs = store.getRecent('default', 10_000)
     expect(msgs).toHaveLength(1)
     expect(msgs[0]?.kind).toBe('summary')
+  })
+
+  // ─── Phase 29: head_id isolation (DATA-04) ──────────────────────────────────
+
+  function insertWithHead(db: ReturnType<typeof freshDb>, id: string, head: string, content: string, createdAt: string): void {
+    db.prepare(
+      "INSERT INTO messages (id, kind, role, content, injected, head_id, created_at) VALUES (?, 'text', 'user', ?, 0, ?, ?)"
+    ).run(id, content, head, createdAt)
+  }
+
+  it('getRecent(headId) returns only messages for that head (DATA-04)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    insertWithHead(db, 'p1', 'personal', 'p-one', '2025-01-01T00:00:00Z')
+    insertWithHead(db, 'p2', 'personal', 'p-two', '2025-01-01T00:00:01Z')
+    insertWithHead(db, 'w1', 'work',     'w-one', '2025-01-01T00:00:02Z')
+
+    const personal = localStore.getRecent('personal', 1_000_000)
+    expect(personal.map(m => m.id).sort()).toEqual(['p1', 'p2'])
+    const work = localStore.getRecent('work', 1_000_000)
+    expect(work.map(m => m.id)).toEqual(['w1'])
+  })
+
+  it('getAll(headId) returns only messages for that head (DATA-04)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    insertWithHead(db, 'p1', 'personal', 'p', '2025-01-01T00:00:00Z')
+    insertWithHead(db, 'w1', 'work', 'w', '2025-01-01T00:00:01Z')
+    expect(localStore.getAll('personal').map(m => m.id)).toEqual(['p1'])
+    expect(localStore.getAll('work').map(m => m.id)).toEqual(['w1'])
+  })
+
+  it('getSince(headId, datetime) returns only messages for that head (DATA-04)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    insertWithHead(db, 'p-early', 'personal', 'early', '2025-01-01T00:00:00Z')
+    insertWithHead(db, 'p-late', 'personal', 'late', '2025-01-02T00:00:00Z')
+    insertWithHead(db, 'w-late', 'work', 'wlate', '2025-01-02T00:00:00Z')
+    const msgs = localStore.getSince('personal', '2025-01-02T00:00:00Z')
+    expect(msgs.map(m => m.id)).toEqual(['p-late'])
+  })
+
+  it('getRecentBefore(headId, before, budget) returns only messages for that head (DATA-04)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    insertWithHead(db, 'p-a', 'personal', 'a', '2025-01-01T00:00:00Z')
+    insertWithHead(db, 'p-b', 'personal', 'b', '2025-01-02T00:00:00Z')
+    insertWithHead(db, 'w-a', 'work', 'wa', '2025-01-01T00:00:00Z')
+    const msgs = localStore.getRecentBefore('personal', '2025-01-02T00:00:00Z', 1_000_000)
+    expect(msgs.map(m => m.id)).toEqual(['p-a'])
+  })
+
+  it('getRecentText(headId, limit) returns only text messages for that head (DATA-04)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    insertWithHead(db, 'p1', 'personal', 'p-one', '2025-01-01T00:00:00Z')
+    insertWithHead(db, 'w1', 'work', 'w-one', '2025-01-01T00:00:01Z')
+    const msgs = localStore.getRecentText('personal', 10)
+    expect(msgs.map(m => m.id)).toEqual(['p1'])
+  })
+
+  it('getRecentTextByTokens(headId, budget, fn) returns only text messages for that head (DATA-04)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    insertWithHead(db, 'p1', 'personal', 'p-one', '2025-01-01T00:00:00Z')
+    insertWithHead(db, 'w1', 'work', 'w-one', '2025-01-01T00:00:01Z')
+    const msgs = localStore.getRecentTextByTokens('personal', 10_000, estimateTokens)
+    expect(msgs.map(m => m.id)).toEqual(['p1'])
+  })
+
+  it('sanitizeOrphans() remains global — sees orphans across heads (D-06)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    // Insert an orphan tool_call under head 'work' (no following tool_result).
+    db.prepare(
+      "INSERT INTO messages (id, kind, content, tool_calls, injected, head_id, created_at) VALUES ('orphan-tc', 'tool_call', '', ?, 0, 'work', '2025-01-01T00:00:00Z')"
+    ).run(JSON.stringify([{ id: 'tc1', name: 'bash', input: { cmd: 'ls' } }]))
+    // Insert a benign text message under 'personal' so the store is not empty.
+    insertWithHead(db, 'p1', 'personal', 'hi', '2025-01-01T00:00:01Z')
+    const removed = localStore.sanitizeOrphans()
+    expect(removed).toBe(1)
+    // Verify orphan is gone, personal text remains.
+    const remaining = db.prepare('SELECT id FROM messages').all() as { id: string }[]
+    expect(remaining.map(r => r.id)).toEqual(['p1'])
+  })
+
+  it('count() remains global across heads (D-06)', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    insertWithHead(db, 'p1', 'personal', 'p', '2025-01-01T00:00:00Z')
+    insertWithHead(db, 'w1', 'work', 'w', '2025-01-01T00:00:01Z')
+    expect(localStore.count()).toBe(2)
+  })
+
+  it('getRecent(headId, budget) still respects token budget within head scope', () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    const sample: TextMessage = { kind: 'text', id: 'sample', role: 'user', content: '12345678901234567890', createdAt: '2025-01-01T00:00:00Z' }
+    const costPerMsg = estimateTokens([sample])
+    for (let i = 0; i < 5; i++) {
+      insertWithHead(db, `p-${i}`, 'personal', '12345678901234567890', `2025-01-01T00:00:0${i}Z`)
+    }
+    insertWithHead(db, 'w-x', 'work', '12345678901234567890', '2025-01-01T00:00:09Z')
+    const msgs = localStore.getRecent('personal', costPerMsg * 2)
+    expect(msgs.length).toBeLessThanOrEqual(2)
+    expect(msgs.every(m => m.id.startsWith('p-'))).toBe(true)
   })
 })
 
