@@ -428,6 +428,7 @@ async function main() {
     mcpRegistry,
     agentRunner,
     appState,
+    resolvedHeads,
   })
   await dashboard.start()
   log.info(`[startup] Dashboard listening on port ${config.dashboardPort}`)

@@ -6,7 +6,7 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import type { Server } from 'node:http'
-import type { Config } from '../config.js'
+import type { Config, ResolvedHead } from '../config.js'
 import type { MessageStore } from '../db/messages.js'
 import type { AgentStore } from '../db/agents.js'
 import type { UsageStore } from '../db/usage.js'
@@ -15,6 +15,7 @@ import type { DashboardEventBus } from './events.js'
 import { TokenStore, sessionMiddleware, requireSameOrigin } from './auth.js'
 import { createAuthRouter } from './routes/auth.js'
 import { createMessagesRouter } from './routes/messages.js'
+import { createHeadsRouter } from './routes/heads.js'
 import { createStewardRunsRouter } from './routes/steward_runs.js'
 import { createUsageRouter } from './routes/usage.js'
 import { createStreamRouter } from './routes/stream.js'
@@ -85,6 +86,10 @@ export interface DashboardServerOptions {
   mcpRegistry?: McpRegistry
   agentRunner?: AgentRunner
   appState?: import('../db/app_state.js').AppStateStore
+  /** Phase 32 (D-08): canonical head list for /api/heads. When omitted,
+   *  the server falls back to a single synthetic 'default' head so legacy
+   *  callers and tests that don't pass this option keep working. */
+  resolvedHeads?: ResolvedHead[]
 }
 
 export class DashboardServer {
@@ -138,6 +143,7 @@ export class DashboardServer {
     // API routes
     app.use('/api/auth', createAuthRouter(this.tokenStore, config))
     app.use('/api/messages', createMessagesRouter(messages, this.opts.channelAdapter, path.join(config.workspacePath.replace(/^~/, os.homedir()), 'media')))
+    app.use('/api/heads', createHeadsRouter(this.opts.resolvedHeads ?? [{ id: 'default', channels: [] }]))
     app.use('/api/steward-runs', createStewardRunsRouter(stewardRuns))
     app.use('/api/usage', createUsageRouter(this.opts.usage, config.timezone, this.opts.appState, this.opts.events, this.opts.unifiedLoader))
     app.use('/api/stream', createStreamRouter(events))
