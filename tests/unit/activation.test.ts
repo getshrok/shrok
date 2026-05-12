@@ -221,3 +221,141 @@ describe('ActivationLoop — pre-event threshold block check', () => {
     expect((loop as any).running).toBe(false)
   })
 })
+
+// ─── Per-head isolation helper ─────────────────────────────────────────────────
+
+function makeLoopWithHeadId(
+  bundle: ReturnType<typeof makeHeadBundle>,
+  router: LLMRouter,
+  headId: string,
+): ActivationLoop {
+  const { messages, workers: agents, queue, usage, appState, schedules, channelRouter, tx } = bundle
+  const skillLoader = makeSkillLoader()
+  const mcpRegistry = makeMcpRegistry()
+  const identityLoader = makeIdentityLoader('You are Shrok.')
+  const stubTopicMemory = {
+    chunk: async () => {},
+    retrieve: async () => [],
+    compact: async () => {},
+    getTopics: async () => [],
+    deleteTopic: async () => {},
+  } as unknown as Memory
+  const config = {
+    contextWindowTokens: 200_000,
+    archivalThresholdFraction: 0.99,
+    llmMaxTokens: 4096,
+    contextAssemblyTokenBudget: 50_000,
+    timezone: 'UTC',
+  } as import('../../src/config.js').Config
+  const assembler = new ContextAssemblerImpl(
+    identityLoader, messages, agents, skillLoader, config, mcpRegistry,
+  )
+  const injector = new InjectorImpl(messages)
+  const stubRunner = { spawn: async () => {} } as any
+  return new ActivationLoop({
+    headId,
+    queueStore: queue,
+    messages,
+    appState,
+    usageStore: usage,
+    topicMemory: stubTopicMemory,
+    agentStore: agents,
+    llmRouter: router,
+    channelRouter,
+    assembler,
+    injector,
+    toolExecutorOpts: {
+      agentRunner: stubRunner,
+      scheduleStore: schedules,
+      skillLoader,
+      topicMemory: stubTopicMemory,
+      usageStore: usage,
+      identityDir: '/tmp',
+      identityLoader,
+      messages,
+    } as any,
+    config,
+    scheduleStore: schedules,
+    mcpRegistry,
+    transaction: tx,
+    pollIntervalMs: 50,
+  })
+}
+
+// ─── Per-head isolation tests (Phase 30 CORE-01) ─────────────────────────────
+
+describe('ActivationLoop — per-head isolation (Phase 30 CORE-01)', () => {
+  it('two loops on the same DB only claim events for their own head', async () => {
+    const router = makeStubRouter()
+    const bundle = makeHeadBundle(router)
+    const { queue, db } = bundle
+
+    const personalLoop = makeLoopWithHeadId(bundle, router, 'personal')
+    const workLoop = makeLoopWithHeadId(bundle, router, 'work')
+
+    // Insert queue_events rows directly with explicit head_id so we control the column.
+    const personalEventJson = JSON.stringify({
+      type: 'user_message',
+      id: 'ev-personal-1',
+      channel: 'test-personal',
+      text: 'hello personal',
+      createdAt: new Date().toISOString(),
+    })
+    const workEventJson = JSON.stringify({
+      type: 'user_message',
+      id: 'ev-work-1',
+      channel: 'test-work',
+      text: 'hello work',
+      createdAt: new Date().toISOString(),
+    })
+    db.prepare(`
+      INSERT INTO queue_events (id, type, payload, priority, status, head_id)
+      VALUES (?, ?, ?, ?, 'pending', ?)
+    `).run('ev-personal-1', 'user_message', personalEventJson, 100, 'personal')
+    db.prepare(`
+      INSERT INTO queue_events (id, type, payload, priority, status, head_id)
+      VALUES (?, ?, ?, ?, 'pending', ?)
+    `).run('ev-work-1', 'user_message', workEventJson, 100, 'work')
+
+    // Personal loop claims only the personal row.
+    const personalClaimed = queue.claimNext('personal')
+    expect(personalClaimed?.event.id).toBe('ev-personal-1')
+    expect(queue.claimNext('personal')).toBeNull()
+
+    // Work loop sees its own row still pending.
+    const workClaimed = queue.claimNext('work')
+    expect(workClaimed?.event.id).toBe('ev-work-1')
+    expect(queue.claimNext('work')).toBeNull()
+
+    personalLoop.stop()
+    workLoop.stop()
+  })
+
+  it('appState.lastActiveChannel set under one head is invisible to another', () => {
+    const router = makeStubRouter()
+    const bundle = makeHeadBundle(router)
+    const { appState } = bundle
+
+    appState.setLastActiveChannel('personal', 'discord-personal')
+    appState.setLastActiveChannel('work', 'telegram-work')
+
+    expect(appState.getLastActiveChannel('personal')).toBe('discord-personal')
+    expect(appState.getLastActiveChannel('work')).toBe('telegram-work')
+  })
+
+  it('archival lock acquired under one head does not block another', () => {
+    const router = makeStubRouter()
+    const bundle = makeHeadBundle(router)
+    const { appState } = bundle
+
+    expect(appState.tryAcquireArchivalLock('personal')).toBe(true)
+    expect(appState.tryAcquireArchivalLock('personal')).toBe(false)
+    // 'work' is independent even though 'personal' is held
+    expect(appState.tryAcquireArchivalLock('work')).toBe(true)
+
+    appState.releaseArchivalLock('personal')
+    expect(appState.tryAcquireArchivalLock('personal')).toBe(true)
+    // 'work' still held
+    expect(appState.tryAcquireArchivalLock('work')).toBe(false)
+  })
+})
