@@ -66,6 +66,11 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
           enqueued = true
         } else {
           const eventId = `qe_sched_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+          // NOTE (WR-03): headId is omitted here, so enqueue() defaults to 'default'.
+          // This is intentional: ScheduleStore is shared and instantiated from the
+          // primary/default head's stores (src/index.ts). All schedules therefore
+          // belong to the default head. When per-head scheduling is introduced,
+          // the Scheduler constructor should accept a headId and pass it here.
           this.queueStore.enqueue(
             {
               type: 'schedule_trigger',
