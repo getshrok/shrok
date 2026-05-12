@@ -21,14 +21,14 @@
 
 ### Adapter Registry
 
-- [ ] **ADPT-01**: Channel adapters accept a `headId` config field and stamp it on every inbound event they enqueue
-- [ ] **ADPT-02**: Multiple adapter instances of the same vendor type can be registered with distinct IDs (e.g., `telegram-personal`, `telegram-work`)
+- [x] **ADPT-01**: Channel adapters accept a `headId` config field and stamp it on every inbound event they enqueue
+- [x] **ADPT-02**: Multiple adapter instances of the same vendor type can be registered with distinct IDs (e.g., `telegram-personal`, `telegram-work`)
 
 ### Config & Startup
 
 - [ ] **CONF-01**: `config.json` accepts a `heads` array where each entry has an `id` and a `channels` list of adapter IDs
-- [ ] **CONF-02**: When no `heads` array is configured, a single implicit `default` head is used (backward compatible with all existing deployments)
-- [ ] **CONF-03**: Startup creates one `ActivationLoop` and one `ChannelRouter` per configured head
+- [x] **CONF-02**: When no `heads` array is configured, a single implicit `default` head is used (backward compatible with all existing deployments)
+- [x] **CONF-03**: Startup creates one `ActivationLoop` and one `ChannelRouter` per configured head
 
 ### Dashboard
 
@@ -70,11 +70,11 @@
 | CORE-02 | Phase 30 | Complete |
 | CORE-03 | Phase 30 | Complete |
 | CORE-04 | Phase 30 | Complete |
-| ADPT-01 | Phase 31 | Pending |
-| ADPT-02 | Phase 31 | Pending |
+| ADPT-01 | Phase 31 | Complete |
+| ADPT-02 | Phase 31 | Complete |
 | CONF-01 | Phase 31 | Pending |
-| CONF-02 | Phase 31 | Pending |
-| CONF-03 | Phase 31 | Pending |
+| CONF-02 | Phase 31 | Complete |
+| CONF-03 | Phase 31 | Complete |
 | DASH-01 | Phase 32 | Pending |
 | DASH-02 | Phase 32 | Pending |
 

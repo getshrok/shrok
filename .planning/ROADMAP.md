@@ -77,7 +77,7 @@ Plans:
 
 - [x] **Phase 29: Data Layer** — Migrations add `head_id` to queue and message tables; store queries filter by head (completed 2026-05-12)
 - [x] **Phase 30: Core Activation** — ActivationLoop parameterized by headId; AppStateStore namespaced; per-head ChannelRouter (completed 2026-05-12)
-- [ ] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head
+- [x] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head (completed 2026-05-12)
 - [ ] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head
 
 ## Phase Details
@@ -123,7 +123,12 @@ Plans:
   2. Every event enqueued by an adapter carries the `head_id` the adapter is configured for
   3. A `config.json` with no `heads` array starts a single implicit `default` head — existing deployments unchanged
   4. Startup creates exactly one `ActivationLoop` and one `ChannelRouter` per entry in the `heads` array
-**Plans**: TBD
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 31-01-PLAN.md — ConfigSchema heads[] discriminated union + resolveHeads() helper + config.test.ts coverage (CONF-01, CONF-02)
+- [x] 31-02-PLAN.md — All 7 adapters gain headId+id constructor params; QueueStore.enqueue threads head_id; SystemDeps.headId; src/index.ts call-site updates + ADPT unit tests (ADPT-01, ADPT-02)
+- [x] 31-03-PLAN.md — src/index.ts multi-head startup loop (one ChannelRouter+ActivationLoop per resolved head); extractSecretValues walks heads[]; multi-head-startup integration test (CONF-03, ADPT-01, ADPT-02, CONF-02)
 
 ### Phase 32: Dashboard Head Selector
 **Goal**: Users can switch between heads in the dashboard and see only that head's conversation history
@@ -142,5 +147,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
-| 31. Adapter Registry & Config & Startup | 0/? | Not started | - |
+| 31. Adapter Registry & Config & Startup | 3/3 | Complete   | 2026-05-12 |
 | 32. Dashboard Head Selector | 0/? | Not started | - |
