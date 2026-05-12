@@ -656,7 +656,7 @@ describe('QueueStore', () => {
   it('requeueStale resets processing events', () => {
     store.enqueue(makeEvent('e4'), 10)
     store.claimNext('default')  // leaves it in 'processing'
-    store.requeueStale()
+    store.requeueStale('default')
     const claimed = store.claimNext('default')
     expect(claimed).not.toBeNull()
   })

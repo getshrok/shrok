@@ -51,7 +51,7 @@ describe('QueueStore.requeueStale', () => {
     expect(claimed).not.toBeNull()
 
     // Simulate crash recovery — do not ack; call requeueStale
-    queue.requeueStale()
+    queue.requeueStale('default')
 
     // Now it should be claimable again
     const reclaimed = queue.claimNext('default')
@@ -65,7 +65,7 @@ describe('QueueStore.requeueStale', () => {
     const claimed = queue.claimNext('default')!
     queue.ack(claimed.rowId)
 
-    queue.requeueStale()
+    queue.requeueStale('default')
 
     // Queue is empty — nothing was re-enqueued
     expect(queue.claimNext('default')).toBeNull()
@@ -77,7 +77,7 @@ describe('QueueStore.requeueStale', () => {
     queue.enqueue(userMsg('second'), PRIORITY.USER_MESSAGE)
 
     // Don't claim anything — both stay pending
-    queue.requeueStale()
+    queue.requeueStale('default')
 
     // Both still claimable in order
     const first = queue.claimNext('default')

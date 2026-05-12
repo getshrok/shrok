@@ -242,7 +242,7 @@ async function main() {
     const { queue: headQueue, appState, messages: headMessages, agents: headAgents } = headSystem.stores
 
     // Startup recovery, per head
-    headQueue.requeueStale()
+    headQueue.requeueStale(head.id)
     appState.releaseArchivalLock(head.id)
 
     const orphans = headMessages.sanitizeOrphans()

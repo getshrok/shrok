@@ -70,8 +70,11 @@ export class QueueStore {
     `)
 
     // Reset stuck 'processing' events back to 'pending' on startup recovery.
+    // Phase 31: scoped to head_id so each head only resets its own stale events
+    // (prevents cross-head phantom re-deliveries in multi-head deployments).
     this.stmtRequeueStale = db.prepare(`
-      UPDATE queue_events SET status = 'pending' WHERE status = 'processing'
+      UPDATE queue_events SET status = 'pending'
+      WHERE status = 'processing' AND head_id = @headId
     `)
 
     // Claim all pending background events (non-user_message) for coalescing.
@@ -135,9 +138,10 @@ export class QueueStore {
     this.stmtRelease.run(rowId)
   }
 
-  /** Startup recovery: reset any events stuck in 'processing' from a prior crash. */
-  requeueStale(): void {
-    this.stmtRequeueStale.run()
+  /** Startup recovery: reset any events stuck in 'processing' from a prior crash.
+   *  Scoped to the owning head so multi-head startups don't cross-reset each other. */
+  requeueStale(headId: string): void {
+    this.stmtRequeueStale.run({ headId })
   }
 
   /** Claim all pending background (non-user_message) events for coalescing, scoped to head. */
