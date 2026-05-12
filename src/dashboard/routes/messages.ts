@@ -11,8 +11,12 @@ import { estimateTokens } from '../../db/token.js'
 export function createMessagesRouter(messages: MessageStore, channelAdapter?: DashboardChannelAdapter, mediaDir?: string): Router {
   const router = Router()
 
-  router.get('/', requireAuth, (_req: Request, res: Response): void => {
-    const all = messages.getAll('default')
+  router.get('/', requireAuth, (req: Request, res: Response): void => {
+    // Phase 32 (DASH-02 / D-05): scope to ?head=<id>; default to 'default' for
+    // backward compatibility. typeof guard rejects array-parsed values from
+    // repeated ?head=a&head=b queries (Pitfall: prepared-statement type error).
+    const headId = typeof req.query['head'] === 'string' ? req.query['head'] : 'default'
+    const all = messages.getAll(headId)
     const withTokens = all.map(m => ({ ...m, tokens: estimateTokens([m]) }))
     res.json({ messages: withTokens })
   })
