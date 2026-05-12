@@ -378,9 +378,32 @@ const SECRET_FIELDS = [
 
 /** Extract populated secret string values from a Config for log redaction registration. */
 export function extractSecretValues(config: Config): string[] {
-  return SECRET_FIELDS
-    .map(f => config[f])
-    .filter((v): v is string => typeof v === 'string' && v.length >= 8)
+  const out: string[] = []
+  // Flat top-level secrets (legacy and zero-config path).
+  for (const f of SECRET_FIELDS) {
+    const v = config[f]
+    if (typeof v === 'string' && v.length >= 8) out.push(v)
+  }
+  // Phase 31 (CONF-01): walk heads[].channels and pull every inline credential.
+  // The discriminated union shape guarantees the credential field names per vendor.
+  if (config.heads) {
+    for (const head of config.heads) {
+      for (const ch of head.channels) {
+        const candidates: (string | undefined)[] = []
+        switch (ch.vendor) {
+          case 'telegram':  candidates.push(ch.botToken, ch.chatId); break
+          case 'discord':   candidates.push(ch.botToken, ch.channelId); break
+          case 'slack':     candidates.push(ch.botToken, ch.appToken, ch.channelId); break
+          case 'whatsapp':  candidates.push(ch.allowedJid); break
+          case 'zoho-cliq': candidates.push(ch.clientId, ch.clientSecret, ch.refreshToken, ch.chatId); break
+        }
+        for (const v of candidates) {
+          if (typeof v === 'string' && v.length >= 8) out.push(v)
+        }
+      }
+    }
+  }
+  return out
 }
 
 /**
