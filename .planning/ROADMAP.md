@@ -78,7 +78,7 @@ Plans:
 - [x] **Phase 29: Data Layer** — Migrations add `head_id` to queue and message tables; store queries filter by head (completed 2026-05-12)
 - [x] **Phase 30: Core Activation** — ActivationLoop parameterized by headId; AppStateStore namespaced; per-head ChannelRouter (completed 2026-05-12)
 - [x] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head (completed 2026-05-12)
-- [ ] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head
+- [x] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head (completed 2026-05-12)
 
 ## Phase Details
 
@@ -138,13 +138,13 @@ Plans:
   1. Dashboard renders a head selector listing all configured heads by name
   2. Selecting a head updates the conversation view to show only messages from that head
   3. After switching heads, messages from the previously selected head are no longer visible in the conversation list
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 **UI hint**: yes
 
 Plans:
 - [x] 32-01-PLAN.md — Wave 0 RED tests: src/dashboard/routes/heads.test.ts + messages.test.ts (DASH-01, DASH-02)
 - [x] 32-02-PLAN.md — Backend: createHeadsRouter + ?head= filtering on /api/messages + DashboardServerOptions.resolvedHeads wiring (DASH-01, DASH-02)
-- [ ] 32-03-PLAN.md — Frontend: api.heads + scoped messagesQuery + useStream(currentHeadId) + ConversationsPage head pill row + manual verify (DASH-01, DASH-02)
+- [x] 32-03-PLAN.md — Frontend: api.heads + scoped messagesQuery + useStream(currentHeadId) + ConversationsPage head pill row + manual verify (DASH-01, DASH-02)
 
 ## Progress
 
@@ -153,4 +153,4 @@ Plans:
 | 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
 | 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
-| 32. Dashboard Head Selector | 2/3 | In Progress|  |
+| 32. Dashboard Head Selector | 3/3 | Complete   | 2026-05-12 |
