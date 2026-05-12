@@ -154,8 +154,15 @@ export class QueueStore {
     this.db.exec('DELETE FROM queue_events')
   }
 
-  /** Non-destructive check — returns true if any pending or processing events exist. */
-  hasPending(): boolean {
+  /** Non-destructive check — returns true if any pending or processing events exist.
+   *  Pass a headId to scope the check to a single head. */
+  hasPending(headId?: string): boolean {
+    if (headId !== undefined) {
+      const row = this.db.prepare(
+        "SELECT COUNT(*) as n FROM queue_events WHERE status IN ('pending', 'processing') AND head_id = ?"
+      ).get(headId) as { n: number }
+      return row.n > 0
+    }
     const row = this.db.prepare(
       "SELECT COUNT(*) as n FROM queue_events WHERE status IN ('pending', 'processing')"
     ).get() as { n: number }

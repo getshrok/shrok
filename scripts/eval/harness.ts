@@ -1016,13 +1016,13 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
       await new Promise<void>(resolve => setTimeout(resolve, 300))
-      if (!bundle.queue.hasPending()) {
+      if (!bundle.queue.hasPending('default')) {
         if (!opts.stubAgentRunner) {
           const remainingMs = Math.min(deadline - Date.now(), 60_000)
           if (remainingMs > 0) await agentRunner.awaitAll(remainingMs)
         }
         await new Promise<void>(resolve => setTimeout(resolve, 600))
-        if (!bundle.queue.hasPending()) {
+        if (!bundle.queue.hasPending('default')) {
           loop.stop()
           break
         }
