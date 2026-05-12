@@ -103,6 +103,8 @@ export class MessageStore {
   private stmtGetAll: StatementSync
   private stmtGetAllForHead: StatementSync
   private stmtCount: StatementSync
+  private stmtCountForHead: StatementSync
+  private stmtDeleteAllForHead: StatementSync
   private stmtFindTextByAgentId: StatementSync
   private stmtUpdateTextContent: StatementSync
   private stmtUpdateAttachments: StatementSync
@@ -141,6 +143,8 @@ export class MessageStore {
 
     this.stmtDeleteAll = db.prepare(`DELETE FROM messages`)
     this.stmtCount = db.prepare(`SELECT COUNT(*) AS n FROM messages`)
+    this.stmtCountForHead = db.prepare(`SELECT COUNT(*) AS n FROM messages WHERE head_id = ?`)
+    this.stmtDeleteAllForHead = db.prepare(`DELETE FROM messages WHERE head_id = ?`)
 
     this.stmtFindTextByAgentId = db.prepare(`
       SELECT id, content FROM messages
@@ -286,6 +290,16 @@ export class MessageStore {
 
   count(): number {
     return (this.stmtCount.get() as { n: number }).n
+  }
+
+  /** Count messages for a single head — use instead of count() when head isolation matters. */
+  countForHead(headId: string): number {
+    return (this.stmtCountForHead.get(headId) as { n: number }).n
+  }
+
+  /** Delete all messages for a single head. */
+  deleteAllForHead(headId: string): void {
+    this.stmtDeleteAllForHead.run(headId)
   }
 
   /** Returns the N most recent non-injected text messages for the given head (user + assistant), newest first. */

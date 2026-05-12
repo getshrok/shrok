@@ -198,7 +198,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     console.log(`[agent-relay:${relayVariant.name}] Seeding 15 prior agent completion cycles...`)
     seedPriorHistory(env.bundle.messages, 'system')
-    const priorCount = env.bundle.messages.count()
+    const priorCount = env.bundle.messages.countForHead('default')
     console.log(`[agent-relay:${relayVariant.name}] Seeded ${priorCount} messages.`)
 
     const queryOpts = {

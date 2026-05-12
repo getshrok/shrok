@@ -183,7 +183,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     }
 
     const tokenCount = estimateTokens(bundle.messages.getAll('default'))
-    console.log(`[combined-stress] Live context: ${bundle.messages.count()} messages, ~${tokenCount.toLocaleString()} tokens (threshold: ${threshold.toLocaleString()})`)
+    console.log(`[combined-stress] Live context: ${bundle.messages.countForHead('default')} messages, ~${tokenCount.toLocaleString()} tokens (threshold: ${threshold.toLocaleString()})`)
 
     if (tokenCount < threshold * 0.8) {
       throw new Error(
@@ -208,7 +208,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       console.log(`\n[combined-stress] Running ${label}: "${query.slice(0, 60)}…"`)
 
       const usageBefore = bundle.usage.summarize()
-      const msgsBefore = bundle.messages.count()
+      const msgsBefore = bundle.messages.countForHead('default')
       const t0 = Date.now()
 
       const { response, assembledSystemPrompt, traceFiles } = await runHeadQuery({
@@ -226,7 +226,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       await waitForArchival(bundle)
 
       const costUsd = diffCost(bundle.usage, usageBefore)
-      const msgsAfter = bundle.messages.count()
+      const msgsAfter = bundle.messages.countForHead('default')
       const archivalFired = msgsAfter < msgsBefore
       const topicsRetrieved = countTopicsInPrompt(assembledSystemPrompt)
 
