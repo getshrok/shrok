@@ -541,6 +541,16 @@ async function main() {
 
   const sentinelInterval = setInterval(() => {
 
+    // NOTE (WR-04): All hot-reload blocks below are guarded by !isMultiHead.
+    // In multi-head mode (isMultiHead=true) these blocks are skipped entirely —
+    // named heads reconfigure by restarting the process.
+    // primary.routeMessage is always correct inside these blocks because
+    // isMultiHead=false guarantees resolvedHeads[0] is the synthesized 'default'
+    // head, so primary === headSystems[0] and primary.routeMessage routes to the
+    // correct (and only) head's queue.
+    // DO NOT lift the !isMultiHead guard without also replacing primary.routeMessage
+    // with the specific head's routeMessage to avoid cross-head misrouting.
+
     if (!isMultiHead) {
       if (fs.existsSync(DISCORD_RELOAD_PATH)) {
         fs.unlinkSync(DISCORD_RELOAD_PATH)
