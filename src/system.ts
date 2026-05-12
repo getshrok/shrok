@@ -97,6 +97,9 @@ export interface SystemDeps {
   topicMemory?: Memory
   /** Override stewards for testing (e.g. [] to disable all stewards). */
   stewards?: Steward[]
+  /** Phase 31 (CONF-03): head identifier this system instance owns.
+   *  When omitted, defaults to 'default' (single-head backward compat). */
+  headId?: string
 }
 
 export interface System {
@@ -350,7 +353,7 @@ export function buildSystem(deps: SystemDeps): System {
   const tx = (fn: () => void) => transaction(db, fn)
 
   const activationLoop = new ActivationLoop({
-    headId: 'default',
+    headId: deps.headId ?? 'default',
     queueStore: stores.queue,
     messages: stores.messages,
     appState: stores.appState,

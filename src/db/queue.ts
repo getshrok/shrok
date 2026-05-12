@@ -29,8 +29,8 @@ export class QueueStore {
 
   constructor(private db: DatabaseSync) {
     this.stmtEnqueue = db.prepare(`
-      INSERT INTO queue_events (id, type, payload, priority, status)
-      VALUES (@id, @type, @payload, @priority, 'pending')
+      INSERT INTO queue_events (id, type, payload, priority, status, head_id)
+      VALUES (@id, @type, @payload, @priority, 'pending', @headId)
     `)
 
     // Atomic claim: update a single pending event to 'processing' and return it.
@@ -97,12 +97,15 @@ export class QueueStore {
     `)
   }
 
-  enqueue(event: QueueEvent, priority: number): void {
+  /** Phase 31: head_id is now threaded explicitly. Callers without a head context
+   *  pass nothing and get 'default' for backward compat (CONF-02). */
+  enqueue(event: QueueEvent, priority: number, headId: string = 'default'): void {
     this.stmtEnqueue.run({
       id: event.id,
       type: event.type,
       payload: JSON.stringify(event),
       priority,
+      headId,
     })
   }
 

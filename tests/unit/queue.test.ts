@@ -87,6 +87,50 @@ describe('QueueStore.requeueStale', () => {
   })
 })
 
+// ─── Phase 31: head_id threading (ADPT-01) ──────────────────────────────────
+
+describe('QueueStore.enqueue head_id threading (ADPT-01)', () => {
+  it('events enqueued with headId="work" are not claimable by head="default"', () => {
+    const queue = new QueueStore(freshDb())
+    const ev = userMsg('hello from work')
+    queue.enqueue(ev, PRIORITY.USER_MESSAGE, 'work')
+
+    // Default head should NOT see it
+    expect(queue.claimNext('default')).toBeNull()
+
+    // Work head SHOULD see it
+    const claimed = queue.claimNext('work')
+    expect(claimed).not.toBeNull()
+    expect(claimed?.event.id).toBe(ev.id)
+  })
+
+  it('events enqueued with no headId argument default to head="default"', () => {
+    const queue = new QueueStore(freshDb())
+    const ev = userMsg('hello default')
+    queue.enqueue(ev, PRIORITY.USER_MESSAGE)  // no headId arg
+
+    expect(queue.claimNext('work')).toBeNull()
+    const claimed = queue.claimNext('default')
+    expect(claimed?.event.id).toBe(ev.id)
+  })
+
+  it('two events with distinct headIds isolate cleanly under concurrent claims', () => {
+    const queue = new QueueStore(freshDb())
+    const evW = userMsg('work msg')
+    const evP = userMsg('personal msg')
+    queue.enqueue(evW, PRIORITY.USER_MESSAGE, 'work')
+    queue.enqueue(evP, PRIORITY.USER_MESSAGE, 'personal')
+
+    const claimedW = queue.claimNext('work')
+    const claimedP = queue.claimNext('personal')
+    expect(claimedW?.event.id).toBe(evW.id)
+    expect(claimedP?.event.id).toBe(evP.id)
+    // Neither head sees the other's event
+    expect(queue.claimNext('work')).toBeNull()
+    expect(queue.claimNext('personal')).toBeNull()
+  })
+})
+
 describe('QueueStore.claimAllPendingBackground', () => {
   it('returns all pending non-user_message events', () => {
     const queue = new QueueStore(freshDb())
