@@ -69,6 +69,46 @@ describe('initDb + runMigrations', () => {
     expect(slot!.dflt_value).toBeNull()    // no default → existing rows are NULL
   })
 
+  it('queue_events table has head_id column with NOT NULL DEFAULT \'default\' (Phase 29 DATA-01)', () => {
+    const db = freshDb()
+    const cols = db.prepare("PRAGMA table_info('queue_events')").all() as { name: string; type: string; notnull: number; dflt_value: unknown }[]
+    const head = cols.find(c => c.name === 'head_id')
+    expect(head).toBeDefined()
+    expect(head!.type).toBe('TEXT')
+    expect(head!.notnull).toBe(1)
+    expect(String(head!.dflt_value)).toBe("'default'")
+  })
+
+  it('messages table has head_id column with NOT NULL DEFAULT \'default\' (Phase 29 DATA-02)', () => {
+    const db = freshDb()
+    const cols = db.prepare("PRAGMA table_info('messages')").all() as { name: string; type: string; notnull: number; dflt_value: unknown }[]
+    const head = cols.find(c => c.name === 'head_id')
+    expect(head).toBeDefined()
+    expect(head!.type).toBe('TEXT')
+    expect(head!.notnull).toBe(1)
+    expect(String(head!.dflt_value)).toBe("'default'")
+  })
+
+  it('idx_queue_status_priority replaced by idx_queue_head_status_priority (D-08)', () => {
+    const db = freshDb()
+    const oldIdx = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_queue_status_priority'").get()
+    expect(oldIdx).toBeUndefined()
+    const newIdx = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_queue_head_status_priority'").get()
+    expect(newIdx).toBeDefined()
+  })
+
+  it('idx_messages_head_created exists (D-09)', () => {
+    const db = freshDb()
+    const idx = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_messages_head_created'").get()
+    expect(idx).toBeDefined()
+  })
+
+  it('idx_messages_created_at retained (D-10)', () => {
+    const db = freshDb()
+    const idx = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_messages_created_at'").get()
+    expect(idx).toBeDefined()
+  })
+
   it('is idempotent — running twice does not fail', () => {
     const db = initDb(':memory:')
     expect(() => {
@@ -108,6 +148,18 @@ describe('MessageStore', () => {
     expect(m.kind).toBe('text')
     expect(m.content).toBe('hello')
     expect(m.channel).toBe('discord')
+  })
+
+  it("append without explicit head_id stamps row with head_id='default' (DATA-02)", () => {
+    const db = freshDb()
+    const localStore = new MessageStore(db)
+    const msg: TextMessage = {
+      kind: 'text', id: 'msg-default', role: 'user', content: 'hi',
+      createdAt: '2025-01-01T00:00:00Z',
+    }
+    localStore.append(msg)
+    const row = db.prepare("SELECT head_id FROM messages WHERE id = ?").get('msg-default') as { head_id: string } | undefined
+    expect(row?.head_id).toBe('default')
   })
 
   it('appends tool_call messages', () => {
@@ -463,6 +515,17 @@ describe('QueueStore', () => {
     const claimed = store.claimNext()
     expect(claimed).not.toBeNull()
     expect(claimed!.event.type).toBe('user_message')
+  })
+
+  it("enqueue without explicit head_id stamps row with head_id='default' (DATA-01)", () => {
+    // Direct DB read — we need to bypass the QueueStore API which Phase 29 does not expose head_id yet.
+    // beforeEach builds the store on a freshDb(); we re-enter the same db via store internals indirectly:
+    // create a fresh db + store for an isolated check.
+    const db = freshDb()
+    const localStore = new QueueStore(db)
+    localStore.enqueue(makeEvent('e-default'), 50)
+    const row = db.prepare("SELECT head_id FROM queue_events WHERE id = ?").get('e-default') as { head_id: string } | undefined
+    expect(row?.head_id).toBe('default')
   })
 
   it('claimNext returns null when empty', () => {
