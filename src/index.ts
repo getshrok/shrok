@@ -299,7 +299,7 @@ async function main() {
 
   let currentDiscordAdapter: DiscordAdapter | null = null
   if (config.discordBotToken && config.discordChannelId) {
-    const discord = new DiscordAdapter(config.discordBotToken, config.discordChannelId, path.join(workspacePath, 'media'))
+    const discord = new DiscordAdapter(config.discordBotToken, config.discordChannelId, path.join(workspacePath, 'media'), 'discord', 'default')
     discord.onMessage(routeMessage)
     channelRouter.register(discord)
     await discord.start()
@@ -310,7 +310,7 @@ async function main() {
 
   let currentTelegramAdapter: TelegramAdapter | null = null
   if (config.telegramBotToken && config.telegramChatId) {
-    const telegram = new TelegramAdapter(config.telegramBotToken, config.telegramChatId, path.join(workspacePath, 'media'))
+    const telegram = new TelegramAdapter(config.telegramBotToken, config.telegramChatId, path.join(workspacePath, 'media'), 'telegram', 'default')
     telegram.onMessage(routeMessage)
     channelRouter.register(telegram)
     await telegram.start()
@@ -325,7 +325,7 @@ async function main() {
       const { WhatsAppAdapter } = await import('./channels/whatsapp/adapter.js')
       const whatsappAuthDir = path.join(workspacePath, 'whatsapp', 'auth')
       const whatsappQrPath = path.join(workspacePath, 'whatsapp-qr.txt')
-      const whatsapp = new WhatsAppAdapter(whatsappAuthDir, config.whatsappAllowedJid, whatsappQrPath, path.join(workspacePath, 'media'))
+      const whatsapp = new WhatsAppAdapter(whatsappAuthDir, config.whatsappAllowedJid, whatsappQrPath, path.join(workspacePath, 'media'), 'whatsapp', 'default')
       whatsapp.onMessage(routeMessage)
       channelRouter.register(whatsapp)
       await whatsapp.start()
@@ -339,7 +339,7 @@ async function main() {
 
   let currentSlackAdapter: SlackAdapter | null = null
   if (config.slackBotToken && config.slackAppToken && config.slackChannelId) {
-    const slack = new SlackAdapter(config.slackBotToken, config.slackAppToken, config.slackChannelId, path.join(workspacePath, 'media'))
+    const slack = new SlackAdapter(config.slackBotToken, config.slackAppToken, config.slackChannelId, path.join(workspacePath, 'media'), 'slack', 'default')
     slack.onMessage(routeMessage)
     channelRouter.register(slack)
     await slack.start()
@@ -361,6 +361,8 @@ async function main() {
         readAssistantName(workspacePath),
         zohoCliqState,
         workspacePath,
+        'zoho-cliq',
+        'default',
       )
       cliq.onMessage(routeMessage)
       channelRouter.register(cliq)
@@ -559,7 +561,7 @@ async function main() {
 
           await retireAdapter(currentDiscordAdapter, 'Discord')
 
-          const discord = new DiscordAdapter(token, channelId, path.join(workspacePath, 'media'))
+          const discord = new DiscordAdapter(token, channelId, path.join(workspacePath, 'media'), 'discord', 'default')
           discord.onMessage(routeMessage)
           channelRouter.register(discord)
           await discord.start()
@@ -589,7 +591,7 @@ async function main() {
 
           await retireAdapter(currentTelegramAdapter, 'Telegram')
 
-          const telegram = new TelegramAdapter(token, chatId, path.join(workspacePath, 'media'))
+          const telegram = new TelegramAdapter(token, chatId, path.join(workspacePath, 'media'), 'telegram', 'default')
           telegram.onMessage(routeMessage)
           channelRouter.register(telegram)
           await telegram.start()
@@ -620,7 +622,7 @@ async function main() {
 
           await retireAdapter(currentSlackAdapter, 'Slack')
 
-          const slack = new SlackAdapter(botToken, appToken, channelId, path.join(workspacePath, 'media'))
+          const slack = new SlackAdapter(botToken, appToken, channelId, path.join(workspacePath, 'media'), 'slack', 'default')
           slack.onMessage(routeMessage)
           channelRouter.register(slack)
           await slack.start()
@@ -652,7 +654,7 @@ async function main() {
           const { WhatsAppAdapter } = await import('./channels/whatsapp/adapter.js')
           const whatsappAuthDir = path.join(workspacePath, 'whatsapp', 'auth')
           const whatsappQrPath = path.join(workspacePath, 'whatsapp-qr.txt')
-          const whatsapp = new WhatsAppAdapter(whatsappAuthDir, allowedJid, whatsappQrPath, path.join(workspacePath, 'media'))
+          const whatsapp = new WhatsAppAdapter(whatsappAuthDir, allowedJid, whatsappQrPath, path.join(workspacePath, 'media'), 'whatsapp', 'default')
           whatsapp.onMessage(routeMessage)
           channelRouter.register(whatsapp)
           await whatsapp.start()
@@ -684,7 +686,7 @@ async function main() {
 
           await retireAdapter(currentZohoCliqAdapter, 'Zoho Cliq')
 
-          const cliq = new ZohoCliqAdapter(clientId, clientSecret, refreshToken, chatId, path.join(workspacePath, 'media'), config.zohoCliqPollInterval, readAssistantName(workspacePath), zohoCliqState, workspacePath)
+          const cliq = new ZohoCliqAdapter(clientId, clientSecret, refreshToken, chatId, path.join(workspacePath, 'media'), config.zohoCliqPollInterval, readAssistantName(workspacePath), zohoCliqState, workspacePath, 'zoho-cliq', 'default')
           cliq.onMessage(routeMessage)
           channelRouter.register(cliq)
           await cliq.start()

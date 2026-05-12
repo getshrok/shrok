@@ -5,10 +5,16 @@ import type { TextMessage } from '../../types/core.js'
 import { generateId, now } from '../../llm/util.js'
 
 export class DashboardChannelAdapter implements ChannelAdapter {
-  readonly id = 'dashboard'
+  readonly id: string
+  private readonly headId: string
   private handler: ((msg: InboundMessage) => void) | null = null
   private events: DashboardEventBus | null = null
   private messageStore: MessageStore | null = null
+
+  constructor(id: string = 'dashboard', headId: string = 'default') {
+    this.id = id
+    this.headId = headId
+  }
 
   setEventBus(events: DashboardEventBus): void { this.events = events }
   setMessageStore(store: MessageStore): void { this.messageStore = store }

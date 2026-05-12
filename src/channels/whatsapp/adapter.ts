@@ -57,12 +57,13 @@ const MEDIA_MESSAGE_TYPES: Record<string, { type: Attachment['type']; mediaType:
 }
 
 export class WhatsAppAdapter implements ChannelAdapter {
-  readonly id = 'whatsapp'
+  readonly id: string
   private authDir: string
   private allowedJid: string
   private qrPath: string
   private mediaDir: string | undefined
   private handler: ((msg: InboundMessage) => void) | null = null
+  private readonly headId: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private sock: any = null
   private stopped = false
@@ -79,11 +80,13 @@ export class WhatsAppAdapter implements ChannelAdapter {
   // Store WAMessageKey by message ID for editing (typed as unknown since Baileys is optional)
   private messageKeys = new Map<string, unknown>()
 
-  constructor(authDir: string, allowedJid: string, qrPath: string, mediaDir?: string) {
+  constructor(authDir: string, allowedJid: string, qrPath: string, mediaDir: string | undefined, id: string, headId: string) {
     this.authDir = authDir
     this.allowedJid = allowedJid
     this.qrPath = qrPath
     this.mediaDir = mediaDir
+    this.id = id
+    this.headId = headId
   }
 
   onMessage(handler: (msg: InboundMessage) => void): void {

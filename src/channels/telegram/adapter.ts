@@ -19,20 +19,23 @@ import {
 const COLLAPSE_MAP_MAX = 500
 
 export class TelegramAdapter implements ChannelAdapter {
-  readonly id = 'telegram'
+  readonly id: string
   private bot: Bot
   private chatId: string
   private mediaDir: string | undefined
   private handler: ((msg: InboundMessage) => void) | null = null
+  private readonly headId: string
 
   // Collapse/expand state keyed by Telegram message ID
   private collapseMap = new Map<string, { collapsed: string; expanded: string }>()
   // Maps toolName -> FIFO queue of message IDs for edit-on-result pairing
   private pendingCalls = new Map<string, string[]>()
 
-  constructor(token: string, chatId: string, mediaDir?: string) {
+  constructor(token: string, chatId: string, mediaDir: string | undefined, id: string, headId: string) {
     this.chatId = chatId
     this.mediaDir = mediaDir
+    this.id = id
+    this.headId = headId
     this.bot = new Bot(token)
 
     this.bot.on('message', async ctx => {

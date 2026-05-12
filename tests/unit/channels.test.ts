@@ -66,6 +66,40 @@ describe('ChannelRouterImpl', () => {
     })
   })
 
+  // ─── Phase 31: distinct-id registration (ADPT-02) ──────────────────────────
+
+  describe('ChannelRouterImpl multi-instance registration (ADPT-02)', () => {
+    it('two adapters with distinct ids can register without collision', async () => {
+      const router = new ChannelRouterImpl()
+      const personal = makeAdapter('telegram-personal')
+      const work     = makeAdapter('telegram-work')
+      router.register(personal)
+      router.register(work)
+
+      await router.send('telegram-personal', 'msg for personal')
+      await router.send('telegram-work',     'msg for work')
+
+      expect(personal.received).toEqual(['msg for personal'])
+      expect(work.received).toEqual(['msg for work'])
+    })
+
+    it('registering a second adapter with the same id overwrites the first (documents current behavior)', async () => {
+      const router = new ChannelRouterImpl()
+      const first  = makeAdapter('telegram')
+      const second = makeAdapter('telegram')
+      router.register(first)
+      router.register(second)
+
+      await router.send('telegram', 'hello')
+
+      // Second overwrites first — this is the failure mode ADPT-02 guards against
+      // when adapters use static readonly ids. With distinct ids (test above) the
+      // collision goes away.
+      expect(first.received).toEqual([])
+      expect(second.received).toEqual(['hello'])
+    })
+  })
+
   describe('getLastActiveChannel', () => {
     it('returns null before any successful send', () => {
       const router = new ChannelRouterImpl()

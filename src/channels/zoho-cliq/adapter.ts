@@ -56,7 +56,8 @@ interface CliqMessagesResponse {
 // ─── Adapter ────────────────────────────────────────────────────────────────
 
 export class ZohoCliqAdapter implements ChannelAdapter {
-  readonly id = 'zoho-cliq'
+  readonly id: string
+  private readonly headId: string
   private handler: ((msg: InboundMessage) => void) | null = null
   private pollTimer: ReturnType<typeof setTimeout> | null = null
   private accessToken: string | null = null
@@ -80,8 +81,12 @@ export class ZohoCliqAdapter implements ChannelAdapter {
     private pollIntervalMs: number,
     private assistantName: string,
     private stateStore: ZohoCliqStateStore,
-    workspacePath?: string,
+    workspacePath: string | undefined,
+    id: string,
+    headId: string,
   ) {
+    this.id = id
+    this.headId = headId
     this.tokenCachePath = path.join(workspacePath ?? os.tmpdir(), 'zoho-cliq-token.json')
   }
 

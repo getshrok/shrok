@@ -18,12 +18,13 @@ import { formatTablesForSlack } from '../table-formatter.js'
 const COLLAPSE_MAP_MAX = 500
 
 export class SlackAdapter implements ChannelAdapter {
-  readonly id = 'slack'
+  readonly id: string
   private app: App
   private botToken: string
   private channelId: string
   private mediaDir: string | undefined
   private handler: ((msg: InboundMessage) => void) | null = null
+  private readonly headId: string
 
   // Collapse/expand state keyed by Slack message ts
   private collapseMap = new Map<string, { collapsed: string; expanded: string }>()
@@ -34,10 +35,12 @@ export class SlackAdapter implements ChannelAdapter {
   // Bot user ID for reaction self-filtering
   private botUserId: string | null = null
 
-  constructor(botToken: string, appToken: string, channelId: string, mediaDir?: string) {
+  constructor(botToken: string, appToken: string, channelId: string, mediaDir: string | undefined, id: string, headId: string) {
     this.botToken = botToken
     this.channelId = channelId
     this.mediaDir = mediaDir
+    this.id = id
+    this.headId = headId
     this.app = new App({
       token: botToken,
       appToken,

@@ -26,12 +26,13 @@ async function fetchToBuffer(url: string): Promise<Buffer> {
 }
 
 export class DiscordAdapter implements ChannelAdapter {
-  readonly id = 'discord'
+  readonly id: string
   private client: Client
   private handler: ((msg: InboundMessage) => void) | null = null
   private channelId: string
   private token: string
   private mediaDir: string | undefined
+  private readonly headId: string
 
   // Collapse/expand state keyed by Discord message ID
   private collapseMap = new Map<string, { collapsed: string; expanded: string }>()
@@ -40,10 +41,12 @@ export class DiscordAdapter implements ChannelAdapter {
   // External reaction handler
   private reactionHandler: ((messageId: string, emoji: string, userId: string) => void) | null = null
 
-  constructor(token: string, channelId: string, mediaDir?: string) {
+  constructor(token: string, channelId: string, mediaDir: string | undefined, id: string, headId: string) {
     this.token = token
     this.channelId = channelId
     this.mediaDir = mediaDir
+    this.id = id
+    this.headId = headId
     this.client = new Client({
       intents: [
         GatewayIntentBits.Guilds,

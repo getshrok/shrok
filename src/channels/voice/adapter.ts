@@ -21,14 +21,18 @@ export const SESSION_BUSY_CLOSE_CODE = 4001
 export const SESSION_BUSY_REASON = 'voice session already active'
 
 export class VoiceChannelAdapter implements ChannelAdapter {
-  readonly id = 'voice'
+  readonly id: string
+  private readonly headId: string
   private wss = new WebSocketServer({ noServer: true })
   private handler: ((msg: InboundMessage) => void) | null = null
   private activeSocket: WebSocket | null = null
   private ttsAbortController: AbortController | null = null
   private upgradeListener: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null
 
-  constructor(private httpServer: Server, private openai: OpenAI) {}
+  constructor(private httpServer: Server, private openai: OpenAI, id: string = 'voice', headId: string = 'default') {
+    this.id = id
+    this.headId = headId
+  }
 
   onMessage(handler: (msg: InboundMessage) => void): void {
     this.handler = handler
