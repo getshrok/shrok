@@ -2,28 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
-status: executing
-last_updated: "2026-05-12T07:12:41.716Z"
+status: verifying
+last_updated: "2026-05-12T07:21:45.166Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 30 (core-activation) — EXECUTING
+Phase: 30 (core-activation) — COMPLETE
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase 30 complete — all 3 plans executed; tsc clean; vitest green
 Last activity: 2026-05-12
-Resume: .planning/phases/29-data-layer/29-CONTEXT.md
+Stopped at: Completed 30-core-activation/30-03-PLAN.md — Phase 30 complete
 
-Progress: [----------] 0% (0/4 phases complete)
+Progress: [██████████] 100% (6/6 plans complete)
 
 ## Project Reference
 
@@ -48,3 +48,5 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - Memory, identity, and skills are shared across all heads by design
 - Channel adapters extended to support multiple instances per vendor (keyed by distinct string IDs)
 - `AppStateStore` keys namespaced as `{headId}:keyName` for per-head state isolation
+- Phase 30 D-04: `'default'` literal at all remaining call sites (system.ts, index.ts, eval scripts)
+- Phase 30 D-06: one `ChannelRouterImpl` per process via DI; CORE-04 regression test guards this contract

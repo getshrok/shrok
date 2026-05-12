@@ -76,7 +76,7 @@ Plans:
 ## Phases
 
 - [x] **Phase 29: Data Layer** — Migrations add `head_id` to queue and message tables; store queries filter by head (completed 2026-05-12)
-- [ ] **Phase 30: Core Activation** — ActivationLoop parameterized by headId; AppStateStore namespaced; per-head ChannelRouter
+- [x] **Phase 30: Core Activation** — ActivationLoop parameterized by headId; AppStateStore namespaced; per-head ChannelRouter (completed 2026-05-12)
 - [ ] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head
 - [ ] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head
 
@@ -107,12 +107,12 @@ Plans:
   2. Last-active-channel for head `personal` does not overwrite or read the value for head `work`
   3. Archival triggered on head `personal` cannot be blocked by an archival lock held on head `work`
   4. A message sent via a Telegram adapter assigned to head `work` is routed only through that head's ChannelRouter
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 30-01-PLAN.md — AppStateStore head-scoped signatures + sql/006 key-rename migration + db.test.ts per-head isolation tests (CORE-02, CORE-03)
 - [x] 30-02-PLAN.md — ActivationLoop parameterized by headId; replace ~33 'default' literals in activation.ts; update test mocks + per-head isolation scenario test (CORE-01)
-- [ ] 30-03-PLAN.md — Wire 'default' literal through src/system.ts, src/index.ts, eval harness/scenarios, tests/integration/helpers.ts; CORE-04 architectural regression test; full tsc + vitest gate (CORE-01, CORE-04)
+- [x] 30-03-PLAN.md — Wire 'default' literal through src/system.ts, src/index.ts, eval harness/scenarios, tests/integration/helpers.ts; CORE-04 architectural regression test; full tsc + vitest gate (CORE-01, CORE-04)
 
 ### Phase 31: Adapter Registry & Config & Startup
 **Goal**: Users can configure multiple named heads with distinct adapter assignments and the system starts them all
@@ -141,6 +141,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
-| 30. Core Activation | 2/3 | In Progress|  |
+| 30. Core Activation | 3/3 | Complete   | 2026-05-12 |
 | 31. Adapter Registry & Config & Startup | 0/? | Not started | - |
 | 32. Dashboard Head Selector | 0/? | Not started | - |

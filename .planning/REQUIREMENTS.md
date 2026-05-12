@@ -17,7 +17,7 @@
 - [x] **CORE-01**: `ActivationLoop` is parameterized by `headId` and scopes all queue and message operations to that head
 - [x] **CORE-02**: Per-head last-active-channel stored as `{headId}:lastActiveChannel` in `AppStateStore`
 - [x] **CORE-03**: Per-head archival lock stored as `{headId}:archivalLock` in `AppStateStore` so concurrent heads cannot race on archival
-- [ ] **CORE-04**: Each head owns an independent `ChannelRouter` instance populated only with its assigned adapters
+- [x] **CORE-04**: Each head owns an independent `ChannelRouter` instance populated only with its assigned adapters
 
 ### Adapter Registry
 
@@ -69,7 +69,7 @@
 | CORE-01 | Phase 30 | Complete |
 | CORE-02 | Phase 30 | Complete |
 | CORE-03 | Phase 30 | Complete |
-| CORE-04 | Phase 30 | Pending |
+| CORE-04 | Phase 30 | Complete |
 | ADPT-01 | Phase 31 | Pending |
 | ADPT-02 | Phase 31 | Pending |
 | CONF-01 | Phase 31 | Pending |
