@@ -29,31 +29,42 @@ export class AppStateStore {
     this.stmtDelete.run(key)
   }
 
-  getLastActiveChannel(): string {
-    return this.get('last_active_channel') ?? ''
+  private assertValidHeadId(headId: string): void {
+    if (typeof headId !== 'string' || headId.length === 0 || headId.includes(':')) {
+      throw new Error(`AppStateStore: invalid headId ${JSON.stringify(headId)}`)
+    }
   }
 
-  setLastActiveChannel(id: string): void {
-    this.set('last_active_channel', id)
+  getLastActiveChannel(headId: string): string {
+    this.assertValidHeadId(headId)
+    return this.get(`${headId}:last_active_channel`) ?? ''
+  }
+
+  setLastActiveChannel(headId: string, id: string): void {
+    this.assertValidHeadId(headId)
+    this.set(`${headId}:last_active_channel`, id)
   }
 
   /** Atomic test-and-set: acquire archival lock only if not already held.
    *  Returns true if the lock was acquired, false if already running. */
-  tryAcquireArchivalLock(): boolean {
+  tryAcquireArchivalLock(headId: string): boolean {
+    this.assertValidHeadId(headId)
+    const key = `${headId}:archival_lock`
     // INSERT OR IGNORE seeds the row with value='false' if it doesn't exist.
     this.db.prepare(
-      "INSERT OR IGNORE INTO app_state (key, value) VALUES ('archival_lock', 'false')"
-    ).run()
+      "INSERT OR IGNORE INTO app_state (key, value) VALUES (?, 'false')"
+    ).run(key)
 
     const result = this.db.prepare(
-      "UPDATE app_state SET value = 'true' WHERE key = 'archival_lock' AND value = 'false'"
-    ).run()
+      "UPDATE app_state SET value = 'true' WHERE key = ? AND value = 'false'"
+    ).run(key)
 
     return result.changes === 1
   }
 
-  releaseArchivalLock(): void {
-    this.set('archival_lock', 'false')
+  releaseArchivalLock(headId: string): void {
+    this.assertValidHeadId(headId)
+    this.set(`${headId}:archival_lock`, 'false')
   }
 
   // ─── Usage thresholds ────────────────────────────────────────────────────
