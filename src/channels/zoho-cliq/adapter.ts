@@ -252,6 +252,27 @@ export class ZohoCliqAdapter implements ChannelAdapter {
       },
       body: JSON.stringify(body),
     })
+    if (res.status === 401 || res.status === 403) {
+      // Token expired — clear cache and retry once, mirroring cliqGet retry logic
+      this.accessToken = null
+      this.tokenExpiresAt = 0
+      const freshToken = await this.ensureAccessToken()
+      const retry = await fetch(`https://cliq.zoho.com${urlPath}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Zoho-oauthtoken ${freshToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+      if (!retry.ok) {
+        const retryText = await retry.text()
+        throw new Error(`Zoho Cliq POST ${urlPath} failed (${retry.status}): ${retryText}`)
+      }
+      const retryText = await retry.text()
+      if (!retryText) return {}
+      try { return JSON.parse(retryText) as Record<string, unknown> } catch { return {} }
+    }
     if (!res.ok) {
       const text = await res.text()
       throw new Error(`Zoho Cliq POST ${urlPath} failed (${res.status}): ${text}`)
