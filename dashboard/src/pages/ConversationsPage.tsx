@@ -480,7 +480,21 @@ function AgentStreamView({ agentId, status }: { agentId: string; status: string 
 type TimelineItem = ({ _type: 'message' } & Message) | ({ _type: 'stewardRun' } & StewardRun)
 
 export default function ConversationsPage() {
-  useStream()
+  // Phase 32 (DASH-01 / D-04): selected head with localStorage persistence.
+  // Init from localStorage (synchronous, runs before headsQuery resolves);
+  // a tracking useEffect below validates the stored value once the heads list arrives.
+  const [selectedHead, setSelectedHeadInner] = useState<string>(
+    () => localStorage.getItem('active-head') ?? 'default',
+  )
+  const setSelectedHead = useCallback((headId: string) => {
+    setSelectedHeadInner(headId)
+    localStorage.setItem('active-head', headId)
+  }, [])
+
+  // Phase 32 (D-06): pass selectedHead so the SSE message_added handler routes
+  // live updates into the correct ['messages', headId] cache entry.
+  useStream(selectedHead)
+
   const { isDeveloper } = useMode()
   const assistantName = useAssistantName()
   const { state: voiceState, voiceActive, toggleVoice, errorMessage: voiceError } = useVoice()
@@ -521,8 +535,18 @@ export default function ConversationsPage() {
   const memoryByEvent = new Map((memoryRetrievals ?? []).filter(m => m.eventId).map(m => [m.eventId!, { text: m.text, tokens: m.tokens }]))
 
   const messagesQuery = useQuery({
-    queryKey: ['messages'],
-    queryFn: api.messages.list,
+    queryKey: ['messages', selectedHead],                           // Phase 32 D-05: head-scoped cache key
+    queryFn: () => api.messages.list(selectedHead),                 // Phase 32 D-05: append ?head=<id> to the request
+    refetchOnWindowFocus: false,
+  })
+
+  // Phase 32 (DASH-01 / D-08): fetch the resolved head list. Query is always enabled —
+  // single-head deployments still receive `[{ id: 'default' }]` and the pill row
+  // simply does not render (D-03 guard below).
+  const headsQuery = useQuery({
+    queryKey: ['heads'],
+    queryFn: api.heads.list,
+    staleTime: Infinity,            // heads list only changes on process restart (Phase 32 deferred: head management UI)
     refetchOnWindowFocus: false,
   })
 
@@ -561,6 +585,18 @@ export default function ConversationsPage() {
       return next
     })
   }, [agentsQuery.data])
+
+  // Phase 32 (D-04): if the localStorage-stored head is no longer in the resolved
+  // list (head was removed from config.json), fall back to the first available head.
+  // Runs after headsQuery data arrives.
+  useEffect(() => {
+    const heads = headsQuery.data?.heads
+    if (!heads || heads.length === 0) return
+    if (!heads.some(h => h.id === selectedHead)) {
+      const fallback = heads[0]?.id ?? 'default'
+      setSelectedHead(fallback)
+    }
+  }, [headsQuery.data, selectedHead, setSelectedHead])
 
   // ── Input state ─────────────────────────────────────────────────────────────
   const [input, setInput] = useState(() => sessionStorage.getItem('conv-draft') ?? '')
@@ -747,6 +783,27 @@ export default function ConversationsPage() {
         <div className="px-6 py-4">
           <h2 className="text-base font-semibold text-zinc-100">Conversation</h2>
         </div>
+
+        {/* ── Phase 32: Head selector pill row (D-01) ──────────────────────
+            Conditionally rendered: hidden entirely when only one head exists,
+            so single-head deployments see ZERO visual change (D-03). */}
+        {headsQuery.data?.heads && headsQuery.data.heads.length > 1 && (
+          <div className="px-6 pb-3 flex gap-1.5 overflow-x-auto">
+            {headsQuery.data.heads.map(h => (
+              <button
+                key={h.id}
+                onClick={() => setSelectedHead(h.id)}
+                className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  selectedHead === h.id
+                    ? 'bg-zinc-700 text-zinc-100'
+                    : 'bg-zinc-800/50 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
+                }`}
+              >
+                {h.id}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ── Pill bar (agent stream selector) ─────────────────────────── */}
         {visibility.agentPills && sortedPills.length > 0 && (
