@@ -11,6 +11,60 @@ const WorkerDefaultsSchema = z.object({
   allowedTools: z.array(z.string()).nullable().default(null),
 }).default({})
 
+// ─── Multi-head channel config (Phase 31, CONF-01) ───────────────────────────
+// Discriminated union: `vendor` decides which credentials are required.
+// The `id` field becomes the adapter's .id (used by ChannelRouter.register
+// and stamped on enqueued events as head_id).
+export const ChannelConfigSchema = z.discriminatedUnion('vendor', [
+  z.object({
+    id: z.string().min(1),
+    vendor: z.literal('telegram'),
+    botToken: z.string().min(1),
+    chatId: z.string().min(1),
+  }),
+  z.object({
+    id: z.string().min(1),
+    vendor: z.literal('discord'),
+    botToken: z.string().min(1),
+    channelId: z.string().min(1),
+  }),
+  z.object({
+    id: z.string().min(1),
+    vendor: z.literal('slack'),
+    botToken: z.string().min(1),
+    appToken: z.string().min(1),
+    channelId: z.string().min(1),
+  }),
+  z.object({
+    id: z.string().min(1),
+    vendor: z.literal('whatsapp'),
+    allowedJid: z.string().min(1),
+  }),
+  z.object({
+    id: z.string().min(1),
+    vendor: z.literal('zoho-cliq'),
+    clientId: z.string().min(1),
+    clientSecret: z.string().min(1),
+    refreshToken: z.string().min(1),
+    chatId: z.string().min(1),
+  }),
+])
+
+export type ChannelConfig = z.infer<typeof ChannelConfigSchema>
+
+export const HeadConfigSchema = z.object({
+  id: z.string().min(1),
+  channels: z.array(ChannelConfigSchema),
+})
+
+export type HeadConfig = z.infer<typeof HeadConfigSchema>
+
+/** Canonical head list produced by resolveHeads() — used by startup wiring. */
+export interface ResolvedHead {
+  id: string
+  channels: ChannelConfig[]
+}
+
 const ConfigSchema = z.object({
   // LLM
   llmProvider: z.enum(['anthropic', 'gemini', 'openai']).default('anthropic'),  // derived from priority[0] at load time
@@ -202,6 +256,11 @@ const ConfigSchema = z.object({
 
   // Worker defaults — apply to ad hoc workers (no skill). Skills override via frontmatter.
   workerDefaults: WorkerDefaultsSchema,
+
+  // Phase 31 (CONF-01): optional multi-head adapter registry. When present,
+  // flat adapter keys above are ignored entirely (D-04). When absent, startup
+  // synthesizes a single implicit 'default' head from the flat keys (D-03).
+  heads: z.array(HeadConfigSchema).optional(),
 })
 
 export type Config = z.infer<typeof ConfigSchema>
@@ -322,6 +381,76 @@ export function extractSecretValues(config: Config): string[] {
   return SECRET_FIELDS
     .map(f => config[f])
     .filter((v): v is string => typeof v === 'string' && v.length >= 8)
+}
+
+/**
+ * Phase 31 (CONF-02): canonical head resolution.
+ *
+ * D-04: When `config.heads` is present and non-empty, return it as-is —
+ *       flat adapter keys are ignored entirely (no merging).
+ * D-03: When `config.heads` is absent, synthesize a single implicit 'default'
+ *       head whose channels are derived from flat adapter keys.
+ *       Synthesized channel `id` uses the plain vendor name (e.g. 'telegram')
+ *       rather than a prefix — Claude's discretion per CONTEXT.md.
+ * When no flat keys are set either, return `[{id:'default', channels:[]}]` so
+ *       startup still constructs exactly one default head (CONF-02 zero-config).
+ */
+export function resolveHeads(config: Config): ResolvedHead[] {
+  if (config.heads && config.heads.length > 0) {
+    return config.heads.map(h => ({ id: h.id, channels: h.channels }))
+  }
+  const channels: ChannelConfig[] = []
+  if (config.telegramBotToken && config.telegramChatId) {
+    channels.push({
+      id: 'telegram',
+      vendor: 'telegram',
+      botToken: config.telegramBotToken,
+      chatId: config.telegramChatId,
+    })
+  }
+  if (config.discordBotToken && config.discordChannelId) {
+    channels.push({
+      id: 'discord',
+      vendor: 'discord',
+      botToken: config.discordBotToken,
+      channelId: config.discordChannelId,
+    })
+  }
+  if (config.slackBotToken && config.slackAppToken && config.slackChannelId) {
+    channels.push({
+      id: 'slack',
+      vendor: 'slack',
+      botToken: config.slackBotToken,
+      appToken: config.slackAppToken,
+      channelId: config.slackChannelId,
+    })
+  }
+  if (config.whatsappAllowedJid) {
+    channels.push({
+      id: 'whatsapp',
+      vendor: 'whatsapp',
+      allowedJid: config.whatsappAllowedJid,
+    })
+  }
+  // Zoho Cliq credentials come from env (ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET,
+  // ZOHO_REFRESH_TOKEN, ZOHO_CLIQ_CHAT_ID) — synthesize the default channel
+  // only when all four are present, mirroring the existing flat-key startup
+  // gate in src/index.ts:352.
+  const zClientId = process.env['ZOHO_CLIENT_ID']
+  const zClientSecret = process.env['ZOHO_CLIENT_SECRET']
+  const zRefreshToken = process.env['ZOHO_REFRESH_TOKEN']
+  const zChatId = process.env['ZOHO_CLIQ_CHAT_ID']
+  if (zClientId && zClientSecret && zRefreshToken && zChatId) {
+    channels.push({
+      id: 'zoho-cliq',
+      vendor: 'zoho-cliq',
+      clientId: zClientId,
+      clientSecret: zClientSecret,
+      refreshToken: zRefreshToken,
+      chatId: zChatId,
+    })
+  }
+  return [{ id: 'default', channels }]
 }
 
 // Env vars that `config:set` is allowed to write. Mirrors the secrets read by
