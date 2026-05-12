@@ -828,27 +828,124 @@ describe('AppStateStore', () => {
   })
 
   it('getLastActiveChannel defaults to empty string', () => {
-    expect(store.getLastActiveChannel()).toBe('')
+    expect(store.getLastActiveChannel('default')).toBe('')
   })
 
   it('sets and gets last active channel', () => {
-    store.setLastActiveChannel('discord')
-    expect(store.getLastActiveChannel()).toBe('discord')
+    store.setLastActiveChannel('default', 'discord')
+    expect(store.getLastActiveChannel('default')).toBe('discord')
   })
 
   it('tryAcquireArchivalLock succeeds first time', () => {
-    expect(store.tryAcquireArchivalLock()).toBe(true)
+    expect(store.tryAcquireArchivalLock('default')).toBe(true)
   })
 
   it('tryAcquireArchivalLock fails when already held', () => {
-    store.tryAcquireArchivalLock()
-    expect(store.tryAcquireArchivalLock()).toBe(false)
+    store.tryAcquireArchivalLock('default')
+    expect(store.tryAcquireArchivalLock('default')).toBe(false)
   })
 
   it('releaseArchivalLock allows re-acquisition', () => {
-    store.tryAcquireArchivalLock()
-    store.releaseArchivalLock()
-    expect(store.tryAcquireArchivalLock()).toBe(true)
+    store.tryAcquireArchivalLock('default')
+    store.releaseArchivalLock('default')
+    expect(store.tryAcquireArchivalLock('default')).toBe(true)
+  })
+
+  describe('AppStateStore — per-head isolation (Phase 30)', () => {
+    let store: AppStateStore
+
+    beforeEach(() => {
+      store = new AppStateStore(freshDb())
+    })
+
+    it('setLastActiveChannel on one head does not affect another', () => {
+      store.setLastActiveChannel('personal', 'discord')
+      store.setLastActiveChannel('work', 'telegram')
+      expect(store.getLastActiveChannel('personal')).toBe('discord')
+      expect(store.getLastActiveChannel('work')).toBe('telegram')
+    })
+
+    it('getLastActiveChannel returns "" for an unset head even when other heads have a value', () => {
+      store.setLastActiveChannel('personal', 'discord')
+      expect(store.getLastActiveChannel('work')).toBe('')
+    })
+
+    it('tryAcquireArchivalLock is independent per head', () => {
+      expect(store.tryAcquireArchivalLock('personal')).toBe(true)
+      expect(store.tryAcquireArchivalLock('personal')).toBe(false)
+      expect(store.tryAcquireArchivalLock('work')).toBe(true)
+      expect(store.tryAcquireArchivalLock('work')).toBe(false)
+    })
+
+    it('releaseArchivalLock on one head does not release another', () => {
+      store.tryAcquireArchivalLock('personal')
+      store.tryAcquireArchivalLock('work')
+      store.releaseArchivalLock('personal')
+      expect(store.tryAcquireArchivalLock('personal')).toBe(true)
+      expect(store.tryAcquireArchivalLock('work')).toBe(false)
+    })
+
+    it('rejects empty headId', () => {
+      expect(() => store.getLastActiveChannel('')).toThrow(/invalid headId/)
+      expect(() => store.setLastActiveChannel('', 'x')).toThrow(/invalid headId/)
+      expect(() => store.tryAcquireArchivalLock('')).toThrow(/invalid headId/)
+      expect(() => store.releaseArchivalLock('')).toThrow(/invalid headId/)
+    })
+
+    it('rejects headId containing colon (prevents key-collision injection)', () => {
+      expect(() => store.getLastActiveChannel('a:b')).toThrow(/invalid headId/)
+      expect(() => store.setLastActiveChannel('a:b', 'x')).toThrow(/invalid headId/)
+      expect(() => store.tryAcquireArchivalLock('a:b')).toThrow(/invalid headId/)
+      expect(() => store.releaseArchivalLock('a:b')).toThrow(/invalid headId/)
+    })
+
+    it('threshold methods remain global — no headId parameter (regression guard)', () => {
+      const t = store.addThreshold({ period: 'day', amountUsd: 5, action: 'alert' })
+      expect(store.getThresholds()).toHaveLength(1)
+      expect(store.getThresholds()[0]!.id).toBe(t.id)
+      // Type-level guarantee: these calls would fail tsc if headId became a parameter.
+      store.updateThreshold(t.id, { amountUsd: 6 })
+      store.deleteThreshold(t.id)
+    })
+  })
+
+  describe('migration 006 — rename flat AppStateStore keys to default-prefixed', () => {
+    it('renames pre-existing last_active_channel and archival_lock rows on upgrade', () => {
+      // Simulate a pre-Phase-30 DB: apply migrations 001-005 only, manually insert
+      // legacy flat keys, then apply 006 and confirm AppStateStore reads them under
+      // the 'default' head.
+      const db = freshDb()
+      // freshDb() already runs ALL migrations including 006, so use raw inserts that
+      // would be visible if 006 had renamed pre-existing rows. To simulate the
+      // pre-006 state, insert with the OLD key names and observe that the seed-time
+      // 006 already ran (which is a no-op on a fresh DB). Then re-insert with old
+      // names and re-run only the 006 SQL to validate the UPDATE behavior.
+      db.exec("INSERT INTO app_state (key, value) VALUES ('last_active_channel', 'telegram-legacy')")
+      db.exec("INSERT INTO app_state (key, value) VALUES ('archival_lock', 'false')")
+      // Re-execute the 006 migration body to exercise the rename path.
+      const migrationPath = path.join(MIGRATIONS_DIR, '006_rename_app_state_keys.sql')
+      const sql = fs.readFileSync(migrationPath, 'utf8')
+      db.exec(sql)
+
+      const store = new AppStateStore(db)
+      expect(store.getLastActiveChannel('default')).toBe('telegram-legacy')
+      // archival_lock value 'false' means the lock is free and can be acquired
+      expect(store.tryAcquireArchivalLock('default')).toBe(true)
+    })
+
+    it('migration 006 is idempotent — re-running does not fail when default-prefixed row already exists', () => {
+      const db = freshDb()
+      // Manually create both the old AND the new key — exercise the NOT EXISTS guard
+      db.exec("INSERT INTO app_state (key, value) VALUES ('last_active_channel', 'old-value')")
+      db.exec("INSERT OR IGNORE INTO app_state (key, value) VALUES ('default:last_active_channel', 'new-value')")
+      const migrationPath = path.join(MIGRATIONS_DIR, '006_rename_app_state_keys.sql')
+      const sql = fs.readFileSync(migrationPath, 'utf8')
+      // Must not throw on the PRIMARY KEY collision — NOT EXISTS guards it.
+      expect(() => db.exec(sql)).not.toThrow()
+      // The 'default:'-prefixed row wins; the legacy row is left behind (harmless).
+      const store = new AppStateStore(db)
+      expect(store.getLastActiveChannel('default')).toBe('new-value')
+    })
   })
 
   describe('usage thresholds', () => {
