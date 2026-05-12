@@ -107,11 +107,11 @@ Plans:
   2. Last-active-channel for head `personal` does not overwrite or read the value for head `work`
   3. Archival triggered on head `personal` cannot be blocked by an archival lock held on head `work`
   4. A message sent via a Telegram adapter assigned to head `work` is routed only through that head's ChannelRouter
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 30-01-PLAN.md — AppStateStore head-scoped signatures + sql/006 key-rename migration + db.test.ts per-head isolation tests (CORE-02, CORE-03)
-- [ ] 30-02-PLAN.md — ActivationLoop parameterized by headId; replace ~33 'default' literals in activation.ts; update test mocks + per-head isolation scenario test (CORE-01)
+- [x] 30-02-PLAN.md — ActivationLoop parameterized by headId; replace ~33 'default' literals in activation.ts; update test mocks + per-head isolation scenario test (CORE-01)
 - [ ] 30-03-PLAN.md — Wire 'default' literal through src/system.ts, src/index.ts, eval harness/scenarios, tests/integration/helpers.ts; CORE-04 architectural regression test; full tsc + vitest gate (CORE-01, CORE-04)
 
 ### Phase 31: Adapter Registry & Config & Startup
@@ -141,6 +141,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
-| 30. Core Activation | 1/3 | In Progress|  |
+| 30. Core Activation | 2/3 | In Progress|  |
 | 31. Adapter Registry & Config & Startup | 0/? | Not started | - |
 | 32. Dashboard Head Selector | 0/? | Not started | - |
