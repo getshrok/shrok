@@ -113,6 +113,8 @@ export interface HeadBundle {
   agentInbox: AgentInboxStore
   channelRouter: ChannelRouter & { sent: Array<{ channel: string; text: string }> }
   tx: (fn: () => void) => void
+  /** Remove the temp directories created for schedules and reminders. */
+  cleanup: () => void
 }
 
 /**
@@ -132,6 +134,8 @@ export function freshHeadBundle(): HeadBundle {
     getLastActiveChannel: () => null,
     getFirstChannel: () => null,
   }
+  const schedulesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-schedules-'))
+  const remindersDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-reminders-'))
   return {
     db,
     messages: new MessageStore(db),
@@ -139,13 +143,17 @@ export function freshHeadBundle(): HeadBundle {
     queue: new QueueStore(db),
     usage: new UsageStore(db, 'UTC'),
     appState: new AppStateStore(db),
-    schedules: new ScheduleStore(fs.mkdtempSync(path.join(os.tmpdir(), 'eval-schedules-'))),
+    schedules: new ScheduleStore(schedulesDir),
     notes: new NoteStore(db),
-    reminders: new ReminderStore(fs.mkdtempSync(path.join(os.tmpdir(), 'eval-reminders-'))),
+    reminders: new ReminderStore(remindersDir),
     stewardRuns: new StewardRunStore(db),
     agentInbox: new AgentInboxStore(db),
     channelRouter,
     tx: (fn: () => void) => transaction(db, fn),
+    cleanup: () => {
+      fs.rmSync(schedulesDir, { recursive: true, force: true })
+      fs.rmSync(remindersDir, { recursive: true, force: true })
+    },
   }
 }
 
