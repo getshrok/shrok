@@ -177,18 +177,21 @@ describe('head activation integration', () => {
     logTokens(usage)
   })
 
-  // ── Tool use: list_schedules ───────────────────────────────────────────────
+  // ── Schedule handling (no list_schedules tool) ────────────────────────────
 
-  it('head uses list_schedules tool when asked about schedules', async () => {
+  it('head responds about schedules even without list_schedules tool', async () => {
     const { loop, queue, messages, usage } = makeLoop(router)
 
-    queue.enqueue(makeUserMessageEvent('List my current schedules. Use the list_schedules tool.'), PRIORITY.USER_MESSAGE)
+    queue.enqueue(makeUserMessageEvent('What schedules do I have?'), PRIORITY.USER_MESSAGE)
     await drainLoop(loop, queue)
 
     const history = messages.getRecent('default', Infinity)
+    const assistantTexts = history.filter(m => m.kind === 'assistant_text')
+    const response = assistantTexts[assistantTexts.length - 1]?.content ?? ''
+    expect(response.length).toBeGreaterThan(0)
     const toolCalls = history.filter(m => m.kind === 'tool_call')
     const calledNames = toolCalls.flatMap(m => m.kind === 'tool_call' ? m.toolCalls.map(tc => tc.name) : [])
-    expect(calledNames).toContain('list_schedules')
+    expect(calledNames).not.toContain('list_schedules')
     logTokens(usage)
   })
 
