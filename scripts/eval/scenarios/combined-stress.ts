@@ -198,6 +198,8 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     let totalCost = 0
     let totalLatency = 0
     const allTraceFiles: Record<string, string> = {}
+    let recallPreloaded = ''
+    let recallFresh = ''
 
     for (let i = 0; i < allQueries.length; i++) {
       const query = allQueries[i]!
@@ -221,6 +223,12 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
         workspaceDir: env.workspaceDir,
         timeoutMs: 180_000,
       })
+
+      // Capture recall responses directly from the runHeadQuery result rather than
+      // using positional indexing on channelRouter.sent, which can shift if any
+      // cooldown or steward message is delivered after the recall queries.
+      if (i === CONTINUATION_QUERIES.length) recallPreloaded = response
+      if (i === CONTINUATION_QUERIES.length + 1) recallFresh = response
 
       const latencyMs = Date.now() - t0
       await waitForArchival(bundle)
@@ -246,8 +254,6 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     }
 
     const topicsAfterRun = (await memory.getTopics()).length
-    const recallPreloaded = bundle.channelRouter.sent.at(-2)?.text ?? ''
-    const recallFresh = bundle.channelRouter.sent.at(-1)?.text ?? ''
 
     const metrics: CombinedMetrics = {
       scenarioTokensAtStart: tokenCount,
