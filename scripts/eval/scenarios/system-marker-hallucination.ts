@@ -216,7 +216,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
         }
 
         // Snapshot message IDs before the query so we can isolate new ones
-        const msgIdsBefore = new Set(env.bundle.messages.getAll().map(m => m.id))
+        const msgIdsBefore = new Set(env.bundle.messages.getAll('default').map(m => m.id))
         const sentBefore = env.bundle.channelRouter.sent.length
 
         // Run query
@@ -239,7 +239,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
         }
 
         // Extract raw LLM content from new non-injected assistant messages in DB
-        const rawContent = env.bundle.messages.getAll()
+        const rawContent = env.bundle.messages.getAll('default')
           .filter(m => !msgIdsBefore.has(m.id))
           .filter((m): m is TextMessage => m.kind === 'text' && m.role === 'assistant' && !m.injected)
           .map(m => m.content)

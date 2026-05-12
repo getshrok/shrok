@@ -170,7 +170,7 @@ describe('head activation integration', () => {
     expect(response).toContain('4')
 
     // Verify no tool calls in history (should be pure text response)
-    const history = messages.getRecent(Infinity)
+    const history = messages.getRecent('default', Infinity)
     const toolCalls = history.filter(m => m.kind === 'tool_call' && !m.injected)
     expect(toolCalls.length).toBe(0)
     logTokens(usage)
@@ -184,7 +184,7 @@ describe('head activation integration', () => {
     queue.enqueue(makeUserMessageEvent('List my current schedules. Use the list_schedules tool.'), PRIORITY.USER_MESSAGE)
     await drainLoop(loop, queue)
 
-    const history = messages.getRecent(Infinity)
+    const history = messages.getRecent('default', Infinity)
     const toolCalls = history.filter(m => m.kind === 'tool_call')
     const calledNames = toolCalls.flatMap(m => m.kind === 'tool_call' ? m.toolCalls.map(tc => tc.name) : [])
     expect(calledNames).toContain('list_schedules')
@@ -202,7 +202,7 @@ describe('head activation integration', () => {
     )
     await drainLoop(loop, queue)
 
-    const history = messages.getRecent(Infinity)
+    const history = messages.getRecent('default', Infinity)
     const toolCalls = history.filter(m => m.kind === 'tool_call')
     const calledNames = toolCalls.flatMap(m => m.kind === 'tool_call' ? m.toolCalls.map(tc => tc.name) : [])
     expect(calledNames).toContain('spawn_agent')

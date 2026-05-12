@@ -182,7 +182,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       offsetPressure += session.length
     }
 
-    const tokenCount = estimateTokens(bundle.messages.getAll())
+    const tokenCount = estimateTokens(bundle.messages.getAll('default'))
     console.log(`[combined-stress] Live context: ${bundle.messages.count()} messages, ~${tokenCount.toLocaleString()} tokens (threshold: ${threshold.toLocaleString()})`)
 
     if (tokenCount < threshold * 0.8) {

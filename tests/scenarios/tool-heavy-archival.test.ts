@@ -200,7 +200,7 @@ describe('archiveMessages — recall_memory filtering', () => {
       expect(result!.archivedMessageIds).toEqual(expectedIds)
 
       // Those messages should be deleted from the store
-      const remaining = messages.getAll()
+      const remaining = messages.getAll('default')
       for (const id of expectedIds) {
         expect(remaining.some(m => m.id === id)).toBe(false)
       }

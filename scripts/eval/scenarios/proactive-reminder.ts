@@ -97,7 +97,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     // Check if reminder was injected (head responded) or skipped (no response)
     const sent1 = env1.bundle.channelRouter.sent.length
-    const allMsgs1 = env1.bundle.messages.getAll()
+    const allMsgs1 = env1.bundle.messages.getAll('default')
     const reminderInjected1 = allMsgs1.some(m => m.kind === 'text' && m.content.includes('Follow up with Sarah'))
     console.log(`[proactive-reminder] Relevant: injected = ${reminderInjected1}, messages sent = ${sent1}`)
 
@@ -139,7 +139,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       stubAgentRunner: true,
     })
 
-    const allMsgs2 = env2.bundle.messages.getAll()
+    const allMsgs2 = env2.bundle.messages.getAll('default')
     const reminderInjected2 = allMsgs2.some(m => m.kind === 'text' && m.content.includes('Follow up with Sarah'))
     console.log(`[proactive-reminder] Already handled: injected = ${reminderInjected2}`)
 
@@ -181,7 +181,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       stubAgentRunner: true,
     })
 
-    const allMsgs3 = env3.bundle.messages.getAll()
+    const allMsgs3 = env3.bundle.messages.getAll('default')
     const reminderInjected3 = allMsgs3.some(m => m.kind === 'text' && m.content.includes('Book a dentist'))
     console.log(`[proactive-reminder] Cancelled: injected = ${reminderInjected3}`)
 

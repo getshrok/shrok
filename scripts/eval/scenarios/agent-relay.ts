@@ -230,7 +230,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     const hallucinatedMarkers = detectSystemHallucination(combinedResponse)
 
-    const newMessages = env.bundle.messages.getAll().slice(priorCount)
+    const newMessages = env.bundle.messages.getAll('default').slice(priorCount)
     const spuriousToolCalls = newMessages
       .filter(m => m.kind === 'tool_call')
       .flatMap(m => (m as import('../../../src/types/core.js').ToolCallMessage).toolCalls)

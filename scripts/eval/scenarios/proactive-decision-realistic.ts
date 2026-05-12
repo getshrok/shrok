@@ -265,7 +265,7 @@ export async function run(opts: {
 
     // Build full history for the judge — no truncation, the judge needs complete
     // context to distinguish real conversation details from hallucinations
-    const allMessages = env.bundle.messages.getAll()
+    const allMessages = env.bundle.messages.getAll('default')
     const historyForJudge = allMessages
       .filter((m): m is TextMessage => m.kind === 'text')
       .map(m => {

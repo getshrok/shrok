@@ -211,7 +211,7 @@ describe('ActivationLoop — pre-event threshold block check', () => {
     expect(sentText).toContain('preserved')
 
     // The block message was also persisted to MessageStore for the dashboard.
-    const allMsgs = messages.getAll()
+    const allMsgs = messages.getAll('default')
     const blockMsg = allMsgs.find(m => m.kind === 'text' && (m as { content?: string }).content?.includes('Shrok has stopped'))
     expect(blockMsg).toBeDefined()
 

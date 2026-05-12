@@ -121,7 +121,7 @@ describe('archival boundaries', () => {
         50_000,
       )
 
-      const allMessages = messages.getAll()
+      const allMessages = messages.getAll('default')
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
@@ -131,7 +131,7 @@ describe('archival boundaries', () => {
       expect(result!.archivedMessageIds.length).toBeGreaterThan(0)
 
       // A continuation hint should have been appended to the message store
-      const remaining = messages.getAll()
+      const remaining = messages.getAll('default')
       const injected = remaining.filter(m =>
         m.kind === 'text' && m.injected && m.content.includes('[Archival note:')
       )
@@ -158,7 +158,7 @@ describe('archival boundaries', () => {
         50_000,
       )
 
-      const allMessages = messages.getAll()
+      const allMessages = messages.getAll('default')
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
@@ -190,7 +190,7 @@ describe('archival boundaries', () => {
       )
 
       // First archival pass
-      const allMessages1 = messages.getAll()
+      const allMessages1 = messages.getAll('default')
       const result1 = await archiveMessages(allMessages1, {
         topicMemory,
         messages,
@@ -204,7 +204,7 @@ describe('archival boundaries', () => {
       }
 
       // Second archival pass
-      const allMessages2 = messages.getAll()
+      const allMessages2 = messages.getAll('default')
       const result2 = await archiveMessages(allMessages2, {
         topicMemory,
         messages,
@@ -248,7 +248,7 @@ describe('archival boundaries', () => {
         50_000,
       )
 
-      const allMessages = messages.getAll()
+      const allMessages = messages.getAll('default')
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
@@ -256,7 +256,7 @@ describe('archival boundaries', () => {
 
       expect(result).not.toBeNull()
 
-      const remaining = messages.getAll()
+      const remaining = messages.getAll('default')
 
       // Archived message IDs should be gone from the store
       for (const id of result!.archivedMessageIds) {
@@ -288,7 +288,7 @@ describe('archival boundaries', () => {
         50_000,
       )
 
-      const allMessages = messages.getAll()
+      const allMessages = messages.getAll('default')
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
@@ -298,7 +298,7 @@ describe('archival boundaries', () => {
       expect(result!.touchedTopics.length).toBeGreaterThanOrEqual(1)
 
       // Find the injected archival note
-      const remaining = messages.getAll()
+      const remaining = messages.getAll('default')
       const archivalNotes = remaining.filter(
         m => m.kind === 'text' && m.injected && m.content.includes('[Archival note:')
       )

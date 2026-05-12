@@ -575,8 +575,8 @@ export async function archiveUntilGone(
   bundle: HeadBundle,
   memory: Memory,
 ): Promise<void> {
-  while (bundle.messages.getAll().some(m => historicalIds.has(m.id))) {
-    await archiveMessages(bundle.messages.getAll(), {
+  while (bundle.messages.getAll('default').some(m => historicalIds.has(m.id))) {
+    await archiveMessages(bundle.messages.getAll('default'), {
       topicMemory: memory,
       messages: bundle.messages,
     })
@@ -991,7 +991,7 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
   const { activationLoop: loop, agentRunner } = system
 
   // Snapshot current state so tool calls and response only reflect this activation
-  const existingIds = new Set(bundle.messages.getAll().map(m => m.id))
+  const existingIds = new Set(bundle.messages.getAll('default').map(m => m.id))
   const sentBefore = bundle.channelRouter.sent.length
 
   // For non-user-message events, ensure there's an active channel to send responses to
@@ -1043,7 +1043,7 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
     fs.rmSync(evalTraceDir, { recursive: true, force: true })
   }
 
-  const newMessages = bundle.messages.getAll().filter(m => !existingIds.has(m.id))
+  const newMessages = bundle.messages.getAll('default').filter(m => !existingIds.has(m.id))
   const toolCalls = newMessages
     .filter((m): m is ToolCallMessage => m.kind === 'tool_call')
     .flatMap(m => m.toolCalls.map(tc => ({ name: tc.name, input: tc.input as Record<string, unknown> })))

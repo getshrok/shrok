@@ -182,12 +182,12 @@ describe('message batching', () => {
     queue.enqueue(ev2, PRIORITY.USER_MESSAGE)
 
     // claimNext claims ev1
-    const claimed = queue.claimNext()
+    const claimed = queue.claimNext('default')
     expect(claimed).not.toBeNull()
     expect((claimed!.event as QueueEvent & { type: 'user_message' }).text).toBe('set a meeting for Tuesday')
 
     // claimAllPendingUserMessages should return ev2
-    const pending = queue.claimAllPendingUserMessages()
+    const pending = queue.claimAllPendingUserMessages('default')
     expect(pending.length).toBe(1)
     expect((pending[0]!.event as QueueEvent & { type: 'user_message' }).text).toBe('wait, make that Wednesday')
   })
@@ -334,7 +334,7 @@ describe('message batching', () => {
 
     await drainLoop(loop, queue)
 
-    const history = messages.getAll()
+    const history = messages.getAll('default')
     const userMessages = history.filter(m => m.kind === 'text' && m.role === 'user' && !m.injected)
 
     const texts = userMessages.map(m => m.kind === 'text' ? m.content : '')

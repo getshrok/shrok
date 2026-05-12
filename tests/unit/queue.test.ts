@@ -47,14 +47,14 @@ describe('QueueStore.requeueStale', () => {
     queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE)
 
     // Claim it (now 'processing')
-    const claimed = queue.claimNext()
+    const claimed = queue.claimNext('default')
     expect(claimed).not.toBeNull()
 
     // Simulate crash recovery — do not ack; call requeueStale
     queue.requeueStale()
 
     // Now it should be claimable again
-    const reclaimed = queue.claimNext()
+    const reclaimed = queue.claimNext('default')
     expect(reclaimed).not.toBeNull()
     expect(reclaimed!.rowId).toBe(claimed!.rowId)
   })
@@ -62,13 +62,13 @@ describe('QueueStore.requeueStale', () => {
   it('does not affect already-done events', () => {
     const queue = new QueueStore(freshDb())
     queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE)
-    const claimed = queue.claimNext()!
+    const claimed = queue.claimNext('default')!
     queue.ack(claimed.rowId)
 
     queue.requeueStale()
 
     // Queue is empty — nothing was re-enqueued
-    expect(queue.claimNext()).toBeNull()
+    expect(queue.claimNext('default')).toBeNull()
   })
 
   it('does not affect pending events', () => {
@@ -80,8 +80,8 @@ describe('QueueStore.requeueStale', () => {
     queue.requeueStale()
 
     // Both still claimable in order
-    const first = queue.claimNext()
-    const second = queue.claimNext()
+    const first = queue.claimNext('default')
+    const second = queue.claimNext('default')
     expect(first).not.toBeNull()
     expect(second).not.toBeNull()
   })
@@ -94,7 +94,7 @@ describe('QueueStore.claimAllPendingBackground', () => {
     queue.enqueue(agentCompleted(), PRIORITY.AGENT_COMPLETED)
     queue.enqueue(agentCompleted(), PRIORITY.AGENT_COMPLETED)
 
-    const claimed = queue.claimAllPendingBackground()
+    const claimed = queue.claimAllPendingBackground('default')
     expect(claimed.length).toBe(3)
   })
 
@@ -103,7 +103,7 @@ describe('QueueStore.claimAllPendingBackground', () => {
     queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE)
     queue.enqueue(agentCompleted(), PRIORITY.AGENT_COMPLETED)
 
-    const claimed = queue.claimAllPendingBackground()
+    const claimed = queue.claimAllPendingBackground('default')
     expect(claimed.length).toBe(1)
     expect(claimed[0]!.event.type).toBe('agent_completed')
   })
@@ -112,8 +112,8 @@ describe('QueueStore.claimAllPendingBackground', () => {
     const queue = new QueueStore(freshDb())
     queue.enqueue(agentCompleted(), PRIORITY.AGENT_COMPLETED)
 
-    queue.claimAllPendingBackground()
-    const second = queue.claimAllPendingBackground()
+    queue.claimAllPendingBackground('default')
+    const second = queue.claimAllPendingBackground('default')
 
     expect(second.length).toBe(0)
   })
@@ -122,7 +122,7 @@ describe('QueueStore.claimAllPendingBackground', () => {
     const queue = new QueueStore(freshDb())
     queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE)
 
-    const claimed = queue.claimAllPendingBackground()
+    const claimed = queue.claimAllPendingBackground('default')
     expect(claimed.length).toBe(0)
   })
 
@@ -132,10 +132,10 @@ describe('QueueStore.claimAllPendingBackground', () => {
     queue.enqueue(agentCompleted(), PRIORITY.AGENT_COMPLETED)
 
     // Claim one as the primary (now 'processing')
-    const primary = queue.claimNext()!
+    const primary = queue.claimNext('default')!
 
     // claimAllPendingBackground should only return the remaining pending one
-    const background = queue.claimAllPendingBackground()
+    const background = queue.claimAllPendingBackground('default')
     expect(background.length).toBe(1)
     expect(background[0]!.rowId).not.toBe(primary.rowId)
   })
