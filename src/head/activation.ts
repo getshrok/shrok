@@ -76,6 +76,8 @@ function hasAttachmentsInHistory(messages: Message[]): boolean {
 // ─── ActivationLoop ───────────────────────────────────────────────────────────
 
 export interface ActivationLoopOptions {
+  /** Phase 30: head identity. Every queue/message/appState op is scoped to this. */
+  headId: string
   queueStore: QueueStore
   messages: MessageStore
   appState: AppStateStore
@@ -193,7 +195,7 @@ export class ActivationLoop {
   }
 
   announceOnline(): void {
-    const channel = this.opts.appState.getLastActiveChannel()
+    const channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
       || this.opts.channelRouter.getFirstChannel()
     if (!channel) return
     // Inject a system message so the head announces it just came online.
@@ -224,8 +226,7 @@ export class ActivationLoop {
   }
 
   private async processOne(): Promise<void> {
-    // Phase 29 interim: pass 'default' headId until Phase 30 parameterizes ActivationLoop by head.
-    const claimed = this.opts.queueStore.claimNext('default')
+    const claimed = this.opts.queueStore.claimNext(this.opts.headId)
 
     if (!claimed) {
       // Nothing to process — wait for poll interval or notification
@@ -251,7 +252,7 @@ export class ActivationLoop {
       for (const c of blocking) {
         log.error(`[circuit-breaker] threshold ${c.threshold.period} $${c.threshold.amountUsd.toFixed(2)} blocked: $${c.currentSpend.toFixed(2)} of $${c.threshold.amountUsd.toFixed(2)}`)
       }
-      const channel = this.opts.appState.getLastActiveChannel()
+      const channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
       if (channel) {
         const text = formatThresholdBlock(blocking[0]!)
         this.opts.messages.append({
@@ -282,7 +283,7 @@ export class ActivationLoop {
           log.warn(`[activation] Rate limited by ${err.provider} — waiting ${Math.round(waitMs / 1000)}s before retry`)
           const notifyChannel = event.type === 'user_message'
             ? event.channel
-            : this.opts.appState.getLastActiveChannel()
+            : this.opts.appState.getLastActiveChannel(this.opts.headId)
           if (notifyChannel) {
             const anthropicHint = err.provider === 'anthropic'
               ? ' New Anthropic accounts are on Tier 1 (~30k tokens/min); pre-purchasing $40+ in credits at console.anthropic.com → Settings → Billing jumps you to Tier 2 and usually fixes this.'
@@ -327,7 +328,7 @@ export class ActivationLoop {
       this.opts.queueStore.fail(rowId)
 
       if (event.type === 'user_message') {
-        const channel = this.opts.appState.getLastActiveChannel()
+        const channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
         if (channel) {
           const anthropicHint = err instanceof LLMApiError && err.provider === 'anthropic'
             ? '\n\nCommon Anthropic issues: new accounts are on Tier 1 (~30k tokens/min) which causes slow responses — this improves after ~$40 in usage. You can reach this immediately by pre-purchasing credits at console.anthropic.com → Settings → Billing. There is also a default $100/month spend cap that blocks all requests when reached. Check https://console.anthropic.com → Settings → Limits.'
@@ -369,7 +370,7 @@ export class ActivationLoop {
   }
 
   private async runCommand(text: string, channel: string): Promise<void> {
-    this.opts.appState.setLastActiveChannel(channel)
+    this.opts.appState.setLastActiveChannel(this.opts.headId, channel)
     const spaceIdx = text.indexOf(' ')
     const cmdName = (spaceIdx === -1 ? text.slice(1) : text.slice(1, spaceIdx)).toLowerCase()
     const args = spaceIdx === -1 ? '' : text.slice(spaceIdx + 1)
@@ -408,9 +409,9 @@ export class ActivationLoop {
           setTimeout(() => restartProcess(), 500)
         },
         forceArchive: async () => {
-          const allMessages = this.opts.messages.getRecent('default', Infinity)
+          const allMessages = this.opts.messages.getRecent(this.opts.headId, Infinity)
           if (allMessages.length === 0) return 0
-          if (!this.opts.appState.tryAcquireArchivalLock()) return -1
+          if (!this.opts.appState.tryAcquireArchivalLock(this.opts.headId)) return -1
           try {
             const result = await archiveMessages(allMessages, {
               topicMemory: this.opts.topicMemory,
@@ -419,7 +420,7 @@ export class ActivationLoop {
             try { this.opts.maintenance?.() } catch { /* best effort */ }
             return result?.archivedMessageIds.length ?? 0
           } finally {
-            this.opts.appState.releaseArchivalLock()
+            this.opts.appState.releaseArchivalLock(this.opts.headId)
           }
         },
         clearHistory: () => this.opts.messages.deleteAll(),
@@ -446,7 +447,7 @@ export class ActivationLoop {
           reminders: this.opts.scheduleStore.list().filter(s => s.kind === 'reminder').length,
         }),
         getHeadContextStats: () => {
-          const all = this.opts.messages.getAll('default')
+          const all = this.opts.messages.getAll(this.opts.headId)
           const memoryFraction = (this.opts.config.memoryBudgetPercent ?? 40) / 100
           const historyBudget = Math.floor(this.opts.config.contextWindowTokens * (1 - memoryFraction))
           const archivalThreshold = Math.floor(historyBudget * this.opts.config.archivalThresholdFraction)
@@ -555,7 +556,7 @@ export class ActivationLoop {
             toolResults: toolResults as [ToolResult, ...ToolResult[]],
           } as ToolResultMessage)
         }
-        this.opts.appState.setLastActiveChannel(event.channel)
+        this.opts.appState.setLastActiveChannel(this.opts.headId, event.channel)
       }
 
       // Routing steward: hint at the best approach for this message.
@@ -564,7 +565,7 @@ export class ActivationLoop {
       if (config.routingStewardEnabled && event.text.length >= 10 && !event.text.includes('type="greeting"')) {
         const skills = this.opts.toolExecutorOpts.skillLoader.listAll()
         const skillList = skills.map(s => `- ${s.name}: ${s.frontmatter.description}`).join('\n')
-        const recent = this.opts.messages.getRecent('default', 2000)
+        const recent = this.opts.messages.getRecent(this.opts.headId, 2000)
           .filter((m): m is TextMessage => m.kind === 'text' && !m.injected)
           .slice(-5)
           .map(m => ({ role: m.role, content: m.content }))
@@ -615,7 +616,7 @@ export class ActivationLoop {
       // pending in the queue). Stewards run BEFORE injection (append-only):
       // relay steward gates scheduled agent_completed entirely; work-summary
       // steward computes the content the injector will use.
-      coalescedEvents = this.opts.queueStore.claimAllPendingBackground('default')
+      coalescedEvents = this.opts.queueStore.claimAllPendingBackground(this.opts.headId)
     }
 
     try {
@@ -721,7 +722,7 @@ export class ActivationLoop {
 
     const debugChannel = event.type === 'user_message'
       ? event.channel
-      : this.opts.appState.getLastActiveChannel()
+      : this.opts.appState.getLastActiveChannel(this.opts.headId)
     const visibility = {
       agentWork: config.visAgentWork,
       headTools: config.visHeadTools,
@@ -773,13 +774,13 @@ export class ActivationLoop {
     // Channel for sending intermediate and final text
     const sendChannel = event.type === 'user_message'
       ? event.channel
-      : this.opts.appState.getLastActiveChannel()
+      : this.opts.appState.getLastActiveChannel(this.opts.headId)
 
     const buildHistory = () => {
-      const activationMessages = this.opts.messages.getSince('default', activationStart)
+      const activationMessages = this.opts.messages.getSince(this.opts.headId, activationStart)
       const activationCost = estimateTokens(activationMessages)
       const priorBudget = Math.max(0, context.historyBudget - activationCost)
-      const priorHistory = this.opts.messages.getRecentBefore('default', activationStart, priorBudget)
+      const priorHistory = this.opts.messages.getRecentBefore(this.opts.headId, activationStart, priorBudget)
       return [...stripAttachmentsFromHistory(priorHistory), ...activationMessages]
     }
 
@@ -811,7 +812,7 @@ export class ActivationLoop {
           // Without this, refreshHistory returns a stale snapshot and the model can't
           // see its own prior actions, causing spawn loops.
           filteredBuildHistory = () => {
-            const activationMessages = this.opts.messages.getSince('default', activationStart)
+            const activationMessages = this.opts.messages.getSince(this.opts.headId, activationStart)
             return [...filteredPrior, ...activationMessages]
           }
         } catch (err) {
@@ -842,7 +843,7 @@ export class ActivationLoop {
           msg = { ...msg, content: cleaned }
 
           if (config.headRelaySteward && !isGreeting) {
-            const recent = this.opts.messages.getRecent('default', config.headRelayStewardContextTokens)
+            const recent = this.opts.messages.getRecent(this.opts.headId, config.headRelayStewardContextTokens)
               .filter((m): m is TextMessage => m.kind === 'text' && !m.injected && !m.content.includes('type="greeting"'))
               .map(m => ({ role: m.role, content: m.content }))
             const relayed = await runHeadRelaySteward(msg.content, recent, this.opts.llmRouter, config.stewardModel, this.opts.usageStore, onDebug ?? undefined)
@@ -915,7 +916,7 @@ export class ActivationLoop {
     // Batching: if new user messages arrived while the LLM was running, fold the
     // intermediate response into history and re-activate rather than delivering.
     if (event.type === 'user_message') {
-      let buffered = this.opts.queueStore.claimAllPendingUserMessages('default')
+      let buffered = this.opts.queueStore.claimAllPendingUserMessages(this.opts.headId)
       while (buffered.length > 0) {
         log.info(`[activation] Re-activating: ${buffered.length} user message(s) arrived during LLM call`)
         let hasNewMessages = false
@@ -935,14 +936,14 @@ export class ActivationLoop {
             channel: ev.channel,
             createdAt: now(),
           })
-          this.opts.appState.setLastActiveChannel(ev.channel)
+          this.opts.appState.setLastActiveChannel(this.opts.headId, ev.channel)
           this.opts.queueStore.ack(rowId)
           hasNewMessages = true
         }
         if (hasNewMessages) {
           finalResponse = await runToolLoop(this.opts.llmRouter, { ...toolLoopOpts, history: toolLoopOpts.refreshHistory() })
         }
-        buffered = this.opts.queueStore.claimAllPendingUserMessages('default')
+        buffered = this.opts.queueStore.claimAllPendingUserMessages(this.opts.headId)
       }
 
     }
@@ -961,7 +962,7 @@ export class ActivationLoop {
     }
 
     // Steward: catch mandatory actions the head missed (runs after response delivery)
-    const activationMsgs = this.opts.messages.getSince('default', activationStart)
+    const activationMsgs = this.opts.messages.getSince(this.opts.headId, activationStart)
     const toolsCalledThisTurn = activationMsgs
       .filter((m): m is ToolCallMessage => m.kind === 'tool_call')
       .flatMap(m => m.toolCalls)
@@ -969,7 +970,7 @@ export class ActivationLoop {
 
     if (finalResponse.content.trim() !== '' || toolsCalledThisTurn.includes('spawn_agent')) {
       const recentHistory = buildStewardHistory(
-        this.opts.messages.getAll('default')
+        this.opts.messages.getAll(this.opts.headId)
           .filter((m): m is TextMessage => m.kind === 'text' && m.createdAt < activationStart),
         config.stewardContextTokenBudget,
       )
@@ -993,7 +994,7 @@ export class ActivationLoop {
 
       const stewardChannel = event.type === 'user_message'
         ? event.channel
-        : (this.opts.appState.getLastActiveChannel() ?? '')
+        : (this.opts.appState.getLastActiveChannel(this.opts.headId) ?? '')
 
       // Filter out stewards disabled by config. Each steward in DEFAULT_STEWARDS has its
       // own *StewardEnabled flag in Config; add a clause here when wiring a new one.
@@ -1066,7 +1067,7 @@ export class ActivationLoop {
         return
       }
       // channel resolved at fire time per REM-06
-      const channel = this.opts.appState.getLastActiveChannel()
+      const channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
       if (!channel) {
         log.warn(`[scheduler] reminder:${event.scheduleId} — no active channel, skipping`)
         if (schedule.cron === null) {
@@ -1075,7 +1076,7 @@ export class ActivationLoop {
         return
       }
       if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
-        const recentMsgs = this.opts.messages.getRecentTextByTokens('default', this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
+        const recentMsgs = this.opts.messages.getRecentTextByTokens(this.opts.headId, this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
         const { identityLoader } = this.opts.toolExecutorOpts
         const decision = await runReminderDecision({
           reminderMessage: schedule.agentContext ?? '',
@@ -1129,7 +1130,7 @@ export class ActivationLoop {
 
     // Proactive decision: run an LLM steward to decide whether this schedule should fire
     if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
-      const recentMsgs = this.opts.messages.getRecentTextByTokens('default', this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
+      const recentMsgs = this.opts.messages.getRecentTextByTokens(this.opts.headId, this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
       const { identityLoader } = this.opts.toolExecutorOpts
 
       const decision = await runProactiveDecision({
@@ -1175,7 +1176,7 @@ export class ActivationLoop {
         const scheduleRow = this.opts.scheduleStore.get(event.scheduleId)
         const previousReason = scheduleRow?.lastSkipReason ?? ''
         if (!previousReason.startsWith('monthly budget exceeded')) {
-          const channel = this.opts.appState.getLastActiveChannel()
+          const channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
           if (channel) {
             await this.opts.channelRouter.send(channel,
               `Task **${taskName}** has hit its monthly budget ($${cap.toFixed(2)}) and won't run again until next month. You can raise the cap in the task's settings if needed.`)
@@ -1273,7 +1274,7 @@ export class ActivationLoop {
 
   private async maybeArchive(): Promise<void> {
     try {
-      const allMessages = this.opts.messages.getRecent('default', Infinity)
+      const allMessages = this.opts.messages.getRecent(this.opts.headId, Infinity)
       const tokenCount = estimateTokens(allMessages)
       const memoryFraction = (this.opts.config.memoryBudgetPercent ?? 40) / 100
       const historyBudget = this.opts.config.contextWindowTokens * (1 - memoryFraction)
@@ -1282,7 +1283,7 @@ export class ActivationLoop {
       if (tokenCount <= threshold) return
 
       // Acquire lock (atomic)
-      if (!this.opts.appState.tryAcquireArchivalLock()) return
+      if (!this.opts.appState.tryAcquireArchivalLock(this.opts.headId)) return
 
       void this.runArchival(allMessages)
     } catch (err) {
@@ -1300,7 +1301,7 @@ export class ActivationLoop {
       // Cancel suspended agents whose context has been archived away.
       // If the head no longer has the agent-paused trigger in its live history,
       // the conversation has moved on and the question will never be answered.
-      const oldest = this.opts.messages.getAll('default')[0]
+      const oldest = this.opts.messages.getAll(this.opts.headId)[0]
       if (oldest) {
         const suspended = this.opts.agentStore.getByStatus('suspended')
         for (const agent of suspended) {
@@ -1328,7 +1329,7 @@ export class ActivationLoop {
         } as TextMessage)
       } catch { /* best effort */ }
     } finally {
-      this.opts.appState.releaseArchivalLock()
+      this.opts.appState.releaseArchivalLock(this.opts.headId)
     }
   }
 }
