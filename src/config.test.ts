@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadConfig, updateUserConfig } from './config.js'
+import { loadConfig, updateUserConfig, resolveHeads, type Config } from './config.js'
 
 describe('loadConfig', () => {
   const originalEnv = process.env
@@ -369,5 +369,135 @@ describe('Phase 17 updateUserConfig helper', () => {
     // This test just asserts no throw on ~-prefixed path when os.homedir() exists.
     const homedir = os.homedir()
     expect(homedir.length).toBeGreaterThan(0)
+  })
+})
+
+// ─── Phase 31: heads[] schema + resolveHeads() ────────────────────────────
+
+describe('Phase 31 ConfigSchema heads[] field', () => {
+  let tmpConfigPath: string
+
+  beforeEach(() => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'shrok-config-test-'))
+    tmpConfigPath = path.join(tmp, 'config.json')
+    process.env['USER_CONFIG_PATH'] = tmpConfigPath
+    // Defensive: scrub env vars that flat-key synthesis would pick up
+    delete process.env['TELEGRAM_BOT_TOKEN']
+    delete process.env['TELEGRAM_CHAT_ID']
+    delete process.env['DISCORD_BOT_TOKEN']
+    delete process.env['DISCORD_CHANNEL_ID']
+    delete process.env['SLACK_BOT_TOKEN']
+    delete process.env['SLACK_APP_TOKEN']
+    delete process.env['SLACK_CHANNEL_ID']
+    delete process.env['WHATSAPP_ALLOWED_JID']
+    delete process.env['ZOHO_CLIENT_ID']
+    delete process.env['ZOHO_CLIENT_SECRET']
+    delete process.env['ZOHO_REFRESH_TOKEN']
+    delete process.env['ZOHO_CLIQ_CHAT_ID']
+  })
+
+  afterEach(() => {
+    delete process.env['USER_CONFIG_PATH']
+  })
+
+  it('parses heads[] with two telegram entries (CONF-01)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [
+        { id: 'personal', channels: [{ id: 'telegram-personal', vendor: 'telegram', botToken: 'tok1', chatId: 'chat1' }] },
+        { id: 'work',     channels: [{ id: 'telegram-work',     vendor: 'telegram', botToken: 'tok2', chatId: 'chat2' }] },
+      ],
+    }))
+    const cfg = loadConfig()
+    expect(cfg.heads).toHaveLength(2)
+    expect(cfg.heads?.[0]?.id).toBe('personal')
+    expect(cfg.heads?.[1]?.id).toBe('work')
+    expect(cfg.heads?.[0]?.channels[0]?.id).toBe('telegram-personal')
+    expect(cfg.heads?.[1]?.channels[0]?.id).toBe('telegram-work')
+  })
+
+  it('with no heads[] and only flat keys, config.heads is undefined (CONF-02)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      telegramBotToken: 'flat-tok',
+      telegramChatId: 'flat-chat',
+    }))
+    const cfg = loadConfig()
+    expect(cfg.heads).toBeUndefined()
+    expect(cfg.telegramBotToken).toBe('flat-tok')
+  })
+
+  it('rejects invalid vendor string in heads[].channels[].vendor (CONF-01 negative)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [
+        { id: 'x', channels: [{ id: 'a', vendor: 'bogus-vendor', foo: 'bar' }] },
+      ],
+    }))
+    expect(() => loadConfig()).toThrow(/Configuration error/)
+  })
+})
+
+describe('Phase 31 resolveHeads()', () => {
+  function makeConfig(overrides: Partial<Config> = {}): Config {
+    // Build a minimal Config object directly — avoids re-running loadConfig per test
+    return {
+      dbPath: '/tmp/test.db',
+      identityDir: '/tmp/identity',
+      ...overrides,
+    } as Config
+  }
+
+  it('returns config.heads unchanged when heads[] present (D-04: flat keys ignored)', () => {
+    const cfg = makeConfig({
+      heads: [{ id: 'personal', channels: [{ id: 'telegram-personal', vendor: 'telegram', botToken: 't', chatId: 'c' }] }],
+      // Flat keys present — must be IGNORED per D-04
+      telegramBotToken: 'flat-tok',
+      telegramChatId: 'flat-chat',
+    })
+    const heads = resolveHeads(cfg)
+    expect(heads).toHaveLength(1)
+    expect(heads[0]?.id).toBe('personal')
+    expect(heads[0]?.channels).toHaveLength(1)
+    expect(heads[0]?.channels[0]?.id).toBe('telegram-personal')
+    // Crucially: the flat telegram key did NOT get merged in as a second channel
+    expect(heads[0]?.channels.find(c => c.id === 'telegram')).toBeUndefined()
+  })
+
+  it('synthesizes default head from flat telegram keys when heads[] absent (D-03)', () => {
+    const cfg = makeConfig({
+      telegramBotToken: 'tok-x',
+      telegramChatId: 'chat-x',
+    })
+    const heads = resolveHeads(cfg)
+    expect(heads).toHaveLength(1)
+    expect(heads[0]?.id).toBe('default')
+    expect(heads[0]?.channels).toHaveLength(1)
+    const ch = heads[0]?.channels[0]
+    expect(ch?.vendor).toBe('telegram')
+    expect(ch?.id).toBe('telegram')
+    if (ch?.vendor === 'telegram') {
+      expect(ch.botToken).toBe('tok-x')
+      expect(ch.chatId).toBe('chat-x')
+    }
+  })
+
+  it('synthesizes default head with empty channels when neither heads[] nor flat keys set (zero-config)', () => {
+    const cfg = makeConfig()
+    const heads = resolveHeads(cfg)
+    expect(heads).toEqual([{ id: 'default', channels: [] }])
+  })
+
+  it('synthesizes multiple flat channels (telegram + discord) into the default head', () => {
+    const cfg = makeConfig({
+      telegramBotToken: 'tt', telegramChatId: 'tc',
+      discordBotToken: 'dt',  discordChannelId: 'dc',
+    })
+    const heads = resolveHeads(cfg)
+    expect(heads).toHaveLength(1)
+    expect(heads[0]?.id).toBe('default')
+    expect(heads[0]?.channels).toHaveLength(2)
+    const ids = heads[0]?.channels.map(c => c.id).sort()
+    expect(ids).toEqual(['discord', 'telegram'])
   })
 })
