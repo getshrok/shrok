@@ -365,8 +365,8 @@ describe('ContextAssemblerImpl', () => {
   it('calls getRecent with a positive historyBudget', async () => {
     const { assembler, messages } = makeAssembler()
     await assembler.assemble(trigger)
-    expect(messages.getRecent).toHaveBeenCalledWith(expect.any(Number))
-    const calledBudget = vi.mocked(messages.getRecent).mock.calls[0]![0]
+    expect(messages.getRecent).toHaveBeenCalledWith('default', expect.any(Number))
+    const calledBudget = vi.mocked(messages.getRecent).mock.calls[0]![1]
     expect(calledBudget).toBeGreaterThan(0)
   })
 })

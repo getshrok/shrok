@@ -604,7 +604,7 @@ describe('async sub-agent spawning', () => {
     expect(payload.output).toBe('Done.')
 
     // Global queue should NOT have agent_completed for child
-    const claimed = queueStore.claimNext()
+    const claimed = queueStore.claimNext('default')
     if (claimed) {
       expect(claimed.event.type).not.toBe('agent_completed')
     }
@@ -647,7 +647,7 @@ describe('async sub-agent spawning', () => {
     expect(payload.question).toBe('What color should I use?')
 
     // Global queue should NOT have agent_question for child
-    const claimed = queueStore.claimNext()
+    const claimed = queueStore.claimNext('default')
     if (claimed) {
       expect(claimed.event.type).not.toBe('agent_question')
     }
