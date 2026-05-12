@@ -821,9 +821,11 @@ export function makeLocalAgentRunner(
 export class CapturingAssembler implements ContextAssembler {
   lastAssembledSystemPrompt = ''
   lastMemoryBlock = ''
-  constructor(private inner: ContextAssembler) {}
+  private _inner: ContextAssembler | null = null
+  set inner(v: ContextAssembler) { this._inner = v }
   async assemble(trigger: QueueEvent): Promise<AssembledContext> {
-    const result = await this.inner.assemble(trigger)
+    if (!this._inner) throw new Error('CapturingAssembler: inner assembler not set before assemble()')
+    const result = await this._inner.assemble(trigger)
     this.lastAssembledSystemPrompt = result.systemPrompt
     this.lastMemoryBlock = result.memoryBlock
     return result
@@ -953,10 +955,7 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
   }
 
   // Use CapturingAssembler to record system prompt and memory block for inspection
-  const capturing = new CapturingAssembler(
-    // Placeholder — will be replaced by assemblerWrapper
-    null as unknown as ContextAssembler,
-  )
+  const capturing = new CapturingAssembler()
 
   const system = buildSystem({
     db: bundle.db,
@@ -979,8 +978,8 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
     topicMemory,
     pollIntervalMs: 200,
     assemblerWrapper: opts.assembler
-      ? (real) => { capturing['inner'] = opts.assembler!; return capturing }
-      : (real) => { capturing['inner'] = real; return capturing },
+      ? (real) => { capturing.inner = opts.assembler!; return capturing }
+      : (real) => { capturing.inner = real; return capturing },
     ...(opts.stubAgentRunner !== undefined ? { stubAgentRunner: opts.stubAgentRunner } : {}),
     ...(opts.agentContextComposer !== undefined ? { agentContextComposer: opts.agentContextComposer } : {}),
     ...(opts.headTools !== undefined ? { headTools: opts.headTools } : {}),
