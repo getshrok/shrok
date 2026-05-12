@@ -47,7 +47,7 @@ function loadEnvFile(overwrite = false): void {
 loadEnvFile()
 
 import OpenAI from 'openai'
-import { loadConfig, extractSecretValues } from './config.js'
+import { loadConfig, extractSecretValues, resolveHeads, type ResolvedHead } from './config.js'
 import { setLogLevel, setLogFile, log, registerSecrets } from './logger.js'
 import { initTracer } from './tracer.js'
 import { initDb } from './db/index.js'
@@ -165,7 +165,7 @@ async function main() {
   runMigrations(db, config.migrationsDir)
   const zohoCliqState = new ZohoCliqStateStore(db)
 
-  // ── Core services (pre-buildSystem) ────────────────────────────────────��─
+  // ── Core services (pre-buildSystem) ─────────────────────────────────────────
   const dashboardEvents = new DashboardEventBus()
   const llmRouter = createLLMRouter(config)
   const mcpRegistry = McpRegistryImpl.fromFile(config.mcpConfigPath, config.mcpTimeoutMs)
@@ -197,71 +197,179 @@ async function main() {
   const skillsPath = config.skillsDir ? path.resolve(config.skillsDir) : path.join(workspacePath, 'skills')
   process.env['SHROK_SKILLS_DIR'] = skillsPath
 
-  const channelRouter = new ChannelRouterImpl()
+  // Phase 31 (CONF-03): resolve the canonical head list once. When heads[] is
+  // configured, this returns each named head; otherwise it synthesizes a single
+  // 'default' head from flat keys for backward compat (CONF-02, D-03).
+  const resolvedHeads: ResolvedHead[] = resolveHeads(config)
+  const isMultiHead = (config.heads?.length ?? 0) > 0
+  log.info(`[startup] Resolved ${resolvedHeads.length} head(s): ${resolvedHeads.map(h => h.id).join(', ')}`)
 
-  // ── Build the system ────────────────────────────────────────────────────
-  const system = buildSystem({
-    db, config, llmRouter, channelRouter, mcpRegistry,
-    dashboardEventBus: dashboardEvents,
-  })
-  const { activationLoop, agentRunner, stores, topicMemory, skillLoader, identityLoader, agentIdentityLoader, systemSkillNames, taskKindLoader, unifiedLoader } = system
+  // ── Per-head systems ───────────────────────────────────────────────────────
+  interface HeadSystem {
+    head: ResolvedHead
+    channelRouter: ChannelRouterImpl
+    system: ReturnType<typeof buildSystem>
+    channelAdapters: ChannelAdapter[]
+    routeMessage: (msg: InboundMessage) => void
+  }
+  const headSystems: HeadSystem[] = []
+
+  // Hot-reload sentinels only apply to the synthesized 'default' head (Phase 31
+  // limitation per RESEARCH §Pitfall 5). Named heads from config.heads[]
+  // reconfigure by restarting the process.
+  let currentDiscordAdapter: DiscordAdapter | null = null
+  let currentTelegramAdapter: TelegramAdapter | null = null
+  let currentWhatsAppAdapter: ChannelAdapter | null = null
+  let currentSlackAdapter: SlackAdapter | null = null
+  let currentZohoCliqAdapter: ZohoCliqAdapter | null = null
+
+  // Shared services across heads — instantiated below the loop, reused by all.
+  // Captured by each head's routeMessage closure via the per-head system.
+  // dashboardAdapter is created INSIDE the first head's adapter list (so it's
+  // registered on that head's router) but the underlying DashboardServer is
+  // built outside the loop with the first head's stores.
+  let dashboardAdapter: DashboardChannelAdapter | null = null
+
+  for (const head of resolvedHeads) {
+    const headRouter = new ChannelRouterImpl()
+
+    const headSystem = buildSystem({
+      db, config, llmRouter, channelRouter: headRouter, mcpRegistry,
+      dashboardEventBus: dashboardEvents,
+      headId: head.id,
+    })
+    const { activationLoop: headLoop } = headSystem
+    const { queue: headQueue, appState, messages: headMessages, agents: headAgents } = headSystem.stores
+
+    // Startup recovery, per head
+    headQueue.requeueStale()
+    appState.releaseArchivalLock(head.id)
+
+    const orphans = headMessages.sanitizeOrphans()
+    if (orphans > 0) log.warn(`[startup] head=${head.id}: removed ${orphans} orphaned tool message(s)`)
+
+    if (appState.seedDefaultThreshold()) {
+      log.info(`[startup] head=${head.id}: created default daily spend block threshold ($50.00)`)
+    }
+
+    // Per-head orphaned-agent reaping
+    const orphanedAgents = headAgents.getByStatus('running')
+    for (const t of orphanedAgents) {
+      const pendingRetract = headSystem.stores.agentInbox.poll(t.id).some(m => m.type === 'retract')
+      if (pendingRetract) { headAgents.updateStatus(t.id, 'retracted'); continue }
+      headAgents.fail(t.id, 'process restarted mid-execution')
+      headQueue.enqueue({
+        type: 'agent_failed', id: generateId('qe'), agentId: t.id,
+        error: 'process restarted mid-execution', createdAt: new Date().toISOString(),
+      }, 50, head.id)
+    }
+
+    // Per-head routeMessage closure — captures head.id + this head's loop + queue
+    const headRouteMessage = (msg: InboundMessage): void => {
+      if (msg.text.trim().startsWith('~')) {
+        headLoop.handleCommand(msg.text.trim(), msg.channel).catch(err => {
+          log.error(`[routeMessage:${head.id}] handleCommand rejected: ${err instanceof Error ? err.message : String(err)}`)
+        })
+        return
+      }
+      headQueue.enqueue(
+        { type: 'user_message', id: generateId('qe'), channel: msg.channel, text: msg.text,
+          ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
+          createdAt: new Date().toISOString() },
+        100,
+        head.id,
+      )
+      headLoop.notify()
+    }
+
+    // Build adapters declared in this head's channels[]
+    const headChannelAdapters: ChannelAdapter[] = []
+    for (const ch of head.channels) {
+      let adapter: ChannelAdapter
+      if (ch.vendor === 'discord') {
+        const d = new DiscordAdapter(ch.botToken, ch.channelId, path.join(workspacePath, 'media'), ch.id, head.id)
+        if (!isMultiHead) currentDiscordAdapter = d
+        adapter = d
+      } else if (ch.vendor === 'telegram') {
+        const t = new TelegramAdapter(ch.botToken, ch.chatId, path.join(workspacePath, 'media'), ch.id, head.id)
+        if (!isMultiHead) currentTelegramAdapter = t
+        adapter = t
+      } else if (ch.vendor === 'slack') {
+        const s = new SlackAdapter(ch.botToken, ch.appToken, ch.channelId, path.join(workspacePath, 'media'), ch.id, head.id)
+        if (!isMultiHead) currentSlackAdapter = s
+        adapter = s
+      } else if (ch.vendor === 'whatsapp') {
+        const { WhatsAppAdapter } = await import('./channels/whatsapp/adapter.js')
+        const whatsappAuthDir = path.join(workspacePath, 'whatsapp', 'auth')
+        const whatsappQrPath = path.join(workspacePath, 'whatsapp-qr.txt')
+        const w = new WhatsAppAdapter(whatsappAuthDir, ch.allowedJid, whatsappQrPath, path.join(workspacePath, 'media'), ch.id, head.id)
+        if (!isMultiHead) currentWhatsAppAdapter = w
+        adapter = w
+      } else if (ch.vendor === 'zoho-cliq') {
+        const z = new ZohoCliqAdapter(
+          ch.clientId, ch.clientSecret, ch.refreshToken, ch.chatId,
+          path.join(workspacePath, 'media'), config.zohoCliqPollInterval,
+          readAssistantName(workspacePath), zohoCliqState, workspacePath,
+          ch.id, head.id,
+        )
+        if (!isMultiHead) currentZohoCliqAdapter = z
+        adapter = z
+      } else {
+        // Exhaustiveness guard — discriminated union covers all five vendors
+        const _exhaustive: never = ch
+        throw new Error(`unreachable: unhandled vendor in channels[]: ${JSON.stringify(_exhaustive)}`)
+      }
+
+      try {
+        adapter.onMessage(headRouteMessage)
+        headRouter.register(adapter)
+        await adapter.start()
+        headChannelAdapters.push(adapter)
+        log.info(`[startup] head=${head.id} channel=${ch.id} (${ch.vendor}) connected`)
+      } catch (err) {
+        log.warn(`[startup] head=${head.id} channel=${ch.id} (${ch.vendor}) failed to start: ${(err as Error).message}`)
+      }
+    }
+
+    // Dashboard adapter — attached to the first head only (Open Question 1
+    // RESOLVED in RESEARCH: Dashboard is owned by the first/primary head).
+    if (head === resolvedHeads[0]) {
+      const dash = new DashboardChannelAdapter(`dashboard:${head.id}`, head.id)
+      dash.setEventBus(dashboardEvents)
+      dash.setMessageStore(headMessages)
+      dash.onMessage(headRouteMessage)
+      headRouter.register(dash)
+      await dash.start()
+      headChannelAdapters.push(dash)
+      dashboardAdapter = dash
+      log.info(`[startup] head=${head.id}: Dashboard channel adapter ready`)
+    }
+
+    headSystems.push({ head, channelRouter: headRouter, system: headSystem, channelAdapters: headChannelAdapters, routeMessage: headRouteMessage })
+  }
+
+  // Pick the primary head's system for global services (scheduler, webhook, dashboard server, voice)
+  const primary = headSystems[0]
+  if (!primary) throw new Error('[startup] resolveHeads returned an empty list — should never happen')
+  const { activationLoop, agentRunner, stores, topicMemory, skillLoader, identityLoader, agentIdentityLoader, systemSkillNames, taskKindLoader, unifiedLoader } = primary.system
   const { messages, agents, queue, usage, appState, schedules, stewardRuns } = stores
-
-  // ── Startup recovery (post-build, before loop starts) ──────────────────
-  queue.requeueStale()
-  appState.releaseArchivalLock('default')
-
-  const orphansRemoved = messages.sanitizeOrphans()
-  if (orphansRemoved > 0) {
-    log.warn(`[startup] Removed ${orphansRemoved} orphaned tool message(s) from prior interrupted activation`)
-  }
-
-  // Seed default $50/day block threshold on fresh installs (idempotent).
-  if (appState.seedDefaultThreshold()) {
-    log.info('[startup] Created default daily spend block threshold ($50.00)')
-  }
   pruneOldData(db)
 
-  // Agents left in 'running' state have no active runner — the process crashed
-  // mid-execution. If a retract was pending in the inbox, the user (or another
-  // agent) had already cancelled them; honour that intent by marking them
-  // 'retracted' instead of 'failed'. Otherwise mark failed and notify the head.
-  const orphaned = agents.getByStatus('running')
-  let retractedCount = 0
-  let failedCount = 0
-  for (const t of orphaned) {
-    const pendingRetract = stores.agentInbox.poll(t.id).some(m => m.type === 'retract')
-    if (pendingRetract) {
-      agents.updateStatus(t.id, 'retracted')
-      retractedCount++
-      continue
-    }
-    agents.fail(t.id, 'process restarted mid-execution')
-    failedCount++
-    queue.enqueue({
-      type: 'agent_failed',
-      id: generateId('qe'),
-      agentId: t.id,
-      error: 'process restarted mid-execution',
-      createdAt: new Date().toISOString(),
-    }, 50)
-  }
-  if (orphaned.length > 0) {
-    log.warn(`[startup] Orphaned agents: ${failedCount} marked failed, ${retractedCount} marked retracted (cancel was pending)`)
-  }
+  // Flatten all per-head adapters into a single array for shutdown iteration
+  const channelAdapters: ChannelAdapter[] = headSystems.flatMap(h => h.channelAdapters)
 
   const stopProcess = () => {
-    activationLoop.stop()
+    for (const { system: s } of headSystems) s.activationLoop.stop()
     setTimeout(() => process.exit(0), 500)
   }
   const restartProcessFn = () => {
-    activationLoop.stop()
+    for (const { system: s } of headSystems) s.activationLoop.stop()
     setTimeout(() => restartProcess(), 500)
   }
   const emergencyStop = () => {
     const cancelled = agents.cancelAllActive()
     log.warn(`[emergency-stop] Cancelled ${cancelled} active agent(s), halting process`)
-    activationLoop.stop()
+    for (const { system: s } of headSystems) s.activationLoop.stop()
     setTimeout(() => process.exit(0), 500)
     return cancelled
   }
@@ -277,112 +385,6 @@ async function main() {
       suspendedAgents: suspended.length,
     }
   }
-
-  // Route an incoming message: commands bypass the queue and execute immediately;
-  // everything else is enqueued normally.
-  function routeMessage(msg: InboundMessage): void {
-    if (msg.text.trim().startsWith('~')) {
-      activationLoop.handleCommand(msg.text.trim(), msg.channel).catch(err => {
-        log.error(`[routeMessage] handleCommand rejected: ${err instanceof Error ? err.message : String(err)}`)
-      })
-      return
-    }
-    queue.enqueue(
-      { type: 'user_message', id: generateId('qe'), channel: msg.channel, text: msg.text, ...(msg.attachments?.length ? { attachments: msg.attachments } : {}), createdAt: new Date().toISOString() },
-      100,
-    )
-    activationLoop.notify()
-  }
-
-  // ── Channels ─────────────────────────────────────────────────────────────────
-  const channelAdapters: ChannelAdapter[] = []
-
-  let currentDiscordAdapter: DiscordAdapter | null = null
-  if (config.discordBotToken && config.discordChannelId) {
-    const discord = new DiscordAdapter(config.discordBotToken, config.discordChannelId, path.join(workspacePath, 'media'), 'discord', 'default')
-    discord.onMessage(routeMessage)
-    channelRouter.register(discord)
-    await discord.start()
-    currentDiscordAdapter = discord
-    channelAdapters.push(discord)
-    log.info('[startup] Discord connected')
-  }
-
-  let currentTelegramAdapter: TelegramAdapter | null = null
-  if (config.telegramBotToken && config.telegramChatId) {
-    const telegram = new TelegramAdapter(config.telegramBotToken, config.telegramChatId, path.join(workspacePath, 'media'), 'telegram', 'default')
-    telegram.onMessage(routeMessage)
-    channelRouter.register(telegram)
-    await telegram.start()
-    currentTelegramAdapter = telegram
-    channelAdapters.push(telegram)
-    log.info('[startup] Telegram connected')
-  }
-
-  let currentWhatsAppAdapter: ChannelAdapter | null = null
-  if (config.whatsappAllowedJid) {
-    try {
-      const { WhatsAppAdapter } = await import('./channels/whatsapp/adapter.js')
-      const whatsappAuthDir = path.join(workspacePath, 'whatsapp', 'auth')
-      const whatsappQrPath = path.join(workspacePath, 'whatsapp-qr.txt')
-      const whatsapp = new WhatsAppAdapter(whatsappAuthDir, config.whatsappAllowedJid, whatsappQrPath, path.join(workspacePath, 'media'), 'whatsapp', 'default')
-      whatsapp.onMessage(routeMessage)
-      channelRouter.register(whatsapp)
-      await whatsapp.start()
-      currentWhatsAppAdapter = whatsapp
-      channelAdapters.push(whatsapp)
-      log.info('[startup] WhatsApp connecting (check logs or whatsapp-qr.txt if QR scan needed)')
-    } catch (err) {
-      log.warn(`[startup] WhatsApp skipped: ${(err as Error).message}`)
-    }
-  }
-
-  let currentSlackAdapter: SlackAdapter | null = null
-  if (config.slackBotToken && config.slackAppToken && config.slackChannelId) {
-    const slack = new SlackAdapter(config.slackBotToken, config.slackAppToken, config.slackChannelId, path.join(workspacePath, 'media'), 'slack', 'default')
-    slack.onMessage(routeMessage)
-    channelRouter.register(slack)
-    await slack.start()
-    currentSlackAdapter = slack
-    channelAdapters.push(slack)
-    log.info('[startup] Slack connected')
-  }
-
-  let currentZohoCliqAdapter: ZohoCliqAdapter | null = null
-  if (process.env['ZOHO_CLIENT_ID'] && process.env['ZOHO_CLIENT_SECRET'] && process.env['ZOHO_REFRESH_TOKEN'] && process.env['ZOHO_CLIQ_CHAT_ID']) {
-    try {
-      const cliq = new ZohoCliqAdapter(
-        process.env['ZOHO_CLIENT_ID'],
-        process.env['ZOHO_CLIENT_SECRET'],
-        process.env['ZOHO_REFRESH_TOKEN'],
-        process.env['ZOHO_CLIQ_CHAT_ID'],
-        path.join(workspacePath, 'media'),
-        config.zohoCliqPollInterval,
-        readAssistantName(workspacePath),
-        zohoCliqState,
-        workspacePath,
-        'zoho-cliq',
-        'default',
-      )
-      cliq.onMessage(routeMessage)
-      channelRouter.register(cliq)
-      await cliq.start()
-      currentZohoCliqAdapter = cliq
-      channelAdapters.push(cliq)
-      log.info('[startup] Zoho Cliq connected (polling)')
-    } catch (err) {
-      log.warn(`[startup] Zoho Cliq skipped: ${(err as Error).message}`)
-    }
-  }
-
-  const dashboardAdapter = new DashboardChannelAdapter()
-  dashboardAdapter.setEventBus(dashboardEvents)
-  dashboardAdapter.setMessageStore(messages)
-  dashboardAdapter.onMessage(routeMessage)
-  channelRouter.register(dashboardAdapter)
-  await dashboardAdapter.start()
-  channelAdapters.push(dashboardAdapter)
-  log.info('[startup] Dashboard channel adapter ready')
 
   // ── Scheduler ────────────────────────────────────────────────────────────────
   const scheduler = new ScheduleEvaluatorImpl(queue, schedules, config.timezone)
@@ -421,7 +423,7 @@ async function main() {
     unifiedLoader,
     db,
     evalResultsDir: path.join(workspacePath, 'eval-results'),
-    channelAdapter: dashboardAdapter,
+    channelAdapter: dashboardAdapter!,
     schedules,
     mcpRegistry,
     agentRunner,
@@ -439,8 +441,8 @@ async function main() {
     if (httpServer) {
       const voiceOpenai = new OpenAI({ apiKey: config.openaiApiKey })
       const voiceAdapter = new VoiceChannelAdapter(httpServer, voiceOpenai)
-      voiceAdapter.onMessage(routeMessage)
-      channelRouter.register(voiceAdapter)
+      voiceAdapter.onMessage(primary.routeMessage)
+      primary.channelRouter.register(voiceAdapter)
       await voiceAdapter.start()
       channelAdapters.push(voiceAdapter)
       log.info('[startup] Voice WebSocket adapter ready at /api/voice/ws')
@@ -452,12 +454,7 @@ async function main() {
   }
 
   // Wire session revocation so ~changedashboardpassword invalidates all sessions
-  activationLoop.setRevokeDashboardSessions(() => dashboard.revokeAllSessions())
-
-  // ── Activation loop ───────────────────────────────────────────────────────────
-  activationLoop.start()
-  activationLoop.announceOnline()
-  log.info('[startup] Activation loop running')
+  primary.system.activationLoop.setRevokeDashboardSessions(() => dashboard.revokeAllSessions())
 
   // ── Restart sentinel ─────────────────────────────────────────────────────────
   // The update skill writes ~/.shrok/.restart-requested when done.
@@ -472,7 +469,7 @@ async function main() {
 
   // Check for restart sentinel after each activation completes (not on a timer).
   // This prevents the race where the sentinel is found while an agent is still running.
-  activationLoop.onPostActivation(() => {
+  primary.system.activationLoop.onPostActivation(() => {
     if (fs.existsSync(SENTINEL_PATH)) {
       log.info('[restart] Restart sentinel detected — initiating graceful shutdown')
       // Don't delete the sentinel here — the daemon wrapper needs to see it
@@ -485,7 +482,7 @@ async function main() {
   // Run the threshold checker after each activation. The pure function returns
   // crossings; we eagerly stamp fired state, log a breadcrumb, and deliver
   // a user-facing alert via MessageStore + channelRouter.
-  activationLoop.onPostActivation(() => {
+  primary.system.activationLoop.onPostActivation(() => {
     try {
       const checkNow = new Date()
       const crossings = checkThresholds({
@@ -508,7 +505,7 @@ async function main() {
 
         // Deliver to the active channel + persist to MessageStore so the
         // dashboard conversation also shows the alert.
-        const channel = appState.getLastActiveChannel('default')
+        const channel = appState.getLastActiveChannel(primary.head.id)
         if (!channel) continue
 
         const text = formatThresholdAlert(crossing)
@@ -520,7 +517,7 @@ async function main() {
           channel,
           createdAt: now(),
         })
-        void channelRouter.send(channel, text).catch(err =>
+        void primary.channelRouter.send(channel, text).catch(err =>
           log.warn('[threshold] failed to send alert:', (err as Error).message),
         )
       }
@@ -544,161 +541,179 @@ async function main() {
 
   const sentinelInterval = setInterval(() => {
 
-    if (fs.existsSync(DISCORD_RELOAD_PATH)) {
-      fs.unlinkSync(DISCORD_RELOAD_PATH)
-      log.info('[hot-reload] Discord reload sentinel detected')
-      void (async () => {
-        try {
-          // Re-parse the env file to pick up vars written by config:set
-          loadEnvFile(true)
+    if (!isMultiHead) {
+      if (fs.existsSync(DISCORD_RELOAD_PATH)) {
+        fs.unlinkSync(DISCORD_RELOAD_PATH)
+        log.info('[hot-reload] Discord reload sentinel detected')
+        void (async () => {
+          try {
+            // Re-parse the env file to pick up vars written by config:set
+            loadEnvFile(true)
 
-          const token = process.env['DISCORD_BOT_TOKEN']
-          const channelId = process.env['DISCORD_CHANNEL_ID']
-          if (!token || !channelId) {
-            log.warn('[hot-reload] Discord sentinel found but DISCORD_BOT_TOKEN or DISCORD_CHANNEL_ID still missing')
-            return
+            const token = process.env['DISCORD_BOT_TOKEN']
+            const channelId = process.env['DISCORD_CHANNEL_ID']
+            if (!token || !channelId) {
+              log.warn('[hot-reload] Discord sentinel found but DISCORD_BOT_TOKEN or DISCORD_CHANNEL_ID still missing')
+              return
+            }
+
+            await retireAdapter(currentDiscordAdapter, 'Discord')
+
+            const discord = new DiscordAdapter(token, channelId, path.join(workspacePath, 'media'), 'discord', 'default')
+            discord.onMessage(primary.routeMessage)
+            primary.channelRouter.register(discord)
+            await discord.start()
+            currentDiscordAdapter = discord
+            channelAdapters.push(discord)
+            log.info('[hot-reload] Discord adapter loaded successfully')
+          } catch (err) {
+            log.error('[hot-reload] Failed to reload Discord:', (err as Error).message)
           }
-
-          await retireAdapter(currentDiscordAdapter, 'Discord')
-
-          const discord = new DiscordAdapter(token, channelId, path.join(workspacePath, 'media'), 'discord', 'default')
-          discord.onMessage(routeMessage)
-          channelRouter.register(discord)
-          await discord.start()
-          currentDiscordAdapter = discord
-          channelAdapters.push(discord)
-          log.info('[hot-reload] Discord adapter loaded successfully')
-        } catch (err) {
-          log.error('[hot-reload] Failed to reload Discord:', (err as Error).message)
-        }
-      })()
+        })()
+      }
     }
 
-    if (fs.existsSync(TELEGRAM_RELOAD_PATH)) {
-      fs.unlinkSync(TELEGRAM_RELOAD_PATH)
-      log.info('[hot-reload] Telegram reload sentinel detected')
-      void (async () => {
-        try {
-          // Re-parse the env file to pick up vars written by config:set
-          loadEnvFile(true)
+    if (!isMultiHead) {
+      if (fs.existsSync(TELEGRAM_RELOAD_PATH)) {
+        fs.unlinkSync(TELEGRAM_RELOAD_PATH)
+        log.info('[hot-reload] Telegram reload sentinel detected')
+        void (async () => {
+          try {
+            // Re-parse the env file to pick up vars written by config:set
+            loadEnvFile(true)
 
-          const token = process.env['TELEGRAM_BOT_TOKEN']
-          const chatId = process.env['TELEGRAM_CHAT_ID']
-          if (!token || !chatId) {
-            log.warn('[hot-reload] Telegram sentinel found but TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID still missing')
-            return
+            const token = process.env['TELEGRAM_BOT_TOKEN']
+            const chatId = process.env['TELEGRAM_CHAT_ID']
+            if (!token || !chatId) {
+              log.warn('[hot-reload] Telegram sentinel found but TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID still missing')
+              return
+            }
+
+            await retireAdapter(currentTelegramAdapter, 'Telegram')
+
+            const telegram = new TelegramAdapter(token, chatId, path.join(workspacePath, 'media'), 'telegram', 'default')
+            telegram.onMessage(primary.routeMessage)
+            primary.channelRouter.register(telegram)
+            await telegram.start()
+            currentTelegramAdapter = telegram
+            channelAdapters.push(telegram)
+            log.info('[hot-reload] Telegram adapter loaded successfully')
+          } catch (err) {
+            log.error('[hot-reload] Failed to reload Telegram:', (err as Error).message)
           }
-
-          await retireAdapter(currentTelegramAdapter, 'Telegram')
-
-          const telegram = new TelegramAdapter(token, chatId, path.join(workspacePath, 'media'), 'telegram', 'default')
-          telegram.onMessage(routeMessage)
-          channelRouter.register(telegram)
-          await telegram.start()
-          currentTelegramAdapter = telegram
-          channelAdapters.push(telegram)
-          log.info('[hot-reload] Telegram adapter loaded successfully')
-        } catch (err) {
-          log.error('[hot-reload] Failed to reload Telegram:', (err as Error).message)
-        }
-      })()
+        })()
+      }
     }
 
-    if (fs.existsSync(SLACK_RELOAD_PATH)) {
-      fs.unlinkSync(SLACK_RELOAD_PATH)
-      log.info('[hot-reload] Slack reload sentinel detected')
-      void (async () => {
-        try {
-          // Re-parse the env file to pick up vars written by config:set
-          loadEnvFile(true)
+    if (!isMultiHead) {
+      if (fs.existsSync(SLACK_RELOAD_PATH)) {
+        fs.unlinkSync(SLACK_RELOAD_PATH)
+        log.info('[hot-reload] Slack reload sentinel detected')
+        void (async () => {
+          try {
+            // Re-parse the env file to pick up vars written by config:set
+            loadEnvFile(true)
 
-          const botToken = process.env['SLACK_BOT_TOKEN']
-          const appToken = process.env['SLACK_APP_TOKEN']
-          const channelId = process.env['SLACK_CHANNEL_ID']
-          if (!botToken || !appToken || !channelId) {
-            log.warn('[hot-reload] Slack sentinel found but SLACK_BOT_TOKEN, SLACK_APP_TOKEN, or SLACK_CHANNEL_ID still missing')
-            return
+            const botToken = process.env['SLACK_BOT_TOKEN']
+            const appToken = process.env['SLACK_APP_TOKEN']
+            const channelId = process.env['SLACK_CHANNEL_ID']
+            if (!botToken || !appToken || !channelId) {
+              log.warn('[hot-reload] Slack sentinel found but SLACK_BOT_TOKEN, SLACK_APP_TOKEN, or SLACK_CHANNEL_ID still missing')
+              return
+            }
+
+            await retireAdapter(currentSlackAdapter, 'Slack')
+
+            const slack = new SlackAdapter(botToken, appToken, channelId, path.join(workspacePath, 'media'), 'slack', 'default')
+            slack.onMessage(primary.routeMessage)
+            primary.channelRouter.register(slack)
+            await slack.start()
+            currentSlackAdapter = slack
+            channelAdapters.push(slack)
+            log.info('[hot-reload] Slack adapter loaded successfully')
+          } catch (err) {
+            log.error('[hot-reload] Failed to reload Slack:', (err as Error).message)
           }
-
-          await retireAdapter(currentSlackAdapter, 'Slack')
-
-          const slack = new SlackAdapter(botToken, appToken, channelId, path.join(workspacePath, 'media'), 'slack', 'default')
-          slack.onMessage(routeMessage)
-          channelRouter.register(slack)
-          await slack.start()
-          currentSlackAdapter = slack
-          channelAdapters.push(slack)
-          log.info('[hot-reload] Slack adapter loaded successfully')
-        } catch (err) {
-          log.error('[hot-reload] Failed to reload Slack:', (err as Error).message)
-        }
-      })()
+        })()
+      }
     }
 
-    if (fs.existsSync(WHATSAPP_RELOAD_PATH)) {
-      fs.unlinkSync(WHATSAPP_RELOAD_PATH)
-      log.info('[hot-reload] WhatsApp reload sentinel detected')
-      void (async () => {
-        try {
-          // Re-parse the env file to pick up vars written by config:set
-          loadEnvFile(true)
+    if (!isMultiHead) {
+      if (fs.existsSync(WHATSAPP_RELOAD_PATH)) {
+        fs.unlinkSync(WHATSAPP_RELOAD_PATH)
+        log.info('[hot-reload] WhatsApp reload sentinel detected')
+        void (async () => {
+          try {
+            // Re-parse the env file to pick up vars written by config:set
+            loadEnvFile(true)
 
-          const allowedJid = process.env['WHATSAPP_ALLOWED_JID']
-          if (!allowedJid) {
-            log.warn('[hot-reload] WhatsApp sentinel found but WHATSAPP_ALLOWED_JID still missing')
-            return
+            const allowedJid = process.env['WHATSAPP_ALLOWED_JID']
+            if (!allowedJid) {
+              log.warn('[hot-reload] WhatsApp sentinel found but WHATSAPP_ALLOWED_JID still missing')
+              return
+            }
+
+            await retireAdapter(currentWhatsAppAdapter, 'WhatsApp')
+
+            const { WhatsAppAdapter } = await import('./channels/whatsapp/adapter.js')
+            const whatsappAuthDir = path.join(workspacePath, 'whatsapp', 'auth')
+            const whatsappQrPath = path.join(workspacePath, 'whatsapp-qr.txt')
+            const whatsapp = new WhatsAppAdapter(whatsappAuthDir, allowedJid, whatsappQrPath, path.join(workspacePath, 'media'), 'whatsapp', 'default')
+            whatsapp.onMessage(primary.routeMessage)
+            primary.channelRouter.register(whatsapp)
+            await whatsapp.start()
+            currentWhatsAppAdapter = whatsapp
+            channelAdapters.push(whatsapp)
+            log.info('[hot-reload] WhatsApp adapter started — check logs or whatsapp-qr.txt for QR if prompted')
+          } catch (err) {
+            log.error('[hot-reload] Failed to reload WhatsApp:', (err as Error).message)
           }
-
-          await retireAdapter(currentWhatsAppAdapter, 'WhatsApp')
-
-          const { WhatsAppAdapter } = await import('./channels/whatsapp/adapter.js')
-          const whatsappAuthDir = path.join(workspacePath, 'whatsapp', 'auth')
-          const whatsappQrPath = path.join(workspacePath, 'whatsapp-qr.txt')
-          const whatsapp = new WhatsAppAdapter(whatsappAuthDir, allowedJid, whatsappQrPath, path.join(workspacePath, 'media'), 'whatsapp', 'default')
-          whatsapp.onMessage(routeMessage)
-          channelRouter.register(whatsapp)
-          await whatsapp.start()
-          currentWhatsAppAdapter = whatsapp
-          channelAdapters.push(whatsapp)
-          log.info('[hot-reload] WhatsApp adapter started — check logs or whatsapp-qr.txt for QR if prompted')
-        } catch (err) {
-          log.error('[hot-reload] Failed to reload WhatsApp:', (err as Error).message)
-        }
-      })()
+        })()
+      }
     }
 
-    if (fs.existsSync(ZOHO_CLIQ_RELOAD_PATH)) {
-      fs.unlinkSync(ZOHO_CLIQ_RELOAD_PATH)
-      log.info('[hot-reload] Zoho Cliq reload sentinel detected')
-      void (async () => {
-        try {
-          // Re-parse the env file to pick up vars written by config:set
-          loadEnvFile(true)
+    if (!isMultiHead) {
+      if (fs.existsSync(ZOHO_CLIQ_RELOAD_PATH)) {
+        fs.unlinkSync(ZOHO_CLIQ_RELOAD_PATH)
+        log.info('[hot-reload] Zoho Cliq reload sentinel detected')
+        void (async () => {
+          try {
+            // Re-parse the env file to pick up vars written by config:set
+            loadEnvFile(true)
 
-          const clientId = process.env['ZOHO_CLIENT_ID']
-          const clientSecret = process.env['ZOHO_CLIENT_SECRET']
-          const refreshToken = process.env['ZOHO_REFRESH_TOKEN']
-          const chatId = process.env['ZOHO_CLIQ_CHAT_ID']
-          if (!clientId || !clientSecret || !refreshToken || !chatId) {
-            log.warn('[hot-reload] Zoho Cliq sentinel found but required env vars still missing')
-            return
+            const clientId = process.env['ZOHO_CLIENT_ID']
+            const clientSecret = process.env['ZOHO_CLIENT_SECRET']
+            const refreshToken = process.env['ZOHO_REFRESH_TOKEN']
+            const chatId = process.env['ZOHO_CLIQ_CHAT_ID']
+            if (!clientId || !clientSecret || !refreshToken || !chatId) {
+              log.warn('[hot-reload] Zoho Cliq sentinel found but required env vars still missing')
+              return
+            }
+
+            await retireAdapter(currentZohoCliqAdapter, 'Zoho Cliq')
+
+            const cliq = new ZohoCliqAdapter(clientId, clientSecret, refreshToken, chatId, path.join(workspacePath, 'media'), config.zohoCliqPollInterval, readAssistantName(workspacePath), zohoCliqState, workspacePath, 'zoho-cliq', 'default')
+            cliq.onMessage(primary.routeMessage)
+            primary.channelRouter.register(cliq)
+            await cliq.start()
+            currentZohoCliqAdapter = cliq
+            channelAdapters.push(cliq)
+            log.info('[hot-reload] Zoho Cliq adapter loaded successfully')
+          } catch (err) {
+            log.error('[hot-reload] Failed to reload Zoho Cliq:', (err as Error).message)
           }
-
-          await retireAdapter(currentZohoCliqAdapter, 'Zoho Cliq')
-
-          const cliq = new ZohoCliqAdapter(clientId, clientSecret, refreshToken, chatId, path.join(workspacePath, 'media'), config.zohoCliqPollInterval, readAssistantName(workspacePath), zohoCliqState, workspacePath, 'zoho-cliq', 'default')
-          cliq.onMessage(routeMessage)
-          channelRouter.register(cliq)
-          await cliq.start()
-          currentZohoCliqAdapter = cliq
-          channelAdapters.push(cliq)
-          log.info('[hot-reload] Zoho Cliq adapter loaded successfully')
-        } catch (err) {
-          log.error('[hot-reload] Failed to reload Zoho Cliq:', (err as Error).message)
-        }
-      })()
+        })()
+      }
     }
+
   }, 10_000)
+
+  // ── Start all per-head activation loops ───────────────────────────────────────
+  for (const { system: s, head: h } of headSystems) {
+    s.activationLoop.start()
+    s.activationLoop.announceOnline()
+    log.info(`[startup] head=${h.id} activation loop running`)
+  }
 
   // ── Graceful shutdown ─────────────────────────────────────────────────────────
   const shutdown = async () => {
@@ -732,7 +747,7 @@ async function main() {
       agents.fail(t.id, 'process shutdown before agent could complete')
     }
 
-    activationLoop.stop()
+    for (const { system: s } of headSystems) s.activationLoop.stop()
     db.close()
     log.info('[shutdown] Done.')
     process.exit(0)
