@@ -29,7 +29,7 @@ export function createActivityRouter(
     const entries: ActivityEntry[] = []
 
     // Recent non-injected text messages
-    for (const msg of messages.getRecentText(60)) {
+    for (const msg of messages.getRecentText('default', 60)) {
       if (msg.kind !== 'text') continue
       entries.push(withDetail(
         {

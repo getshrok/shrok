@@ -171,7 +171,7 @@ export class ContextAssemblerImpl implements ContextAssembler {
     }
 
     // 4. History — most recent messages that fit in the budget (FIFO)
-    const history = this.messages.getRecent(historyBudget)
+    const history = this.messages.getRecent('default', historyBudget)
 
     return { systemPrompt: finalSystemPrompt, history, historyBudget, memoryBlock }
   }
@@ -193,7 +193,7 @@ export class ContextAssemblerImpl implements ContextAssembler {
     const contextTokenBudget = this.config.memoryQueryContextTokens
     if (!contextTokenBudget || !this.router) return failOpen
 
-    const recent = this.messages.getRecentTextByTokens(contextTokenBudget, estimateTokens).reverse()
+    const recent = this.messages.getRecentTextByTokens('default', contextTokenBudget, estimateTokens).reverse()
     if (recent.length === 0) return failOpen
 
     const conversationContext = recent

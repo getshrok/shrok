@@ -12,7 +12,7 @@ export function createMessagesRouter(messages: MessageStore, channelAdapter?: Da
   const router = Router()
 
   router.get('/', requireAuth, (_req: Request, res: Response): void => {
-    const all = messages.getAll()
+    const all = messages.getAll('default')
     const withTokens = all.map(m => ({ ...m, tokens: estimateTokens([m]) }))
     res.json({ messages: withTokens })
   })

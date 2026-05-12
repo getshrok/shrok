@@ -224,7 +224,8 @@ export class ActivationLoop {
   }
 
   private async processOne(): Promise<void> {
-    const claimed = this.opts.queueStore.claimNext()
+    // Phase 29 interim: pass 'default' headId until Phase 30 parameterizes ActivationLoop by head.
+    const claimed = this.opts.queueStore.claimNext('default')
 
     if (!claimed) {
       // Nothing to process — wait for poll interval or notification
@@ -407,7 +408,7 @@ export class ActivationLoop {
           setTimeout(() => restartProcess(), 500)
         },
         forceArchive: async () => {
-          const allMessages = this.opts.messages.getRecent(Infinity)
+          const allMessages = this.opts.messages.getRecent('default', Infinity)
           if (allMessages.length === 0) return 0
           if (!this.opts.appState.tryAcquireArchivalLock()) return -1
           try {
@@ -445,7 +446,7 @@ export class ActivationLoop {
           reminders: this.opts.scheduleStore.list().filter(s => s.kind === 'reminder').length,
         }),
         getHeadContextStats: () => {
-          const all = this.opts.messages.getAll()
+          const all = this.opts.messages.getAll('default')
           const memoryFraction = (this.opts.config.memoryBudgetPercent ?? 40) / 100
           const historyBudget = Math.floor(this.opts.config.contextWindowTokens * (1 - memoryFraction))
           const archivalThreshold = Math.floor(historyBudget * this.opts.config.archivalThresholdFraction)
@@ -563,7 +564,7 @@ export class ActivationLoop {
       if (config.routingStewardEnabled && event.text.length >= 10 && !event.text.includes('type="greeting"')) {
         const skills = this.opts.toolExecutorOpts.skillLoader.listAll()
         const skillList = skills.map(s => `- ${s.name}: ${s.frontmatter.description}`).join('\n')
-        const recent = this.opts.messages.getRecent(2000)
+        const recent = this.opts.messages.getRecent('default', 2000)
           .filter((m): m is TextMessage => m.kind === 'text' && !m.injected)
           .slice(-5)
           .map(m => ({ role: m.role, content: m.content }))
@@ -614,7 +615,7 @@ export class ActivationLoop {
       // pending in the queue). Stewards run BEFORE injection (append-only):
       // relay steward gates scheduled agent_completed entirely; work-summary
       // steward computes the content the injector will use.
-      coalescedEvents = this.opts.queueStore.claimAllPendingBackground()
+      coalescedEvents = this.opts.queueStore.claimAllPendingBackground('default')
     }
 
     try {
@@ -775,10 +776,10 @@ export class ActivationLoop {
       : this.opts.appState.getLastActiveChannel()
 
     const buildHistory = () => {
-      const activationMessages = this.opts.messages.getSince(activationStart)
+      const activationMessages = this.opts.messages.getSince('default', activationStart)
       const activationCost = estimateTokens(activationMessages)
       const priorBudget = Math.max(0, context.historyBudget - activationCost)
-      const priorHistory = this.opts.messages.getRecentBefore(activationStart, priorBudget)
+      const priorHistory = this.opts.messages.getRecentBefore('default', activationStart, priorBudget)
       return [...stripAttachmentsFromHistory(priorHistory), ...activationMessages]
     }
 
@@ -810,7 +811,7 @@ export class ActivationLoop {
           // Without this, refreshHistory returns a stale snapshot and the model can't
           // see its own prior actions, causing spawn loops.
           filteredBuildHistory = () => {
-            const activationMessages = this.opts.messages.getSince(activationStart)
+            const activationMessages = this.opts.messages.getSince('default', activationStart)
             return [...filteredPrior, ...activationMessages]
           }
         } catch (err) {
@@ -841,7 +842,7 @@ export class ActivationLoop {
           msg = { ...msg, content: cleaned }
 
           if (config.headRelaySteward && !isGreeting) {
-            const recent = this.opts.messages.getRecent(config.headRelayStewardContextTokens)
+            const recent = this.opts.messages.getRecent('default', config.headRelayStewardContextTokens)
               .filter((m): m is TextMessage => m.kind === 'text' && !m.injected && !m.content.includes('type="greeting"'))
               .map(m => ({ role: m.role, content: m.content }))
             const relayed = await runHeadRelaySteward(msg.content, recent, this.opts.llmRouter, config.stewardModel, this.opts.usageStore, onDebug ?? undefined)
@@ -914,7 +915,7 @@ export class ActivationLoop {
     // Batching: if new user messages arrived while the LLM was running, fold the
     // intermediate response into history and re-activate rather than delivering.
     if (event.type === 'user_message') {
-      let buffered = this.opts.queueStore.claimAllPendingUserMessages()
+      let buffered = this.opts.queueStore.claimAllPendingUserMessages('default')
       while (buffered.length > 0) {
         log.info(`[activation] Re-activating: ${buffered.length} user message(s) arrived during LLM call`)
         let hasNewMessages = false
@@ -941,7 +942,7 @@ export class ActivationLoop {
         if (hasNewMessages) {
           finalResponse = await runToolLoop(this.opts.llmRouter, { ...toolLoopOpts, history: toolLoopOpts.refreshHistory() })
         }
-        buffered = this.opts.queueStore.claimAllPendingUserMessages()
+        buffered = this.opts.queueStore.claimAllPendingUserMessages('default')
       }
 
     }
@@ -960,7 +961,7 @@ export class ActivationLoop {
     }
 
     // Steward: catch mandatory actions the head missed (runs after response delivery)
-    const activationMsgs = this.opts.messages.getSince(activationStart)
+    const activationMsgs = this.opts.messages.getSince('default', activationStart)
     const toolsCalledThisTurn = activationMsgs
       .filter((m): m is ToolCallMessage => m.kind === 'tool_call')
       .flatMap(m => m.toolCalls)
@@ -968,7 +969,7 @@ export class ActivationLoop {
 
     if (finalResponse.content.trim() !== '' || toolsCalledThisTurn.includes('spawn_agent')) {
       const recentHistory = buildStewardHistory(
-        this.opts.messages.getAll()
+        this.opts.messages.getAll('default')
           .filter((m): m is TextMessage => m.kind === 'text' && m.createdAt < activationStart),
         config.stewardContextTokenBudget,
       )
@@ -1074,7 +1075,7 @@ export class ActivationLoop {
         return
       }
       if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
-        const recentMsgs = this.opts.messages.getRecentTextByTokens(this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
+        const recentMsgs = this.opts.messages.getRecentTextByTokens('default', this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
         const { identityLoader } = this.opts.toolExecutorOpts
         const decision = await runReminderDecision({
           reminderMessage: schedule.agentContext ?? '',
@@ -1128,7 +1129,7 @@ export class ActivationLoop {
 
     // Proactive decision: run an LLM steward to decide whether this schedule should fire
     if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
-      const recentMsgs = this.opts.messages.getRecentTextByTokens(this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
+      const recentMsgs = this.opts.messages.getRecentTextByTokens('default', this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
       const { identityLoader } = this.opts.toolExecutorOpts
 
       const decision = await runProactiveDecision({
@@ -1272,7 +1273,7 @@ export class ActivationLoop {
 
   private async maybeArchive(): Promise<void> {
     try {
-      const allMessages = this.opts.messages.getRecent(Infinity)
+      const allMessages = this.opts.messages.getRecent('default', Infinity)
       const tokenCount = estimateTokens(allMessages)
       const memoryFraction = (this.opts.config.memoryBudgetPercent ?? 40) / 100
       const historyBudget = this.opts.config.contextWindowTokens * (1 - memoryFraction)
@@ -1299,7 +1300,7 @@ export class ActivationLoop {
       // Cancel suspended agents whose context has been archived away.
       // If the head no longer has the agent-paused trigger in its live history,
       // the conversation has moved on and the question will never be answered.
-      const oldest = this.opts.messages.getAll()[0]
+      const oldest = this.opts.messages.getAll('default')[0]
       if (oldest) {
         const suspended = this.opts.agentStore.getByStatus('suspended')
         for (const agent of suspended) {

@@ -197,7 +197,7 @@ export class HeadToolExecutor implements ToolExecutor {
             // Continuation: validate the message is user-driven before resuming (gated by config)
             const task = state.task ?? ''
             if (this.opts.messageAgentStewardEnabled && this.opts.llmRouter && this.opts.stewardModel) {
-              const recent = this.opts.messages.getRecentText(4)
+              const recent = this.opts.messages.getRecentText('default', 4)
                 .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt }))
               const pass = await runMessageAgentSteward(
                 task, message, recent,
@@ -215,7 +215,7 @@ export class HeadToolExecutor implements ToolExecutor {
             // Suspended agent — validate the answer is real before resuming (gated by config)
             const question = state.pendingQuestion ?? ''
             if (question && this.opts.resumeStewardEnabled && this.opts.llmRouter && this.opts.stewardModel) {
-              const recent = this.opts.messages.getRecent(this.opts.resumeStewardContextTokens ?? 4000)
+              const recent = this.opts.messages.getRecent('default', this.opts.resumeStewardContextTokens ?? 4000)
                 .filter((m): m is TextMessage => m.kind === 'text' && !m.injected)
                 .map(m => ({ role: m.role, content: m.content, createdAt: m.createdAt }))
               const pass = await runResumeSteward(
@@ -234,7 +234,7 @@ export class HeadToolExecutor implements ToolExecutor {
             // Running agent — reject unprompted check-ins (gated by config)
             const task = state?.task ?? ''
             if (this.opts.messageAgentStewardEnabled && this.opts.llmRouter && this.opts.stewardModel) {
-              const recent = this.opts.messages.getRecentText(4)
+              const recent = this.opts.messages.getRecentText('default', 4)
                 .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt }))
               const pass = await runMessageAgentSteward(
                 task, message, recent,
