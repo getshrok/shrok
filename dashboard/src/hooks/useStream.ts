@@ -3,9 +3,24 @@ import { useQueryClient } from '@tanstack/react-query'
 import { connectSSE } from '../lib/sse'
 import type { DashboardEvent, Message, StewardRun } from '../types/api'
 
-export function useStream() {
+/**
+ * Subscribe to the dashboard SSE stream and route events into React Query caches.
+ *
+ * Phase 32 (D-06): `currentHeadId` is captured in a ref so we can route incoming
+ * `message_added` events to the correct head-scoped cache key (`['messages', headId]`)
+ * WITHOUT tearing down and re-establishing the EventSource every time the user
+ * switches heads. The ref is updated on every render via a tracking useEffect.
+ */
+export function useStream(currentHeadId: string) {
   const qc = useQueryClient()
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentHeadIdRef = useRef<string>(currentHeadId)
+
+  // Keep the ref in sync with the latest prop on every render.
+  // The SSE callback below closes over this ref, so reads are always current.
+  useEffect(() => {
+    currentHeadIdRef.current = currentHeadId
+  }, [currentHeadId])
 
   useEffect(() => {
     const disconnect = connectSSE((event: DashboardEvent) => {
@@ -13,8 +28,13 @@ export function useStream() {
         // Clear typing indicator when a message arrives
         qc.setQueryData(['typing'], false)
         if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null }
+        // Phase 32 (D-06): route to the head-scoped cache entry, not the legacy ['messages'] key.
+        // The SSE payload (Message) carries no head_id — we trust the ref to reflect
+        // the head currently being viewed. In single-head deployments currentHeadIdRef.current
+        // is always 'default', preserving backward-compat behavior.
+        const headId = currentHeadIdRef.current
         qc.setQueryData(
-          ['messages'],
+          ['messages', headId],
           (old: { messages: Message[] } | undefined) => ({
             messages: [...(old?.messages ?? []), event.payload],
           }),

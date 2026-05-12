@@ -30,9 +30,15 @@ export const api = {
     me: () =>
       request<{ ok: boolean }>('/api/auth/me'),
   },
-  messages: {
+  heads: {
     list: () =>
-      request<{ messages: Message[] }>('/api/messages'),
+      request<{ heads: Array<{ id: string }> }>('/api/heads'),
+  },
+  messages: {
+    list: (headId?: string) =>
+      request<{ messages: Message[] }>(
+        headId ? `/api/messages?head=${encodeURIComponent(headId)}` : '/api/messages',
+      ),
     send: (text: string, files?: Array<{ name: string; mediaType: string; data?: string; textContent?: string }>) =>
       request<{ ok: boolean }>('/api/messages/send', {
         method: 'POST',
