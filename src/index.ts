@@ -209,7 +209,7 @@ async function main() {
 
   // ── Startup recovery (post-build, before loop starts) ──────────────────
   queue.requeueStale()
-  appState.releaseArchivalLock()
+  appState.releaseArchivalLock('default')
 
   const orphansRemoved = messages.sanitizeOrphans()
   if (orphansRemoved > 0) {
@@ -506,7 +506,7 @@ async function main() {
 
         // Deliver to the active channel + persist to MessageStore so the
         // dashboard conversation also shows the alert.
-        const channel = appState.getLastActiveChannel()
+        const channel = appState.getLastActiveChannel('default')
         if (!channel) continue
 
         const text = formatThresholdAlert(crossing)

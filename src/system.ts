@@ -350,6 +350,7 @@ export function buildSystem(deps: SystemDeps): System {
   const tx = (fn: () => void) => transaction(db, fn)
 
   const activationLoop = new ActivationLoop({
+    headId: 'default',
     queueStore: stores.queue,
     messages: stores.messages,
     appState: stores.appState,
