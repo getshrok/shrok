@@ -225,10 +225,11 @@ async function main() {
 
   // Shared services across heads — instantiated below the loop, reused by all.
   // Captured by each head's routeMessage closure via the per-head system.
-  // dashboardAdapter is created INSIDE the first head's adapter list (so it's
-  // registered on that head's router) but the underlying DashboardServer is
-  // built outside the loop with the first head's stores.
-  let dashboardAdapter: DashboardChannelAdapter | null = null
+  // Phase 33 D-09: one DashboardChannelAdapter per head, attached as
+  // `dashboard:${head.id}` on each head's router. The startup loop collects
+  // them into a Map<headId, adapter> that the dashboard's messages router
+  // uses to look up the right adapter for /send.
+  const dashboardAdapters = new Map<string, DashboardChannelAdapter>()
 
   for (const head of resolvedHeads) {
     const headRouter = new ChannelRouterImpl()
@@ -331,19 +332,23 @@ async function main() {
       }
     }
 
-    // Dashboard adapter — attached to the first head only (Open Question 1
-    // RESOLVED in RESEARCH: Dashboard is owned by the first/primary head).
-    if (head === resolvedHeads[0]) {
-      const dash = new DashboardChannelAdapter(`dashboard:${head.id}`, head.id)
-      dash.setEventBus(dashboardEvents)
-      dash.setMessageStore(headMessages)
-      dash.onMessage(headRouteMessage)
-      headRouter.register(dash)
-      await dash.start()
-      headChannelAdapters.push(dash)
-      dashboardAdapter = dash
-      log.info(`[startup] head=${head.id}: Dashboard channel adapter ready`)
-    }
+    // Phase 33 D-09: one DashboardChannelAdapter per head, attached as
+    // `dashboard:${head.id}` on each head's router. The startup loop
+    // collects them into a Map<headId, adapter> that the dashboard's
+    // messages router uses to look up the right adapter for /send.
+    // Note: `headMessages` resolves to the same shared MessageStore instance
+    // in every iteration (RESEARCH Risk 2 / Assumption A1). This is correct
+    // per D-12 — head isolation comes from `head_id` on each row, not from
+    // separate store instances.
+    const dash = new DashboardChannelAdapter(`dashboard:${head.id}`, head.id)
+    dash.setEventBus(dashboardEvents)
+    dash.setMessageStore(headMessages)
+    dash.onMessage(headRouteMessage)
+    headRouter.register(dash)
+    await dash.start()
+    headChannelAdapters.push(dash)
+    dashboardAdapters.set(head.id, dash)
+    log.info(`[startup] head=${head.id}: Dashboard channel adapter ready`)
 
     headSystems.push({ head, channelRouter: headRouter, system: headSystem, channelAdapters: headChannelAdapters, routeMessage: headRouteMessage })
   }
@@ -423,7 +428,7 @@ async function main() {
     unifiedLoader,
     db,
     evalResultsDir: path.join(workspacePath, 'eval-results'),
-    channelAdapter: dashboardAdapter!,
+    dashboardAdapters,
     schedules,
     mcpRegistry,
     agentRunner,
