@@ -10,6 +10,8 @@ import { createMessagesRouter } from './messages.js'
 import { MessageStore } from '../../db/messages.js'
 import { initDb } from '../../db/index.js'
 import { runMigrations } from '../../db/migrate.js'
+import { DashboardChannelAdapter } from '../../channels/dashboard/adapter.js'
+import type { Attachment } from '../../types/core.js'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../../sql')
@@ -107,5 +109,119 @@ describe('GET /api/messages — head-scoped filtering (DASH-02)', () => {
     const body = await listMessages('?head=a&head=b')
     expect(body.messages).toHaveLength(1)
     expect(body.messages[0]?.content).toBe('hello from default head')
+  })
+})
+
+/**
+ * Test double for DashboardChannelAdapter that records every injectMessage call.
+ * Skips calling super.injectMessage — we're isolating the route logic from the
+ * activation loop (the inject path goes through onMessage -> headRouteMessage,
+ * which is out of scope for the route test).
+ */
+class SpyAdapter extends DashboardChannelAdapter {
+  public injected: Array<{ text: string; attachments?: Attachment[] }> = []
+  override injectMessage(text: string, attachments?: Attachment[]): void {
+    this.injected.push({ text, ...(attachments ? { attachments } : {}) })
+  }
+}
+
+describe('POST /api/messages/send — per-head adapter routing (DASH-05)', () => {
+  let server: Server
+  let port: number
+  let defaultAdapter: SpyAdapter
+  let workAdapter: SpyAdapter
+
+  async function startWithAdapters(adapters: Map<string, DashboardChannelAdapter>): Promise<void> {
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    // POST /send does NOT call into MessageStore directly — the adapter handles
+    // the enqueue path via the activation loop. A minimal cast satisfies the type.
+    const messagesMock = {} as unknown as MessageStore
+    app.use('/api/messages', createMessagesRouter(messagesMock, adapters))
+    port = await getFreePort()
+    await new Promise<void>((resolve, reject) => {
+      server = app.listen(port, '127.0.0.1', () => resolve())
+      server.once('error', reject)
+    })
+  }
+
+  beforeEach(() => {
+    defaultAdapter = new SpyAdapter('dashboard:default', 'default')
+    workAdapter = new SpyAdapter('dashboard:work', 'work')
+  })
+
+  afterEach(async () => {
+    if (server) await new Promise<void>(r => server.close(() => r()))
+  })
+
+  async function postSend(body: Record<string, unknown>): Promise<Response> {
+    return await fetch(`http://127.0.0.1:${port}/api/messages/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('routes to the work-head adapter when body.headId = "work"', async () => {
+    const adapters = new Map<string, DashboardChannelAdapter>([
+      ['default', defaultAdapter],
+      ['work', workAdapter],
+    ])
+    await startWithAdapters(adapters)
+
+    const r = await postSend({ text: 'hi work', headId: 'work' })
+    expect(r.status).toBe(200)
+    expect(workAdapter.injected).toHaveLength(1)
+    expect(workAdapter.injected[0]?.text).toBe('hi work')
+    expect(defaultAdapter.injected).toHaveLength(0)
+  })
+
+  it('falls back to the first adapter when body.headId is missing', async () => {
+    const adapters = new Map<string, DashboardChannelAdapter>([
+      ['default', defaultAdapter],
+      ['work', workAdapter],
+    ])
+    await startWithAdapters(adapters)
+
+    const r = await postSend({ text: 'no head' })
+    expect(r.status).toBe(200)
+    expect(defaultAdapter.injected).toHaveLength(1)
+    expect(defaultAdapter.injected[0]?.text).toBe('no head')
+    expect(workAdapter.injected).toHaveLength(0)
+  })
+
+  it('falls back to the first adapter when body.headId is unknown', async () => {
+    const adapters = new Map<string, DashboardChannelAdapter>([
+      ['default', defaultAdapter],
+      ['work', workAdapter],
+    ])
+    await startWithAdapters(adapters)
+
+    const r = await postSend({ text: 'unknown head', headId: 'imaginary' })
+    expect(r.status).toBe(200)
+    expect(defaultAdapter.injected).toHaveLength(1)
+    expect(defaultAdapter.injected[0]?.text).toBe('unknown head')
+    expect(workAdapter.injected).toHaveLength(0)
+  })
+
+  it('returns 503 when no dashboard adapters are configured', async () => {
+    await startWithAdapters(new Map())
+
+    const r = await postSend({ text: 'hello' })
+    expect(r.status).toBe(503)
+    const body = await r.json() as { error: string }
+    expect(body.error).toBe('Dashboard channel not available')
+  })
+
+  it('returns 400 when neither text nor files are provided', async () => {
+    const adapters = new Map<string, DashboardChannelAdapter>([
+      ['default', defaultAdapter],
+    ])
+    await startWithAdapters(adapters)
+
+    const r = await postSend({})
+    expect(r.status).toBe(400)
+    expect(defaultAdapter.injected).toHaveLength(0)
   })
 })
