@@ -52,7 +52,7 @@ export function useStream(currentHeadId: string) {
         void qc.invalidateQueries({ queryKey: ['activity'] })
       }
       if (event.type === 'agent_message_added') {
-        const { agentId, message, trigger } = event.payload as { agentId: string; message: Message; trigger?: string }
+        const { agentId, message, trigger } = event.payload
         qc.setQueryData(
           ['agent-history', agentId],
           (old: { history: Message[]; status: string; task: string } | undefined) => {
@@ -62,7 +62,7 @@ export function useStream(currentHeadId: string) {
         )
         // Only accumulate head-spawned agent tool calls/results for xray timeline
         // (skip text messages — agent thinking/responses are noise, head relays the result)
-        if ((!trigger || trigger === 'manual') && (message.kind === 'tool_call' || message.kind === 'tool_result')) {
+        if (trigger === 'manual' && (message.kind === 'tool_call' || message.kind === 'tool_result')) {
           qc.setQueryData(
             ['xray-messages'],
             (old: Array<{ agentId: string; message: Message }> | undefined) =>
