@@ -111,6 +111,9 @@ export class MessageStore {
   private stmtDeleteAll: StatementSync
 
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
+    // TODO(multi-head-write): stmtInsert does not include head_id. All appends land
+    // under the SQL DEFAULT ('default'). Multi-head message writes require passing
+    // headId to append() and stamping it in the INSERT. Tracked in Phase 33 Plan 02.
     this.stmtInsert = db.prepare(`
       INSERT INTO messages (id, kind, role, content, tool_calls, tool_results, attachments, channel, injected, summary_from, summary_to, event_id, created_at)
       VALUES (@id, @kind, @role, @content, @tool_calls, @tool_results, @attachments, @channel, @injected, @summary_from, @summary_to, @event_id, @created_at)
