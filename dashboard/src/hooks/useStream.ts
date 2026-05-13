@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { connectSSE } from '../lib/sse'
+import { shouldDeliverStreamEvent } from './streamFilter'
 import type { DashboardEvent, Message, StewardRun } from '../types/api'
 
 /**
@@ -24,19 +25,20 @@ export function useStream(currentHeadId: string) {
 
   useEffect(() => {
     const disconnect = connectSSE((event: DashboardEvent) => {
+      // Phase 33 D-11 (RESEARCH § A4 minimum-correct scope): drop
+      // message_added / typing events destined for a different head.
+      // Every other event type is delivered as-is.
+      if (!shouldDeliverStreamEvent(event, currentHeadIdRef.current)) return
+
       if (event.type === 'message_added') {
         // Clear typing indicator when a message arrives
         qc.setQueryData(['typing'], false)
         if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null }
-        // Phase 32 (D-06): route to the head-scoped cache entry, not the legacy ['messages'] key.
-        // The SSE payload (Message) carries no head_id — we trust the ref to reflect
-        // the head currently being viewed. In single-head deployments currentHeadIdRef.current
-        // is always 'default', preserving backward-compat behavior.
-        // TODO(phase-33): SSE payload must carry head_id so we can route correctly
-        // without relying on the ref. Current risk: message received while user switches
-        // heads lands in the wrong cache entry. Acceptable for single-dashboard-adapter
-        // deployments; must be fixed before per-head SSE scoping.
-        const headId = currentHeadIdRef.current
+        // Phase 33 (D-11): SSE payload now carries headId; route to its
+        // head-scoped cache entry. The filter above guarantees
+        // event.headId === currentHeadIdRef.current here, so we use the
+        // event's own headId rather than re-reading the ref.
+        const headId = event.headId
         qc.setQueryData(
           ['messages', headId],
           (old: { messages: Message[] } | undefined) => ({
