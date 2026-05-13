@@ -16,6 +16,12 @@ export function useStream(currentHeadId: string) {
   const qc = useQueryClient()
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentHeadIdRef = useRef<string>(currentHeadId)
+  // Phase 33 (WR-03): debounce ['thresholds'] invalidation on usage_updated.
+  // Every LLM call emits usage_updated; without throttling, a busy session
+  // would refetch the threshold list (which walks usage rows in getCostSince)
+  // dozens of times per minute. 5s window keeps the UI responsive while
+  // avoiding redundant SQLite aggregator hits.
+  const lastThreshInvalidateRef = useRef<number>(0)
 
   // Keep the ref in sync with the latest prop on every render.
   // The SSE callback below closes over this ref, so reads are always current.
@@ -85,7 +91,16 @@ export function useStream(currentHeadId: string) {
         // Threshold rows show currentSpend per period, which is a function of
         // usage. Every LLM call advances spend, so refresh the list whenever
         // usage updates — not just on add/edit/delete (thresholds_changed).
-        void qc.invalidateQueries({ queryKey: ['thresholds'] })
+        // Phase 33 (WR-03): debounce to at most once per 5s. ['thresholds']
+        // requires walking usage rows in getCostSince, which can be expensive
+        // under sustained LLM call rates. ['usage']/['status'] are O(1) and
+        // remain unthrottled. thresholds_changed (add/edit/delete) bypasses
+        // this debounce so user-initiated changes are still immediate.
+        const now = Date.now()
+        if (now - lastThreshInvalidateRef.current > 5_000) {
+          lastThreshInvalidateRef.current = now
+          void qc.invalidateQueries({ queryKey: ['thresholds'] })
+        }
       }
       if (event.type === 'assistant_name_changed') {
         qc.setQueryData(['settings'], (old: Record<string, unknown> | undefined) =>
