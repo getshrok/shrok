@@ -10,7 +10,7 @@ import { developerWarning } from './GeneralTab'
 import { useAssistantName } from '../../lib/assistant-name'
 import GeneralTab from './GeneralTab'
 import ModelsTab from './ModelsTab'
-import ChannelsTab from './ChannelsTab'
+import HeadsTab from './HeadsTab'
 import StewardsTab from './StewardsTab'
 import BehaviorTab from './BehaviorTab'
 import ExperimentalTab from './ExperimentalTab'
@@ -41,7 +41,7 @@ export default function SettingsModal({ open, onClose, onSaved }: { open: boolea
   // draftMode is local to the modal — takes effect visually immediately but only
   // committed to context on Save, or discarded if the user hits Discard/Close
   const [draftMode, setDraftMode] = useState<Mode>(contextMode)
-  type Tab = 'general' | 'models' | 'channels' | 'stewards' | 'behavior' | 'experimental'
+  type Tab = 'general' | 'models' | 'heads' | 'stewards' | 'behavior' | 'experimental'
   const [activeTab, setActiveTab] = useState<Tab>('general')
 
   // On open: reinit from latest data so saved changes are always reflected.
@@ -118,7 +118,7 @@ export default function SettingsModal({ open, onClose, onSaved }: { open: boolea
   const tabs: { id: Tab; label: string }[] = [
     { id: 'general', label: 'General' },
     { id: 'models', label: 'Models' },
-    { id: 'channels', label: 'Channels' },
+    { id: 'heads', label: 'Heads' },
     { id: 'stewards', label: 'Stewards' },
     { id: 'behavior' as Tab, label: 'Behavior' },
     { id: 'experimental', label: 'Experimental' },
@@ -168,12 +168,13 @@ export default function SettingsModal({ open, onClose, onSaved }: { open: boolea
           />
         )}
 
-        {activeTab === 'channels' && s && d && (
-          <ChannelsTab
-            d={d} s={s} set={set}
-            isDeveloper={isDeveloper}
-            inputClass={inputClass} selectClass={selectClass}
-          />
+        {activeTab === 'heads' && (
+          // Phase 33 Plan 06 (D-01, D-03, D-05): the Heads tab does its own
+          // data-fetching via react-query and mutates directly through
+          // api.heads.*. Per-card Save flows call onSaved() to trigger the
+          // existing RestartModal — the modal-level Save button is a no-op
+          // for the heads tab.
+          <HeadsTab onSaved={onSaved} />
         )}
 
         {activeTab === 'stewards' && s && d && (
