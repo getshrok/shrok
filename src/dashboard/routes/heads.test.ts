@@ -823,3 +823,214 @@ describe('POST /api/heads/:id/channels (DASH-04 add channel)', () => {
     expect(JSON.stringify(body)).not.toContain('SUPER-SECRET')
   })
 })
+
+// ─── Plan 33-05 Task 2: PATCH + DELETE /api/heads/:id/channels/:channelId ──
+
+describe('PATCH/DELETE /api/heads/:id/channels/:channelId (DASH-04 edit + remove)', () => {
+  let fx: MutFixture
+
+  async function start(initialHeads: ResolvedHead[]): Promise<void> {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'heads-route-chedit-'))
+    const configPath = path.join(workspace, 'config.json')
+    const envFilePath = path.join(workspace, '.env')
+    const db = setupDb()
+    const messages = new MessageStore(db)
+    const queue = new QueueStore(db)
+    let currentHeads = initialHeads
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    app.use('/api/heads', createHeadsRouter({
+      workspacePath: workspace,
+      configPath,
+      envFilePath,
+      resolveCurrentHeads: () => currentHeads,
+      db,
+      messages,
+      queue,
+    }))
+    const port = await getFreePort()
+    const server = await new Promise<Server>((resolve, reject) => {
+      const s = app.listen(port, '127.0.0.1', () => resolve(s))
+      s.once('error', reject)
+    })
+    fx = {
+      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      setHeads: (next) => { currentHeads = next },
+    }
+  }
+
+  afterEach(async () => {
+    if (fx?.server) await new Promise<void>(r => fx.server.close(() => r()))
+    if (fx?.workspace) fs.rmSync(fx.workspace, { recursive: true, force: true })
+  })
+
+  async function patchChannel(headId: string, channelId: string, body: unknown): Promise<{ status: number; json: unknown }> {
+    const r = await fetch(`http://127.0.0.1:${fx.port}/api/heads/${headId}/channels/${channelId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return { status: r.status, json: await r.json() }
+  }
+
+  async function deleteChannel(headId: string, channelId: string): Promise<{ status: number; json: unknown }> {
+    const r = await fetch(`http://127.0.0.1:${fx.port}/api/heads/${headId}/channels/${channelId}`, {
+      method: 'DELETE',
+    })
+    return { status: r.status, json: await r.json() }
+  }
+
+  function readConfig(): Record<string, unknown> {
+    return JSON.parse(fs.readFileSync(fx.configPath, 'utf8')) as Record<string, unknown>
+  }
+
+  function seedWork(): void {
+    const work = {
+      id: 'work',
+      channels: [{ id: 'tg-work', vendor: 'telegram' as const, botToken: 'ORIGINAL-TOKEN', chatId: '123' }],
+    }
+    fx.setHeads([work])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [work] }, null, 2) + '\n')
+  }
+
+  // ── PATCH /:id/channels/:channelId ──────────────────────────────────────────
+
+  it('PATCH preserves botToken when client omits the field (D-17 secret preservation)', async () => {
+    await start([])
+    seedWork()
+    const res = await patchChannel('work', 'tg-work', { chatId: '999' })
+    expect(res.status).toBe(200)
+    // Response masks the secret — still { isSet: true }
+    const body = res.json as { channel: Record<string, unknown> }
+    expect(body.channel['botToken']).toEqual({ isSet: true })
+    expect(body.channel['chatId']).toBe('999')
+    // Disk: botToken preserved, chatId updated
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; channels: Array<Record<string, unknown>> }>
+    expect(heads[0]!.channels[0]).toEqual({
+      id: 'tg-work', vendor: 'telegram', botToken: 'ORIGINAL-TOKEN', chatId: '999',
+    })
+  })
+
+  it('PATCH updates botToken when client sends a new value', async () => {
+    await start([])
+    seedWork()
+    const res = await patchChannel('work', 'tg-work', { botToken: 'NEW-TOKEN' })
+    expect(res.status).toBe(200)
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; channels: Array<Record<string, unknown>> }>
+    expect(heads[0]!.channels[0]!['botToken']).toBe('NEW-TOKEN')
+    expect(heads[0]!.channels[0]!['chatId']).toBe('123') // preserved
+    // Response does NOT leak the new token
+    expect(JSON.stringify(res.json)).not.toContain('NEW-TOKEN')
+  })
+
+  it('PATCH rejects vendor change with 400 (discriminated-union invariant)', async () => {
+    await start([])
+    seedWork()
+    const res = await patchChannel('work', 'tg-work', { vendor: 'discord', channelId: 'X' })
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toMatch(/vendor cannot change/)
+  })
+
+  it('PATCH rejects invalid Zod shape with 400 (empty chatId)', async () => {
+    await start([])
+    seedWork()
+    const res = await patchChannel('work', 'tg-work', { chatId: '' })
+    expect(res.status).toBe(400)
+  })
+
+  it('PATCH returns 404 for nonexistent channel', async () => {
+    await start([])
+    seedWork()
+    const res = await patchChannel('work', 'ghost', { chatId: '9' })
+    expect(res.status).toBe(404)
+  })
+
+  it('PATCH returns 404 for nonexistent head', async () => {
+    await start([{ id: 'default', channels: [] }])
+    const res = await patchChannel('ghost', 'tg-work', { chatId: '9' })
+    expect(res.status).toBe(404)
+  })
+
+  it('PATCH renames a channel; cross-head uniqueness excludes self', async () => {
+    const work = {
+      id: 'work',
+      channels: [{ id: 'tg-work', vendor: 'telegram' as const, botToken: 'TOK', chatId: '1' }],
+    }
+    const home = {
+      id: 'home',
+      channels: [{ id: 'tg-home', vendor: 'telegram' as const, botToken: 'TOK2', chatId: '2' }],
+    }
+    await start([work, home])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [work, home] }, null, 2) + '\n')
+    const res = await patchChannel('work', 'tg-work', { id: 'tg-work-renamed' })
+    expect(res.status).toBe(200)
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; channels: Array<Record<string, unknown>> }>
+    const workHead = heads.find(h => h.id === 'work')!
+    expect(workHead.channels[0]!['id']).toBe('tg-work-renamed')
+    // Sibling channel on home untouched
+    const homeHead = heads.find(h => h.id === 'home')!
+    expect(homeHead.channels[0]!['id']).toBe('tg-home')
+  })
+
+  it('PATCH rename to an ID used on another head returns 400', async () => {
+    const work = {
+      id: 'work',
+      channels: [{ id: 'tg-work', vendor: 'telegram' as const, botToken: 'TOK', chatId: '1' }],
+    }
+    const home = {
+      id: 'home',
+      channels: [{ id: 'tg-home', vendor: 'telegram' as const, botToken: 'TOK2', chatId: '2' }],
+    }
+    await start([work, home])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [work, home] }, null, 2) + '\n')
+    const res = await patchChannel('work', 'tg-work', { id: 'tg-home' })
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toMatch(/already in use/)
+  })
+
+  it('PATCH rejects rename to a non-kebab id with 400', async () => {
+    await start([])
+    seedWork()
+    const res = await patchChannel('work', 'tg-work', { id: 'BadCase' })
+    expect(res.status).toBe(400)
+  })
+
+  // ── DELETE /:id/channels/:channelId ─────────────────────────────────────────
+
+  it('DELETE removes the channel from config.json', async () => {
+    const work = {
+      id: 'work',
+      channels: [
+        { id: 'tg-work', vendor: 'telegram' as const, botToken: 'TOK', chatId: '1' },
+        { id: 'dc-work', vendor: 'discord' as const, botToken: 'TOK2', channelId: 'C' },
+      ],
+    }
+    await start([work])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [work] }, null, 2) + '\n')
+    const res = await deleteChannel('work', 'tg-work')
+    expect(res.status).toBe(200)
+    expect(res.json).toMatchObject({ ok: true })
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; channels: Array<Record<string, unknown>> }>
+    expect(heads[0]!.channels).toHaveLength(1)
+    expect(heads[0]!.channels[0]!['id']).toBe('dc-work')
+  })
+
+  it('DELETE returns 404 for missing channel', async () => {
+    await start([])
+    seedWork()
+    const res = await deleteChannel('work', 'ghost-channel')
+    expect(res.status).toBe(404)
+  })
+
+  it('DELETE returns 404 for missing head', async () => {
+    await start([{ id: 'default', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [{ id: 'default', channels: [] }] }, null, 2) + '\n')
+    const res = await deleteChannel('ghost-head', 'tg-anything')
+    expect(res.status).toBe(404)
+  })
+})
