@@ -436,3 +436,214 @@ describe('POST/DELETE /api/heads (DASH-03)', () => {
     expect(fs.statSync(fx.envFilePath).mtimeMs).toBe(envMtimeBefore) // .env NOT rewritten
   })
 })
+
+// ─── Task 3: PATCH /api/heads/:id rename (3-table atomic UPDATE) ────────────
+
+describe('PATCH /api/heads/:id (DASH-03 rename, D-14)', () => {
+  let fx: MutFixture
+
+  async function start(initialHeads: ResolvedHead[]): Promise<void> {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'heads-route-patch-'))
+    const configPath = path.join(workspace, 'config.json')
+    const envFilePath = path.join(workspace, '.env')
+    const db = setupDb()
+    const messages = new MessageStore(db)
+    const queue = new QueueStore(db)
+    let currentHeads = initialHeads
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    app.use('/api/heads', createHeadsRouter({
+      workspacePath: workspace,
+      configPath,
+      envFilePath,
+      resolveCurrentHeads: () => currentHeads,
+      db,
+      messages,
+      queue,
+    }))
+    const port = await getFreePort()
+    const server = await new Promise<Server>((resolve, reject) => {
+      const s = app.listen(port, '127.0.0.1', () => resolve(s))
+      s.once('error', reject)
+    })
+    fx = {
+      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      setHeads: (next) => { currentHeads = next },
+    }
+  }
+
+  afterEach(async () => {
+    if (fx?.server) await new Promise<void>(r => fx.server.close(() => r()))
+    if (fx?.workspace) fs.rmSync(fx.workspace, { recursive: true, force: true })
+  })
+
+  async function patch(id: string, body: unknown): Promise<{ status: number; json: unknown }> {
+    const r = await fetch(`http://127.0.0.1:${fx.port}/api/heads/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return { status: r.status, json: await r.json() }
+  }
+
+  function readConfig(): Record<string, unknown> {
+    return JSON.parse(fs.readFileSync(fx.configPath, 'utf8')) as Record<string, unknown>
+  }
+  function seedMessage(headId: string, id: string): void {
+    fx.messages.append({
+      kind: 'text', id, role: 'user', content: `m-${id}`, createdAt: new Date().toISOString(),
+    } as never, headId)
+  }
+  function seedQueue(headId: string, id: string): void {
+    fx.db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', ?)`)
+      .run(id, 'user_message', JSON.stringify({ type: 'user_message', id, channel: 'x', text: 't', createdAt: '2025-01-01' }), 100, headId)
+  }
+  function seedAppState(key: string, value: string): void {
+    fx.db.prepare("INSERT INTO app_state (key, value) VALUES (?, ?)").run(key, value)
+  }
+  function appStateValue(key: string): string | undefined {
+    const row = fx.db.prepare("SELECT value FROM app_state WHERE key = ?").get(key) as { value: string } | undefined
+    return row?.value
+  }
+  function queueCount(headId: string): number {
+    return (fx.db.prepare("SELECT COUNT(*) AS n FROM queue_events WHERE head_id = ?").get(headId) as { n: number }).n
+  }
+
+  it('PATCH /api/heads/:id renames the head and atomically migrates 3 tables (D-14)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    // Seed state under 'work' (and a sibling under 'default' that must NOT change).
+    seedMessage('work', 'mw1')
+    seedMessage('work', 'mw2')
+    seedMessage('default', 'md1')
+    seedQueue('work', 'qw1')
+    seedQueue('default', 'qd1')
+    seedAppState('work:lastChannel', 'discord')
+    seedAppState('work:archivalLock', 'false')
+    seedAppState('default:lastChannel', 'telegram')
+
+    const res = await patch('work', { newId: 'work-new' })
+    expect(res.status).toBe(200)
+    expect(res.json).toMatchObject({ ok: true, head: { id: 'work-new' } })
+
+    // messages migrated:
+    expect(fx.messages.countForHead('work-new')).toBe(2)
+    expect(fx.messages.countForHead('work')).toBe(0)
+    // queue_events migrated:
+    expect(queueCount('work-new')).toBe(1)
+    expect(queueCount('work')).toBe(0)
+    // app_state keys re-prefixed (substr-anchored, not REPLACE):
+    expect(appStateValue('work-new:lastChannel')).toBe('discord')
+    expect(appStateValue('work-new:archivalLock')).toBe('false')
+    expect(appStateValue('work:lastChannel')).toBeUndefined()
+    expect(appStateValue('work:archivalLock')).toBeUndefined()
+    // Sibling head untouched:
+    expect(fx.messages.countForHead('default')).toBe(1)
+    expect(queueCount('default')).toBe(1)
+    expect(appStateValue('default:lastChannel')).toBe('telegram')
+    // config.json rewritten:
+    const cfg = readConfig()
+    expect(cfg['heads']).toEqual([
+      { id: 'default', channels: [] },
+      { id: 'work-new', channels: [] },
+    ])
+  })
+
+  it('PATCH rejects invalid newId regex with 400 (D-13)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    const res = await patch('work', { newId: 'BadCase' })
+    expect(res.status).toBe(400)
+  })
+
+  it('PATCH rejects newId that matches an existing head with 400', async () => {
+    await start([
+      { id: 'default', channels: [] },
+      { id: 'work', channels: [] },
+      { id: 'home', channels: [] },
+    ])
+    const res = await patch('work', { newId: 'home' })
+    expect(res.status).toBe(400)
+  })
+
+  it('PATCH rejects newId "default" with 400 (reserved)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    const res = await patch('work', { newId: 'default' })
+    expect(res.status).toBe(400)
+  })
+
+  it('PATCH rejects renaming "default" with 400 (mirrors DELETE policy, D-08)', async () => {
+    await start([{ id: 'default', channels: [] }])
+    const res = await patch('default', { newId: 'whatever' })
+    expect(res.status).toBe(400)
+  })
+
+  it('PATCH returns 404 for unknown head', async () => {
+    await start([{ id: 'default', channels: [] }])
+    const res = await patch('nope', { newId: 'still-nope' })
+    expect(res.status).toBe(404)
+  })
+
+  it('PATCH rejects missing/non-string newId with 400', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    const r1 = await patch('work', {})
+    expect(r1.status).toBe(400)
+    const r2 = await patch('work', { newId: 42 })
+    expect(r2.status).toBe(400)
+  })
+
+  it('PATCH with newId === oldId is a no-op success', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+    seedMessage('work', 'm1')
+    const res = await patch('work', { newId: 'work' })
+    expect(res.status).toBe(200)
+    expect(fx.messages.countForHead('work')).toBe(1)
+  })
+
+  it('PATCH rollback: when third UPDATE fails, messages and queue_events stay at old head_id', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+    seedMessage('work', 'm1')
+    seedQueue('work', 'qw1')
+    seedAppState('work:lastChannel', 'discord')
+
+    // Inject a failure into the third (app_state) UPDATE by monkey-patching
+    // db.prepare to throw when it sees the substr-anchored rename SQL.
+    const origPrepare = fx.db.prepare.bind(fx.db)
+    let appStateCalls = 0
+    ;(fx.db as unknown as { prepare: typeof origPrepare }).prepare = ((sql: string) => {
+      if (sql.includes('UPDATE app_state SET key')) {
+        appStateCalls += 1
+        return {
+          run: () => { throw new Error('forced rollback') },
+        } as never
+      }
+      return origPrepare(sql)
+    }) as never
+
+    const res = await patch('work', { newId: 'work-new' })
+    // Restore prepare before any further assertions touch the db.
+    ;(fx.db as unknown as { prepare: typeof origPrepare }).prepare = origPrepare
+
+    // The third statement was invoked at least once, and the request did NOT succeed.
+    expect(appStateCalls).toBeGreaterThan(0)
+    expect(res.status).not.toBe(200)
+
+    // ROLLBACK: messages and queue_events stay under 'work', not migrated.
+    expect(fx.messages.countForHead('work')).toBe(1)
+    expect(fx.messages.countForHead('work-new')).toBe(0)
+    expect(queueCount('work')).toBe(1)
+    expect(queueCount('work-new')).toBe(0)
+    // app_state untouched too.
+    expect(appStateValue('work:lastChannel')).toBe('discord')
+    expect(appStateValue('work-new:lastChannel')).toBeUndefined()
+  })
+})
