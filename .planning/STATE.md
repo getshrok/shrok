@@ -2,29 +2,29 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
-status: executing
-stopped_at: Completed 33-06-heads-tab-frontend-PLAN.md
-last_updated: "2026-05-13T21:12:22.072Z"
+status: verifying
+stopped_at: Completed 33-07-typed-confirmation-delete-PLAN.md (phase 33 complete)
+last_updated: "2026-05-13T21:21:04.377Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 19
-  completed_plans: 18
-  percent: 95
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 33 (multi-head-management-ui) — EXECUTING
-Plan: 7 of 7
-Status: Ready to execute
+Phase: 33 (multi-head-management-ui) — COMPLETE
+Plan: 7 of 7 (complete)
+Status: Phase complete — ready for verification
 Last activity: 2026-05-13
-Stopped at: Completed 33-06-heads-tab-frontend-PLAN.md
+Stopped at: Completed 33-07-typed-confirmation-delete-PLAN.md (phase 33 complete)
 
-Progress: [██████████] 95% (18/19 plans complete; phase 33 in flight, plan 6/7 done)
+Progress: [██████████] 100% (19/19 plans complete; phase 33 done)
 
 ## Project Reference
 
@@ -78,6 +78,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-HEADS-NO-DRAFT (Plan 33-06): the Heads tab opts out of SettingsModal's draft + Save flow — each per-card mutation calls `onSaved()` directly so the RestartModal triggers after every change; multi-head changes are mandatory-restart per D-05 so batching has no value
 - D-COMPONENT-SPLIT (Plan 33-06): three-component split (HeadsTab + HeadCard + ChannelRow) over a monolithic file — per Claude's Discretion in plan; isolates the per-channel pending-state machine (5 vendor variants) from head-level concerns
 - D-LEGACY-CHANNELS-PRESERVED (Plan 33-06): `ChannelsTab.tsx` is unmounted from SettingsModal (D-03) but kept on disk as visual reference per CONTEXT.md; vendor color hex codes lifted into `vendor-theme.ts` as the canonical source
+- D-OPTIONAL-CONFIRM-ID (Plan 33-07): confirmId on DELETE /api/heads/:id is OPTIONAL — checked only when present in body. Frontend modal always sends it; curl/scripts/no-body tests still work. Backward-compat preserved while giving the UI an audit-trail field
+- D-CONFIRM-BEFORE-RESERVED (Plan 33-07): the confirmId mismatch check runs BEFORE the reserved-id check in DELETE /api/heads/:id. A malformed `DELETE /api/heads/default {confirmId: 'work'}` returns 'confirmId does not match' (the more specific error) rather than 'default cannot be deleted'
+- D-MODAL-OWNS-QUERY (Plan 33-07): DeleteHeadModal holds its own useQuery(['heads', id, 'counts']) + useMutation rather than receiving counts via props. Counts must be fresh every time the modal opens; 1:1 mount-lifecycle matches data-lifecycle
 
 ## Performance Metrics
 
@@ -89,3 +92,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 33    | 04   | 6min     | 3     | 3     |
 | 33    | 05   | 4min     | 2     | 2     |
 | 33    | 06   | 6min     | 3     | 7     |
+| 33    | 07   | 5min     | 2     | 5     |

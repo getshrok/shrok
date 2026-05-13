@@ -77,7 +77,7 @@ Plans:
 - [x] **Phase 30: Core Activation** — ActivationLoop parameterized by headId; AppStateStore namespaced; per-head ChannelRouter (completed 2026-05-12)
 - [x] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head (completed 2026-05-12)
 - [x] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head (completed 2026-05-12)
-- [ ] **Phase 33: Multi-head Management UI** — Dashboard UI for creating/renaming/deleting heads, managing channel adapters (incl. multiple instances per provider), and per-head Send routing
+- [x] **Phase 33: Multi-head Management UI** — Dashboard UI for creating/renaming/deleting heads, managing channel adapters (incl. multiple instances per provider), and per-head Send routing (completed 2026-05-13)
 
 ## Phase Details
 
@@ -154,7 +154,7 @@ Plans:
   2. A user can add a second Telegram bot (or any second-of-same-provider channel) to a head from the UI; both instances start and route correctly
   3. A user can rename or delete a head from the UI; conversation history for a deleted head is handled per a defined deletion policy
   4. Sending a message from the dashboard with head `personal` selected routes through that head's outbound channel — not the default head
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 **UI hint**: yes
 
 Plans:
@@ -164,7 +164,7 @@ Plans:
 - [x] 33-04-heads-crud-router-PLAN.md — POST/PATCH/DELETE /api/heads + lazy migration + rename UPDATE + delete wipe transaction (DASH-03)
 - [x] 33-05-heads-channels-subresource-PLAN.md — POST/PATCH/DELETE /api/heads/:id/channels[/:channelId] + cred masking + cross-head uniqueness (DASH-04)
 - [x] 33-06-heads-tab-frontend-PLAN.md — HeadsTab + HeadCard + ChannelRow + api.heads.* + hide legacy Channels tab (DASH-03, DASH-04)
-- [ ] 33-07-typed-confirmation-delete-PLAN.md — DeleteHeadModal with typed-confirmation + counts endpoint + confirmId guard (DASH-03)
+- [x] 33-07-typed-confirmation-delete-PLAN.md — DeleteHeadModal with typed-confirmation + counts endpoint + confirmId guard (DASH-03)
 
 ## Progress
 
@@ -174,4 +174,4 @@ Plans:
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
 | 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
 | 32. Dashboard Head Selector | 3/3 | Complete    | 2026-05-12 |
-| 33. Multi-head Management UI | 6/7 | In Progress|  |
+| 33. Multi-head Management UI | 7/7 | Complete   | 2026-05-13 |
