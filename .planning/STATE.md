@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 33-04-heads-crud-router-PLAN.md
-last_updated: "2026-05-13T20:52:53.788Z"
+stopped_at: Completed 33-05-heads-channels-subresource-PLAN.md
+last_updated: "2026-05-13T21:00:20.651Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 19
-  completed_plans: 16
-  percent: 84
+  completed_plans: 17
+  percent: 89
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 ## Current Position
 
 Phase: 33 (multi-head-management-ui) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-05-13
-Stopped at: Completed 33-04-heads-crud-router-PLAN.md
+Stopped at: Completed 33-05-heads-channels-subresource-PLAN.md
 
-Progress: [████████░░] 84% (16/19 plans complete; phase 33 in flight, plan 4/7 done)
+Progress: [█████████░] 89% (17/19 plans complete; phase 33 in flight, plan 5/7 done)
 
 ## Project Reference
 
@@ -70,6 +70,10 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-EXPORT-ENV-HELPERS (Plan 33-04): exported `parseEnvFile` + `writeEnvFile` from `src/dashboard/routes/settings.ts` rather than inlining a copy in heads.ts — keeps env file format handling (quoting, escape sequences, mode 0o600) in one place
 - D-SUBSTR-ANCHORED (Plan 33-04): rename uses `UPDATE app_state SET key = ? || substr(key, oldId.length + 2) WHERE key LIKE 'old:%'` — anchored to the prefix so substrings of the old id later in the key are not mis-edited (vs REPLACE which would)
 - D-PATCH-DEFAULT-REJECTED (Plan 33-04): PATCH on `default` returns 400 (mirrors DELETE policy per D-08). Rationale: rename of `default` would leave `heads[]` without a default entry, which `resolveHeads()` would re-synthesize on next restart — silent recovery is worse than rejecting
+- D-CHANNEL-UNIQUENESS-HELPER (Plan 33-05): `collectAllChannelIds(heads, excludeChannelId?)` is the single point that enforces D-15 cross-head channel id uniqueness. Zod schema does not refine for uniqueness and `ChannelRouter.set` silently overwrites — without this helper, duplicate channel ids would silently clobber state across heads
+- D-PATCH-MERGE-PRESERVATION (Plan 33-05): PATCH channel uses `for (const key of Object.keys(patch)) merged[key] = patch[key]` so only client-sent keys overwrite; absent keys preserve existing on-disk values (D-17 secret preservation). Empty-string secret falls through to Zod `min(1)` rejection — clearing is documented as delete-and-re-add for v1.3
+- D-PATCH-VENDOR-INVARIANT (Plan 33-05): PATCH that changes vendor returns 400 'channel vendor cannot change — delete and re-add' BEFORE the Zod re-parse. Vendor change would break the discriminated-union shape (different required fields per vendor); explicit gate produces a clearer error than letting the merge fail Zod
+- D-RENAME-IN-PATCH (Plan 33-05): Channel rename is handled inside PATCH (no separate `/rename` route). The body merge treats `{ id }` like any other field; cross-head uniqueness with self excluded runs only when `patch.id !== current channelId`. Keeps API surface minimal — Plan 06 UI can do everything via PATCH
 
 ## Performance Metrics
 
@@ -79,3 +83,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 33    | 02   | 5min     | 3     | 4     |
 | 33    | 03   | 3min     | 2     | 6     |
 | 33    | 04   | 6min     | 3     | 3     |
+| 33    | 05   | 4min     | 2     | 2     |

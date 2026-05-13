@@ -35,7 +35,7 @@
 - [x] **DASH-01**: Dashboard displays a head selector so the user can switch the active head context
 - [x] **DASH-02**: Conversation view returns only messages scoped to the currently selected head
 - [x] **DASH-03**: Dashboard allows creating, renaming, and deleting heads from the UI without editing config.json directly
-- [ ] **DASH-04**: Dashboard allows adding, editing, and removing channel adapters within a head, including multiple instances of the same vendor (e.g., two Telegram bots, two Slack workspaces)
+- [x] **DASH-04**: Dashboard allows adding, editing, and removing channel adapters within a head, including multiple instances of the same vendor (e.g., two Telegram bots, two Slack workspaces)
 - [x] **DASH-05**: Sending a message from the dashboard routes to the currently selected head's outbound channel rather than always to the default head
 
 ## Future Requirements
@@ -78,7 +78,7 @@
 | DASH-01 | Phase 32 | Complete |
 | DASH-02 | Phase 32 | Complete |
 | DASH-03 | Phase 33 | Complete |
-| DASH-04 | Phase 33 | Pending |
+| DASH-04 | Phase 33 | Complete |
 | DASH-05 | Phase 33 | Complete |
 
 **Coverage:**
