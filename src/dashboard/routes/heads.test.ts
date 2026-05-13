@@ -1034,3 +1034,156 @@ describe('PATCH/DELETE /api/heads/:id/channels/:channelId (DASH-04 edit + remove
     expect(res.status).toBe(404)
   })
 })
+
+// ─── Plan 33-07: GET /api/heads/:id/counts + DELETE confirmId guard (D-06) ──
+
+describe('GET /api/heads/:id/counts + DELETE confirmId (D-06 typed-confirmation)', () => {
+  let fx: MutFixture
+
+  async function start(initialHeads: ResolvedHead[]): Promise<void> {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'heads-route-counts-'))
+    const configPath = path.join(workspace, 'config.json')
+    const envFilePath = path.join(workspace, '.env')
+    const db = setupDb()
+    const messages = new MessageStore(db)
+    const queue = new QueueStore(db)
+    let currentHeads = initialHeads
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    app.use('/api/heads', createHeadsRouter({
+      workspacePath: workspace,
+      configPath,
+      envFilePath,
+      resolveCurrentHeads: () => currentHeads,
+      db,
+      messages,
+      queue,
+    }))
+    const port = await getFreePort()
+    const server = await new Promise<Server>((resolve, reject) => {
+      const s = app.listen(port, '127.0.0.1', () => resolve(s))
+      s.once('error', reject)
+    })
+    fx = {
+      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      setHeads: (next) => { currentHeads = next },
+    }
+  }
+
+  afterEach(async () => {
+    if (fx?.server) await new Promise<void>(r => fx.server.close(() => r()))
+    if (fx?.workspace) fs.rmSync(fx.workspace, { recursive: true, force: true })
+  })
+
+  async function getCounts(id: string): Promise<{ status: number; json: unknown }> {
+    const r = await fetch(`http://127.0.0.1:${fx.port}/api/heads/${id}/counts`)
+    return { status: r.status, json: await r.json() }
+  }
+
+  async function delWithBody(id: string, body: unknown | undefined): Promise<{ status: number; json: unknown }> {
+    const init: RequestInit = { method: 'DELETE' }
+    if (body !== undefined) {
+      init.headers = { 'content-type': 'application/json' }
+      init.body = JSON.stringify(body)
+    }
+    const r = await fetch(`http://127.0.0.1:${fx.port}/api/heads/${id}`, init)
+    return { status: r.status, json: await r.json() }
+  }
+
+  function readConfig(): Record<string, unknown> {
+    return JSON.parse(fs.readFileSync(fx.configPath, 'utf8')) as Record<string, unknown>
+  }
+
+  function seedMessage(headId: string, id: string): void {
+    fx.messages.append({
+      kind: 'text', id, role: 'user', content: `m-${id}`, createdAt: new Date().toISOString(),
+    } as never, headId)
+  }
+  function seedQueue(headId: string, id: string): void {
+    fx.db.prepare(`INSERT INTO queue_events (id, type, payload, priority, status, head_id) VALUES (?, ?, ?, ?, 'pending', ?)`)
+      .run(id, 'user_message', JSON.stringify({ type: 'user_message', id, channel: 'x', text: 't', createdAt: '2025-01-01' }), 100, headId)
+  }
+
+  // ── GET /api/heads/:id/counts ────────────────────────────────────────────
+
+  it('GET /api/heads/:id/counts returns message + queue + channel counts', async () => {
+    await start([{
+      id: 'work',
+      channels: [
+        { id: 'tg-work', vendor: 'telegram', botToken: 'TOK', chatId: '1' },
+        { id: 'dc-work', vendor: 'discord', botToken: 'TOK2', channelId: 'C' },
+      ],
+    }])
+    seedMessage('work', 'mw1')
+    seedMessage('work', 'mw2')
+    seedMessage('work', 'mw3')
+    seedQueue('work', 'qw1')
+    // Sibling-head data must NOT count toward 'work'.
+    seedMessage('default', 'md1')
+    seedQueue('default', 'qd1')
+
+    const res = await getCounts('work')
+    expect(res.status).toBe(200)
+    expect(res.json).toEqual({ messages: 3, queueEvents: 1, channels: 2 })
+  })
+
+  it('GET /api/heads/:id/counts returns 404 for nonexistent head', async () => {
+    await start([{ id: 'default', channels: [] }])
+    const res = await getCounts('nonexistent')
+    expect(res.status).toBe(404)
+  })
+
+  it('GET /api/heads/:id/counts returns zeros for a head with no data', async () => {
+    await start([{ id: 'fresh', channels: [] }])
+    const res = await getCounts('fresh')
+    expect(res.status).toBe(200)
+    expect(res.json).toEqual({ messages: 0, queueEvents: 0, channels: 0 })
+  })
+
+  // ── DELETE confirmId guard ───────────────────────────────────────────────
+
+  it('DELETE /api/heads/:id with matching confirmId succeeds', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await delWithBody('work', { confirmId: 'work' })
+    expect(res.status).toBe(200)
+    expect(res.json).toMatchObject({ ok: true })
+    const cfg = readConfig()
+    expect(cfg['heads']).toEqual([{ id: 'default', channels: [] }])
+  })
+
+  it('DELETE /api/heads/:id with mismatched confirmId returns 400 and does NOT delete', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+    seedMessage('work', 'mw1')
+
+    const res = await delWithBody('work', { confirmId: 'mismatch' })
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toMatch(/confirmId does not match/)
+    // Head NOT deleted — still in config + data preserved.
+    const cfg = readConfig()
+    expect(cfg['heads']).toEqual([
+      { id: 'default', channels: [] },
+      { id: 'work', channels: [] },
+    ])
+    expect(fx.messages.countForHead('work')).toBe(1)
+  })
+
+  it('DELETE /api/heads/:id with no body still succeeds (backward compat)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await delWithBody('work', undefined)
+    expect(res.status).toBe(200)
+    const cfg = readConfig()
+    expect(cfg['heads']).toEqual([{ id: 'default', channels: [] }])
+  })
+})
