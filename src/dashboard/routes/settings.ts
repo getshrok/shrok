@@ -89,7 +89,7 @@ const ENV_KEY_MAP: Record<string, string> = {
   openai: 'OPENAI_API_KEY',
 }
 
-function parseEnvFile(filePath: string): Record<string, string> {
+export function parseEnvFile(filePath: string): Record<string, string> {
   const result: Record<string, string> = {}
   try {
     const lines = fs.readFileSync(filePath, 'utf8').split('\n')
@@ -120,7 +120,7 @@ function parseEnvFile(filePath: string): Record<string, string> {
   return result
 }
 
-function writeEnvFile(filePath: string, env: Record<string, string>): void {
+export function writeEnvFile(filePath: string, env: Record<string, string>): void {
   const lines = Object.entries(env)
     .filter(([, v]) => v !== '')
     .map(([k, v]) => {
