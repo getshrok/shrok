@@ -286,6 +286,7 @@ export function buildSystem(deps: SystemDeps): System {
   // ── Injector ────────────────────────────────────────────────────────────
   const injector = new InjectorImpl(
     stores.messages,
+    deps.headId ?? 'default',
     stores.agents,
     new Set(HEAD_TOOLS.map(t => t.name)),
     config.agentContinuationEnabled,

@@ -262,7 +262,7 @@ export class ActivationLoop {
           content: text,
           channel,
           createdAt: now(),
-        })
+        }, this.opts.headId)
         await this.opts.channelRouter.send(channel, text)
       }
       this.stop()
@@ -356,7 +356,7 @@ export class ActivationLoop {
             content: msg,
             channel,
             createdAt: now(),
-          })
+          }, this.opts.headId)
           await this.opts.channelRouter.send(channel, msg)
         }
       }
@@ -386,7 +386,7 @@ export class ActivationLoop {
             content: msg,
             channel,
             createdAt: now(),
-          })
+          }, this.opts.headId)
           await this.opts.channelRouter.send(channel, msg)
         },
         appState: this.opts.appState,
@@ -416,6 +416,7 @@ export class ActivationLoop {
             const result = await archiveMessages(allMessages, {
               topicMemory: this.opts.topicMemory,
               messages: this.opts.messages,
+              headId: this.opts.headId,
             }, 1.0)
             try { this.opts.maintenance?.() } catch { /* best effort */ }
             return result?.archivedMessageIds.length ?? 0
@@ -533,7 +534,7 @@ export class ActivationLoop {
           ...(event.injected ? { injected: true } : {}),
           channel: event.channel,
           createdAt: now(),
-        })
+        }, this.opts.headId)
         // Inject synthetic view_image for uploaded images so the head sees them immediately
         if (imageAttachments.length > 0) {
           const toolCalls: ToolCall[] = imageAttachments.map(a => ({
@@ -550,11 +551,11 @@ export class ActivationLoop {
           this.opts.messages.append({
             kind: 'tool_call', id: generateId('msg'), createdAt: now(), content: '',
             toolCalls: toolCalls as [ToolCall, ...ToolCall[]],
-          } as ToolCallMessage)
+          } as ToolCallMessage, this.opts.headId)
           this.opts.messages.append({
             kind: 'tool_result', id: generateId('msg'), createdAt: now(),
             toolResults: toolResults as [ToolResult, ...ToolResult[]],
-          } as ToolResultMessage)
+          } as ToolResultMessage, this.opts.headId)
         }
         this.opts.appState.setLastActiveChannel(this.opts.headId, event.channel)
       }
@@ -601,7 +602,7 @@ export class ActivationLoop {
           injected: true,
           channel: event.channel,
           createdAt: now(),
-        })
+        }, this.opts.headId)
       }
 
       // Start typing indicator — fire immediately, then repeat every 5s so it
@@ -879,9 +880,9 @@ export class ActivationLoop {
 
         // Store — once, in final form (with attachments if any)
         if (msg.kind === 'text' && msg.role === 'assistant' && event.type === 'user_message') {
-          this.opts.messages.append({ ...msg, eventId: event.id })
+          this.opts.messages.append({ ...msg, eventId: event.id }, this.opts.headId)
         } else {
-          this.opts.messages.append(msg)
+          this.opts.messages.append(msg, this.opts.headId)
         }
 
         // Deliver intermediate assistant text to external channels
@@ -945,7 +946,7 @@ export class ActivationLoop {
             content: ev.text,
             channel: ev.channel,
             createdAt: now(),
-          })
+          }, this.opts.headId)
           this.opts.appState.setLastActiveChannel(this.opts.headId, ev.channel)
           this.opts.queueStore.ack(rowId)
           hasNewMessages = true
@@ -1306,6 +1307,7 @@ export class ActivationLoop {
       await archiveMessages(allMessages, {
         topicMemory: this.opts.topicMemory,
         messages: this.opts.messages,
+        headId: this.opts.headId,
       })
 
       // Cancel suspended agents whose context has been archived away.
@@ -1336,7 +1338,7 @@ export class ActivationLoop {
           content: '[System notice: Memory archival encountered an error. Some older conversation may not be saved to long-term memory. This is usually temporary.]',
           injected: true,
           createdAt: now(),
-        } as TextMessage)
+        } as TextMessage, this.opts.headId)
       } catch { /* best effort */ }
     } finally {
       this.opts.appState.releaseArchivalLock(this.opts.headId)

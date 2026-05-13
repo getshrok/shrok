@@ -65,7 +65,7 @@ function makeLoop(getUptimeSeconds?: () => number) {
   const assembler = new ContextAssemblerImpl(
     identityLoader, messages, agents, skillLoader, config, mcpRegistry,
   )
-  const injector = new InjectorImpl(messages)
+  const injector = new InjectorImpl(messages, 'default')
   const stubRunner = { spawn: async () => {} } as any
 
   const loop = new ActivationLoop({
@@ -250,7 +250,7 @@ function makeLoopWithHeadId(
   const assembler = new ContextAssemblerImpl(
     identityLoader, messages, agents, skillLoader, config, mcpRegistry,
   )
-  const injector = new InjectorImpl(messages)
+  const injector = new InjectorImpl(messages, headId)
   const stubRunner = { spawn: async () => {} } as any
   return new ActivationLoop({
     headId,

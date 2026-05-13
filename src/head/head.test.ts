@@ -114,7 +114,7 @@ describe('InjectorImpl', () => {
 
   beforeEach(() => {
     messages = makeMessageStore()
-    injector = new InjectorImpl(messages)
+    injector = new InjectorImpl(messages, 'default')
   })
 
   it('injectAgentEvent (completed) appends single user-role agent-result message', () => {
@@ -146,7 +146,7 @@ describe('InjectorImpl', () => {
         ],
       } : undefined,
     } as unknown as import('../db/agents.js').AgentStore
-    const injectorWithAgent = new InjectorImpl(messages, agentStore)
+    const injectorWithAgent = new InjectorImpl(messages, 'default', agentStore)
     const event: QueueEvent & { type: 'agent_completed' } = {
       type: 'agent_completed', id: 'e1', agentId, output: 'done', createdAt: new Date().toISOString(),
     }

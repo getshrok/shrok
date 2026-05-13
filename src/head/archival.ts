@@ -18,6 +18,7 @@ import { loadMemoryPromptOverrides } from '../memory/prompts.js'
 export interface ArchivalDeps {
   topicMemory: Memory
   messages: MessageStore
+  headId: string
 }
 
 export interface ArchivalResult {
@@ -56,7 +57,7 @@ export async function archiveMessages(
       content: `[Archival note: the preceding conversation was discussing the following topics: ${labels}]`,
       injected: true,
       createdAt: now(),
-    })
+    }, deps.headId)
   }
 
   // Delete media files for archived messages — metadata is preserved in topic

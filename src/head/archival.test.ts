@@ -68,7 +68,7 @@ describe('archiveMessages + loadMemoryPromptOverrides wiring', () => {
     const memory = makeMockMemory(args => { capturedArgs = args })
     const messages = makeMockMessageStore()
 
-    await archiveMessages(makeMessages(4), { topicMemory: memory, messages }, 0.5)
+    await archiveMessages(makeMessages(4), { topicMemory: memory, messages, headId: 'default' }, 0.5)
 
     expect(capturedArgs.length).toBe(2)
     const promptsArg = capturedArgs[1] as { chunker?: string; summaryUpdate?: string } | undefined
@@ -84,7 +84,7 @@ describe('archiveMessages + loadMemoryPromptOverrides wiring', () => {
     const memory = makeMockMemory(args => { capturedArgs = args })
     const messages = makeMockMessageStore()
 
-    await archiveMessages(makeMessages(4), { topicMemory: memory, messages }, 0.5)
+    await archiveMessages(makeMessages(4), { topicMemory: memory, messages, headId: 'default' }, 0.5)
 
     expect(capturedArgs.length).toBe(2)
     // Shipped defaults exist — second arg should be a PromptOverrides object, not undefined.
@@ -100,7 +100,7 @@ describe('archiveMessages + loadMemoryPromptOverrides wiring', () => {
 
     let firstArgs: unknown[] = []
     const m1 = makeMockMemory(args => { firstArgs = args })
-    await archiveMessages(makeMessages(4), { topicMemory: m1, messages: makeMockMessageStore() }, 0.5)
+    await archiveMessages(makeMessages(4), { topicMemory: m1, messages: makeMockMessageStore(), headId: 'default' }, 0.5)
     expect((firstArgs[1] as { chunker?: string }).chunker).toBe('V1')
 
     // Mutate workspace file between calls
@@ -108,7 +108,7 @@ describe('archiveMessages + loadMemoryPromptOverrides wiring', () => {
 
     let secondArgs: unknown[] = []
     const m2 = makeMockMemory(args => { secondArgs = args })
-    await archiveMessages(makeMessages(4), { topicMemory: m2, messages: makeMockMessageStore() }, 0.5)
+    await archiveMessages(makeMessages(4), { topicMemory: m2, messages: makeMockMessageStore(), headId: 'default' }, 0.5)
     expect((secondArgs[1] as { chunker?: string }).chunker).toBe('V2')
   })
 })

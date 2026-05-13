@@ -100,7 +100,7 @@ function makeLoop(router: LLMRouter) {
     mcpRegistry,
   )
 
-  const injector = new InjectorImpl(messages)
+  const injector = new InjectorImpl(messages, 'default')
   const stubRunner = { spawn: async () => {} } as any
 
   const loop = new ActivationLoop({

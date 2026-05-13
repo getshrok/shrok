@@ -141,6 +141,7 @@ export interface Injector {
 export class InjectorImpl implements Injector {
   constructor(
     private messages: MessageStore,
+    private readonly headId: string,
     private agentStore?: AgentStore,
     private headToolNames: Set<string> = new Set(),
     private agentContinuationEnabled: boolean = false,
@@ -209,7 +210,7 @@ export class InjectorImpl implements Injector {
         role: 'user',
         content: systemTrigger('agent-response', { agent: event.agentId }, event.response),
         injected: true,
-      } as TextMessage)
+      } as TextMessage, this.headId)
       return
     }
 
@@ -224,7 +225,7 @@ export class InjectorImpl implements Injector {
         role: 'user',
         content: systemTrigger('agent-paused', { agent: event.agentId }, `An agent paused and needs your help to continue:\n\n${event.question}\n\nRelay this to the user in your own words. When they reply, use message_agent to pass their response and resume the agent.`),
         injected: true,
-      } as TextMessage)
+      } as TextMessage, this.headId)
       return
     }
 
@@ -256,7 +257,7 @@ export class InjectorImpl implements Injector {
       ...(agentWork ? { agentWork } : {}),
       injected: true,
     }
-    this.messages.append(resultMsg)
+    this.messages.append(resultMsg, this.headId)
   }
 
 
@@ -282,7 +283,7 @@ export class InjectorImpl implements Injector {
       injected: true,
     }
 
-    this.messages.append(eventMsg)
-    this.messages.append(triggerMsg)
+    this.messages.append(eventMsg, this.headId)
+    this.messages.append(triggerMsg, this.headId)
   }
 }

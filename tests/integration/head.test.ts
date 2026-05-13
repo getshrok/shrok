@@ -96,7 +96,7 @@ function makeLoop(router: ReturnType<typeof makeRealRouter>) {
     mcpRegistry,
   )
 
-  const injector = new InjectorImpl(bundle.messages)
+  const injector = new InjectorImpl(bundle.messages, 'default')
 
   // Share the same DB so agent_completed events land in the head's queue
   const agentRunner = makeRunner(router, bundle.db).runner
