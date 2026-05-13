@@ -45,8 +45,16 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newId }),
       }),
-    delete: (id: string) =>
-      request<{ ok: boolean }>(`/api/heads/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    delete: (id: string, confirmId?: string) =>
+      request<{ ok: boolean }>(`/api/heads/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        ...(confirmId !== undefined ? { body: JSON.stringify({ confirmId }) } : {}),
+      }),
+    counts: (id: string) =>
+      request<{ messages: number; queueEvents: number; channels: number }>(
+        `/api/heads/${encodeURIComponent(id)}/counts`,
+      ),
     addChannel: (headId: string, channel: ChannelConfigSubmit) =>
       request<{ ok: boolean; channel: ChannelConfigMasked }>(`/api/heads/${encodeURIComponent(headId)}/channels`, {
         method: 'POST',

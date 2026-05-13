@@ -4,13 +4,15 @@ import { api } from '../../lib/api'
 import type { HeadDTO, ChannelConfigSubmit } from '../../types/api'
 import { Field, SecretInput } from './components'
 import ChannelRow from './ChannelRow'
+import DeleteHeadModal from './DeleteHeadModal'
 import { vendorTheme, VENDORS, VENDOR_LABELS, type Vendor } from './vendor-theme'
 
 // Phase 33 Plan 06 (D-01, D-02, D-08, D-13, D-15) — a single head card. Holds
 // the head id (with non-default rename), the list of ChannelRow components,
 // the [+ Add channel ▾] vendor picker + inline new-channel form, and the
-// Delete button (window.confirm baseline; Plan 07 swaps to the typed-confirm
-// modal). The `default` head's Delete is disabled with the D-08 tooltip.
+// Delete button. The `default` head's Delete is disabled with the D-08
+// tooltip. Phase 33 Plan 07 (D-06): Delete opens the typed-confirmation
+// DeleteHeadModal showing three real counts before destroying data.
 
 interface HeadCardProps {
   head: HeadDTO
@@ -47,6 +49,7 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   const [pendingId, setPendingId] = useState(head.id)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [adding, setAdding] = useState<Vendor | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   // New-channel form pending state. Initial id is suggested when the vendor
   // is picked; secrets all start blank.
@@ -63,11 +66,6 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   const renameMutation = useMutation({
     mutationFn: (newId: string) => api.heads.rename(head.id, newId),
     onSuccess: () => { setRenaming(false); onSaved() },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: () => api.heads.delete(head.id),
-    onSuccess: () => onSaved(),
   })
 
   const addChannelMutation = useMutation({
@@ -128,13 +126,6 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
     renameMutation.mutate(pendingId)
   }
 
-  function handleDelete() {
-    // Plan 06 baseline per the threat-model T-33-04 row — Plan 07 replaces this
-    // with the typed-confirmation modal.
-    if (!window.confirm(`Delete head "${head.id}"? This cannot be undone. All messages, queue entries, and per-head state for this head will be permanently wiped.`)) return
-    deleteMutation.mutate()
-  }
-
   const renameValid = HEAD_ID_REGEX.test(pendingId)
 
   return (
@@ -155,12 +146,12 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
             )}
             <div className="flex-1" />
             <button
-              onClick={handleDelete}
-              disabled={isDefault || deleteMutation.isPending}
+              onClick={() => setDeleteOpen(true)}
+              disabled={isDefault}
               title={isDefault ? 'the default head cannot be deleted' : 'Delete this head and all its data'}
               className="px-2 py-1 text-xs border border-zinc-700 rounded-md text-zinc-500 hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-zinc-500"
             >
-              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              Delete
             </button>
           </>
         )}
@@ -195,9 +186,6 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
       )}
       {renameMutation.isError && (
         <div className="text-xs text-red-400">Rename failed: {(renameMutation.error as Error).message}</div>
-      )}
-      {deleteMutation.isError && (
-        <div className="text-xs text-red-400">Delete failed: {(deleteMutation.error as Error).message}</div>
       )}
 
       {/* Channel rows */}
@@ -234,6 +222,14 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
             </div>
           )}
         </div>
+      )}
+
+      {deleteOpen && (
+        <DeleteHeadModal
+          head={head}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={onSaved}
+        />
       )}
 
       {adding !== null && (
