@@ -220,12 +220,51 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
   })
 
   /**
+   * GET /api/heads/:id/counts — return message + queue + channel counts for
+   * a single head (Plan 33-07, D-06). Powers the typed-confirmation modal so
+   * the user sees exactly how much data the delete will destroy.
+   *
+   * Authenticated read of non-secret aggregates only — the requester already
+   * has access to /api/heads (channels) and /api/messages for the head, so
+   * no new disclosure surface (T-33-14 accepted).
+   */
+  router.get('/:id/counts', requireAuth, (req: Request, res: Response): void => {
+    const id = String(req.params['id'])
+    const current = deps.resolveCurrentHeads()
+    const head = current.find(h => h.id === id)
+    if (!head) {
+      res.status(404).json({ error: `head "${id}" not found` })
+      return
+    }
+    const messages = deps.messages.countForHead(id)
+    const queueEvents = (deps.db.prepare(
+      'SELECT COUNT(*) AS n FROM queue_events WHERE head_id = ?',
+    ).get(id) as { n: number }).n
+    res.json({
+      messages,
+      queueEvents,
+      channels: head.channels.length,
+    })
+  })
+
+  /**
    * DELETE /api/heads/:id — wipe head data in a single transaction
    * (D-07) and rewrite config.json. The default head is non-deletable
    * (D-08).
+   *
+   * Plan 33-07 (D-06): accepts an optional `body.confirmId` field. When
+   * present, it must equal the URL :id — otherwise the request 400s without
+   * touching the DB. When absent (e.g. curl/script clients), the existing
+   * behavior is preserved for backward compatibility — the frontend modal
+   * always sends it, scripts that don't know about it still work.
    */
   router.delete('/:id', requireAuth, (req: Request, res: Response): void => {
     const id = String(req.params['id'])
+    const body = (req.body ?? {}) as { confirmId?: unknown }
+    if (typeof body.confirmId === 'string' && body.confirmId !== id) {
+      res.status(400).json({ error: 'confirmId does not match :id' })
+      return
+    }
     if (RESERVED_HEAD_IDS.has(id)) {
       res.status(400).json({ error: 'the default head cannot be deleted' })
       return
