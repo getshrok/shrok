@@ -137,9 +137,12 @@ export interface ToolLoopOptions {
 
 // ─── responseToMessage ────────────────────────────────────────────────────────
 
-/** Strip timestamp prefixes that the model may echo from context (e.g. "[0m ago] ", "[3h ago] ", "[Apr 3, 2:15 PM] "). */
+/** Strip timestamp prefixes that the model may echo from context (e.g. "[0m ago] ", "[3h ago] ", "[Apr 3, 2:15 PM] ", "[now] "). */
 export function stripTimestampEcho(text: string): string {
-  return text.replace(/^\[\d+[mhd] ago\] /, '').replace(/^\[\w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M\] /, '')
+  return text
+    .replace(/^\[\d+[mhd] ago\] /, '')
+    .replace(/^\[\w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M\] /, '')
+    .replace(/^\[(?:just )?now\] /i, '')
 }
 
 /** Convert an LLM response to one or two messages.
