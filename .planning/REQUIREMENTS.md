@@ -34,14 +34,15 @@
 
 - [x] **DASH-01**: Dashboard displays a head selector so the user can switch the active head context
 - [x] **DASH-02**: Conversation view returns only messages scoped to the currently selected head
+- [ ] **DASH-03**: Dashboard allows creating, renaming, and deleting heads from the UI without editing config.json directly
+- [ ] **DASH-04**: Dashboard allows adding, editing, and removing channel adapters within a head, including multiple instances of the same vendor (e.g., two Telegram bots, two Slack workspaces)
+- [x] **DASH-05**: Sending a message from the dashboard routes to the currently selected head's outbound channel rather than always to the default head
 
 ## Future Requirements
 
 ### Dashboard Management
 
-- **DASH-F-01**: Dashboard allows creating and deleting heads without editing config.json directly
 - **DASH-F-02**: Dashboard shows per-head usage metrics (tokens, cost)
-- **DASH-F-03**: Dashboard allows renaming heads and reassigning channel adapters from the UI
 
 ### Cross-Head Features
 
@@ -55,7 +56,6 @@
 | Cross-head message passing | Heads are independent; routing between them adds complexity without clear benefit at this stage |
 | Per-head identity or skills | Core design principle — single identity, shared context across all heads |
 | Per-head memory | Shared memory is what makes heads feel like one entity rather than separate bots |
-| Creating/deleting heads from dashboard UI | Config-driven approach keeps head lifecycle explicit and auditable |
 | Multi-process isolation | Single process + SQLite WAL is sufficient; multiprocessing adds ops complexity |
 
 ## Traceability
@@ -77,12 +77,15 @@
 | CONF-03 | Phase 31 | Complete |
 | DASH-01 | Phase 32 | Complete |
 | DASH-02 | Phase 32 | Complete |
+| DASH-03 | Phase 33 | Pending |
+| DASH-04 | Phase 33 | Pending |
+| DASH-05 | Phase 33 | Complete |
 
 **Coverage:**
-- v1.3 requirements: 15 total
-- Mapped to phases: 15 (roadmap complete)
+- v1.3 requirements: 18 total
+- Mapped to phases: 18 (roadmap complete)
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-12*
-*Last updated: 2026-05-12 — traceability filled after roadmap creation*
+*Last updated: 2026-05-13 — promoted DASH-F-01/F-03 from Future Requirements into active scope as DASH-03/04/05 (multi-head management UI + per-head Send routing)*

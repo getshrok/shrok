@@ -69,8 +69,6 @@ Plans:
 
 </details>
 
----
-
 ## 🚧 v1.3 Multi-Head Support
 
 ## Phases
@@ -79,6 +77,7 @@ Plans:
 - [x] **Phase 30: Core Activation** — ActivationLoop parameterized by headId; AppStateStore namespaced; per-head ChannelRouter (completed 2026-05-12)
 - [x] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head (completed 2026-05-12)
 - [x] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head (completed 2026-05-12)
+- [ ] **Phase 33: Multi-head Management UI** — Dashboard UI for creating/renaming/deleting heads, managing channel adapters (incl. multiple instances per provider), and per-head Send routing
 
 ## Phase Details
 
@@ -146,6 +145,27 @@ Plans:
 - [x] 32-02-PLAN.md — Backend: createHeadsRouter + ?head= filtering on /api/messages + DashboardServerOptions.resolvedHeads wiring (DASH-01, DASH-02)
 - [x] 32-03-PLAN.md — Frontend: api.heads + scoped messagesQuery + useStream(currentHeadId) + ConversationsPage head pill row + manual verify (DASH-01, DASH-02)
 
+### Phase 33: Multi-head Management UI
+**Goal**: Users can create, rename, and delete heads from the dashboard, manage each head's channel adapters (including multiple instances of the same provider), and have dashboard-sent messages route to the currently selected head
+**Depends on**: Phase 32
+**Requirements**: DASH-03, DASH-04, DASH-05
+**Success Criteria** (what must be TRUE):
+  1. A user can create a new head from the dashboard settings, give it a name, and the new head appears in the selector without restarting the server
+  2. A user can add a second Telegram bot (or any second-of-same-provider channel) to a head from the UI; both instances start and route correctly
+  3. A user can rename or delete a head from the UI; conversation history for a deleted head is handled per a defined deletion policy
+  4. Sending a message from the dashboard with head `personal` selected routes through that head's outbound channel — not the default head
+**Plans:** 2/7 plans executed
+**UI hint**: yes
+
+Plans:
+- [x] 33-01-append-headid-ripple-PLAN.md — MessageStore.append(msg, headId) ripple + QueueStore.deleteAllForHead (DASH-05 foundation)
+- [x] 33-02-per-head-dashboard-adapter-PLAN.md — Per-head DashboardChannelAdapter map + POST /send routes by body.headId (DASH-05)
+- [ ] 33-03-per-head-sse-filter-PLAN.md — SSE events carry headId + useStream() per-head filter (DASH-05)
+- [ ] 33-04-heads-crud-router-PLAN.md — POST/PATCH/DELETE /api/heads + lazy migration + rename UPDATE + delete wipe transaction (DASH-03)
+- [ ] 33-05-heads-channels-subresource-PLAN.md — POST/PATCH/DELETE /api/heads/:id/channels[/:channelId] + cred masking + cross-head uniqueness (DASH-04)
+- [ ] 33-06-heads-tab-frontend-PLAN.md — HeadsTab + HeadCard + ChannelRow + api.heads.* + hide legacy Channels tab (DASH-03, DASH-04)
+- [ ] 33-07-typed-confirmation-delete-PLAN.md — DeleteHeadModal with typed-confirmation + counts endpoint + confirmId guard (DASH-03)
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -154,3 +174,4 @@ Plans:
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
 | 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
 | 32. Dashboard Head Selector | 3/3 | Complete    | 2026-05-12 |
+| 33. Multi-head Management UI | 2/7 | In Progress|  |
