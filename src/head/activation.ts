@@ -736,10 +736,18 @@ export class ActivationLoop {
     const onVerbose = debugChannel && visibility.agentWork
       ? async (msg: string) => { if (loadConfig().visAgentWork) await this.opts.channelRouter.sendDebug(debugChannel, msg) }
       : null
-    // onDebug fires for "deeper internals" echo — head tool previews, thinking blocks, system event dumps.
+    // Three independent debug streams, each gated by its own visibility flag.
+    // Splitting them out (rather than ORing into a single onDebug) prevents a single
+    // enabled category from leaking the other two to channels.
     // agentPills is intentionally excluded: it's a dashboard pill-bar UI concern, not a debug stream concept.
-    const onDebug = debugChannel && (visibility.headTools || visibility.systemEvents || visibility.stewardRuns)
-      ? async (msg: string) => { const p = loadConfig(); if (p.visHeadTools || p.visSystemEvents || p.visStewardRuns) await this.opts.channelRouter.sendDebug(debugChannel, msg) }
+    const onHeadTools = debugChannel && visibility.headTools
+      ? async (msg: string) => { if (loadConfig().visHeadTools) await this.opts.channelRouter.sendDebug(debugChannel, msg) }
+      : null
+    const onSystemEvents = debugChannel && visibility.systemEvents
+      ? async (msg: string) => { if (loadConfig().visSystemEvents) await this.opts.channelRouter.sendDebug(debugChannel, msg) }
+      : null
+    const onStewardRuns = debugChannel && visibility.stewardRuns
+      ? async (msg: string) => { if (loadConfig().visStewardRuns) await this.opts.channelRouter.sendDebug(debugChannel, msg) }
       : null
 
     if (context.memoryBlock) {
@@ -758,19 +766,19 @@ export class ActivationLoop {
       ...this.opts.toolExecutorOpts,
       agentStore: this.opts.agentStore,
       getHistory: () => context.history,
-      ...(onDebug ? { onDebug } : {}),
+      ...(onHeadTools ? { onDebug: onHeadTools } : {}),
       ...(onVerbose ? { onVerbose } : {}),
       ...(eventAttachments ? { getAttachments: () => eventAttachments } : {}),
       onFileQueued: (att) => pendingFileAttachments.push(att),
     })
 
-    // Debug: show injected system event messages for background events
-    if (onDebug && event.type !== 'user_message') {
+    // Echo injected system event messages for background events
+    if (onSystemEvents && event.type !== 'user_message') {
       const injectedMsg = [...context.history].reverse().find(
         m => m.kind === 'text' && (m as TextMessage).role === 'assistant' && m.injected
       ) as TextMessage | undefined
       const content = injectedMsg?.content ?? formatInjectedEvent(event)
-      await onDebug(`\`\`\`\n[injected assistant] ${content}\n\`\`\``)
+      await onSystemEvents(`\`\`\`\n[injected assistant] ${content}\n\`\`\``)
     }
 
     // Channel for sending intermediate and final text
@@ -804,11 +812,11 @@ export class ActivationLoop {
             config.stewardModel,
             this.opts.usageStore,
             event.id,
-            onDebug ?? undefined,
+            onStewardRuns ?? undefined,
           )
           const keepSet = new Set(keepIndices)
           const filteredPrior = fullHistory.filter((_, i) => keepSet.has(i))
-          onDebug?.(`\`[context-relevance]\` kept ${filteredPrior.length}/${fullHistory.length} messages`)
+          onStewardRuns?.(`\`[context-relevance]\` kept ${filteredPrior.length}/${fullHistory.length} messages`)
           // Return filtered prior history + any messages added during this activation
           // (the head's own tool calls/results from prior rounds in the current turn).
           // Without this, refreshHistory returns a stale snapshot and the model can't
@@ -848,7 +856,7 @@ export class ActivationLoop {
             const recent = this.opts.messages.getRecent(this.opts.headId, config.headRelayStewardContextTokens)
               .filter((m): m is TextMessage => m.kind === 'text' && !m.injected && !m.content.includes('type="greeting"'))
               .map(m => ({ role: m.role, content: m.content }))
-            const relayed = await runHeadRelaySteward(msg.content, recent, this.opts.llmRouter, config.stewardModel, this.opts.usageStore, onDebug ?? undefined)
+            const relayed = await runHeadRelaySteward(msg.content, recent, this.opts.llmRouter, config.stewardModel, this.opts.usageStore, onStewardRuns ?? undefined)
             msg = { ...msg, content: relayed }
           }
 
@@ -883,7 +891,7 @@ export class ActivationLoop {
           lastAssistantContent = null  // already delivered — prevent post-loop duplicate
         }
       },
-      ...(onDebug ? { onDebug } : {}),
+      ...(onHeadTools ? { onDebug: onHeadTools } : {}),
       // onVerbose intentionally not passed to the head's tool loop —
       // head text goes through appendMessage → relay steward → DB → SSE.
       // Agent tool loops get onVerbose via local.ts for xray output.
@@ -1020,7 +1028,7 @@ export class ActivationLoop {
           activationStart,
           toolsCalledThisTurn,
           recentHistory,
-        }, this.opts.llmRouter, config.stewardModel, this.opts.queueStore, stewardChannel, this.opts.usageStore, event.id, onDebug ?? undefined, (results) => {
+        }, this.opts.llmRouter, config.stewardModel, this.opts.queueStore, stewardChannel, this.opts.usageStore, event.id, onStewardRuns ?? undefined, (results) => {
           this.opts.stewardRunStore?.append({
             id: generateId('jr'),
             stewards: results,
