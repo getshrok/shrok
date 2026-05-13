@@ -116,6 +116,14 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
           chatId: newChatId,
         }
         break
+      default: {
+        // Phase 33 (WR-04): exhaustiveness guard mirroring src/index.ts:319-321.
+        // If a sixth vendor is added to the Vendor union without updating this
+        // switch, the `never` assignment becomes a TS compile error rather
+        // than a silent runtime no-op (save button doing nothing).
+        const _exhaustive: never = adding
+        throw new Error(`unhandled vendor: ${String(_exhaustive)}`)
+      }
     }
     addChannelMutation.mutate(channel)
   }
