@@ -434,6 +434,8 @@ async function main() {
     agentRunner,
     appState,
     resolvedHeads,
+    queue,
+    resolveCurrentHeads: () => resolveHeads(loadConfig()),
   })
   await dashboard.start()
   log.info(`[startup] Dashboard listening on port ${config.dashboardPort}`)

@@ -47,6 +47,7 @@ import type { DashboardChannelAdapter } from '../channels/dashboard/adapter.js'
 import type { ScheduleStore } from '../db/schedules.js'
 import type { McpRegistry } from '../mcp/registry.js'
 import type { AgentRunner } from '../types/agent.js'
+import type { QueueStore } from '../db/queue.js'
 
 export interface DashboardServerOptions {
   config: Config
@@ -90,6 +91,13 @@ export interface DashboardServerOptions {
    *  the server falls back to a single synthetic 'default' head so legacy
    *  callers and tests that don't pass this option keep working. */
   resolvedHeads?: ResolvedHead[]
+  /** Phase 33 Plan 04: required by the heads CRUD router for the
+   *  delete-head wipe transaction (D-07). */
+  queue?: QueueStore
+  /** Phase 33 Plan 04: fresh head list re-read from disk per request,
+   *  so the heads router sees the latest config.json without an in-memory
+   *  cache. When omitted, falls back to `resolvedHeads`. */
+  resolveCurrentHeads?: () => ResolvedHead[]
 }
 
 export class DashboardServer {
@@ -143,7 +151,40 @@ export class DashboardServer {
     // API routes
     app.use('/api/auth', createAuthRouter(this.tokenStore, config))
     app.use('/api/messages', createMessagesRouter(messages, this.opts.dashboardAdapters, path.join(config.workspacePath.replace(/^~/, os.homedir()), 'media')))
-    app.use('/api/heads', createHeadsRouter(this.opts.resolvedHeads ?? [{ id: 'default', channels: [] }]))
+    const envFilePathEarly = process.env['SHROK_ENV_FILE'] ?? path.join(workspacePath, '.env')
+    const fallbackResolvedHeads: ResolvedHead[] = this.opts.resolvedHeads ?? [{ id: 'default', channels: [] }]
+    const resolveCurrentHeads = this.opts.resolveCurrentHeads ?? (() => this.opts.resolvedHeads ?? fallbackResolvedHeads)
+    // Heads CRUD router needs db + messages + queue for DELETE / PATCH wipe & rename
+    // (Phase 33 D-07, D-14). When the host didn't pass them (legacy callers / tests
+    // that only exercise GET), wire stub stores against an in-memory DB so the
+    // factory's required fields are populated without affecting GET behavior.
+    const headsDb = this.opts.db
+    const headsMessages = this.opts.messages
+    const headsQueue = this.opts.queue
+    if (headsDb && headsQueue) {
+      app.use('/api/heads', createHeadsRouter({
+        workspacePath,
+        configPath: path.join(workspacePath, 'config.json'),
+        envFilePath: envFilePathEarly,
+        resolveCurrentHeads,
+        db: headsDb,
+        messages: headsMessages,
+        queue: headsQueue,
+      }))
+    } else {
+      // Tests / legacy: GET-only router with a noop deps payload. POST/PATCH/DELETE
+      // will throw at call time because db/queue are missing, which is acceptable —
+      // any caller that needs mutations passes db + queue.
+      app.use('/api/heads', createHeadsRouter({
+        workspacePath,
+        configPath: path.join(workspacePath, 'config.json'),
+        envFilePath: envFilePathEarly,
+        resolveCurrentHeads,
+        db: null as unknown as DatabaseSync,
+        messages: headsMessages,
+        queue: null as unknown as QueueStore,
+      }))
+    }
     app.use('/api/steward-runs', createStewardRunsRouter(stewardRuns))
     app.use('/api/usage', createUsageRouter(this.opts.usage, config.timezone, this.opts.appState, this.opts.events, this.opts.unifiedLoader))
     app.use('/api/stream', createStreamRouter(events))
