@@ -219,7 +219,7 @@ export async function run(opts: {
         role: msg.role,
         content: msg.content,
         createdAt: new Date(baseTime + i * 5 * 60_000).toISOString(),
-      })
+      }, 'default')
     }
 
     // Append any extra messages with precise timestamps
@@ -231,7 +231,7 @@ export async function run(opts: {
           role: extra.role,
           content: extra.content,
           createdAt: new Date(Date.now() - extra.minutesAgo * 60_000).toISOString(),
-        })
+        }, 'default')
       }
     }
 

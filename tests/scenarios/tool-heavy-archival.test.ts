@@ -178,7 +178,7 @@ describe('archiveMessages — recall_memory filtering', () => {
     try {
       const allMessages = buildMessages()
       for (const msg of allMessages) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       const topicMemory = createTopicMemory(
@@ -190,6 +190,7 @@ describe('archiveMessages — recall_memory filtering', () => {
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
+        headId: 'default',
       })
 
       expect(result).not.toBeNull()
@@ -245,7 +246,7 @@ describe('archiveMessages — recall_memory filtering', () => {
       ]
 
       for (const msg of tinyMessages) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       const topicMemory = createTopicMemory(
@@ -257,6 +258,7 @@ describe('archiveMessages — recall_memory filtering', () => {
       const result = await archiveMessages(tinyMessages, {
         topicMemory,
         messages,
+        headId: 'default',
       })
 
       expect(result).toBeNull()

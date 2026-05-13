@@ -68,12 +68,12 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       kind: 'text', id: generateId('msg'), role: 'user',
       content: 'Can you help me plan my presentation for Thursday?',
       createdAt: new Date(Date.now() - 30 * 60_000).toISOString(),
-    })
+    }, 'default')
     env1.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'assistant',
       content: 'Sure! What topic is the presentation on? I can help you structure the slides and talking points.',
       createdAt: new Date(Date.now() - 29 * 60_000).toISOString(),
-    })
+    }, 'default')
 
     const event1: QueueEvent = {
       type: 'reminder_trigger',
@@ -112,12 +112,12 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       kind: 'text', id: generateId('msg'), role: 'user',
       content: 'Just got off a call with Sarah. We went through the proposal line by line and she approved it with minor edits. She\'ll send the signed version by end of day.',
       createdAt: new Date(Date.now() - 10 * 60_000).toISOString(),
-    })
+    }, 'default')
     env2.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'assistant',
       content: 'Great news! So the proposal is approved with minor edits, and Sarah will send the signed version by end of day. Want me to set a reminder to check for it this evening?',
       createdAt: new Date(Date.now() - 9 * 60_000).toISOString(),
-    })
+    }, 'default')
 
     const event2: QueueEvent = {
       type: 'reminder_trigger',
@@ -154,12 +154,12 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       kind: 'text', id: generateId('msg'), role: 'user',
       content: 'Oh by the way, I already booked that dentist appointment yesterday. Got one for next Tuesday at 2pm.',
       createdAt: new Date(Date.now() - 60 * 60_000).toISOString(),
-    })
+    }, 'default')
     env3.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'assistant',
       content: 'Good to hear! I\'ll note that — dentist appointment next Tuesday at 2pm.',
       createdAt: new Date(Date.now() - 59 * 60_000).toISOString(),
-    })
+    }, 'default')
 
     const event3: QueueEvent = {
       type: 'reminder_trigger',

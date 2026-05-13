@@ -141,7 +141,7 @@ describe('MessageStore', () => {
   }
 
   it('appends and retrieves text messages', () => {
-    store.append(textMsg)
+    store.append(textMsg, 'default')
     const msgs = store.getRecent('default', 10_000)
     expect(msgs).toHaveLength(1)
     const m = msgs[0] as TextMessage
@@ -150,14 +150,14 @@ describe('MessageStore', () => {
     expect(m.channel).toBe('discord')
   })
 
-  it("append without explicit head_id stamps row with head_id='default' (DATA-02)", () => {
+  it("append with explicit head_id='default' stamps row with head_id='default' (DATA-02)", () => {
     const db = freshDb()
     const localStore = new MessageStore(db)
     const msg: TextMessage = {
       kind: 'text', id: 'msg-default', role: 'user', content: 'hi',
       createdAt: '2025-01-01T00:00:00Z',
     }
-    localStore.append(msg)
+    localStore.append(msg, 'default')
     const row = db.prepare("SELECT head_id FROM messages WHERE id = ?").get('msg-default') as { head_id: string } | undefined
     expect(row?.head_id).toBe('default')
   })
@@ -168,7 +168,7 @@ describe('MessageStore', () => {
       toolCalls: [{ id: 'tc1', name: 'bash', input: { cmd: 'ls' } }],
       createdAt: '2025-01-01T00:00:01Z',
     }
-    store.append(msg)
+    store.append(msg, 'default')
     const msgs = store.getRecent('default', 10_000)
     expect(msgs[0]?.kind).toBe('tool_call')
   })
@@ -179,7 +179,7 @@ describe('MessageStore', () => {
       toolResults: [{ toolCallId: 'tc1', name: 'bash', content: 'file.ts' }],
       createdAt: '2025-01-01T00:00:02Z',
     }
-    store.append(msg)
+    store.append(msg, 'default')
     const msgs = store.getRecent('default', 10_000)
     expect(msgs[0]?.kind).toBe('tool_result')
   })
@@ -192,7 +192,7 @@ describe('MessageStore', () => {
       store.append({
         kind: 'text', id: `msg-${i}`, role: 'user', content,
         createdAt: `2025-01-01T00:00:${String(i).padStart(2, '0')}Z`,
-      })
+      }, 'default')
     }
     // Budget fits at most 3 messages
     const msgs = store.getRecent('default', costPerMsg * 3)
@@ -200,16 +200,16 @@ describe('MessageStore', () => {
   })
 
   it('getSince returns only messages at or after the datetime', () => {
-    store.append({ kind: 'text', id: 'early', role: 'user', content: 'early', createdAt: '2025-01-01T00:00:00Z' })
-    store.append({ kind: 'text', id: 'late', role: 'user', content: 'late', createdAt: '2025-01-02T00:00:00Z' })
+    store.append({ kind: 'text', id: 'early', role: 'user', content: 'early', createdAt: '2025-01-01T00:00:00Z' }, 'default')
+    store.append({ kind: 'text', id: 'late', role: 'user', content: 'late', createdAt: '2025-01-02T00:00:00Z' }, 'default')
     const msgs = store.getSince('default', '2025-01-02T00:00:00Z')
     expect(msgs).toHaveLength(1)
     expect(msgs[0]?.id).toBe('late')
   })
 
   it('getRecentBefore returns messages before datetime', () => {
-    store.append({ kind: 'text', id: 'a', role: 'user', content: 'a', createdAt: '2025-01-01T00:00:00Z' })
-    store.append({ kind: 'text', id: 'b', role: 'user', content: 'b', createdAt: '2025-01-02T00:00:00Z' })
+    store.append({ kind: 'text', id: 'a', role: 'user', content: 'a', createdAt: '2025-01-01T00:00:00Z' }, 'default')
+    store.append({ kind: 'text', id: 'b', role: 'user', content: 'b', createdAt: '2025-01-02T00:00:00Z' }, 'default')
     const msgs = store.getRecentBefore('default', '2025-01-02T00:00:00Z', 10_000)
     expect(msgs).toHaveLength(1)
     expect(msgs[0]?.id).toBe('a')
@@ -224,7 +224,7 @@ describe('MessageStore', () => {
         { type: 'audio', mediaType: 'audio/ogg', filename: 'voice.ogg', durationSeconds: 8.5 },
       ],
     }
-    store.append(msg)
+    store.append(msg, 'default')
     const msgs = store.getRecent('default', 100_000)
     const m = msgs[0] as TextMessage
     expect(m.attachments).toHaveLength(2)
@@ -235,20 +235,20 @@ describe('MessageStore', () => {
   })
 
   it('message without attachments has no attachments key', () => {
-    store.append({ kind: 'text', id: 'msg-noatt', role: 'user', content: 'plain', createdAt: '2025-01-01T00:00:10Z' })
+    store.append({ kind: 'text', id: 'msg-noatt', role: 'user', content: 'plain', createdAt: '2025-01-01T00:00:10Z' }, 'default')
     const msgs = store.getRecent('default', 100_000)
     const m = msgs[0] as TextMessage
     expect(m.attachments).toBeUndefined()
   })
 
   it('replaceWithSummary removes old messages and inserts summary', () => {
-    store.append({ kind: 'text', id: 'msg-x', role: 'user', content: 'old', createdAt: '2025-01-01T00:00:00Z' })
+    store.append({ kind: 'text', id: 'msg-x', role: 'user', content: 'old', createdAt: '2025-01-01T00:00:00Z' }, 'default')
     const summary: SummaryMessage = {
       kind: 'summary', id: 'sum-1', content: 'A summary',
       summarySpan: ['2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z'],
       createdAt: '2025-01-01T00:01:00Z',
     }
-    store.replaceWithSummary(['msg-x'], summary)
+    store.replaceWithSummary(['msg-x'], summary, 'default')
     const msgs = store.getRecent('default', 10_000)
     expect(msgs).toHaveLength(1)
     expect(msgs[0]?.kind).toBe('summary')

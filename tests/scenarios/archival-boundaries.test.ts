@@ -112,7 +112,7 @@ describe('archival boundaries', () => {
       // 20 messages — cutoff = floor(20 * 0.3) = 6
       const artemisMessages = makeArtemisMessages(20, 0)
       for (const msg of artemisMessages) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       const topicMemory = createTopicMemory(
@@ -125,6 +125,7 @@ describe('archival boundaries', () => {
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
+        headId: 'default',
       })
 
       expect(result).not.toBeNull()
@@ -149,7 +150,7 @@ describe('archival boundaries', () => {
     try {
       const artemisMessages = makeArtemisMessages(20, 0)
       for (const msg of artemisMessages) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       const topicMemory = createTopicMemory(
@@ -162,6 +163,7 @@ describe('archival boundaries', () => {
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
+        headId: 'default',
       })
 
       expect(result).not.toBeNull()
@@ -180,7 +182,7 @@ describe('archival boundaries', () => {
       // First batch: 20 messages
       const batch1 = makeArtemisMessages(20, 0)
       for (const msg of batch1) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       const topicMemory = createTopicMemory(
@@ -194,13 +196,14 @@ describe('archival boundaries', () => {
       const result1 = await archiveMessages(allMessages1, {
         topicMemory,
         messages,
+        headId: 'default',
       })
       expect(result1).not.toBeNull()
 
       // Second batch: 20 more messages about the same topic
       const batch2 = makeArtemisMessages(20, 20 * 200 + 5000)
       for (const msg of batch2) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       // Second archival pass
@@ -208,6 +211,7 @@ describe('archival boundaries', () => {
       const result2 = await archiveMessages(allMessages2, {
         topicMemory,
         messages,
+        headId: 'default',
       })
       expect(result2).not.toBeNull()
 
@@ -239,7 +243,7 @@ describe('archival boundaries', () => {
     try {
       const artemisMessages = makeArtemisMessages(15, 0)
       for (const msg of artemisMessages) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       const topicMemory = createTopicMemory(
@@ -252,6 +256,7 @@ describe('archival boundaries', () => {
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
+        headId: 'default',
       })
 
       expect(result).not.toBeNull()
@@ -279,7 +284,7 @@ describe('archival boundaries', () => {
     try {
       const artemisMessages = makeArtemisMessages(20, 0)
       for (const msg of artemisMessages) {
-        messages.append(msg)
+        messages.append(msg, 'default')
       }
 
       const topicMemory = createTopicMemory(
@@ -292,6 +297,7 @@ describe('archival boundaries', () => {
       const result = await archiveMessages(allMessages, {
         topicMemory,
         messages,
+        headId: 'default',
       })
 
       expect(result).not.toBeNull()

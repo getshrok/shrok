@@ -517,7 +517,7 @@ async function main() {
           content: text,
           channel,
           createdAt: now(),
-        })
+        }, primary.head.id)
         void primary.channelRouter.send(channel, text).catch(err =>
           log.warn('[threshold] failed to send alert:', (err as Error).message),
         )

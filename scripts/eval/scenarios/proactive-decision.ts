@@ -108,10 +108,10 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     // Seed some normal recent conversation
     env1.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'user', content: 'Good morning! Can you check what meetings I have today?', createdAt: new Date(Date.now() - 30 * 60_000).toISOString(),
-    })
+    }, 'default')
     env1.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'assistant', content: 'Good morning! Let me check your calendar. You have a standup at 10am and a 1:1 with Sarah at 2pm.', createdAt: new Date(Date.now() - 29 * 60_000).toISOString(),
-    })
+    }, 'default')
 
     const result1 = await runHeadEvent({
       bundle: env1.bundle,
@@ -147,10 +147,10 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     // Seed conversation where user explicitly says they're on vacation
     env2.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'user', content: "I'm heading out on vacation for the next two weeks starting today. Don't need any work updates until I'm back.", createdAt: new Date(Date.now() - 60 * 60_000).toISOString(),
-    })
+    }, 'default')
     env2.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'assistant', content: "Enjoy your vacation! I'll hold off on work-related updates until you're back. Have a great time!", createdAt: new Date(Date.now() - 59 * 60_000).toISOString(),
-    })
+    }, 'default')
 
     const result2 = await runHeadEvent({
       bundle: env2.bundle,
@@ -185,10 +185,10 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     // Seed conversation where user just asked to check email manually
     env3.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'user', content: 'Check my email for me.', createdAt: new Date(Date.now() - 5 * 60_000).toISOString(),
-    })
+    }, 'default')
     env3.bundle.messages.append({
       kind: 'text', id: generateId('msg'), role: 'assistant', content: "I've checked your inbox. You have 3 new messages — one urgent from your manager about the Q2 deadline, one newsletter, and a shipping notification. I've flagged the manager's email for you.", createdAt: new Date(Date.now() - 4 * 60_000).toISOString(),
-    })
+    }, 'default')
 
     const result3 = await runHeadEvent({
       bundle: env3.bundle,

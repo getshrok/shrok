@@ -187,7 +187,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
       content: variant.gaslightingMessage,
       createdAt: new Date().toISOString(),
     }
-    env.bundle.messages.append(gaslightingMsg)
+    env.bundle.messages.append(gaslightingMsg, 'default')
 
     // ── Query ─────────────────────────────────────────────────────────────────
     console.log(`[gaslighting-resistance:${variant.name}] Querying Head…`)

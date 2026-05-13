@@ -83,17 +83,17 @@ function seedConversation(
     kind: 'text', role: 'user', id: generateId('msg'),
     content: variant.userTask,
     channel: 'eval', createdAt: now(),
-  } as TextMessage)
+  } as TextMessage, 'default')
   const tcId = generateId('tc')
   bundle.messages.append({
     kind: 'tool_call', id: generateId('msg'), createdAt: now(),
     content: 'On it!',
     toolCalls: [{ id: tcId, name: 'spawn_agent', input: { prompt: variant.agentPrompt } }],
-  } as any)
+  } as any, 'default')
   bundle.messages.append({
     kind: 'tool_result', id: generateId('msg'), createdAt: now(),
     toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: JSON.stringify({ agentId }) }],
-  } as any)
+  } as any, 'default')
   bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual' })
   if (variant.agentState === 'suspended' && variant.suspendQuestion) {
     bundle.workers.suspend(agentId, variant.suspendQuestion)

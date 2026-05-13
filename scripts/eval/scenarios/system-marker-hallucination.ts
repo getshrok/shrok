@@ -212,7 +212,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
             content: msg.content,
             ...(msg.injected ? { injected: true } : {}),
             createdAt: new Date(baseTime + j * 30_000).toISOString(),
-          })
+          }, 'default')
         }
 
         // Snapshot message IDs before the query so we can isolate new ones

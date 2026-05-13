@@ -563,7 +563,7 @@ export function seedFillerMessages(bundle: HeadBundle, count: number): void {
       id: generateId('msg'),
       content: msg.content,
       createdAt: new Date(base + i * 2_000).toISOString(),
-    })
+    }, 'default')
   }
 }
 
@@ -587,6 +587,7 @@ export async function archiveUntilGone(
     await archiveMessages(bundle.messages.getAll('default'), {
       topicMemory: memory,
       messages: bundle.messages,
+      headId: 'default',
     })
   }
 }
@@ -624,7 +625,7 @@ export function feedConversation(
       role: history[i]!.role,
       content: history[i]!.content,
       createdAt: new Date(base + i * 60_000).toISOString(),
-    })
+    }, 'default')
     ids.add(id)
   }
   return ids
