@@ -392,5 +392,129 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
     res.status(200).json({ ok: true, channel: maskChannel(channel) })
   })
 
+  /**
+   * PATCH /api/heads/:id/channels/:channelId — edit a channel inline
+   * (DASH-04 edit, D-17 secret preservation, D-18 inline).
+   *
+   * Secret-preservation rule: omitting a field from the body preserves the
+   * existing value on disk. This mirrors the settings.ts body-diff pattern
+   * (settings.ts:282-302) where "client omitted" means "absent from body",
+   * NOT "sent as empty string". Empty-string is an explicit clear and will
+   * be rejected by the ChannelConfigSchema's `z.string().min(1)` constraint
+   * (acceptable for v1.3 — to clear a secret, delete-and-re-add).
+   *
+   * Vendor invariant: PATCH that tries to change `vendor` returns 400 — the
+   * discriminated union would lose its per-vendor required-fields tag, and
+   * a vendor change is semantically a "different channel" anyway.
+   *
+   * Channel-id rename: when the body sets `id` to a new value, the kebab
+   * regex is validated and cross-head uniqueness is checked with the
+   * current channel excluded (collectAllChannelIds(current, channelId)).
+   */
+  router.patch('/:id/channels/:channelId', requireAuth, (req: Request, res: Response): void => {
+    const headId = String(req.params['id'])
+    const channelId = String(req.params['channelId'])
+    const current = deps.resolveCurrentHeads()
+    const targetHead = current.find(h => h.id === headId)
+    if (!targetHead) {
+      res.status(404).json({ error: `head "${headId}" not found` })
+      return
+    }
+    const existing = targetHead.channels.find(c => c.id === channelId)
+    if (!existing) {
+      res.status(404).json({ error: `channel "${channelId}" not found on head "${headId}"` })
+      return
+    }
+    const patch = req.body as Record<string, unknown>
+
+    // D-17 vendor invariant: vendor cannot change. Discriminated union
+    // requires different fields per vendor; changing it would break the type.
+    if ('vendor' in patch && patch['vendor'] !== existing.vendor) {
+      res.status(400).json({ error: 'channel vendor cannot change — delete and re-add' })
+      return
+    }
+
+    // Merge: only overwrite keys the client explicitly sent. Absent keys
+    // preserve existing values (this is the secret-preservation contract).
+    const merged: Record<string, unknown> = { ...existing }
+    for (const key of Object.keys(patch)) {
+      merged[key] = patch[key]
+    }
+
+    // D-15: if the channel id changed, enforce kebab regex + cross-head
+    // uniqueness (excluding self).
+    if (typeof patch['id'] === 'string' && patch['id'] !== channelId) {
+      if (!HEAD_ID_REGEX.test(patch['id'])) {
+        res.status(400).json({ error: `channel id must match ${HEAD_ID_REGEX}` })
+        return
+      }
+      const allIds = collectAllChannelIds(current, channelId)
+      if (allIds.has(patch['id'])) {
+        res.status(400).json({ error: `channel id "${patch['id']}" is already in use` })
+        return
+      }
+    }
+
+    // Validate the merged result against the discriminated union. Extra
+    // unknown keys copied in by the merge loop above are stripped by Zod's
+    // narrow shape — `parsed.data` only contains the per-vendor fields
+    // (T-33-06 mass-assignment mitigation).
+    const parsed = ChannelConfigSchema.safeParse(merged)
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message })
+      return
+    }
+    const updatedChannel = parsed.data
+
+    materializeLazyMigrationIfNeeded(deps)
+    const configJson = loadConfigJsonInline(deps.configPath)
+    const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{ id: string; channels: ChannelConfig[] }>
+    const headIdx = heads.findIndex(h => h.id === headId)
+    if (headIdx < 0) {
+      res.status(404).json({ error: `head "${headId}" not found` })
+      return
+    }
+    const chIdx = heads[headIdx]!.channels.findIndex(c => c.id === channelId)
+    if (chIdx < 0) {
+      // Race: channel was deleted between resolveCurrentHeads() and this read.
+      res.status(404).json({ error: `channel "${channelId}" not found on head "${headId}"` })
+      return
+    }
+    heads[headIdx]!.channels[chIdx] = updatedChannel
+    configJson['heads'] = heads
+    writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
+    res.status(200).json({ ok: true, channel: maskChannel(updatedChannel) })
+  })
+
+  /**
+   * DELETE /api/heads/:id/channels/:channelId — remove the channel from
+   * heads[].channels[] (DASH-04 remove, D-18 inline).
+   *
+   * No DB cleanup is needed here — channels have no associated SQLite rows
+   * (messages and queue_events are keyed by head_id, not channel id). Only
+   * config.json needs to be rewritten.
+   */
+  router.delete('/:id/channels/:channelId', requireAuth, (req: Request, res: Response): void => {
+    const headId = String(req.params['id'])
+    const channelId = String(req.params['channelId'])
+    materializeLazyMigrationIfNeeded(deps)
+    const configJson = loadConfigJsonInline(deps.configPath)
+    const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{ id: string; channels: ChannelConfig[] }>
+    const headIdx = heads.findIndex(h => h.id === headId)
+    if (headIdx < 0) {
+      res.status(404).json({ error: `head "${headId}" not found` })
+      return
+    }
+    const before = heads[headIdx]!.channels.length
+    heads[headIdx]!.channels = heads[headIdx]!.channels.filter(c => c.id !== channelId)
+    if (heads[headIdx]!.channels.length === before) {
+      res.status(404).json({ error: `channel "${channelId}" not found on head "${headId}"` })
+      return
+    }
+    configJson['heads'] = heads
+    writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
+    res.status(200).json({ ok: true })
+  })
+
   return router
 }
