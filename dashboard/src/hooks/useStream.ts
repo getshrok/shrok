@@ -32,6 +32,10 @@ export function useStream(currentHeadId: string) {
         // The SSE payload (Message) carries no head_id — we trust the ref to reflect
         // the head currently being viewed. In single-head deployments currentHeadIdRef.current
         // is always 'default', preserving backward-compat behavior.
+        // TODO(phase-33): SSE payload must carry head_id so we can route correctly
+        // without relying on the ref. Current risk: message received while user switches
+        // heads lands in the wrong cache entry. Acceptable for single-dashboard-adapter
+        // deployments; must be fixed before per-head SSE scoping.
         const headId = currentHeadIdRef.current
         qc.setQueryData(
           ['messages', headId],
