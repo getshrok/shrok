@@ -641,7 +641,7 @@ export default function ConversationsPage() {
           return { name: f.name, mediaType: f.type || 'application/octet-stream', data }
         }))
       }
-      await api.messages.send(text, files)
+      await api.messages.send(text, selectedHead, files)
     } catch {
       // Restore input and files on failure so the user can retry
       setInput(savedInput)

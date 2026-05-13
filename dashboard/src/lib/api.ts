@@ -39,11 +39,11 @@ export const api = {
       request<{ messages: Message[] }>(
         headId ? `/api/messages?head=${encodeURIComponent(headId)}` : '/api/messages',
       ),
-    send: (text: string, files?: Array<{ name: string; mediaType: string; data?: string; textContent?: string }>) =>
+    send: (text: string, headId: string, files?: Array<{ name: string; mediaType: string; data?: string; textContent?: string }>) =>
       request<{ ok: boolean }>('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, files }),
+        body: JSON.stringify({ text, headId, files }),
       }),
   },
   stewardRuns: {
