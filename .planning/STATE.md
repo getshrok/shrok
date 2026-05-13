@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 33-02-per-head-dashboard-adapter-PLAN.md
-last_updated: "2026-05-13T20:24:01.586Z"
+stopped_at: Completed 33-03-per-head-sse-filter-PLAN.md
+last_updated: "2026-05-13T20:30:35.888Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 19
-  completed_plans: 14
-  percent: 74
+  completed_plans: 15
+  percent: 79
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 ## Current Position
 
 Phase: 33 (multi-head-management-ui) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-05-13
-Stopped at: Completed 33-02-per-head-dashboard-adapter-PLAN.md
+Stopped at: Completed 33-03-per-head-sse-filter-PLAN.md
 
-Progress: [███████░░░] 74% (14/19 plans complete; phase 33 in flight, plan 2/7 done)
+Progress: [████████░░] 79% (15/19 plans complete; phase 33 in flight, plan 3/7 done)
 
 ## Project Reference
 
@@ -63,6 +63,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-TEST-RENAME: db.test.ts DATA-02 test renamed (explicit headId now required at type level)
 - D-MAP-REQUIRED (Plan 33-02): `DashboardServerOptions.dashboardAdapters` is required (not optional) — empty map is a startup bug, not a valid state; defensive 503 kept for tests
 - D-FALLBACK-FIRST (Plan 33-02): POST /send falls back to `dashboardAdapters.values().next().value` when body.headId is missing or unknown — preserves single-head behavior and avoids leaking the head list via 404
+- D-FILTER-PURE-FN (Plan 33-03): `shouldDeliverStreamEvent` extracted as a pure function in `dashboard/src/hooks/streamFilter.ts` — testable under existing `environment: 'node'` vitest config (no jsdom, no @testing-library, no new devDependency); `useStream()` composes it as a one-line early-return gate at the top of the SSE callback
+- D-SCOPE-MIN-CORRECT (Plan 33-03): per RESEARCH § A4 minimum-correct scope, only `message_added` and `typing` carry `headId` in `DashboardEvent` (grep -c "headId: string" src/dashboard/events.ts returns 2); `agent_*`/`steward_run_added`/`memory_retrieval` are explicitly NOT widened — their emit sites live in process-wide stores with no per-head context, and T-33-09 accepts the cross-head leakage
+- D-HEADID-FROM-EVENT (Plan 33-03): inside `useStream`'s `message_added` handler, switched from `currentHeadIdRef.current` to `event.headId` for the cache key — the filter gate above guarantees they're equal for delivered events, making the ref a pure filter input rather than a head-identity resolver
 
 ## Performance Metrics
 
@@ -70,3 +73,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 |-------|------|----------|-------|-------|
 | 33    | 01   | 14min    | 3     | 26    |
 | 33    | 02   | 5min     | 3     | 4     |
+| 33    | 03   | 3min     | 2     | 6     |
