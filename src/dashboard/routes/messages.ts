@@ -8,7 +8,7 @@ import type { DashboardChannelAdapter } from '../../channels/dashboard/adapter.j
 import type { Attachment } from '../../types/core.js'
 import { estimateTokens } from '../../db/token.js'
 
-export function createMessagesRouter(messages: MessageStore, channelAdapter?: DashboardChannelAdapter, mediaDir?: string): Router {
+export function createMessagesRouter(messages: MessageStore, dashboardAdapters: Map<string, DashboardChannelAdapter>, mediaDir?: string): Router {
   const router = Router()
 
   router.get('/', requireAuth, (req: Request, res: Response): void => {
@@ -22,11 +22,21 @@ export function createMessagesRouter(messages: MessageStore, channelAdapter?: Da
   })
 
   router.post('/send', requireAuth, (req: Request, res: Response): void => {
-    const { text, files } = req.body as { text?: string; files?: Array<{ name: string; mediaType: string; data?: string; textContent?: string }> }
+    const { text, headId, files } = req.body as {
+      text?: string
+      headId?: string
+      files?: Array<{ name: string; mediaType: string; data?: string; textContent?: string }>
+    }
     if ((!text || !text.trim()) && (!files || files.length === 0)) {
       res.status(400).json({ error: 'Missing text or files' })
       return
     }
+    // Phase 33 D-10: route by body.headId; fall back to the first
+    // adapter when headId is missing or unknown (preserves
+    // single-head deployment behavior — the only entry's headId is
+    // 'default'). exactOptionalPropertyTypes-safe: explicit string check.
+    const requested = typeof headId === 'string' ? dashboardAdapters.get(headId) : undefined
+    const channelAdapter = requested ?? dashboardAdapters.values().next().value
     if (!channelAdapter) {
       res.status(503).json({ error: 'Dashboard channel not available' })
       return

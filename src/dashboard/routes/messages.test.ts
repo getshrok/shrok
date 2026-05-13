@@ -58,7 +58,7 @@ describe('GET /api/messages — head-scoped filtering (DASH-02)', () => {
     const app = express()
     app.use(express.json())
     app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
-    app.use('/api/messages', createMessagesRouter(store))
+    app.use('/api/messages', createMessagesRouter(store, new Map()))
 
     port = await getFreePort()
     await new Promise<void>((resolve, reject) => {

@@ -81,7 +81,7 @@ export interface DashboardServerOptions {
   unifiedLoader?: UnifiedLoader
   db?: DatabaseSync
   evalResultsDir?: string
-  channelAdapter?: DashboardChannelAdapter
+  dashboardAdapters: Map<string, DashboardChannelAdapter>
   schedules?: ScheduleStore
   mcpRegistry?: McpRegistry
   agentRunner?: AgentRunner
@@ -142,7 +142,7 @@ export class DashboardServer {
 
     // API routes
     app.use('/api/auth', createAuthRouter(this.tokenStore, config))
-    app.use('/api/messages', createMessagesRouter(messages, this.opts.channelAdapter, path.join(config.workspacePath.replace(/^~/, os.homedir()), 'media')))
+    app.use('/api/messages', createMessagesRouter(messages, this.opts.dashboardAdapters, path.join(config.workspacePath.replace(/^~/, os.homedir()), 'media')))
     app.use('/api/heads', createHeadsRouter(this.opts.resolvedHeads ?? [{ id: 'default', channels: [] }]))
     app.use('/api/steward-runs', createStewardRunsRouter(stewardRuns))
     app.use('/api/usage', createUsageRouter(this.opts.usage, config.timezone, this.opts.appState, this.opts.events, this.opts.unifiedLoader))
