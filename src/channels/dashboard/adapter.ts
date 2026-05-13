@@ -32,7 +32,7 @@ export class DashboardChannelAdapter implements ChannelAdapter {
   async send(_text: string, _attachments?: import('../../types/core.js').Attachment[]): Promise<void> {}
 
   async sendTyping(): Promise<void> {
-    this.events?.emit('dashboard', { type: 'typing' })
+    this.events?.emit('dashboard', { type: 'typing', headId: this.headId })
   }
 
   // Dashboard xray comes from the DB via agent_message_added SSE events — no sendDebug needed.
