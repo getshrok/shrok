@@ -1,4 +1,4 @@
-import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, UsageThreshold, ThresholdWithSpend } from '../types/api'
+import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, UsageThreshold, ThresholdWithSpend, HeadDTO, ChannelConfigMasked, ChannelConfigSubmit } from '../types/api'
 
 function encSkillPath(name: string, suffix = '') {
   return '/api/skills/' + name.split('/').map(encodeURIComponent).join('/') + suffix
@@ -32,7 +32,35 @@ export const api = {
   },
   heads: {
     list: () =>
-      request<{ heads: Array<{ id: string }> }>('/api/heads'),
+      request<{ heads: HeadDTO[] }>('/api/heads'),
+    create: (id: string) =>
+      request<{ ok: boolean; head: HeadDTO }>('/api/heads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      }),
+    rename: (id: string, newId: string) =>
+      request<{ ok: boolean; head: HeadDTO }>(`/api/heads/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newId }),
+      }),
+    delete: (id: string) =>
+      request<{ ok: boolean }>(`/api/heads/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    addChannel: (headId: string, channel: ChannelConfigSubmit) =>
+      request<{ ok: boolean; channel: ChannelConfigMasked }>(`/api/heads/${encodeURIComponent(headId)}/channels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(channel),
+      }),
+    editChannel: (headId: string, channelId: string, patch: Partial<ChannelConfigSubmit>) =>
+      request<{ ok: boolean; channel: ChannelConfigMasked }>(`/api/heads/${encodeURIComponent(headId)}/channels/${encodeURIComponent(channelId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      }),
+    removeChannel: (headId: string, channelId: string) =>
+      request<{ ok: boolean }>(`/api/heads/${encodeURIComponent(headId)}/channels/${encodeURIComponent(channelId)}`, { method: 'DELETE' }),
   },
   messages: {
     list: (headId?: string) =>

@@ -364,6 +364,31 @@ export interface ThresholdWithSpend extends UsageThreshold {
   periodStart: string
 }
 
+/**
+ * Phase 33 Plan 06 (D-02, D-13, D-15, D-17) — channel + head types mirrored from
+ * `src/dashboard/routes/heads.ts`. The backend always returns secrets as `{ isSet }`
+ * on GET; POST/PATCH accept plaintext for new/changed secrets only.
+ */
+export type ChannelConfigMasked =
+  | { id: string; vendor: 'telegram'; botToken: { isSet: boolean }; chatId: string }
+  | { id: string; vendor: 'discord';  botToken: { isSet: boolean }; channelId: string }
+  | { id: string; vendor: 'slack';    botToken: { isSet: boolean }; appToken: { isSet: boolean }; channelId: string }
+  | { id: string; vendor: 'whatsapp'; allowedJid: string }
+  | { id: string; vendor: 'zoho-cliq'; clientId: { isSet: boolean }; clientSecret: { isSet: boolean }; refreshToken: { isSet: boolean }; chatId: string }
+
+/** Shape POSTed to the channels sub-resource. Secrets are plaintext on the wire. */
+export type ChannelConfigSubmit =
+  | { id: string; vendor: 'telegram'; botToken: string; chatId: string }
+  | { id: string; vendor: 'discord';  botToken: string; channelId: string }
+  | { id: string; vendor: 'slack';    botToken: string; appToken: string; channelId: string }
+  | { id: string; vendor: 'whatsapp'; allowedJid: string }
+  | { id: string; vendor: 'zoho-cliq'; clientId: string; clientSecret: string; refreshToken: string; chatId: string }
+
+export interface HeadDTO {
+  id: string
+  channels: ChannelConfigMasked[]
+}
+
 export type DashboardEvent =
   | { type: 'message_added'; payload: Message; headId: string }
   | { type: 'agent_status_changed'; payload: { id: string; status: AgentStatus } }
