@@ -5,6 +5,7 @@ import { sync as writeFileAtomic } from 'write-file-atomic'
 import { requireAuth } from '../auth.js'
 import { parseEnvFile, writeEnvFile } from './settings.js'
 import type { ResolvedHead, ChannelConfig } from '../../config.js'
+import { ChannelConfigSchema } from '../../config.js'
 import type { DatabaseSync } from '../../db/index.js'
 import { transaction } from '../../db/index.js'
 import type { MessageStore } from '../../db/messages.js'
@@ -87,6 +88,26 @@ export interface HeadsRouterDeps {
   db: DatabaseSync
   messages: MessageStore
   queue: QueueStore
+}
+
+/**
+ * D-15 cross-head channel-id uniqueness check.
+ *
+ * Channel ids are the `ChannelRouter.register()` key (Phase 31 D-02) and the
+ * `channel` field on inbound message events, so duplicates across heads
+ * conflate state. The Zod schema doesn't enforce uniqueness; this helper is
+ * the only place that catches it. The optional `excludeChannelId` argument
+ * is used by PATCH (a rename that targets its own current id is not a
+ * duplicate).
+ */
+function collectAllChannelIds(heads: ResolvedHead[], excludeChannelId?: string): Set<string> {
+  const ids = new Set<string>()
+  for (const h of heads) {
+    for (const c of h.channels) {
+      if (c.id !== excludeChannelId) ids.add(c.id)
+    }
+  }
+  return ids
 }
 
 /** Read config.json fresh on every mutation; empty object if missing/unreadable. */
@@ -306,6 +327,69 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
 
     const renamed = next.find(h => h.id === newId)
     res.status(200).json({ ok: true, head: renamed })
+  })
+
+  /**
+   * POST /api/heads/:id/channels — add a channel to a head (DASH-04, D-15, D-17, D-18).
+   *
+   * Validation order:
+   *   1. Head exists (404 otherwise)
+   *   2. body.id is a valid kebab (HEAD_ID_REGEX — same shape as head ids per D-13/D-15)
+   *   3. Cross-head uniqueness via collectAllChannelIds (D-15)
+   *   4. Full ChannelConfigSchema.safeParse — vendor + per-vendor required fields
+   *
+   * On success: D-04 lazy migration runs, config.json is re-read fresh,
+   * the channel is appended to heads[idx].channels[], writeFileAtomic
+   * persists, and the masked channel is returned (D-17 — secrets never
+   * appear in HTTP responses, only on disk).
+   */
+  router.post('/:id/channels', requireAuth, (req: Request, res: Response): void => {
+    const headId = String(req.params['id'])
+    const current = deps.resolveCurrentHeads()
+    const targetHead = current.find(h => h.id === headId)
+    if (!targetHead) {
+      res.status(404).json({ error: `head "${headId}" not found` })
+      return
+    }
+    const body = req.body as Record<string, unknown>
+
+    // Validate channel id shape BEFORE attempting Zod parse — produces a clearer error.
+    if (typeof body['id'] !== 'string' || !HEAD_ID_REGEX.test(body['id'])) {
+      res.status(400).json({ error: `channel id must match ${HEAD_ID_REGEX}` })
+      return
+    }
+    const channelId = body['id']
+
+    // D-15: cross-head uniqueness. Map.set silently overwrites in the router
+    // and the Zod schema does not refine for uniqueness, so this is the only
+    // place duplicates get caught.
+    const allIds = collectAllChannelIds(current)
+    if (allIds.has(channelId)) {
+      res.status(400).json({ error: `channel id "${channelId}" is already in use` })
+      return
+    }
+
+    // Full ChannelConfig shape via the discriminated union schema.
+    const parsed = ChannelConfigSchema.safeParse(body)
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message })
+      return
+    }
+    const channel = parsed.data
+
+    materializeLazyMigrationIfNeeded(deps)
+    const configJson = loadConfigJsonInline(deps.configPath)
+    const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{ id: string; channels: ChannelConfig[] }>
+    const idx = heads.findIndex(h => h.id === headId)
+    if (idx < 0) {
+      // Race: head was deleted between resolveCurrentHeads() and this read.
+      res.status(404).json({ error: `head "${headId}" not found` })
+      return
+    }
+    heads[idx]!.channels.push(channel)
+    configJson['heads'] = heads
+    writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
+    res.status(200).json({ ok: true, channel: maskChannel(channel) })
   })
 
   return router
