@@ -154,14 +154,14 @@ Plans:
   2. A user can add a second Telegram bot (or any second-of-same-provider channel) to a head from the UI; both instances start and route correctly
   3. A user can rename or delete a head from the UI; conversation history for a deleted head is handled per a defined deletion policy
   4. Sending a message from the dashboard with head `personal` selected routes through that head's outbound channel — not the default head
-**Plans:** 3/7 plans executed
+**Plans:** 4/7 plans executed
 **UI hint**: yes
 
 Plans:
 - [x] 33-01-append-headid-ripple-PLAN.md — MessageStore.append(msg, headId) ripple + QueueStore.deleteAllForHead (DASH-05 foundation)
 - [x] 33-02-per-head-dashboard-adapter-PLAN.md — Per-head DashboardChannelAdapter map + POST /send routes by body.headId (DASH-05)
 - [x] 33-03-per-head-sse-filter-PLAN.md — SSE events carry headId + useStream() per-head filter (DASH-05)
-- [ ] 33-04-heads-crud-router-PLAN.md — POST/PATCH/DELETE /api/heads + lazy migration + rename UPDATE + delete wipe transaction (DASH-03)
+- [x] 33-04-heads-crud-router-PLAN.md — POST/PATCH/DELETE /api/heads + lazy migration + rename UPDATE + delete wipe transaction (DASH-03)
 - [ ] 33-05-heads-channels-subresource-PLAN.md — POST/PATCH/DELETE /api/heads/:id/channels[/:channelId] + cred masking + cross-head uniqueness (DASH-04)
 - [ ] 33-06-heads-tab-frontend-PLAN.md — HeadsTab + HeadCard + ChannelRow + api.heads.* + hide legacy Channels tab (DASH-03, DASH-04)
 - [ ] 33-07-typed-confirmation-delete-PLAN.md — DeleteHeadModal with typed-confirmation + counts endpoint + confirmId guard (DASH-03)
@@ -174,4 +174,4 @@ Plans:
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
 | 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
 | 32. Dashboard Head Selector | 3/3 | Complete    | 2026-05-12 |
-| 33. Multi-head Management UI | 3/7 | In Progress|  |
+| 33. Multi-head Management UI | 4/7 | In Progress|  |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 33-03-per-head-sse-filter-PLAN.md
-last_updated: "2026-05-13T20:30:35.888Z"
+stopped_at: Completed 33-04-heads-crud-router-PLAN.md
+last_updated: "2026-05-13T20:52:53.788Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 19
-  completed_plans: 15
-  percent: 79
+  completed_plans: 16
+  percent: 84
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 ## Current Position
 
 Phase: 33 (multi-head-management-ui) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-05-13
-Stopped at: Completed 33-03-per-head-sse-filter-PLAN.md
+Stopped at: Completed 33-04-heads-crud-router-PLAN.md
 
-Progress: [████████░░] 79% (15/19 plans complete; phase 33 in flight, plan 3/7 done)
+Progress: [████████░░] 84% (16/19 plans complete; phase 33 in flight, plan 4/7 done)
 
 ## Project Reference
 
@@ -66,6 +66,10 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-FILTER-PURE-FN (Plan 33-03): `shouldDeliverStreamEvent` extracted as a pure function in `dashboard/src/hooks/streamFilter.ts` — testable under existing `environment: 'node'` vitest config (no jsdom, no @testing-library, no new devDependency); `useStream()` composes it as a one-line early-return gate at the top of the SSE callback
 - D-SCOPE-MIN-CORRECT (Plan 33-03): per RESEARCH § A4 minimum-correct scope, only `message_added` and `typing` carry `headId` in `DashboardEvent` (grep -c "headId: string" src/dashboard/events.ts returns 2); `agent_*`/`steward_run_added`/`memory_retrieval` are explicitly NOT widened — their emit sites live in process-wide stores with no per-head context, and T-33-09 accepts the cross-head leakage
 - D-HEADID-FROM-EVENT (Plan 33-03): inside `useStream`'s `message_added` handler, switched from `currentHeadIdRef.current` to `event.headId` for the cache key — the filter gate above guarantees they're equal for delivered events, making the ref a pure filter input rather than a head-identity resolver
+- D-MIGRATION-IDEMPOTENT (Plan 33-04): `materializeLazyMigrationIfNeeded` runs before every mutating handler (POST/DELETE/PATCH); early-return guard makes it safe to call repeatedly. Test pins contract via .env byte-equality + fs.statSync().mtimeMs equality so a future refactor that drops the guard fails
+- D-EXPORT-ENV-HELPERS (Plan 33-04): exported `parseEnvFile` + `writeEnvFile` from `src/dashboard/routes/settings.ts` rather than inlining a copy in heads.ts — keeps env file format handling (quoting, escape sequences, mode 0o600) in one place
+- D-SUBSTR-ANCHORED (Plan 33-04): rename uses `UPDATE app_state SET key = ? || substr(key, oldId.length + 2) WHERE key LIKE 'old:%'` — anchored to the prefix so substrings of the old id later in the key are not mis-edited (vs REPLACE which would)
+- D-PATCH-DEFAULT-REJECTED (Plan 33-04): PATCH on `default` returns 400 (mirrors DELETE policy per D-08). Rationale: rename of `default` would leave `heads[]` without a default entry, which `resolveHeads()` would re-synthesize on next restart — silent recovery is worse than rejecting
 
 ## Performance Metrics
 
@@ -74,3 +78,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 33    | 01   | 14min    | 3     | 26    |
 | 33    | 02   | 5min     | 3     | 4     |
 | 33    | 03   | 3min     | 2     | 6     |
+| 33    | 04   | 6min     | 3     | 3     |
