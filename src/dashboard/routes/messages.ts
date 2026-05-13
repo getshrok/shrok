@@ -39,7 +39,16 @@ export function createMessagesRouter(messages: MessageStore, channelAdapter?: Da
       fs.mkdirSync(mediaDir, { recursive: true })
       for (const file of files) {
         const mediaType = file.mediaType || 'application/octet-stream'
-        const dest = path.join(mediaDir, `${Date.now()}-${file.name}`)
+        // Security: strip path components — only the final filename segment is safe.
+        // Replace any character that is not alphanumeric, dot, dash, or underscore with '_'.
+        const safeName = path.basename(file.name).replace(/[^\w.\-]/g, '_') || 'upload'
+        const dest = path.join(mediaDir, `${Date.now()}-${safeName}`)
+        // Defense-in-depth: verify the resolved path stays inside mediaDir.
+        const resolved = path.resolve(dest)
+        if (!resolved.startsWith(path.resolve(mediaDir) + path.sep)) {
+          res.status(400).json({ error: 'Invalid filename' })
+          return
+        }
 
         if (file.textContent !== undefined) {
           fs.writeFileSync(dest, file.textContent, 'utf8')
