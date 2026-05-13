@@ -731,13 +731,15 @@ export class ActivationLoop {
       agentPills: config.visAgentPills,
       memoryRetrievals: config.visMemoryRetrievals,
     }
+    // Callbacks re-check live config at call time so settings changes take effect even for
+    // in-flight agents and saved verboseCallbacks that persist across message_agent continuations.
     const onVerbose = debugChannel && visibility.agentWork
-      ? (msg: string) => this.opts.channelRouter.sendDebug(debugChannel, msg)
+      ? async (msg: string) => { if (loadConfig().visAgentWork) await this.opts.channelRouter.sendDebug(debugChannel, msg) }
       : null
     // onDebug fires for "deeper internals" echo — head tool previews, thinking blocks, system event dumps.
     // agentPills is intentionally excluded: it's a dashboard pill-bar UI concern, not a debug stream concept.
     const onDebug = debugChannel && (visibility.headTools || visibility.systemEvents || visibility.stewardRuns)
-      ? (msg: string) => this.opts.channelRouter.sendDebug(debugChannel, msg)
+      ? async (msg: string) => { const p = loadConfig(); if (p.visHeadTools || p.visSystemEvents || p.visStewardRuns) await this.opts.channelRouter.sendDebug(debugChannel, msg) }
       : null
 
     if (context.memoryBlock) {
