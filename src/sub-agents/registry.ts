@@ -390,6 +390,11 @@ function resolvePath(p: string): string {
   let resolved = p.replace(/\$\{(\w+)\}/g, (_, name) => SAFE_PATH_VARS.has(name) ? (process.env[name] ?? '') : `\${${name}}`)
                    .replace(/\$(\w+)/g, (_, name) => SAFE_PATH_VARS.has(name) ? (process.env[name] ?? '') : `$${name}`)
   if (resolved.startsWith('~/')) resolved = path.join(os.homedir(), resolved.slice(2))
+  // On Windows, convert bash-style drive mount paths (/c/foo) to native (C:/foo)
+  if (process.platform === 'win32') {
+    const m = resolved.match(/^\/([a-zA-Z])\/(.*)$/)
+    if (m) resolved = m[1]!.toUpperCase() + ':/' + m[2]
+  }
   return resolved
 }
 

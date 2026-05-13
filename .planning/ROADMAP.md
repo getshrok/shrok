@@ -153,4 +153,4 @@ Plans:
 | 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
 | 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
-| 32. Dashboard Head Selector | 3/3 | Complete   | 2026-05-12 |
+| 32. Dashboard Head Selector | 3/3 | Complete    | 2026-05-12 |
