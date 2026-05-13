@@ -111,12 +111,9 @@ export class MessageStore {
   private stmtDeleteAll: StatementSync
 
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
-    // TODO(multi-head-write): stmtInsert does not include head_id. All appends land
-    // under the SQL DEFAULT ('default'). Multi-head message writes require passing
-    // headId to append() and stamping it in the INSERT. Tracked in Phase 33 Plan 02.
     this.stmtInsert = db.prepare(`
-      INSERT INTO messages (id, kind, role, content, tool_calls, tool_results, attachments, channel, injected, summary_from, summary_to, event_id, created_at)
-      VALUES (@id, @kind, @role, @content, @tool_calls, @tool_results, @attachments, @channel, @injected, @summary_from, @summary_to, @event_id, @created_at)
+      INSERT INTO messages (id, kind, role, content, tool_calls, tool_results, attachments, channel, injected, summary_from, summary_to, event_id, created_at, head_id)
+      VALUES (@id, @kind, @role, @content, @tool_calls, @tool_results, @attachments, @channel, @injected, @summary_from, @summary_to, @event_id, @created_at, @head_id)
     `)
 
     this.stmtGetRecent = db.prepare(`
@@ -165,7 +162,7 @@ export class MessageStore {
 
   }
 
-  append(msg: Message): void {
+  append(msg: Message, headId: string): void {
     const row = messageToRow(msg)
     this.stmtInsert.run({
       id: row.id ?? null,
@@ -181,8 +178,9 @@ export class MessageStore {
       summary_to: (row.summary_to as string | undefined) ?? null,
       event_id: (row.event_id as string | undefined) ?? null,
       created_at: row.created_at ?? null,
+      head_id: headId,
     } as Record<string, SQLInputValue>)
-    this.eventBus?.emit('dashboard', { type: 'message_added', payload: msg })
+    this.eventBus?.emit('dashboard', { type: 'message_added', payload: msg, headId })
   }
 
   /** Fetch most-recent messages for the given head up to tokenBudget, returned in chronological order. */
@@ -233,10 +231,10 @@ export class MessageStore {
   }
 
   /** Replace a set of messages with a single summary in one transaction. */
-  replaceWithSummary(ids: string[], summary: SummaryMessage): void {
+  replaceWithSummary(ids: string[], summary: SummaryMessage, headId: string): void {
     transaction(this.db, () => {
       this.stmtDeleteByIds.run(JSON.stringify(ids))
-      this.append(summary)
+      this.append(summary, headId)
     })
   }
 

@@ -26,6 +26,7 @@ export class QueueStore {
   private stmtRequeueStale: StatementSync
   private stmtClaimAllBackground: StatementSync
   private stmtClaimAllUserMessages: StatementSync
+  private stmtDeleteAllForHead: StatementSync
 
   constructor(private db: DatabaseSync) {
     this.stmtEnqueue = db.prepare(`
@@ -98,6 +99,10 @@ export class QueueStore {
         AND head_id = @headId
       RETURNING *
     `)
+
+    // Phase 33 D-07: delete every queued event for a single head. Used by the
+    // delete-head wipe transaction in the heads CRUD router (Plan 04).
+    this.stmtDeleteAllForHead = db.prepare('DELETE FROM queue_events WHERE head_id = ?')
   }
 
   /** Phase 31: head_id is now threaded explicitly. Callers without a head context
@@ -159,6 +164,12 @@ export class QueueStore {
 
   deleteAll(): void {
     this.db.exec('DELETE FROM queue_events')
+  }
+
+  /** Delete all queued events for a single head. Phase 33 D-07: used by the
+   *  delete-head wipe transaction in the heads CRUD router. */
+  deleteAllForHead(headId: string): void {
+    this.stmtDeleteAllForHead.run(headId)
   }
 
   /** Non-destructive check — returns true if any pending or processing events exist.
