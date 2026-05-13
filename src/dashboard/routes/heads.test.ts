@@ -647,3 +647,179 @@ describe('PATCH /api/heads/:id (DASH-03 rename, D-14)', () => {
     expect(appStateValue('work-new:lastChannel')).toBeUndefined()
   })
 })
+
+// ─── Plan 33-05 Task 1: POST /api/heads/:id/channels ────────────────────────
+
+describe('POST /api/heads/:id/channels (DASH-04 add channel)', () => {
+  let fx: MutFixture
+
+  async function start(initialHeads: ResolvedHead[]): Promise<void> {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'heads-route-postch-'))
+    const configPath = path.join(workspace, 'config.json')
+    const envFilePath = path.join(workspace, '.env')
+    const db = setupDb()
+    const messages = new MessageStore(db)
+    const queue = new QueueStore(db)
+    let currentHeads = initialHeads
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    app.use('/api/heads', createHeadsRouter({
+      workspacePath: workspace,
+      configPath,
+      envFilePath,
+      resolveCurrentHeads: () => currentHeads,
+      db,
+      messages,
+      queue,
+    }))
+    const port = await getFreePort()
+    const server = await new Promise<Server>((resolve, reject) => {
+      const s = app.listen(port, '127.0.0.1', () => resolve(s))
+      s.once('error', reject)
+    })
+    fx = {
+      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      setHeads: (next) => { currentHeads = next },
+    }
+  }
+
+  afterEach(async () => {
+    if (fx?.server) await new Promise<void>(r => fx.server.close(() => r()))
+    if (fx?.workspace) fs.rmSync(fx.workspace, { recursive: true, force: true })
+  })
+
+  async function postChannel(headId: string, body: unknown): Promise<{ status: number; json: unknown }> {
+    const r = await fetch(`http://127.0.0.1:${fx.port}/api/heads/${headId}/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return { status: r.status, json: await r.json() }
+  }
+
+  function readConfig(): Record<string, unknown> {
+    return JSON.parse(fs.readFileSync(fx.configPath, 'utf8')) as Record<string, unknown>
+  }
+
+  function telegramFixture(id = 'tg-work', chatId = '123', botToken = 'BOT-TOKEN'): {
+    id: string; vendor: 'telegram'; botToken: string; chatId: string
+  } {
+    return { id, vendor: 'telegram', botToken, chatId }
+  }
+
+  it('POST /api/heads/:id/channels adds a channel and returns masked', async () => {
+    await start([
+      { id: 'default', channels: [] },
+      { id: 'work', channels: [] },
+    ])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await postChannel('work', telegramFixture('tg-work', '123', 'BOT-TOKEN'))
+    expect(res.status).toBe(200)
+    expect(res.json).toMatchObject({
+      ok: true,
+      channel: {
+        id: 'tg-work',
+        vendor: 'telegram',
+        botToken: { isSet: true },
+        chatId: '123',
+      },
+    })
+    // Response body must NOT leak the plaintext secret
+    const raw = JSON.stringify(res.json)
+    expect(raw).not.toContain('BOT-TOKEN')
+
+    // The plaintext IS persisted to disk (D-18 inline channels in config.json)
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; channels: Array<Record<string, unknown>> }>
+    const workHead = heads.find(h => h.id === 'work')!
+    expect(workHead.channels).toHaveLength(1)
+    expect(workHead.channels[0]).toEqual({
+      id: 'tg-work', vendor: 'telegram', botToken: 'BOT-TOKEN', chatId: '123',
+    })
+  })
+
+  it('POST rejects duplicate channel id on the SAME head with 400', async () => {
+    await start([
+      { id: 'work', channels: [{ id: 'tg-work', vendor: 'telegram', botToken: 'TOK', chatId: '1' }] },
+    ])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'work', channels: [{ id: 'tg-work', vendor: 'telegram', botToken: 'TOK', chatId: '1' }] }],
+    }, null, 2) + '\n')
+
+    const res = await postChannel('work', telegramFixture('tg-work', '2', 'TOK2'))
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toMatch(/already in use/)
+  })
+
+  it('POST rejects duplicate channel id on a DIFFERENT head with 400 (D-15 cross-head uniqueness)', async () => {
+    await start([
+      { id: 'work', channels: [{ id: 'tg-shared', vendor: 'telegram', botToken: 'TOK', chatId: '1' }] },
+      { id: 'home', channels: [] },
+    ])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [
+        { id: 'work', channels: [{ id: 'tg-shared', vendor: 'telegram', botToken: 'TOK', chatId: '1' }] },
+        { id: 'home', channels: [] },
+      ],
+    }, null, 2) + '\n')
+
+    const res = await postChannel('home', telegramFixture('tg-shared', '2', 'TOK2'))
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toMatch(/already in use/)
+  })
+
+  it('POST rejects bad-case channel id with 400 (kebab regex)', async () => {
+    await start([{ id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [{ id: 'work', channels: [] }] }, null, 2) + '\n')
+
+    const res = await postChannel('work', telegramFixture('BadCase'))
+    expect(res.status).toBe(400)
+  })
+
+  it('POST rejects invalid ChannelConfig shape with 400', async () => {
+    await start([{ id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [{ id: 'work', channels: [] }] }, null, 2) + '\n')
+
+    // Missing chatId — Zod's discriminated union should reject this
+    const res = await postChannel('work', { id: 'tg-work', vendor: 'telegram', botToken: 'TOK' })
+    expect(res.status).toBe(400)
+  })
+
+  it('POST returns 404 for nonexistent head', async () => {
+    await start([{ id: 'default', channels: [] }])
+    const res = await postChannel('ghost', telegramFixture('tg-ghost'))
+    expect(res.status).toBe(404)
+  })
+
+  it('POST adds a SECOND telegram channel to the same head (DASH-04 multi-of-same-vendor)', async () => {
+    await start([
+      { id: 'work', channels: [{ id: 'tg-work', vendor: 'telegram', botToken: 'TOK1', chatId: '111' }] },
+    ])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'work', channels: [{ id: 'tg-work', vendor: 'telegram', botToken: 'TOK1', chatId: '111' }] }],
+    }, null, 2) + '\n')
+
+    const res = await postChannel('work', telegramFixture('tg-work-2', '222', 'TOK2'))
+    expect(res.status).toBe(200)
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; channels: Array<Record<string, unknown>> }>
+    const workHead = heads.find(h => h.id === 'work')!
+    expect(workHead.channels).toHaveLength(2)
+    expect(workHead.channels.map(c => c['id'])).toEqual(['tg-work', 'tg-work-2'])
+  })
+
+  it('POST response masks secrets — botToken returned as { isSet: true }', async () => {
+    await start([{ id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [{ id: 'work', channels: [] }] }, null, 2) + '\n')
+
+    const res = await postChannel('work', telegramFixture('tg-work', '123', 'SUPER-SECRET'))
+    expect(res.status).toBe(200)
+    const body = res.json as { channel: Record<string, unknown> }
+    expect(body.channel['botToken']).toEqual({ isSet: true })
+    expect(JSON.stringify(body)).not.toContain('SUPER-SECRET')
+  })
+})
