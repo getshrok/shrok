@@ -101,7 +101,7 @@ export function useStream(currentHeadId: string) {
         void qc.invalidateQueries({ queryKey: ['thresholds'] })
       }
       if (event.type === 'memory_retrieval') {
-        const { text, eventId, tokens } = event.payload as { text: string; eventId?: string; tokens: number }
+        const { text, eventId, tokens } = event.payload
         qc.setQueryData(
           ['memory-retrievals'],
           (old: Array<{ text: string; eventId?: string; tokens: number }> | undefined) =>

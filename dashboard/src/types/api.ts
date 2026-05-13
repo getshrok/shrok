@@ -399,4 +399,4 @@ export type DashboardEvent =
   | { type: 'typing'; headId: string }
   | { type: 'theme_changed'; payload: { accentColor: string; logoUrl: string } }
   | { type: 'thresholds_changed' }
-  | { type: 'memory_retrieval'; payload: { text: string; eventId?: string } }
+  | { type: 'memory_retrieval'; payload: { text: string; eventId?: string; tokens: number } }
