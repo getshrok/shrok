@@ -5,6 +5,7 @@ import type { Attachment } from './core.js'
 export interface InboundMessage {
   channel: string          // unique channel ID (e.g. 'discord', 'telegram', 'voice')
   text: string
+  senderName?: string
   attachments?: Attachment[]
   rawPayload?: unknown
 }
