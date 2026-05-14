@@ -129,6 +129,7 @@ function makeLoop(router: ReturnType<typeof makeRealRouter>) {
     } as import('../../src/config.js').Config,
     transaction: bundle.tx,
     pollIntervalMs: 200,
+    resolveCurrentHeads: () => [],
   })
 
   return { loop, ...bundle }

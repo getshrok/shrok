@@ -238,6 +238,9 @@ async function main() {
       db, config, llmRouter, channelRouter: headRouter, mcpRegistry,
       dashboardEventBus: dashboardEvents,
       headId: head.id,
+      // Phase 35 D-08: re-resolve heads each call so dashboard edits between scheduler ticks
+      // land without a process restart (mirrors DashboardServer.resolveCurrentHeads pattern).
+      resolveCurrentHeads: () => resolveHeads(loadConfig()),
     })
     const { activationLoop: headLoop } = headSystem
     const { queue: headQueue, appState, messages: headMessages, agents: headAgents } = headSystem.stores

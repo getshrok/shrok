@@ -100,6 +100,12 @@ export interface SystemDeps {
   /** Phase 31 (CONF-03): head identifier this system instance owns.
    *  When omitted, defaults to 'default' (single-head backward compat). */
   headId?: string
+  /** Phase 35 D-08: callback that returns the current heads list at call time (no cache).
+   *  Threaded into ActivationLoop for the D-07 reminder first-channel fallback. The host
+   *  supplies `() => resolveHeads(loadConfig())` so dashboard edits between ticks land
+   *  without a restart. When omitted, a default callback returns a single-head with empty
+   *  channels — exercises the existing skip+log path (backward-compatible). */
+  resolveCurrentHeads?: () => Array<{ id: string; channels: Array<{ id: string }> }>
 }
 
 export interface System {
@@ -371,6 +377,9 @@ export function buildSystem(deps: SystemDeps): System {
     config,
     scheduleStore: stores.schedules,
     mcpRegistry,
+    // Phase 35 D-08: default callback returns a single-head with empty channels — exercises
+    // the existing skip+log path (backward-compatible for hosts that don't supply this).
+    resolveCurrentHeads: deps.resolveCurrentHeads ?? (() => [{ id: deps.headId ?? 'default', channels: [] }]),
     stewardRunStore: stores.stewardRuns,
     ...(deps.dashboardEventBus ? { events: deps.dashboardEventBus } : {}),
     transaction: tx,

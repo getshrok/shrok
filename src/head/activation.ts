@@ -92,6 +92,11 @@ export interface ActivationLoopOptions {
   config: Config
   scheduleStore: ScheduleStore
   mcpRegistry: McpRegistry
+  /** Phase 35 D-08: read the head's channels at reminder fire time for D-07 first-channel fallback.
+   *  Callback pattern (mirrors DashboardServerOptions.resolveCurrentHeads) so the loader sees fresh
+   *  config.json without an in-memory cache — heads can be edited via the dashboard between ticks.
+   *  Minimal structural type: only .id and .channels[].id are needed at the fire site. */
+  resolveCurrentHeads: () => Array<{ id: string; channels: Array<{ id: string }> }>
   stewardRunStore?: StewardRunStore
   events?: DashboardEventBus
   transaction: (fn: () => void) => void
@@ -1079,13 +1084,24 @@ export class ActivationLoop {
         return
       }
       // channel resolved at fire time per REM-06
-      const channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
+      let channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
       if (!channel) {
-        log.warn(`[scheduler] reminder:${event.scheduleId} — no active channel, skipping`)
-        if (schedule.cron === null) {
-          this.opts.scheduleStore.delete(event.scheduleId)
+        // Phase 35 D-07: first-channel fallback. When last_active is null, try the head's
+        // first configured channel before giving up. resolveCurrentHeads reads fresh config
+        // (D-08) so dashboard edits between ticks are picked up without a restart.
+        const heads = this.opts.resolveCurrentHeads()
+        const head = heads.find(h => h.id === this.opts.headId)
+        const firstChannelId = head?.channels[0]?.id ?? null
+        if (firstChannelId) {
+          log.info(`[scheduler] reminder:${event.scheduleId} — no last_active_channel, falling back to head.channels[0]=${firstChannelId}`)
+          channel = firstChannelId
+        } else {
+          log.warn(`[scheduler] reminder:${event.scheduleId} — no active channel and head has no configured channels, skipping`)
+          if (schedule.cron === null) {
+            this.opts.scheduleStore.delete(event.scheduleId)
+          }
+          return
         }
-        return
       }
       if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
         const recentMsgs = this.opts.messages.getRecentTextByTokens(this.opts.headId, this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()

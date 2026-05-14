@@ -129,6 +129,7 @@ function makeLoop(router: LLMRouter) {
     transaction: tx,
     pollIntervalMs: 50,
     stewards: [],  // disable stewards so only head LLM calls are counted
+    resolveCurrentHeads: () => [],
   })
 
   return { loop, queue, messages, channelRouter, agents, appState }

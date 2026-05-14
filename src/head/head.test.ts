@@ -621,6 +621,7 @@ function makeActivationLoopFixture() {
     config,
     transaction: (fn) => fn(),
     pollIntervalMs: 0,
+    resolveCurrentHeads: () => [],
   })
 
   return { loop, llmRouter, llmResponses, messages, queueStore, channelRouter }

@@ -95,6 +95,7 @@ function makeLoop(getUptimeSeconds?: () => number) {
     mcpRegistry: makeMcpRegistry(),
     transaction: tx,
     pollIntervalMs: 50,
+    resolveCurrentHeads: () => [],
     ...(getUptimeSeconds ? { getUptimeSeconds } : {}),
   })
 
@@ -279,6 +280,7 @@ function makeLoopWithHeadId(
     mcpRegistry,
     transaction: tx,
     pollIntervalMs: 50,
+    resolveCurrentHeads: () => [],
   })
 }
 
