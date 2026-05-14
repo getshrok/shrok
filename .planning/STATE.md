@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 34-03-PLAN.md
-last_updated: "2026-05-14T03:20:44.298Z"
+stopped_at: Completed 34-04-PLAN.md
+last_updated: "2026-05-14T03:27:29.049Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 24
-  completed_plans: 22
-  percent: 92
+  completed_plans: 23
+  percent: 96
 ---
 
 # Project State
@@ -19,10 +19,10 @@ progress:
 ## Current Position
 
 Phase: 34 (multi-head-agent-lifecycle) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-14
-Stopped at: Completed 34-03-PLAN.md
+Stopped at: Completed 34-04-PLAN.md
 
 Progress: [█████████░] 88% (21/24 plans complete; phase 34 in progress)
 
@@ -97,6 +97,10 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-ALL-SIX honored (Plan 34-03): all six queueStore.enqueue() callsites in src/sub-agents/local.ts append `, this.headId` as the 3rd positional argument — closes T-34-09 cross-head info leak at the call site; QueueStore default 'default' remains as defense-in-depth
 - D-RESUME-VS-SUBSPAWN (Plan 34-03): resumeSuspended uses `state.headId` (agent's persisted head, matches SpawnOptions contract under any future runner/agent head divergence); handleSpawnAgent uses `this.headId` (sub-agents structurally inherit parent's head, encodes T-34-10 'accept' disposition as compile-time invariant)
 - D-RED-SKIPPED (Plan 34-03): TDD-RED cadence intentionally skipped — existing src/sub-agents/agents.test.ts fixtures are already runtime-RED from Plan 01's AgentStore.create binding (Plan 02's documented Wave 1 RED state); Plan 05's fixture wiring is the formal GREEN. Plan 03 lands implementation only — verification via grep + per-callsite priority match + tsc-clean-in-local.ts
+- D-EXEC-OPTION Wave 2 honored (Plan 34-04): HeadToolExecutor.dispatch() spawn_agent case injects `headId: this.opts.headId` into the constructed SpawnOptions (src/head/index.ts:175); type-required, no `?? 'default'` fallback at this site
+- D-WIRING-IN-SYSTEM honored (Plan 34-04): buildSystem() supplies `headId: deps.headId ?? 'default'` to the LocalAgentRunner ctor options (system.ts:248) and the toolExecutorOpts object (system.ts:335); the activation.ts:766 `{...toolExecutorOpts}` spread carries headId through to HeadToolExecutor without a construction-site edit
+- D-RULE-3-ACTIVATION-1247 (Plan 34-04): Rule-3 deviation added `headId: this.opts.headId` at src/head/activation.ts:1251 (scheduled-trigger SpawnOptions). Plan 04 plan text omitted this site but Plans 02 and 03 SUMMARYs both forecast it as a Plan 04 fix; without it `npx tsc --noEmit` fails in production code because Plan 02 made SpawnOptions.headId required
+- D-WAVE-2-GREEN (Plans 34-03 + 34-04): production code is tsc-clean for head_id routing through spawn → run → complete; remaining ~40 tsc errors are all at test fixtures (head.test.ts, activation.test.ts, agents.test.ts, cancel.test.ts, archival.test.ts) and eval scripts (scripts/eval/*) that Plan 05 wires
 
 ## Performance Metrics
 
@@ -112,3 +116,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 34    | 01   | 3min     | 2     | 3     |
 | 34    | 02   | 2min     | 3     | 3     |
 | Phase 34 P03 | 4min | 2 tasks | 1 files |
+| Phase 34 P04 | 3min | 2 tasks | 3 files |
