@@ -172,6 +172,7 @@ export class HeadToolExecutor implements ToolExecutor {
           prompt: input['prompt'] as string,
           name: input['name'] as string,
           trigger: 'manual',
+          headId: this.opts.headId,                       // Phase 34 D-EXEC-OPTION: agent inherits the spawning head's identity
           ...(this.opts.getHistory ? { headHistory: this.opts.getHistory() } : {}),
           ...(this.opts.onDebug ? { onDebug: this.opts.onDebug } : {}),
           ...(this.opts.onVerbose ? { onVerbose: this.opts.onVerbose } : {}),
