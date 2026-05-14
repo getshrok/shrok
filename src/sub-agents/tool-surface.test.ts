@@ -78,6 +78,7 @@ describe('tool-surface ISO-01 enforcement', () => {
     }
     return {
       skillLoader: skillsLoader as unknown as SkillLoader,
+      headId: 'default',
       unifiedLoader,
       skillsDir,
       workspacePath: null,

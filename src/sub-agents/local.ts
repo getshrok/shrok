@@ -369,6 +369,7 @@ export class LocalAgentRunner implements AgentRunner {
   private toolSurfaceDeps(): ToolSurfaceDeps {
     return {
       skillLoader: this.skillLoader,
+      headId: this.headId,                    // Phase 35 D-09: per-head tool registry — create_schedule/create_reminder stamp this on every row
       ...(this.unifiedLoader ? { unifiedLoader: this.unifiedLoader } : {}),
       skillsDir: this.skillsDir,
       workspacePath: this.workspacePath,

@@ -476,6 +476,7 @@ function makeToolSurfaceDeps(overrides: Partial<ToolSurfaceDeps> = {}): ToolSurf
   const usageStore = new UsageStore(db, 'UTC')
   return {
     skillLoader,
+    headId: 'default',
     skillsDir: '/tmp/skills',
     workspacePath: null,
     identityLoader,

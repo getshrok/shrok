@@ -24,6 +24,12 @@ export interface AgentDefaults {
 
 export interface ToolSurfaceDeps {
   skillLoader: SkillLoader
+  /** Phase 35 D-09: head identity for this agent's tool registry. Threaded into
+   *  buildScheduleTools / buildReminderTools so create_schedule / create_reminder
+   *  stamp the spawning head's id on every CreateScheduleOptions. Required —
+   *  every runner instance has a fixed head per LocalAgentRunner.headId (Phase 34
+   *  D-RUNNER-HEADID). */
+  headId: string
   /** Unified loader — passed through to create_schedule for kind validation.
    *  NEVER consumed by buildSkillsListing (ISO-01): the listing reads skillLoader
    *  exclusively so tasks stay structurally absent from the agent-visible surface. */
@@ -233,9 +239,9 @@ export async function assembleTools(
   }
 
   const usageTool = buildUsageTool(deps.usageStore)
-  const scheduleTools = deps.scheduleStore ? buildScheduleTools(deps.scheduleStore, deps.timezone, deps.unifiedLoader ?? null) : []
+  const scheduleTools = deps.scheduleStore ? buildScheduleTools(deps.scheduleStore, deps.timezone, deps.unifiedLoader ?? null, deps.headId) : []
   const reminderTools = deps.scheduleStore
-    ? buildReminderTools(deps.scheduleStore, deps.timezone)
+    ? buildReminderTools(deps.scheduleStore, deps.timezone, deps.headId)
     : []
   const noteTools = deps.noteStore ? buildNoteTools(deps.noteStore) : []
 

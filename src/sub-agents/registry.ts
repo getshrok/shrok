@@ -739,7 +739,8 @@ export function buildUsageTool(usageStore: UsageStore): AgentToolEntry {
 export function buildScheduleTools(
   scheduleStore: ScheduleStore,
   timezone: string,
-  unifiedLoader: UnifiedLoader | null = null,
+  unifiedLoader: UnifiedLoader | null,
+  headId: string,
 ): AgentToolEntry[] {
   return [
     {
@@ -810,8 +811,8 @@ export function buildScheduleTools(
         }
         const conditionsArg = input['conditions'] as string | undefined
         const agentContextArg = input['agentContext'] as string | undefined
-        // headId: stamped as 'default' here; Plan 35-02 wires per-head from tool factory closure
-        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, headId: 'default', taskName, kind: 'task' }
+        // Phase 35 D-09: headId comes from the factory closure (per-head tool registry).
+        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, headId, taskName, kind: 'task' }
         if (cronArg !== undefined) createOpts.cron = cronArg
         if (runAtArg !== undefined) createOpts.runAt = runAtArg
         if (nextRun !== undefined) createOpts.nextRun = nextRun
@@ -840,6 +841,12 @@ export function buildScheduleTools(
         },
       },
       execute: async (input, _ctx) => {
+        // Phase 35 D-10: agents cannot reassign a schedule to a different head via update_schedule.
+        // Schema-level absence (no headId in inputSchema.properties) is the primary defense;
+        // this runtime check is defense-in-depth for clients that ignore the schema.
+        if ('headId' in (input as Record<string, unknown>)) {
+          return JSON.stringify({ error: true, message: 'headId cannot be reassigned via update_schedule. To move a schedule to a different head, delete and recreate.' })
+        }
         const patch: import('../db/schedules.js').SchedulePatch = {}
         const cronTimezoneArg = input['cronTimezone'] as string | undefined
         if (cronTimezoneArg !== undefined) {
@@ -896,6 +903,7 @@ export function buildScheduleTools(
 export function buildReminderTools(
   scheduleStore: ScheduleStore,
   timezone: string,
+  headId: string,
 ): AgentToolEntry[] {
   return [
     {
@@ -1009,10 +1017,10 @@ export function buildReminderTools(
 
         const id = generateId('rem')
 
-        // headId: stamped as 'default' here; Plan 35-02 wires per-head from tool factory closure
+        // Phase 35 D-09: headId comes from the factory closure (per-head tool registry).
         const createOpts: import('../db/schedules.js').CreateScheduleOptions = {
           id,
-          headId: 'default',
+          headId,
           kind: 'reminder',
           agentContext: message,
           runAt: triggerAt ?? undefined,
