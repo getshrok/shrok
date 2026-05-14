@@ -246,7 +246,12 @@ export class DashboardServer {
     })
     app.use('/api/tests', createTestsRouter())
     if (this.opts.schedules) {
-      app.use('/api/schedules', createSchedulesRouter(this.opts.schedules, this.opts.config.timezone, this.opts.unifiedLoader))
+      // Plan 35-03 D-11: schedules router takes resolveCurrentHeads as a 3rd
+      // required arg so POST /api/schedules can validate body.headId against
+      // the live head list. Reuses the same callback wired into the heads
+      // router above so dashboard config edits between requests land without
+      // a process restart.
+      app.use('/api/schedules', createSchedulesRouter(this.opts.schedules, this.opts.config.timezone, resolveCurrentHeads, this.opts.unifiedLoader))
     }
     if (this.opts.db && this.opts.evalResultsDir) {
       app.use('/api/evals', createEvalsRouter(this.opts.db, this.opts.evalResultsDir))
