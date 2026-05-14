@@ -202,6 +202,7 @@ export class ActivationLoop {
     this.opts.queueStore.enqueue(
       { type: 'user_message', id: generateId('qe'), channel, text: systemTrigger('greeting', undefined, 'Send a brief greeting to the user.'), createdAt: new Date().toISOString() },
       100,
+      this.opts.headId,
     )
     this.notify()
   }
