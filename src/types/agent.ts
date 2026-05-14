@@ -41,6 +41,8 @@ export interface AgentState {
   model: string
   task: string
   trigger: 'manual' | 'scheduled' | 'ad_hoc'
+  /** Head this agent belongs to (Phase 34). Carried through the agents.head_id column. */
+  headId: string
   workStart: number              // index into history[] where agent's own work begins (after prepended head history)
   history: Message[]             // full message history; populated when suspended/completed
   pendingQuestion?: string
@@ -62,6 +64,10 @@ export interface SpawnOptions {
   prompt: string
   model?: string                 // tier name or direct model ID; defaults to 'capable'
   trigger: AgentState['trigger']
+  /** Required: head this agent belongs to. Determines which head's activation loop
+   *  claims the agent's completion / question / response queue events. Phase 34 D-SPAWN-REQUIRED:
+   *  no silent 'default' fallback — type-enforced so missed call sites are compile errors. */
+  headId: string
   skillName?: string             // if spawned from a skill, associates the agent with that skill for tool-surface derivation
   parentAgentId?: string
   /** Head conversation history to prepend as context. Agent sees what led to the task. */
