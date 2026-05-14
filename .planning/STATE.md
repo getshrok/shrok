@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 34-01-PLAN.md
-last_updated: "2026-05-14T03:06:43.679Z"
+stopped_at: Completed 34-02-PLAN.md
+last_updated: "2026-05-14T03:13:19.842Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 24
-  completed_plans: 20
-  percent: 83
+  completed_plans: 21
+  percent: 88
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 ## Current Position
 
 Phase: 34 (multi-head-agent-lifecycle) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-14
-Stopped at: Completed 34-01-PLAN.md
+Stopped at: Completed 34-02-PLAN.md
 
-Progress: [████████░░] 83% (20/24 plans complete; phase 34 in progress)
+Progress: [█████████░] 88% (21/24 plans complete; phase 34 in progress)
 
 ## Project Reference
 
@@ -89,6 +89,10 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-ROW-WRITE-FROM-OPTIONS (Plan 34-01): head_id rides along on the existing SpawnOptions parameter; AgentStore.create() binds @head_id from options.headId with no `?? 'default'` fallback — the type-required headId on SpawnOptions (Plan 02) is the safety net, SQL DEFAULT is defense-in-depth
 - D-INDEX-SHAPE (Plan 34-01): idx_agents_head_status on (head_id, status) mirrors idx_queue_head_status_priority and idx_messages_head_created — consistent head-scoped compound shape across all multi-head tables
 - D-WAVE-1-RED (Plan 34-01): tsc --noEmit RED is expected and intentional after Plan 01 alone — SpawnOptions.headId and AgentState.headId are added by Plan 02; vitest passes today because esbuild's transpile-only path tolerates the excess-property issue at runtime
+- D-SPAWN-REQUIRED honored (Plan 34-02): SpawnOptions.headId and AgentState.headId added as required `string` fields in `src/types/agent.ts`; no optional variant; matches Phase 33 D-12 (MessageStore.append required-at-type-level) precedent
+- D-RUNNER-HEADID Wave 1 (Plan 34-02): `LocalAgentRunnerOptions.headId` added as required string field at the TOP of the interface (identity, not grab-bag); class body deliberately untouched — `private readonly headId` + ctor read + 6 enqueue callsite edits land in Plan 03 (Wave 2)
+- D-EXEC-OPTION Wave 1 (Plan 34-02): `HeadToolExecutorOptions.headId` added as a required OPTION field (NOT a 2nd positional ctor arg); JSDoc records the explicit rejection of InjectorImpl's positional pattern — option-field is the natural extension because the interface is already a 15+-field options grab-bag
+- D-WAVE-1-GREEN (Plan 34-02): all 5 tsc errors documented in Plan 01's SUMMARY are resolved; new tsc errors land at exactly the construction sites Plans 03/04 will mechanically wire (activation.ts:1247, head/index.ts:171, runner test fixtures, eval scenarios) — Wave 1 contract → Wave 2 implementation cadence working as designed
 
 ## Performance Metrics
 
@@ -102,3 +106,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 33    | 06   | 6min     | 3     | 7     |
 | 33    | 07   | 5min     | 2     | 5     |
 | 34    | 01   | 3min     | 2     | 3     |
+| 34    | 02   | 2min     | 3     | 3     |
