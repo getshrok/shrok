@@ -357,13 +357,16 @@ export class WhatsAppAdapter implements ChannelAdapter {
         if (!text && !attachments.length) continue
         if (!this.handler) continue
 
+        // Fall through to undefined (NOT the literal 'unknown') when pushName is
+        // absent — matches Discord / Slack / Cliq behavior and lets the head's
+        // conditional spread drop the field per Phase 36 D-02.
         const pushName = (msg as { pushName?: string | null }).pushName
-        const senderName = pushName && pushName.length > 0 ? pushName : 'unknown'
+        const senderName = pushName && pushName.length > 0 ? pushName : undefined
 
         this.handler({
           channel: this.id,
           text,
-          senderName,
+          ...(senderName ? { senderName } : {}),
           ...(attachments.length ? { attachments } : {}),
           rawPayload: msg,
         })

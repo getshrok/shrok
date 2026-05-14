@@ -79,12 +79,15 @@ export class TelegramAdapter implements ChannelAdapter {
       }
 
       const from = ctx.message.from
+      // Fall through to undefined (NOT the literal 'unknown') when no name source
+      // is available — matches Discord / Slack / Cliq behavior and lets the
+      // head's conditional spread drop the field per Phase 36 D-02.
       const senderName =
         from?.first_name
           ? from.first_name + (from.last_name ? ' ' + from.last_name : '')
           : from?.username
             ? '@' + from.username
-            : 'unknown'
+            : undefined
 
       this.handler({
         channel: this.id,
