@@ -113,7 +113,12 @@ export function createSchedulesRouter(
     // PATCH. Reject at the top before any patch construction so the on-disk row
     // is provably untouched. To move a schedule between heads, delete and
     // recreate. Mirrors agent-side D-10 update_schedule reject from Plan 35-02.
-    if (req.body !== null && typeof req.body === 'object' && 'headId' in (req.body as Record<string, unknown>)) {
+    // Check value (not just key presence): JSON.stringify drops undefined props
+    // anyway, and in-process callers that idiomatically construct bodies with
+    // `headId: undefined` should not trip this guard — only a real reassignment
+    // attempt (defined value) should 400.
+    const bodyObj = (req.body !== null && typeof req.body === 'object') ? (req.body as Record<string, unknown>) : {}
+    if (bodyObj['headId'] !== undefined) {
       res.status(400).json({ error: 'headId cannot be reassigned via PATCH. To move a schedule to a different head, delete and recreate.' })
       return
     }
