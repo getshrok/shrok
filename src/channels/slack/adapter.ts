@@ -34,6 +34,11 @@ export class SlackAdapter implements ChannelAdapter {
   private reactionHandler: ((messageId: string, emoji: string, userId: string) => void) | null = null
   // Bot user ID for reaction self-filtering
   private botUserId: string | null = null
+  // T-36-04: TTL-bounded cache for users.info lookups (D-05 Slack chain).
+  // 10 min TTL — accepts brief staleness on display-name renames in exchange
+  // for ~1 API call per unique sender per 10 min vs per inbound message.
+  private senderNameCache = new Map<string, { name: string; fetchedAt: number }>()
+  private readonly SENDER_NAME_TTL_MS = 10 * 60 * 1000
 
   constructor(botToken: string, appToken: string, channelId: string, mediaDir: string | undefined, id: string, headId: string) {
     this.botToken = botToken
@@ -84,9 +89,13 @@ export class SlackAdapter implements ChannelAdapter {
         log.warn(`[slack] file_share message has no files array: ${JSON.stringify(rawMsg).slice(0, 300)}`)
       }
 
+      const userId = ('user' in message && typeof message.user === 'string') ? message.user : null
+      const senderName = userId ? await this.resolveSlackSenderName(userId) : undefined
+
       this.handler({
         channel: this.id,
         text,
+        ...(senderName ? { senderName } : {}),
         ...(attachments.length ? { attachments } : {}),
         rawPayload: message,
       })
@@ -130,6 +139,26 @@ export class SlackAdapter implements ChannelAdapter {
         log.warn(`[slack] reaction collapse failed for ${messageTs}:`, (err as Error).message)
       }
     })
+  }
+
+  /** Resolve a Slack user id to a display name, with TTL-cached users.info lookup.
+   *  Falls back to the raw user id on API failure (failure is NOT cached).
+   *  Per Phase 36 D-05: profile.display_name → real_name → user id. */
+  private async resolveSlackSenderName(userId: string): Promise<string> {
+    const cached = this.senderNameCache.get(userId)
+    if (cached && Date.now() - cached.fetchedAt < this.SENDER_NAME_TTL_MS) {
+      return cached.name
+    }
+    try {
+      const info = await this.app.client.users.info({ user: userId })
+      const profile = info.user?.profile
+      const name = profile?.display_name || info.user?.real_name || userId
+      this.senderNameCache.set(userId, { name, fetchedAt: Date.now() })
+      return name
+    } catch (err) {
+      log.warn(`[slack] users.info failed for ${userId}: ${(err as Error).message}`)
+      return userId
+    }
   }
 
   private async downloadSlackFile(
