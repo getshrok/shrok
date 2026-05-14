@@ -79,6 +79,7 @@ import { checkThresholds, formatThresholdAlert } from './usage-threshold.js'
 import type { ChannelAdapter, InboundMessage } from './types/channel.js'
 import { fileURLToPath } from 'node:url'
 import { setStewardWorkspaceDir } from './head/steward.js'
+import { buildPrefixedText } from './head/sender-prefix.js'
 import { setProactiveWorkspaceDir } from './scheduler/proactive.js'
 import { setMemoryPromptsWorkspaceDir } from './memory/prompts.js'
 import { readAssistantName } from './config-file.js'
@@ -277,7 +278,8 @@ async function main() {
         return
       }
       headQueue.enqueue(
-        { type: 'user_message', id: generateId('qe'), channel: msg.channel, text: msg.text,
+        { type: 'user_message', id: generateId('qe'), channel: msg.channel,
+          text: buildPrefixedText(msg.text, msg.senderName),
           ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
           createdAt: new Date().toISOString() },
         100,
