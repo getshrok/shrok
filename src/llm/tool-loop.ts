@@ -137,12 +137,32 @@ export interface ToolLoopOptions {
 
 // ─── responseToMessage ────────────────────────────────────────────────────────
 
-/** Strip timestamp prefixes that the model may echo from context (e.g. "[0m ago] ", "[3h ago] ", "[Apr 3, 2:15 PM] ", "[now] "). */
-export function stripTimestampEcho(text: string): string {
-  return text
-    .replace(/^\[\d+[mhd] ago\] /, '')
-    .replace(/^\[\w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M\] /, '')
-    .replace(/^\[(?:just )?now\] /i, '')
+/**
+ * Strip leading bracketed prefix segments from the FIRST LINE of a model
+ * response. Generalizes the original three-pattern timestamp stripper
+ * (Phase 36 D-11/D-12) to also remove sender-name prefixes the model may
+ * mimic from inbound `[Name]: ...` messages.
+ *
+ * Strips one or more sequential `[…]` segments (each optionally followed by
+ * `:` and whitespace) at the start of the string. First-line-only — anchored
+ * with `^` and the regex is single-line, so multi-line responses where the
+ * model legitimately uses `[…]` later are unaffected.
+ *
+ * Examples that strip:
+ *   "[5m ago] hi"           → "hi"
+ *   "[Apr 3, 2:15 PM] hi"   → "hi"
+ *   "[now] hi"              → "hi"
+ *   "[just now] hi"         → "hi"
+ *   "[Ashley]: hi"          → "hi"
+ *   "[5m ago] [Ashley]: hi" → "hi"
+ *
+ * Examples that do NOT strip (anti-regression):
+ *   "see [Ashley]: hi"      → unchanged (not anchored at start)
+ *   "[unclosed hi"          → unchanged (no closing bracket)
+ *   "[] hi"                 → unchanged (empty brackets disallowed)
+ */
+export function stripLeadingBracketPrefixes(text: string): string {
+  return text.replace(/^(\s*\[[^\]]+\]\s*:?\s*)+/, '')
 }
 
 /** Convert an LLM response to one or two messages.
@@ -151,7 +171,7 @@ export function stripTimestampEcho(text: string): string {
  *  messages as pure tool invocations — intermediate text stored separately
  *  can't break tool_call → tool_result adjacency. */
 function responseToMessages(id: string, resp: LLMResponse): Message[] {
-  const content = stripTimestampEcho(resp.content.replaceAll(' — ', '- ').replaceAll('—', '- '))
+  const content = stripLeadingBracketPrefixes(resp.content.replaceAll(' — ', '- ').replaceAll('—', '- '))
   if (resp.toolCalls && resp.toolCalls.length > 0) {
     const messages: Message[] = []
     // Split: text goes as a separate assistant message if non-empty

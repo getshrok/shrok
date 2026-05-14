@@ -24,7 +24,7 @@ import { HEAD_TOOLS, HeadToolExecutor, type HeadToolExecutorOptions } from './in
 import type { ToolDefinition } from '../types/llm.js'
 import { archiveMessages } from './archival.js'
 import { buildCommandRegistry, type SlashCommand, type UsageMode } from './commands.js'
-import { runToolLoop, LoopDetectedError, stripTimestampEcho } from '../llm/tool-loop.js'
+import { runToolLoop, LoopDetectedError, stripLeadingBracketPrefixes } from '../llm/tool-loop.js'
 import { runStewards, runRelaySteward, runWorkSummarySteward, runHeadRelaySteward, runRoutingSteward, runContextRelevanceSteward, DEFAULT_STEWARDS } from './steward.js'
 import { extractAgentOwnWork, formatWorkForSummary } from './injector.js'
 import { systemTrigger, systemEvent, systemNudge, MARKER_TAGS, LEGACY_MARKER_PREFIXES } from '../markers.js'
