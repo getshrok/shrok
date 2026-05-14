@@ -344,6 +344,15 @@ export class ZohoCliqAdapter implements ChannelAdapter {
 
     if (newMessages.length === 0) return
 
+    // Phase 36 D-05: Cliq sender chain — sender.name (display) → sender.id (handle).
+    // Loopback filter at the top of the loop already drops bot-self echoes,
+    // so this resolves to the actual remote sender for delivered messages.
+    const senderNameOf = (m: CliqMessage): string | undefined => {
+      if (m.sender?.name && m.sender.name.length > 0) return m.sender.name
+      if (m.sender?.id && m.sender.id.length > 0) return m.sender.id
+      return undefined
+    }
+
     for (const msg of newMessages) {
       // Text messages: content.text. File messages: content.comment + content.file
       const text = msg.content?.text ?? msg.content?.comment ?? ''
@@ -372,6 +381,7 @@ export class ZohoCliqAdapter implements ChannelAdapter {
         log.info(`[zoho-cliq] Downloading attachment ${file.name ?? file.id} (${sizeMb} MB) in background`)
         const handler = this.handler
         const channel = this.id
+        const senderName = senderNameOf(msg)
         void (async () => {
           const start = Date.now()
           let attachments: Attachment[] = []
@@ -387,6 +397,7 @@ export class ZohoCliqAdapter implements ChannelAdapter {
             handler({
               channel,
               text,
+              ...(senderName ? { senderName } : {}),
               ...(attachments.length ? { attachments } : {}),
               rawPayload: msg,
             })
@@ -398,9 +409,11 @@ export class ZohoCliqAdapter implements ChannelAdapter {
       }
 
       // Text-only message — deliver immediately
+      const senderName = senderNameOf(msg)
       this.handler({
         channel: this.id,
         text,
+        ...(senderName ? { senderName } : {}),
         rawPayload: msg,
       })
     }
