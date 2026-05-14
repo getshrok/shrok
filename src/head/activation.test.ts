@@ -39,9 +39,22 @@ interface Fixture {
   injector: Injector
   scheduleStore: ScheduleStore
   tmpDir: string
+  queueStore: QueueStore
+  appState: AppStateStore
+  resolveCurrentHeads: ReturnType<typeof vi.fn>
 }
 
-function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'fire' | 'skip'; reason: string; context?: string }; conditions?: string | null; kind?: 'task' | 'reminder'; agentContext?: string } = {}): Fixture {
+function makeFixture(opts: {
+  proactiveEnabled?: boolean
+  decision?: { action: 'fire' | 'skip'; reason: string; context?: string }
+  conditions?: string | null
+  kind?: 'task' | 'reminder'
+  agentContext?: string
+  /** Phase 35: override the appState.getLastActiveChannel return value. Default 'discord'. Pass null to exercise the D-07 fallback path. */
+  lastActiveChannel?: string | null
+  /** Phase 35 D-08: override the resolveCurrentHeads callback. Default returns []. */
+  resolveCurrentHeads?: () => Array<{ id: string; channels: Array<{ id: string }> }>
+} = {}): Fixture {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'activation-test-'))
   const skillsDir = path.join(tmpDir, 'skills')
   const tasksDir = path.join(tmpDir, 'tasks')
@@ -153,9 +166,10 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
     claimAllPendingBackground: vi.fn().mockReturnValue([]),
     claimAllPendingUserMessages: vi.fn().mockReturnValue([]),
   } as unknown as QueueStore
+  const lastActive = opts.lastActiveChannel === undefined ? 'discord' : opts.lastActiveChannel
   const appState = {
     getThresholds: vi.fn().mockReturnValue([]),
-    getLastActiveChannel: vi.fn().mockReturnValue('discord'),
+    getLastActiveChannel: vi.fn().mockReturnValue(lastActive),
     setLastActiveChannel: vi.fn(),
     tryAcquireArchivalLock: vi.fn().mockReturnValue(false),
     releaseArchivalLock: vi.fn(),
@@ -178,6 +192,8 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
     delete: vi.fn(),
     watch: vi.fn(),
   } as unknown as SkillLoader
+
+  const resolveCurrentHeads = vi.fn(opts.resolveCurrentHeads ?? (() => []))
 
   const loop = new ActivationLoop({
     headId: 'default',
@@ -207,9 +223,10 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
     config,
     transaction: (fn) => fn(),
     pollIntervalMs: 0,
+    resolveCurrentHeads,
   })
 
-  return { loop, agentRunner, injector, scheduleStore, tmpDir }
+  return { loop, agentRunner, injector, scheduleStore, tmpDir, queueStore, appState, resolveCurrentHeads }
 }
 
 function jobEvent(taskName: string | null, kind: 'task' | 'reminder' = 'task'): QueueEvent & { type: 'schedule_trigger' } {
@@ -346,6 +363,77 @@ describe('injectEvent — append-only override threading', () => {
     expect(call[0]).toBe(event)
     // 2nd arg is intentionally omitted for non-completed events.
     expect(call[1]).toBeUndefined()
+  })
+})
+
+// ─── Phase 35 D-07: reminder fire first-channel fallback ─────────────────────
+
+describe('handleScheduleTrigger reminder branch — D-07 fallback', () => {
+  let fix: Fixture
+
+  afterEach(() => {
+    if (fix?.tmpDir) fs.rmSync(fix.tmpDir, { recursive: true, force: true })
+    vi.clearAllMocks()
+  })
+
+  function reminderEvent(): QueueEvent & { type: 'schedule_trigger' } {
+    return { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', taskName: null, kind: 'reminder', createdAt: new Date().toISOString() }
+  }
+
+  it('Test A — happy path (D-06 unchanged): last_active_channel returns a channel, enqueue uses it, resolveCurrentHeads NOT called', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Check the build',
+      lastActiveChannel: 'tg_a',
+      resolveCurrentHeads: () => [{ id: 'default', channels: [{ id: 'should_not_be_used' }] }],
+    })
+    await fire(fix.loop, reminderEvent())
+    expect(fix.queueStore.enqueue).toHaveBeenCalledOnce()
+    const enqueueArgs = vi.mocked(fix.queueStore.enqueue).mock.calls[0]!
+    const enqueuedEvent = enqueueArgs[0] as { type: string; channel?: string }
+    expect(enqueuedEvent.type).toBe('user_message')
+    expect(enqueuedEvent.channel).toBe('tg_a')
+    expect(fix.resolveCurrentHeads).not.toHaveBeenCalled()
+  })
+
+  it('Test B — fallback fires (D-07 new): last_active is null, falls back to head.channels[0].id', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Check the build',
+      lastActiveChannel: null,
+      resolveCurrentHeads: () => [{ id: 'default', channels: [{ id: 'tg_b' }, { id: 'tg_c' }] }],
+    })
+    await fire(fix.loop, reminderEvent())
+    expect(fix.queueStore.enqueue).toHaveBeenCalledOnce()
+    const enqueueArgs = vi.mocked(fix.queueStore.enqueue).mock.calls[0]!
+    const enqueuedEvent = enqueueArgs[0] as { type: string; channel?: string }
+    expect(enqueuedEvent.type).toBe('user_message')
+    expect(enqueuedEvent.channel).toBe('tg_b')
+    expect(fix.resolveCurrentHeads).toHaveBeenCalled()
+  })
+
+  it('Test C — skip+log (D-07 edge): last_active null AND head has zero channels, no enqueue, one-time reminder deleted', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Check the build',
+      lastActiveChannel: null,
+      resolveCurrentHeads: () => [{ id: 'default', channels: [] }],
+    })
+    await fire(fix.loop, reminderEvent())
+    expect(fix.queueStore.enqueue).not.toHaveBeenCalled()
+    expect(fix.scheduleStore.delete).toHaveBeenCalledWith('s1')
+  })
+
+  it('Test D — head not found (defensive): last_active null AND resolveCurrentHeads returns no matching head, same skip+log behavior', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Check the build',
+      lastActiveChannel: null,
+      resolveCurrentHeads: () => [],
+    })
+    await fire(fix.loop, reminderEvent())
+    expect(fix.queueStore.enqueue).not.toHaveBeenCalled()
+    expect(fix.scheduleStore.delete).toHaveBeenCalledWith('s1')
   })
 })
 
