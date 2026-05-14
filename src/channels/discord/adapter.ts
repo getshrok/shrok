@@ -183,9 +183,15 @@ export class DiscordAdapter implements ChannelAdapter {
       text = text ? `${text}\n\n${inlinedTexts.join('\n\n')}` : inlinedTexts.join('\n\n')
     }
 
+    const senderName =
+      message.member?.displayName
+      ?? message.author.globalName
+      ?? message.author.username
+
     this.handler({
       channel: this.id,
       text,
+      ...(senderName ? { senderName } : {}),
       ...(attachments.length ? { attachments } : {}),
       rawPayload: message,
     })
