@@ -1123,6 +1123,7 @@ export class ActivationLoop {
       this.opts.queueStore.enqueue(
         { type: 'user_message', id: generateId('qe'), channel, text: systemTrigger('reminder', undefined, message), createdAt: new Date().toISOString() },
         PRIORITY.USER_MESSAGE,
+        this.opts.headId,
       )
       this.notify()
       return
