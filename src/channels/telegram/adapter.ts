@@ -78,9 +78,18 @@ export class TelegramAdapter implements ChannelAdapter {
         }
       }
 
+      const from = ctx.message.from
+      const senderName =
+        from?.first_name
+          ? from.first_name + (from.last_name ? ' ' + from.last_name : '')
+          : from?.username
+            ? '@' + from.username
+            : 'unknown'
+
       this.handler({
         channel: this.id,
         text,
+        ...(senderName ? { senderName } : {}),
         ...(attachments.length ? { attachments } : {}),
         rawPayload: ctx.message,
       })
