@@ -77,6 +77,26 @@ describe('normalizeSenderName', () => {
   it('Test 13: input that becomes empty after stripping returns empty (D-02 no-prefix path)', () => {
     expect(normalizeSenderName(':::')).toBe('')
   })
+
+  it('Test 13b: truncates without splitting a surrogate pair when emoji straddles the boundary', () => {
+    // Emoji 🎉 (U+1F389) occupies UTF-16 code units 39-40 of `input`.
+    // Naive slice(0, 40) would return 39 'A's + a lone high surrogate.
+    const input = 'A'.repeat(39) + '🎉' + 'B'.repeat(10)
+    const out = normalizeSenderName(input)
+    expect(out.endsWith('…')).toBe(true)
+    // No orphan surrogate code units anywhere in the output.
+    for (let i = 0; i < out.length; i++) {
+      const code = out.charCodeAt(i)
+      if (code >= 0xD800 && code <= 0xDBFF) {
+        const next = out.charCodeAt(i + 1)
+        expect(next >= 0xDC00 && next <= 0xDFFF).toBe(true)
+        i++ // skip low half — already validated
+      } else {
+        // Must not be an orphan low surrogate either.
+        expect(code >= 0xDC00 && code <= 0xDFFF).toBe(false)
+      }
+    }
+  })
 })
 
 describe('buildPrefixedText', () => {

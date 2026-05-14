@@ -18,7 +18,11 @@ export function normalizeSenderName(input: string | undefined): string {
   let out = input.replace(/[\[\]:]/g, '')
   out = out.replace(/\s+/g, ' ').trim()
   if (out.length > MAX_SENDER_NAME_LEN) {
-    out = out.slice(0, MAX_SENDER_NAME_LEN) + '…'
+    // Iterate by codepoint (Array.from splits on surrogate pairs) so we never
+    // slice a high surrogate from its low surrogate — appending '…' to a lone
+    // surrogate produces an invalid UTF-16 sequence that renders as '�'
+    // in downstream consumers and may confuse JSON serialization in logs.
+    out = Array.from(out).slice(0, MAX_SENDER_NAME_LEN).join('') + '…'
   }
   return out
 }
