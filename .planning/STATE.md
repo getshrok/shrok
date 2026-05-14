@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 34-02-PLAN.md
-last_updated: "2026-05-14T03:13:19.842Z"
+stopped_at: Completed 34-03-PLAN.md
+last_updated: "2026-05-14T03:20:44.298Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 24
-  completed_plans: 21
-  percent: 88
+  completed_plans: 22
+  percent: 92
 ---
 
 # Project State
@@ -19,10 +19,10 @@ progress:
 ## Current Position
 
 Phase: 34 (multi-head-agent-lifecycle) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-14
-Stopped at: Completed 34-02-PLAN.md
+Stopped at: Completed 34-03-PLAN.md
 
 Progress: [█████████░] 88% (21/24 plans complete; phase 34 in progress)
 
@@ -93,6 +93,10 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-RUNNER-HEADID Wave 1 (Plan 34-02): `LocalAgentRunnerOptions.headId` added as required string field at the TOP of the interface (identity, not grab-bag); class body deliberately untouched — `private readonly headId` + ctor read + 6 enqueue callsite edits land in Plan 03 (Wave 2)
 - D-EXEC-OPTION Wave 1 (Plan 34-02): `HeadToolExecutorOptions.headId` added as a required OPTION field (NOT a 2nd positional ctor arg); JSDoc records the explicit rejection of InjectorImpl's positional pattern — option-field is the natural extension because the interface is already a 15+-field options grab-bag
 - D-WAVE-1-GREEN (Plan 34-02): all 5 tsc errors documented in Plan 01's SUMMARY are resolved; new tsc errors land at exactly the construction sites Plans 03/04 will mechanically wire (activation.ts:1247, head/index.ts:171, runner test fixtures, eval scenarios) — Wave 1 contract → Wave 2 implementation cadence working as designed
+- D-RUNNER-HEADID Wave 2 honored (Plan 34-03): LocalAgentRunner.headId is `private readonly`, assigned from opts.headId on the very first line of the ctor body; mirrors ActivationLoop's identity-fixed-at-construction precedent
+- D-ALL-SIX honored (Plan 34-03): all six queueStore.enqueue() callsites in src/sub-agents/local.ts append `, this.headId` as the 3rd positional argument — closes T-34-09 cross-head info leak at the call site; QueueStore default 'default' remains as defense-in-depth
+- D-RESUME-VS-SUBSPAWN (Plan 34-03): resumeSuspended uses `state.headId` (agent's persisted head, matches SpawnOptions contract under any future runner/agent head divergence); handleSpawnAgent uses `this.headId` (sub-agents structurally inherit parent's head, encodes T-34-10 'accept' disposition as compile-time invariant)
+- D-RED-SKIPPED (Plan 34-03): TDD-RED cadence intentionally skipped — existing src/sub-agents/agents.test.ts fixtures are already runtime-RED from Plan 01's AgentStore.create binding (Plan 02's documented Wave 1 RED state); Plan 05's fixture wiring is the formal GREEN. Plan 03 lands implementation only — verification via grep + per-callsite priority match + tsc-clean-in-local.ts
 
 ## Performance Metrics
 
@@ -107,3 +111,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 33    | 07   | 5min     | 2     | 5     |
 | 34    | 01   | 3min     | 2     | 3     |
 | 34    | 02   | 2min     | 3     | 3     |
+| Phase 34 P03 | 4min | 2 tasks | 1 files |
