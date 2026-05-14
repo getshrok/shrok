@@ -810,7 +810,8 @@ export function buildScheduleTools(
         }
         const conditionsArg = input['conditions'] as string | undefined
         const agentContextArg = input['agentContext'] as string | undefined
-        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, taskName, kind: 'task' }
+        // headId: stamped as 'default' here; Plan 35-02 wires per-head from tool factory closure
+        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, headId: 'default', taskName, kind: 'task' }
         if (cronArg !== undefined) createOpts.cron = cronArg
         if (runAtArg !== undefined) createOpts.runAt = runAtArg
         if (nextRun !== undefined) createOpts.nextRun = nextRun
@@ -1008,8 +1009,10 @@ export function buildReminderTools(
 
         const id = generateId('rem')
 
+        // headId: stamped as 'default' here; Plan 35-02 wires per-head from tool factory closure
         const createOpts: import('../db/schedules.js').CreateScheduleOptions = {
           id,
+          headId: 'default',
           kind: 'reminder',
           agentContext: message,
           runAt: triggerAt ?? undefined,

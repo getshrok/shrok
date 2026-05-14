@@ -225,6 +225,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     for (const sched of sv.seedSchedules) {
       env.bundle.schedules.create({
         id: sched.id,
+        headId: 'default',
         taskName: sched.taskName,
         cron: sched.cron,
       })

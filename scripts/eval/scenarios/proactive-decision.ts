@@ -100,6 +100,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     // Seed schedule — cron matches current time so there's no timing ambiguity
     env1.bundle.schedules.create({
       id: SCHEDULE_ID,
+      headId: 'default',
       taskName: 'email-triage',
       cron: scheduleCron,
       nextRun: new Date().toISOString(),
@@ -139,6 +140,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     env2.bundle.schedules.create({
       id: SCHEDULE_ID,
+      headId: 'default',
       taskName: 'email-triage',
       cron: scheduleCron,
       nextRun: new Date().toISOString(),
@@ -175,6 +177,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     env3.bundle.schedules.create({
       id: SCHEDULE_ID,
+      headId: 'default',
       taskName: 'email-triage',
       cron: scheduleCron,
       nextRun: new Date().toISOString(),

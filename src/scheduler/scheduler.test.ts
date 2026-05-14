@@ -67,6 +67,7 @@ describe('describeCron', () => {
 function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
   return {
     id: 'sched_1',
+    headId: 'default',
     taskName: 'email',
     kind: 'task',
     cron: '*/3 * * * *',

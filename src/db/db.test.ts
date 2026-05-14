@@ -1235,7 +1235,7 @@ describe('ScheduleStore', () => {
   })
 
   it('creates and retrieves a schedule', () => {
-    const s = store.create({ id: 's-1', taskName: 'email', cron: '*/3 * * * *', nextRun: '2025-01-01T00:03:00Z' })
+    const s = store.create({ id: 's-1', headId: 'default', taskName: 'email', cron: '*/3 * * * *', nextRun: '2025-01-01T00:03:00Z' })
     expect(s.id).toBe('s-1')
     expect(s.taskName).toBe('email')
     expect(s.cron).toBe('*/3 * * * *')
@@ -1243,33 +1243,33 @@ describe('ScheduleStore', () => {
   })
 
   it('lists schedules', () => {
-    store.create({ id: 's-1', taskName: 'a', nextRun: '2025-01-01T01:00:00Z' })
-    store.create({ id: 's-2', taskName: 'b', nextRun: '2025-01-01T02:00:00Z' })
+    store.create({ id: 's-1', headId: 'default', taskName: 'a', nextRun: '2025-01-01T01:00:00Z' })
+    store.create({ id: 's-2', headId: 'default', taskName: 'b', nextRun: '2025-01-01T02:00:00Z' })
     expect(store.list()).toHaveLength(2)
   })
 
   it('deletes a schedule', () => {
-    store.create({ id: 's-1', taskName: 'a' })
+    store.create({ id: 's-1', headId: 'default', taskName: 'a' })
     store.delete('s-1')
     expect(store.get('s-1')).toBeNull()
   })
 
   it('getDue returns only due schedules', () => {
-    store.create({ id: 's-1', taskName: 'early', nextRun: '2025-01-01T00:00:00Z' })
-    store.create({ id: 's-2', taskName: 'future', nextRun: '2025-12-31T00:00:00Z' })
+    store.create({ id: 's-1', headId: 'default', taskName: 'early', nextRun: '2025-01-01T00:00:00Z' })
+    store.create({ id: 's-2', headId: 'default', taskName: 'future', nextRun: '2025-12-31T00:00:00Z' })
     const due = store.getDue('2025-06-01T00:00:00Z')
     expect(due.map(s => s.id)).toContain('s-1')
     expect(due.map(s => s.id)).not.toContain('s-2')
   })
 
   it('updates enabled flag', () => {
-    store.create({ id: 's-1', taskName: 'a', nextRun: '2025-01-01T01:00:00Z' })
+    store.create({ id: 's-1', headId: 'default', taskName: 'a', nextRun: '2025-01-01T01:00:00Z' })
     store.update('s-1', { enabled: false })
     expect(store.get('s-1')?.enabled).toBe(false)
   })
 
   it('markFired updates lastRun and nextRun', () => {
-    store.create({ id: 's-1', taskName: 'a', cron: '0 * * * *' })
+    store.create({ id: 's-1', headId: 'default', taskName: 'a', cron: '0 * * * *' })
     store.markFired('s-1', '2025-01-01T01:00:00Z', '2025-01-01T02:00:00Z')
     const s = store.get('s-1')!
     expect(s.lastRun).toBe('2025-01-01T01:00:00Z')
@@ -1277,7 +1277,7 @@ describe('ScheduleStore', () => {
   })
 
   it('delete removes the schedule from the store', () => {
-    store.create({ id: 's-1', taskName: 'a', runAt: '2025-01-01T00:00:00Z' })
+    store.create({ id: 's-1', headId: 'default', taskName: 'a', runAt: '2025-01-01T00:00:00Z' })
     store.delete('s-1')
     expect(store.get('s-1')).toBeNull()
     expect(store.list()).toHaveLength(0)
@@ -1286,19 +1286,19 @@ describe('ScheduleStore', () => {
   // ── target_kind / kind (Plan 04-01) ─────────────────────────────────────────
 
   it('create({kind:"task"}) persists and reads back as kind: "task"', () => {
-    const s = store.create({ id: 's-job', taskName: 'vacuum', kind: 'task', nextRun: '2025-01-01T00:00:00Z' })
+    const s = store.create({ id: 's-job', headId: 'default', taskName: 'vacuum', kind: 'task', nextRun: '2025-01-01T00:00:00Z' })
     expect(s.kind).toBe('task')
     expect(store.get('s-job')!.kind).toBe('task')
   })
 
   it('create without kind defaults to "task"', () => {
-    const s = store.create({ id: 's-task-default', taskName: 'email', nextRun: '2025-01-01T00:00:00Z' })
+    const s = store.create({ id: 's-task-default', headId: 'default', taskName: 'email', nextRun: '2025-01-01T00:00:00Z' })
     expect(s.kind).toBe('task')
     expect(store.get('s-task-default')!.kind).toBe('task')
   })
 
   it('corrupt file is skipped gracefully by list()', () => {
-    store.create({ id: 's-good', taskName: 'good', nextRun: '2025-01-01T00:00:00Z' })
+    store.create({ id: 's-good', headId: 'default', taskName: 'good', nextRun: '2025-01-01T00:00:00Z' })
     fs.writeFileSync(path.join(tmpDir, 'bad.json'), 'not valid json', 'utf8')
     const list = store.list()
     expect(list).toHaveLength(1)
@@ -1308,7 +1308,7 @@ describe('ScheduleStore', () => {
   // ── kind:'reminder' (Plan 12-01) ────────────────────────────────────────────
 
   it('create({kind:"reminder"}) persists and reads back as kind: "reminder"', () => {
-    const s = store.create({ id: 'rem-sched-1', kind: 'reminder', agentContext: 'Buy milk', runAt: '2026-05-01T09:00:00Z' })
+    const s = store.create({ id: 'rem-sched-1', headId: 'default', kind: 'reminder', agentContext: 'Buy milk', runAt: '2026-05-01T09:00:00Z' })
     expect(s.kind).toBe('reminder')
     expect(s.agentContext).toBe('Buy milk')
     expect(store.get('rem-sched-1')!.kind).toBe('reminder')
@@ -1316,8 +1316,8 @@ describe('ScheduleStore', () => {
   })
 
   it('list().filter(s => s.kind === "reminder") returns only reminder entries', () => {
-    store.create({ id: 'rem-sched-2', kind: 'reminder', agentContext: 'Hello', runAt: '2026-05-01T09:00:00Z' })
-    store.create({ id: 's-task-1', taskName: 'email', kind: 'task', nextRun: '2025-01-01T00:00:00Z' })
+    store.create({ id: 'rem-sched-2', headId: 'default', kind: 'reminder', agentContext: 'Hello', runAt: '2026-05-01T09:00:00Z' })
+    store.create({ id: 's-task-1', headId: 'default', taskName: 'email', kind: 'task', nextRun: '2025-01-01T00:00:00Z' })
     const reminders = store.list().filter(s => s.kind === 'reminder')
     expect(reminders).toHaveLength(1)
     expect(reminders[0]!.id).toBe('rem-sched-2')

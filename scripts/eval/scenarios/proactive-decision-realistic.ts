@@ -204,6 +204,7 @@ export async function run(opts: {
     const variantCron = sv.cron ?? scheduleCron
     env.bundle.schedules.create({
       id: SCHEDULE_ID,
+      headId: 'default',
       taskName: 'email-triage',
       cron: variantCron,
       nextRun: new Date().toISOString(),

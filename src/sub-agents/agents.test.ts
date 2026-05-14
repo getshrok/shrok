@@ -1298,7 +1298,7 @@ describe('buildReminderTools', () => {
   it('list_reminders returns only kind:"reminder" entries', async () => {
     const { createReminder, listReminder, scheduleStore } = await getReminderTools()
     // Create a non-reminder schedule directly
-    scheduleStore.create({ id: 's-task-x', taskName: 'my-task', kind: 'task', nextRun: '2099-01-01T00:00:00Z' })
+    scheduleStore.create({ id: 's-task-x', headId: 'default', taskName: 'my-task', kind: 'task', nextRun: '2099-01-01T00:00:00Z' })
     await createReminder.execute({ message: 'Hello', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
     const result = await listReminder.execute({}, ctx)
     const items = JSON.parse(result as string)

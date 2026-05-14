@@ -66,7 +66,8 @@ export function createSchedulesRouter(scheduleStore: ScheduleStore, timezone: st
     }
 
     try {
-      const createOpts: import('../../db/schedules.js').CreateScheduleOptions = { id: generateId('sched'), kind }
+      // headId: stamped as 'default' here; Plan 35-03 wires per-head from req body
+      const createOpts: import('../../db/schedules.js').CreateScheduleOptions = { id: generateId('sched'), headId: 'default', kind }
       if (kind === 'task' && typeof taskName === 'string') createOpts.taskName = taskName
       if (typeof cron === 'string' && cron) createOpts.cron = cron
       if (typeof runAt === 'string' && runAt) createOpts.runAt = runAt
