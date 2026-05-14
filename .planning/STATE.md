@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 35-02-PLAN.md
-last_updated: "2026-05-14T06:59:17.990Z"
+stopped_at: Completed 35-03-PLAN.md
+last_updated: "2026-05-14T07:15:11.129Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 28
-  completed_plans: 26
-  percent: 93
+  completed_plans: 27
+  percent: 96
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 ## Current Position
 
 Phase: 35 (per-head-scheduling) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-14
-Stopped at: Completed 35-02-PLAN.md
+Stopped at: Completed 35-03-PLAN.md
 
-Progress: [█████████░] 89% (25/28 plans complete; phase 35 in progress, 1/4 plans done)
+Progress: [██████████] 96% (27/28 plans complete; phase 35 in progress, 3/4 plans done)
 
 ## Project Reference
 
@@ -116,6 +116,11 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-10-SCHEMA-ABSENCE-PLUS-RUNTIME (Plan 35-02): `update_schedule` defends against headId reassignment via two layers — (a) absent from `inputSchema.properties` (primary defense: agents don't see headId as a valid field), (b) explicit runtime `if ('headId' in input)` reject at the TOP of execute() before patch construction (defense-in-depth for clients that ignore schema). Both contracts pinned by tests
 - D-08-STRUCTURAL-CALLBACK (Plan 35-02): `ActivationLoopOptions.resolveCurrentHeads` typed as minimal structural `() => Array<{ id; channels: Array<{ id }> }>` rather than `() => ResolvedHead[]`. The reminder fire site only needs `.id` and `.channels[].id`; importing ResolvedHead would couple the activation interface to future ResolvedHead fields for no reading-side benefit. Matches Phase 33 D-SCOPE-MIN-CORRECT minimal-contract pattern
 - D-08-DEFAULT-CALLBACK (Plan 35-02): `buildSystem` supplies a default `() => [{ id: deps.headId ?? 'default', channels: [] }]` callback when `SystemDeps.resolveCurrentHeads` is omitted. Empty-channels return exercises the D-07 skip+log path (backward-compatible for single-head hosts and test fixtures). The host (`src/index.ts`) supplies the production `() => resolveHeads(loadConfig())` so dashboard edits between scheduler ticks land without restart. Mirrors `DashboardServerOptions.resolveCurrentHeads` pattern verbatim
+- D-11-ADMIN-404 (Plan 35-03): POST /api/schedules with unknown headId returns 404 with the head id in the error message — explicitly NOT the Phase 33 D-FALLBACK-FIRST policy used by POST /send. Schedules are administrative; silent fallback would hide a real config bug
+- D-12-NO-FILTER-PARAM (Plan 35-03): GET /api/schedules returns ALL schedules cross-head with no `?headId=` filter param. `ScheduleStore.list({ headId })` filter exists but dashboard renders cross-head in one table tagged by headId column
+- D-13-EXPLICIT-REJECT-NO-STRIP (Plan 35-03): PATCH with headId in body returns 400 explicitly with "To move a schedule to a different head, delete and recreate". No silent strip — mirrors agent-side D-10 reject from Plan 35-02
+- D-16-SPLIT-COUNTS-IN-STORE (Plan 35-03): `ScheduleStore.deleteAllForHead` returns split `{ schedules, reminders }` rather than flat total — different vendor surfaces (tasks run TASK.md vs reminders fire to a channel) so UI renders separately. Iterates `this.list()` so lazy-migration funnel runs first
+- D-17-CASCADE-AFTER-SQL (Plan 35-03): DELETE /api/heads/:id runs SQL transaction FIRST, then file-store cascade (T-35-12 mitigation). SQL failure → FS untouched; SQL success → FS partial-fail is recoverable (orphan files harmless because head is gone from config). Response widens to `{ ok, deletedSchedules, deletedReminders }`
 
 ## Performance Metrics
 
@@ -135,3 +140,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | Phase 34 P05 | 14min | 2 tasks | 16 files |
 | Phase 35 P01 | 8min | 2 tasks | 10 files |
 | Phase 35 P02 | 13min | 2 tasks | 13 files |
+| Phase 35-per-head-scheduling P03 | 9min | 2 tasks | 7 files |
