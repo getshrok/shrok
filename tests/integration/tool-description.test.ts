@@ -45,6 +45,7 @@ describe('tool-description integration', () => {
       prompt: `Run this exact bash command: echo tool-description-marker
 Then respond with the output of the command. Do nothing else.`,
       trigger: 'manual',
+      headId: 'default',
     })
 
     await runner.awaitAll(45_000)

@@ -96,7 +96,7 @@ function seedRunningAgent(
   } as any, 'default')
 
   // Create agent in running state
-  bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual' })
+  bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual', headId: 'default' })
 }
 
 // ─── Run ──────────────────────────────────────────────────────────────────────

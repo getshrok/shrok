@@ -131,7 +131,7 @@ function seedConversation(bundle: HeadBundle, agentId: string, question: string,
     kind: 'tool_result', id: generateId('msg'), createdAt: now(),
     toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: JSON.stringify({ agentId }) }],
   } as any, 'default')
-  bundle.workers.create(agentId, { prompt: agentPrompt, trigger: 'manual' })
+  bundle.workers.create(agentId, { prompt: agentPrompt, trigger: 'manual', headId: 'default' })
   bundle.workers.suspend(agentId, question)
 }
 

@@ -94,7 +94,7 @@ function seedConversation(
     kind: 'tool_result', id: generateId('msg'), createdAt: now(),
     toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: JSON.stringify({ agentId }) }],
   } as any, 'default')
-  bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual' })
+  bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual', headId: 'default' })
   if (variant.agentState === 'suspended' && variant.suspendQuestion) {
     bundle.workers.suspend(agentId, variant.suspendQuestion)
   }

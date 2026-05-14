@@ -194,6 +194,7 @@ function makeFixture(opts: { proactiveEnabled?: boolean; decision?: { action: 'f
     scheduleStore,
     mcpRegistry,
     toolExecutorOpts: {
+      headId: 'default',                                // Phase 34: test fixture single-head
       agentRunner,
       skillLoader: skillLoaderForTools,
       unifiedLoader,

@@ -95,6 +95,7 @@ function makeRunner(llmRouter: LLMRouter) {
   }
 
   const runner = new LocalAgentRunner({
+    headId: 'default',                                  // Phase 34: test fixture single-head
     agentStore,
     inboxStore,
     queueStore,
@@ -133,7 +134,7 @@ describe('cancel propagation — retract during in-flight bash', () => {
     }
 
     const { runner, agentStore } = makeRunner(llmRouter)
-    const agentId = await runner.spawn({ prompt: 'run sleep', name: 'sleeper', trigger: 'manual' })
+    const agentId = await runner.spawn({ prompt: 'run sleep', name: 'sleeper', trigger: 'manual', headId: 'default' })
 
     // Wait for the bash call to enter flight. 150ms is well past the LLM
     // stub's synchronous resolve — the executor is now blocked in execFile.
@@ -171,7 +172,7 @@ describe('cancel propagation — mid-round retract', () => {
     }
 
     const { runner, agentStore } = makeRunner(llmRouter)
-    const agentId = await runner.spawn({ prompt: 'tight loop', name: 'looper', trigger: 'manual' })
+    const agentId = await runner.spawn({ prompt: 'tight loop', name: 'looper', trigger: 'manual', headId: 'default' })
 
     // Let the agent rip through a couple of rounds.
     await new Promise(resolve => setTimeout(resolve, 200))
@@ -202,7 +203,7 @@ describe('cancel propagation — cooperative retract before tool call', () => {
     }
 
     const { runner, agentStore } = makeRunner(llmRouter)
-    const agentId = await runner.spawn({ prompt: 'quick', name: 'quick', trigger: 'manual' })
+    const agentId = await runner.spawn({ prompt: 'quick', name: 'quick', trigger: 'manual', headId: 'default' })
     // Fire retract as soon as possible — before the first LLM call even resolves.
     await runner.retract(agentId)
     await runner.awaitAll(1500)
@@ -233,7 +234,7 @@ describe('cancel propagation — ctx.abortSignal reaches child_process.execFile'
     }
 
     const { runner, agentStore } = makeRunner(llmRouter)
-    const agentId = await runner.spawn({ prompt: 'run sleep', name: 'sleeper-2', trigger: 'manual' })
+    const agentId = await runner.spawn({ prompt: 'run sleep', name: 'sleeper-2', trigger: 'manual', headId: 'default' })
 
     await new Promise(resolve => setTimeout(resolve, 150))
     await runner.retract(agentId)
@@ -281,7 +282,7 @@ describe('mid-loop retract via onRoundComplete callback', () => {
     }
 
     const { runner, agentStore, inboxStore } = makeRunner(llmRouter)
-    const agentId = await runner.spawn({ prompt: 'tight loop for mid-loop retract', name: 'midloop-retract', trigger: 'manual' })
+    const agentId = await runner.spawn({ prompt: 'tight loop for mid-loop retract', name: 'midloop-retract', trigger: 'manual', headId: 'default' })
 
     // Let the agent rip through 1–3 rounds.
     await new Promise(r => setTimeout(r, 200))

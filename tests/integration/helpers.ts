@@ -120,6 +120,7 @@ export function makeRunner(llmRouter: LLMRouter, db = freshDb(), opts?: MakeRunn
   const usageStore = new UsageStore(db, 'UTC')
 
   const runner = new LocalAgentRunner({
+    headId: 'default',                                  // Phase 34: integration helpers single-head
     agentStore,
     inboxStore,
     queueStore,

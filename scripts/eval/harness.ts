@@ -802,6 +802,7 @@ export function makeLocalAgentRunner(
   const inboxStore = new AgentInboxStore(db)
   const identityLoader = makeEvalIdentityLoader(identityDir)
   return new LocalAgentRunner({
+    headId: 'default',                                  // Phase 34: eval harness runs single-head
     agentStore,
     inboxStore,
     queueStore,
@@ -972,6 +973,7 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
     llmRouter: router,
     channelRouter: bundle.channelRouter,
     mcpRegistry,
+    headId: 'default',                                  // Phase 34: eval harness runs single-head
     stores: {
       messages: bundle.messages,
       agents: bundle.workers,

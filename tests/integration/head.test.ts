@@ -245,7 +245,7 @@ describe('head activation integration', () => {
 
     // Simulate an agent that already completed
     const agentId = generateId('tent')
-    workers.create(agentId, { prompt: 'test task', trigger: 'manual' })
+    workers.create(agentId, { prompt: 'test task', trigger: 'manual', headId: 'default' })
     workers.complete(agentId, 'the answer is 42', [])
 
     const completedEvent: QueueEvent = {

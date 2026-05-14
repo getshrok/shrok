@@ -73,6 +73,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     env1.bundle.workers.create(benignAgentId, {
       prompt: "Run the scheduled 'email' skill.",
       trigger: 'scheduled',
+      headId: 'default',
       skillName: 'email',
     })
     env1.bundle.workers.complete(benignAgentId, 'All systems nominal. Disk usage 61%. No agents running. No issues found.')
@@ -108,6 +109,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
     env2.bundle.workers.create(criticalAgentId, {
       prompt: "Run the scheduled 'email' skill.",
       trigger: 'scheduled',
+      headId: 'default',
       skillName: 'email',
     })
     env2.bundle.workers.complete(criticalAgentId, 'CRITICAL: Disk at 97% capacity (/dev/sda1). Immediate attention required — system may become unresponsive.')

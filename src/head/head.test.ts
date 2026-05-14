@@ -246,7 +246,7 @@ describe('HeadToolExecutor', () => {
     } as unknown as SkillLoader
 
     const identityLoader = new FileSystemIdentityLoader(tmpDir, tmpDir)
-    executor = new HeadToolExecutor({ agentRunner: runner, skillLoader, topicMemory: memory, usageStore, identityDir: tmpDir, identityLoader, messages: { getAll: () => [] } as unknown as MessageStore })
+    executor = new HeadToolExecutor({ headId: 'default', agentRunner: runner, skillLoader, topicMemory: memory, usageStore, identityDir: tmpDir, identityLoader, messages: { getAll: () => [] } as unknown as MessageStore })
   })
 
   afterEach(() => {
@@ -617,7 +617,7 @@ function makeActivationLoopFixture() {
     injector,
     scheduleStore,
     mcpRegistry,
-    toolExecutorOpts: { agentRunner: workerRunner, skillLoader, topicMemory, usageStore, identityDir: '/tmp', identityLoader: { loadSystemPrompt: vi.fn().mockReturnValue(''), listFiles: vi.fn().mockReturnValue([]), readFile: vi.fn().mockReturnValue(null) }, messages: { getAll: () => [] } as unknown as MessageStore },
+    toolExecutorOpts: { headId: 'default', agentRunner: workerRunner, skillLoader, topicMemory, usageStore, identityDir: '/tmp', identityLoader: { loadSystemPrompt: vi.fn().mockReturnValue(''), listFiles: vi.fn().mockReturnValue([]), readFile: vi.fn().mockReturnValue(null) }, messages: { getAll: () => [] } as unknown as MessageStore },
     config,
     transaction: (fn) => fn(),
     pollIntervalMs: 0,
