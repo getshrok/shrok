@@ -2,36 +2,36 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
-status: verifying
-stopped_at: Completed 34-05-PLAN.md
-last_updated: "2026-05-14T03:47:37.814Z"
+status: executing
+stopped_at: Completed 35-01-PLAN.md
+last_updated: "2026-05-14T06:42:43.007Z"
 last_activity: 2026-05-14
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
-  total_plans: 24
-  completed_plans: 24
-  percent: 100
+  total_plans: 28
+  completed_plans: 25
+  percent: 89
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 34 (multi-head-agent-lifecycle) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-05-14
-Stopped at: Completed 34-05-PLAN.md
+Phase: 35 (per-head-scheduling) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-05-14 -- Plan 35-01 complete (storage foundation)
+Stopped at: Completed 35-01-PLAN.md
 
-Progress: [█████████░] 88% (21/24 plans complete; phase 34 in progress)
+Progress: [█████████░] 89% (25/28 plans complete; phase 35 in progress, 1/4 plans done)
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-12)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 34 — multi-head-agent-lifecycle
+**Current focus:** Phase 35 — per-head-scheduling
 
 ## Accumulated Context
 
@@ -42,6 +42,7 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - Phase 29–32 added: v1.3 Multi-Head Support (data layer, core activation, adapter registry + config + startup, dashboard)
 - Phase 33 added: Multi-head management UI — promoted DASH-F-01/F-03 from Future Requirements into active scope as DASH-03/04/05 (create/rename/delete heads from UI, manage channels per head incl. multiple-of-same-vendor, per-head Send routing)
 - Phase 34 added: Multi-Head Agent Lifecycle — fix head_id routing through agent spawn/run/complete so non-default heads receive their own agent completion events (currently default-route to default head; root cause: agents table missing head_id column and all 4 enqueue() callsites in src/sub-agents/local.ts omit headId)
+- Phase 35 added: Per-head scheduling — schedules and reminders are currently single-shared (one ScheduleStore at {workspacePath}/schedules/, Schedule type has no headId field, ScheduleEvaluator enqueues triggers with default headId). Non-default heads can never receive their own schedule fires. Closes the scheduling counterpart to Phase 34's agent-lifecycle work
 
 ### Key Architecture Decisions (v1.3)
 
@@ -105,6 +106,13 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-SELF-CONTAINED-REGRESSION-TEST (Plan 34-05): the new architectural regression test builds its own minimal LocalAgentRunner via inline makeRunnerForHead() helper rather than sharing tests/integration/helpers.ts — mirrors Phase 30 D-CORE-04 channel-router-isolation.test.ts framing so a future change to the shared helper that misconfigures headId cannot silently mask a regression
 - D-WAVE-3-GREEN (Plan 34-05): every test fixture / integration test / eval scenario / harness construction site that took SpawnOptions / LocalAgentRunnerOptions / HeadToolExecutorOptions now supplies headId: 'default' explicitly — 82 occurrences across 15 files. Full repo `npx tsc --noEmit` GREEN; `npx vitest run` 1413/1413 passing. Phase 34 is end-to-end complete
 
+## Decisions (Phase 35)
+
+- D-01-LIST-FILTER-OBJECT-SHAPE (Plan 35-01): list filter is `list(filter?: { headId?: string })` (object-shape, optional inner field) over positional `list(headId?: string)`. Matches the options-object shape used elsewhere; lets future filter fields (kind, enabled) ride along without a breaking signature change
+- D-02-MIGRATION-INLINE (Plan 35-01): `migrateLegacyHeadId()` lives inline in `src/db/schedules.ts` (not generalized into file-store.ts). Reminder has a different legacy shape (no `kind` field defaults to 'task') and Phase 33's `.env` migration is unrelated — generalization has no payoff
+- D-03-GET-IS-MIGRATION-FUNNEL (Plan 35-01): `markFired/advanceNextRun/markSkipped` refactored to route their internal read through `this.get(id)` rather than `this.store.get(id)`, so the migration runs on every public read path with zero duplication. Smaller diff than per-method migration calls
+- D-04-ENQUEUE-3RD-ARG-PER-EVENT (Plan 35-01): `scheduler.tick()` passes `schedule.headId` (per-row, per-event) NOT `this.headId` — no constructor field on `ScheduleEvaluatorImpl`. One global ticker per D-04 in 35-CONTEXT.md; per-head clocks rejected as no-benefit complexity. WR-03 NOTE block at `src/scheduler/index.ts:69-73` removed
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -121,3 +129,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | Phase 34 P03 | 4min | 2 tasks | 1 files |
 | Phase 34 P04 | 3min | 2 tasks | 3 files |
 | Phase 34 P05 | 14min | 2 tasks | 16 files |
+| Phase 35 P01 | 8min | 2 tasks | 10 files |

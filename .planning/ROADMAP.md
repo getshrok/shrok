@@ -203,3 +203,17 @@ Plans:
 - [x] 34-03-PLAN.md — LocalAgentRunner.headId ctor field + 6 queueStore.enqueue callsites thread this.headId + resumeSuspended/handleSpawnAgent SpawnOptions threading (Wave 2)
 - [x] 34-04-PLAN.md — HeadToolExecutor spawn_agent dispatch injects headId; buildSystem threads headId into LocalAgentRunner ctor and toolExecutorOpts (Wave 2)
 - [x] 34-05-PLAN.md — tests/integration/multi-head-agent-lifecycle.test.ts (architectural regression) + ~14 existing test/script callers supply headId + scheduler spawn threads this.opts.headId + full tsc/vitest green (Wave 3)
+
+### Phase 35: per-head-scheduling
+
+**Goal:** Each head owns its own schedules and reminders end-to-end — schedule rows carry `headId`, the ScheduleEvaluator emits per-head schedule_trigger events (closing the WR-03 NOTE), agent-created schedules inherit the spawning head's id, reminders fall back to a head's first configured channel when last-active is null, and head deletion cascades to schedules+reminders. Closes the scheduling counterpart to Phase 34's agent-lifecycle work.
+
+**Requirements**: TBD (XH-F-02 in REQUIREMENTS.md is the closest mapped item — schedules and reminders assigned to a specific head)
+**Depends on:** Phase 34
+**Plans:** 1/4 plans executed
+
+Plans:
+- [x] 35-01-PLAN.md — Schedule.headId field + ScheduleStore filter API + lazy JSON migration + ScheduleEvaluator passes schedule.headId on enqueue + WR-03 NOTE removed (D-01, D-02, D-03, D-04, D-05) [Wave 1]
+- [ ] 35-02-PLAN.md — buildScheduleTools/buildReminderTools require headId, ToolSurfaceDeps.headId, update_schedule rejects reassignment, reminder fire first-channel fallback (D-06, D-07, D-08, D-09, D-10) [Wave 2]
+- [ ] 35-03-PLAN.md — Dashboard schedules API: POST requires headId, GET cross-head, PATCH rejects headId; heads DELETE cascade + counts; ScheduleStore.deleteAllForHead helper (D-11, D-12, D-13, D-16, D-17) [Wave 2]
+- [ ] 35-04-PLAN.md — Dashboard UI: head picker on create forms, Head column on lists; architectural regression test tests/integration/multi-head-scheduling.test.ts (D-14, D-15) [Wave 3]
