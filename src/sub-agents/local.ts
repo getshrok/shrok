@@ -94,6 +94,11 @@ export interface LocalAgentRunnerOptions {
 }
 
 export class LocalAgentRunner implements AgentRunner {
+  /** Head this runner belongs to (Phase 34 D-RUNNER-HEADID).
+   *  Fixed at construction — mirrors ActivationLoop's `private readonly headId`
+   *  pattern. Stamped on every queue event this runner enqueues so the matching
+   *  head's activation loop claims it. */
+  private readonly headId: string
   private agentStore: AgentStore
   private inboxStore: AgentInboxStore
   private queueStore: QueueStore
@@ -137,6 +142,7 @@ export class LocalAgentRunner implements AgentRunner {
   private abortControllers = new Map<string, AbortController>()
 
   constructor(opts: LocalAgentRunnerOptions) {
+    this.headId = opts.headId
     this.agentStore = opts.agentStore
     this.inboxStore = opts.inboxStore
     this.queueStore = opts.queueStore
@@ -390,6 +396,7 @@ export class LocalAgentRunner implements AgentRunner {
       prompt: state.task,
       model: state.model,
       trigger: state.trigger,
+      headId: state.headId,                   // Phase 34 D-RUNNER-HEADID: preserve head identity across resume
       ...(state.skillName ? { skillName: state.skillName } : {}),
       ...(state.parentAgentId ? { parentAgentId: state.parentAgentId } : {}),
       ...(savedVerbose ? { onVerbose: savedVerbose } : {}),
@@ -1156,6 +1163,7 @@ export class LocalAgentRunner implements AgentRunner {
       prompt: childTaskPrompt,
       model,
       trigger: 'ad_hoc',
+      headId: this.headId,                    // Phase 34 D-RUNNER-HEADID: child inherits parent's head
       parentAgentId: parentId,
       ...(descriptionArg ? { name: descriptionArg } : {}),
       ...(parentOptions.onDebug ? { onDebug: parentOptions.onDebug } : {}),
