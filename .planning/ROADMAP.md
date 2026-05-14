@@ -80,7 +80,7 @@ Plans:
 - [x] **Phase 33: Multi-head Management UI** — Dashboard UI for creating/renaming/deleting heads, managing channel adapters (incl. multiple instances per provider), and per-head Send routing (completed 2026-05-13)
 - [x] **Phase 34: Multi-Head Agent Lifecycle** — Plumb head_id through the agent spawn/run/complete lifecycle so non-default heads receive their own agent completion events (currently they default-route to the default head) (completed 2026-05-14)
 - [x] **Phase 35: per-head-scheduling** — Each head owns its own schedules and reminders end-to-end; per-head schedule_trigger events, agent-created schedules inherit spawning head, reminder first-channel fallback, head deletion cascades (completed 2026-05-14)
-- [ ] **Phase 36: Inbound Sender Attribution** — Adapter-side `[Name]:` prefix on inbound messages so the head can tell who is speaking in multi-user channels; generalize the timestamp prefix stripper to strip any leading bracketed segments from head responses; identity disambiguation handled via user.md username mapping
+- [x] **Phase 36: Inbound Sender Attribution** — Adapter-side `[Name]:` prefix on inbound messages so the head can tell who is speaking in multi-user channels; generalize the timestamp prefix stripper to strip any leading bracketed segments from head responses; identity disambiguation handled via user.md username mapping (completed 2026-05-14)
 
 ## Phase Details
 
@@ -226,9 +226,9 @@ Plans:
 
 **Requirements**: TBD (no tracked REQ-IDs — Phase 36 adds a new attribution capability layer on top of multi-head infra; no v1.3 requirement maps directly)
 **Depends on:** Phase 35
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 36-01-type-contract-central-prefix-PLAN.md — InboundMessage.senderName field + central buildPrefixedText in headRouteMessage + normalizeSenderName helper + threat model (D-01, D-02, D-04, D-07) [Wave 1]
 - [x] 36-02-stripper-generalization-PLAN.md — stripTimestampEcho → stripLeadingBracketPrefixes rename + generalized D-11 regex + sole-importer update + regression/anti-regression tests (D-11, D-12) [Wave 1]
-- [ ] 36-03-adapter-sender-extraction-PLAN.md — 5 adapters populate senderName: Discord (member.displayName chain), Telegram (first_name+last_name chain), Slack (TTL-cached users.info), WhatsApp (pushName), Cliq (sender.name); dashboard/voice/webhook NOT modified (D-05, D-06) [Wave 2]
+- [x] 36-03-adapter-sender-extraction-PLAN.md — 5 adapters populate senderName: Discord (member.displayName chain), Telegram (first_name+last_name chain), Slack (TTL-cached users.info), WhatsApp (pushName), Cliq (sender.name); dashboard/voice/webhook NOT modified (D-05, D-06) [Wave 2]

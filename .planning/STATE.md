@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
-status: executing
-stopped_at: Completed 36-02-PLAN.md (stripper generalization + rename)
-last_updated: "2026-05-14T14:17:21.479Z"
+status: verifying
+stopped_at: Completed 36-03-PLAN.md (adapter sender extraction)
+last_updated: "2026-05-14T14:27:57.545Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 31
-  completed_plans: 30
-  percent: 97
+  completed_plans: 31
+  percent: 100
 ---
 
 # Project State
@@ -20,11 +20,11 @@ progress:
 
 Phase: 36 (inbound-sender-attribution) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-14
-Stopped at: Completed 36-02-PLAN.md (stripper generalization + rename)
+Stopped at: Completed 36-03-PLAN.md (adapter sender extraction)
 
-Progress: [██████████] 96% (27/28 plans complete; phase 35 in progress, 3/4 plans done)
+Progress: [██████████] 100% (31/31 plans complete; phase 36 complete — ready for verification)
 
 ## Project Reference
 
@@ -131,6 +131,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-HARD-RENAME (Plan 36-02): stripTimestampEcho → stripLeadingBracketPrefixes is a hard rename — no shim/alias. Orphan-reference grep across src/tests/scripts clean. Rationale: keeping a shim would invite future code to use the stale name and dilute D-12 intent that the function name match its broader behavior
 - D-FIRST-LINE-ONLY-PRESERVED (Plan 36-02): stripLeadingBracketPrefixes regex uses single-line `^` anchor (no `/m` flag); line-2+ usage of `[...]` passes through unchanged. Pinned by "leaves line-2 bracket unchanged" anti-regression test. Future regex tightening cannot silently break head responses that legitimately use brackets after a newline
 - D-EMPTY-BRACKETS-DISALLOWED (Plan 36-02): regex uses `[^\]]+` (≥1 non-`]` char inside) rather than `[^\]]*`, so a literal `[]` at start passes through unchanged. Matches locked D-11 spec byte-identically and pinned by "leaves empty brackets unchanged" anti-regression test
+- D-SLACK-TTL-PER-INSTANCE (Plan 36-03): senderNameCache is a per-SlackAdapter `Map<userId, {name, fetchedAt}>` with 10-min TTL (`SENDER_NAME_TTL_MS = 10 * 60 * 1000`). Multi-head isolation is automatic because each head constructs its own adapter. API failures fall back to the raw user id and are NOT cached, allowing retry on the next inbound message from the same user
+- D-CLIQ-INLINE-HELPER (Plan 36-03): `senderNameOf` is defined inline inside `poll()` rather than as a top-level helper. Used only at two call sites inside the same loop body. File-message background closure synchronously captures `senderName` before the void IIFE, matching how `handler` and `channel` are already captured at the same spot
+- D-WHATSAPP-DIRECT-FIELD (Plan 36-03): WhatsApp's chain always resolves to a non-empty string (`'unknown'` fallback per D-05) so the handler object literal writes `senderName,` directly without the conditional-spread guard used in Discord/Slack/Cliq. Telegram keeps the spread as defensive shape-consistency despite also always-resolving
 
 ## Performance Metrics
 
@@ -153,3 +156,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | Phase 35-per-head-scheduling P03 | 9min | 2 tasks | 7 files |
 | Phase 36 P01 | 4min | 2 tasks | 4 files |
 | Phase 36 P02 | 4min | 2 tasks | 3 files |
+| Phase 36 P03 | 7min | 5 tasks | 5 files |
