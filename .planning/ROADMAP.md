@@ -78,7 +78,7 @@ Plans:
 - [x] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head (completed 2026-05-12)
 - [x] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head (completed 2026-05-12)
 - [x] **Phase 33: Multi-head Management UI** — Dashboard UI for creating/renaming/deleting heads, managing channel adapters (incl. multiple instances per provider), and per-head Send routing (completed 2026-05-13)
-- [ ] **Phase 34: Multi-Head Agent Lifecycle** — Plumb head_id through the agent spawn/run/complete lifecycle so non-default heads receive their own agent completion events (currently they default-route to the default head)
+- [x] **Phase 34: Multi-Head Agent Lifecycle** — Plumb head_id through the agent spawn/run/complete lifecycle so non-default heads receive their own agent completion events (currently they default-route to the default head) (completed 2026-05-14)
 
 ## Phase Details
 
@@ -195,11 +195,11 @@ Plumb `head_id` through the agent spawn/run/complete lifecycle so non-default he
 **Goal**: Each head's activation loop claims only its own agents' completion events; head identity is type-required at every spawn/run/complete site so silent cross-head leakage is a compile error
 **Requirements**: TBD (no tracked REQ-IDs — closes implicit corollary of CORE-01/CORE-04 left half-built by Phase 29's table-coverage gap)
 **Depends on:** Phase 33
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 34-01-PLAN.md — sql/007_agents_head_id.sql migration + AgentStore.create/rowToState head_id round-trip + db.test.ts schema pin (Wave 1)
 - [x] 34-02-PLAN.md — Required headId on SpawnOptions, AgentState, LocalAgentRunnerOptions, HeadToolExecutorOptions (Wave 1)
 - [x] 34-03-PLAN.md — LocalAgentRunner.headId ctor field + 6 queueStore.enqueue callsites thread this.headId + resumeSuspended/handleSpawnAgent SpawnOptions threading (Wave 2)
 - [x] 34-04-PLAN.md — HeadToolExecutor spawn_agent dispatch injects headId; buildSystem threads headId into LocalAgentRunner ctor and toolExecutorOpts (Wave 2)
-- [ ] 34-05-PLAN.md — tests/integration/multi-head-agent-lifecycle.test.ts (architectural regression) + ~14 existing test/script callers supply headId + scheduler spawn threads this.opts.headId + full tsc/vitest green (Wave 3)
+- [x] 34-05-PLAN.md — tests/integration/multi-head-agent-lifecycle.test.ts (architectural regression) + ~14 existing test/script callers supply headId + scheduler spawn threads this.opts.headId + full tsc/vitest green (Wave 3)

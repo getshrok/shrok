@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
-status: executing
-stopped_at: Completed 34-04-PLAN.md
-last_updated: "2026-05-14T03:27:29.049Z"
+status: verifying
+stopped_at: Completed 34-05-PLAN.md
+last_updated: "2026-05-14T03:47:37.814Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 24
-  completed_plans: 23
-  percent: 96
+  completed_plans: 24
+  percent: 100
 ---
 
 # Project State
@@ -20,9 +20,9 @@ progress:
 
 Phase: 34 (multi-head-agent-lifecycle) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-14
-Stopped at: Completed 34-04-PLAN.md
+Stopped at: Completed 34-05-PLAN.md
 
 Progress: [█████████░] 88% (21/24 plans complete; phase 34 in progress)
 
@@ -101,6 +101,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-WIRING-IN-SYSTEM honored (Plan 34-04): buildSystem() supplies `headId: deps.headId ?? 'default'` to the LocalAgentRunner ctor options (system.ts:248) and the toolExecutorOpts object (system.ts:335); the activation.ts:766 `{...toolExecutorOpts}` spread carries headId through to HeadToolExecutor without a construction-site edit
 - D-RULE-3-ACTIVATION-1247 (Plan 34-04): Rule-3 deviation added `headId: this.opts.headId` at src/head/activation.ts:1251 (scheduled-trigger SpawnOptions). Plan 04 plan text omitted this site but Plans 02 and 03 SUMMARYs both forecast it as a Plan 04 fix; without it `npx tsc --noEmit` fails in production code because Plan 02 made SpawnOptions.headId required
 - D-WAVE-2-GREEN (Plans 34-03 + 34-04): production code is tsc-clean for head_id routing through spawn → run → complete; remaining ~40 tsc errors are all at test fixtures (head.test.ts, activation.test.ts, agents.test.ts, cancel.test.ts, archival.test.ts) and eval scripts (scripts/eval/*) that Plan 05 wires
+- D-TESTS-BOTH closed (Plan 34-05): tests/integration/multi-head-agent-lifecycle.test.ts has 6 it() blocks pinning persistence (Test 1) + queue stamping for all 6 D-ALL-SIX paths (Tests 2/4/5/6) + cross-head claim isolation (Test 3). Every D-ALL-SIX enqueue path has a runtime head_id-stamping assertion — no path is covered by static tsc alone
+- D-SELF-CONTAINED-REGRESSION-TEST (Plan 34-05): the new architectural regression test builds its own minimal LocalAgentRunner via inline makeRunnerForHead() helper rather than sharing tests/integration/helpers.ts — mirrors Phase 30 D-CORE-04 channel-router-isolation.test.ts framing so a future change to the shared helper that misconfigures headId cannot silently mask a regression
+- D-WAVE-3-GREEN (Plan 34-05): every test fixture / integration test / eval scenario / harness construction site that took SpawnOptions / LocalAgentRunnerOptions / HeadToolExecutorOptions now supplies headId: 'default' explicitly — 82 occurrences across 15 files. Full repo `npx tsc --noEmit` GREEN; `npx vitest run` 1413/1413 passing. Phase 34 is end-to-end complete
 
 ## Performance Metrics
 
@@ -117,3 +120,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 34    | 02   | 2min     | 3     | 3     |
 | Phase 34 P03 | 4min | 2 tasks | 1 files |
 | Phase 34 P04 | 3min | 2 tasks | 3 files |
+| Phase 34 P05 | 14min | 2 tasks | 16 files |
