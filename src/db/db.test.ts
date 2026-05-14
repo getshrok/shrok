@@ -374,6 +374,7 @@ describe('AgentStore', () => {
     prompt: 'do something',
     model: 'capable',
     trigger: 'manual' as const,
+    headId: 'default',
   }
 
   it('creates and retrieves an agent', () => {
@@ -385,6 +386,37 @@ describe('AgentStore', () => {
 
     const fetched = store.get('t-1')
     expect(fetched?.id).toBe('t-1')
+  })
+
+  it("agents table has head_id column with NOT NULL DEFAULT 'default' (Phase 34)", () => {
+    const db = freshDb()
+    const cols = db.prepare("PRAGMA table_info('agents')").all() as { name: string; notnull: number; dflt_value: string | null }[]
+    const head = cols.find(c => c.name === 'head_id')
+    expect(head).toBeDefined()
+    expect(head!.notnull).toBe(1)
+    expect(head!.dflt_value).toBe("'default'")
+  })
+
+  it('create() with explicit headId persists head_id and round-trips through get() (Phase 34)', () => {
+    const db = freshDb()
+    const s = new AgentStore(db)
+    s.create('a-work', { prompt: 'task', trigger: 'manual', headId: 'work' })
+    const row = db.prepare("SELECT head_id FROM agents WHERE id = ?").get('a-work') as { head_id: string } | undefined
+    expect(row?.head_id).toBe('work')
+    const state = s.get('a-work')
+    expect(state?.headId).toBe('work')
+  })
+
+  it("pre-existing row inserted without head_id falls back to 'default' via SQL DEFAULT (Phase 34)", () => {
+    const db = freshDb()
+    // Simulate a row that bypassed AgentStore.create — e.g., a legacy code path or
+    // a row carried over from before the migration. The SQL DEFAULT must populate head_id.
+    db.prepare(`
+      INSERT INTO agents (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, color_slot, created_at, updated_at)
+      VALUES ('legacy', NULL, 'running', 't', '', 'capable', '[]', '[]', 'manual', NULL, 0, datetime('now'), datetime('now'))
+    `).run()
+    const s = new AgentStore(db)
+    expect(s.get('legacy')?.headId).toBe('default')
   })
 
   it('get returns null for unknown id', () => {
