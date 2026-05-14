@@ -11,6 +11,7 @@ import { initDb, type DatabaseSync } from '../../db/index.js'
 import { runMigrations } from '../../db/migrate.js'
 import { MessageStore } from '../../db/messages.js'
 import { QueueStore } from '../../db/queue.js'
+import { ScheduleStore } from '../../db/schedules.js'
 import type { ResolvedHead } from '../../config.js'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
@@ -54,6 +55,7 @@ describe('GET /api/heads (DASH-01)', () => {
     const db = setupDb()
     const messages = new MessageStore(db)
     const queue = new QueueStore(db)
+    const scheduleStore = new ScheduleStore(path.join(workspace, 'schedules'))
     const app = express()
     app.use(express.json())
     app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
@@ -65,6 +67,7 @@ describe('GET /api/heads (DASH-01)', () => {
       db,
       messages,
       queue,
+      scheduleStore,
     }))
     const port = await getFreePort()
     const server = await new Promise<Server>((resolve, reject) => {
@@ -179,6 +182,8 @@ interface MutFixture {
   db: DatabaseSync
   messages: MessageStore
   queue: QueueStore
+  /** Plan 35-03 D-16: the same ScheduleStore the router uses for cascade-delete. Tests need a handle to seed schedules before issuing DELETE. */
+  scheduleStore: ScheduleStore
   /** Lets the test mutate the resolved-heads view that the router sees on the next request. */
   setHeads(next: ResolvedHead[]): void
 }
@@ -193,6 +198,7 @@ describe('POST/DELETE /api/heads (DASH-03)', () => {
     const db = setupDb()
     const messages = new MessageStore(db)
     const queue = new QueueStore(db)
+    const scheduleStore = new ScheduleStore(path.join(workspace, 'schedules'))
     let currentHeads = initialHeads
     const app = express()
     app.use(express.json())
@@ -205,6 +211,7 @@ describe('POST/DELETE /api/heads (DASH-03)', () => {
       db,
       messages,
       queue,
+      scheduleStore,
     }))
     const port = await getFreePort()
     const server = await new Promise<Server>((resolve, reject) => {
@@ -212,7 +219,7 @@ describe('POST/DELETE /api/heads (DASH-03)', () => {
       s.once('error', reject)
     })
     fx = {
-      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      server, port, workspace, configPath, envFilePath, db, messages, queue, scheduleStore,
       setHeads: (next) => { currentHeads = next },
     }
   }
@@ -353,6 +360,38 @@ describe('POST/DELETE /api/heads (DASH-03)', () => {
     expect(res.status).toBe(404)
   })
 
+  // ── Plan 35-03 D-16/D-17: DELETE cascade to schedules + reminders ──────────
+
+  it('DELETE /api/heads/:id cascades to schedules + reminders and returns counts in body', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }] }, null, 2) + '\n')
+
+    // Seed 'work' with 2 tasks + 1 reminder
+    fx.scheduleStore.create({ id: 'w-t1', headId: 'work', kind: 'task', taskName: 't1', runAt: '2026-01-01T00:00:00Z' })
+    fx.scheduleStore.create({ id: 'w-t2', headId: 'work', kind: 'task', taskName: 't2', runAt: '2026-01-02T00:00:00Z' })
+    fx.scheduleStore.create({ id: 'w-r1', headId: 'work', kind: 'reminder', agentContext: 'r1', runAt: '2026-01-03T00:00:00Z' })
+    // Seed 'default' with 1 task — must NOT be cascaded
+    fx.scheduleStore.create({ id: 'd-t1', headId: 'default', kind: 'task', taskName: 't1', runAt: '2026-01-04T00:00:00Z' })
+
+    const res = await del('work')
+    expect(res.status).toBe(200)
+    // D-17: response body carries split counts in addition to legacy { ok: true }
+    expect(res.json).toEqual({ ok: true, deletedSchedules: 2, deletedReminders: 1 })
+
+    // Disk state: 'work' wiped, 'default' preserved.
+    const remaining = fx.scheduleStore.list()
+    expect(remaining.map(s => s.id)).toEqual(['d-t1'])
+  })
+
+  it('DELETE /api/heads/:id with zero schedules returns zero counts (D-17)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'fresh', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({ heads: [{ id: 'default', channels: [] }, { id: 'fresh', channels: [] }] }, null, 2) + '\n')
+
+    const res = await del('fresh')
+    expect(res.status).toBe(200)
+    expect(res.json).toEqual({ ok: true, deletedSchedules: 0, deletedReminders: 0 })
+  })
+
   // ── D-04 lazy migration ───────────────────────────────────────────────────
 
   it('lazy migration on first POST: synthesizes default head + strips channel env vars', async () => {
@@ -449,6 +488,7 @@ describe('PATCH /api/heads/:id (DASH-03 rename, D-14)', () => {
     const db = setupDb()
     const messages = new MessageStore(db)
     const queue = new QueueStore(db)
+    const scheduleStore = new ScheduleStore(path.join(workspace, 'schedules'))
     let currentHeads = initialHeads
     const app = express()
     app.use(express.json())
@@ -461,6 +501,7 @@ describe('PATCH /api/heads/:id (DASH-03 rename, D-14)', () => {
       db,
       messages,
       queue,
+      scheduleStore,
     }))
     const port = await getFreePort()
     const server = await new Promise<Server>((resolve, reject) => {
@@ -468,7 +509,7 @@ describe('PATCH /api/heads/:id (DASH-03 rename, D-14)', () => {
       s.once('error', reject)
     })
     fx = {
-      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      server, port, workspace, configPath, envFilePath, db, messages, queue, scheduleStore,
       setHeads: (next) => { currentHeads = next },
     }
   }
@@ -660,6 +701,7 @@ describe('POST /api/heads/:id/channels (DASH-04 add channel)', () => {
     const db = setupDb()
     const messages = new MessageStore(db)
     const queue = new QueueStore(db)
+    const scheduleStore = new ScheduleStore(path.join(workspace, 'schedules'))
     let currentHeads = initialHeads
     const app = express()
     app.use(express.json())
@@ -672,6 +714,7 @@ describe('POST /api/heads/:id/channels (DASH-04 add channel)', () => {
       db,
       messages,
       queue,
+      scheduleStore,
     }))
     const port = await getFreePort()
     const server = await new Promise<Server>((resolve, reject) => {
@@ -679,7 +722,7 @@ describe('POST /api/heads/:id/channels (DASH-04 add channel)', () => {
       s.once('error', reject)
     })
     fx = {
-      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      server, port, workspace, configPath, envFilePath, db, messages, queue, scheduleStore,
       setHeads: (next) => { currentHeads = next },
     }
   }
@@ -836,6 +879,7 @@ describe('PATCH/DELETE /api/heads/:id/channels/:channelId (DASH-04 edit + remove
     const db = setupDb()
     const messages = new MessageStore(db)
     const queue = new QueueStore(db)
+    const scheduleStore = new ScheduleStore(path.join(workspace, 'schedules'))
     let currentHeads = initialHeads
     const app = express()
     app.use(express.json())
@@ -848,6 +892,7 @@ describe('PATCH/DELETE /api/heads/:id/channels/:channelId (DASH-04 edit + remove
       db,
       messages,
       queue,
+      scheduleStore,
     }))
     const port = await getFreePort()
     const server = await new Promise<Server>((resolve, reject) => {
@@ -855,7 +900,7 @@ describe('PATCH/DELETE /api/heads/:id/channels/:channelId (DASH-04 edit + remove
       s.once('error', reject)
     })
     fx = {
-      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      server, port, workspace, configPath, envFilePath, db, messages, queue, scheduleStore,
       setHeads: (next) => { currentHeads = next },
     }
   }
@@ -1047,6 +1092,7 @@ describe('GET /api/heads/:id/counts + DELETE confirmId (D-06 typed-confirmation)
     const db = setupDb()
     const messages = new MessageStore(db)
     const queue = new QueueStore(db)
+    const scheduleStore = new ScheduleStore(path.join(workspace, 'schedules'))
     let currentHeads = initialHeads
     const app = express()
     app.use(express.json())
@@ -1059,6 +1105,7 @@ describe('GET /api/heads/:id/counts + DELETE confirmId (D-06 typed-confirmation)
       db,
       messages,
       queue,
+      scheduleStore,
     }))
     const port = await getFreePort()
     const server = await new Promise<Server>((resolve, reject) => {
@@ -1066,7 +1113,7 @@ describe('GET /api/heads/:id/counts + DELETE confirmId (D-06 typed-confirmation)
       s.once('error', reject)
     })
     fx = {
-      server, port, workspace, configPath, envFilePath, db, messages, queue,
+      server, port, workspace, configPath, envFilePath, db, messages, queue, scheduleStore,
       setHeads: (next) => { currentHeads = next },
     }
   }

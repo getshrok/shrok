@@ -267,4 +267,41 @@ describe('ScheduleStore — headId', () => {
     expect(raw.lastRun).toBe('2026-01-01T01:00:00Z')
     expect(raw.nextRun).toBe('2026-01-01T02:00:00Z')
   })
+
+  // ─── Plan 35-03 D-16: deleteAllForHead cascade helper ─────────────────────
+
+  it("deleteAllForHead removes only the target head's entries and returns split counts (schedules + reminders)", () => {
+    // 'work' head: 2 task schedules + 1 reminder.
+    store.create({ id: 'w-t1', headId: 'work', kind: 'task', taskName: 't1', runAt: '2026-01-01T00:00:00Z' })
+    store.create({ id: 'w-t2', headId: 'work', kind: 'task', taskName: 't2', runAt: '2026-01-02T00:00:00Z' })
+    store.create({ id: 'w-r1', headId: 'work', kind: 'reminder', agentContext: 'r1', runAt: '2026-01-03T00:00:00Z' })
+    // 'default' head: 1 task + 1 reminder. Must stay intact.
+    store.create({ id: 'd-t1', headId: 'default', kind: 'task', taskName: 't1', runAt: '2026-01-04T00:00:00Z' })
+    store.create({ id: 'd-r1', headId: 'default', kind: 'reminder', agentContext: 'r1', runAt: '2026-01-05T00:00:00Z' })
+
+    const result = store.deleteAllForHead('work')
+    expect(result).toEqual({ schedules: 2, reminders: 1 })
+
+    const remaining = store.list()
+    expect(remaining.map(s => s.id).sort()).toEqual(['d-r1', 'd-t1'])
+  })
+
+  it("deleteAllForHead returns { schedules: 0, reminders: 0 } for an unknown headId", () => {
+    store.create({ id: 'd-t1', headId: 'default', kind: 'task', taskName: 't1', runAt: '2026-01-01T00:00:00Z' })
+    const result = store.deleteAllForHead('nonexistent-head')
+    expect(result).toEqual({ schedules: 0, reminders: 0 })
+    // Existing data untouched
+    expect(store.list().map(s => s.id)).toEqual(['d-t1'])
+  })
+
+  it("deleteAllForHead is idempotent — second call returns zeros", () => {
+    store.create({ id: 'w-t1', headId: 'work', kind: 'task', taskName: 't1', runAt: '2026-01-01T00:00:00Z' })
+    store.create({ id: 'w-r1', headId: 'work', kind: 'reminder', agentContext: 'r1', runAt: '2026-01-02T00:00:00Z' })
+
+    const first = store.deleteAllForHead('work')
+    expect(first).toEqual({ schedules: 1, reminders: 1 })
+
+    const second = store.deleteAllForHead('work')
+    expect(second).toEqual({ schedules: 0, reminders: 0 })
+  })
 })
