@@ -357,9 +357,13 @@ export class WhatsAppAdapter implements ChannelAdapter {
         if (!text && !attachments.length) continue
         if (!this.handler) continue
 
+        const pushName = (msg as { pushName?: string | null }).pushName
+        const senderName = pushName && pushName.length > 0 ? pushName : 'unknown'
+
         this.handler({
           channel: this.id,
           text,
+          senderName,
           ...(attachments.length ? { attachments } : {}),
           rawPayload: msg,
         })
