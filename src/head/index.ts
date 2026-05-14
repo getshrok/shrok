@@ -101,6 +101,12 @@ export const HEAD_TOOLS: ToolDefinition[] = [
 // ─── HeadToolExecutor ─────────────────────────────────────────────────────────
 
 export interface HeadToolExecutorOptions {
+  /** Required: head this executor belongs to. Phase 34 D-EXEC-OPTION — the executor
+   *  injects this value into SpawnOptions when handling the spawn_agent dispatch case,
+   *  so agents spawned via the head tool surface inherit the spawning head's identity.
+   *  Mirrors ActivationLoopOptions.headId rather than InjectorImpl's positional pattern
+   *  because this interface is already an options grab-bag (15+ fields). */
+  headId: string
   agentRunner: AgentRunner
   agentStore?: import('../db/agents.js').AgentStore
   skillLoader: SkillLoader
