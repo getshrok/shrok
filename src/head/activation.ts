@@ -1248,6 +1248,7 @@ export class ActivationLoop {
       agentId,
       prompt,
       trigger: 'scheduled',
+      headId: this.opts.headId,                         // Phase 34 D-EXEC-OPTION: scheduled agents inherit the head's identity
       skillName: taskName!,
       ...(scheduledModel ? { model: scheduledModel } : {}),
     })

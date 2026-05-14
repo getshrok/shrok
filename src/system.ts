@@ -245,6 +245,7 @@ export function buildSystem(deps: SystemDeps): System {
         awaitAll: async () => {},
       }
     : new LocalAgentRunner({
+        headId: deps.headId ?? 'default',               // Phase 34 D-WIRING-IN-SYSTEM: head identity fixed at runner construction
         agentStore: stores.agents,
         inboxStore: stores.agentInbox,
         queueStore: stores.queue,
@@ -331,6 +332,7 @@ export function buildSystem(deps: SystemDeps): System {
 
   // ── Tool Executor Options ───────────────────────────────────────────────
   const toolExecutorOpts = {
+    headId: deps.headId ?? 'default',                  // Phase 34 D-WIRING-IN-SYSTEM: flows to HeadToolExecutor via activation.ts:766 spread
     agentRunner,
     agentStore: stores.agents,
     skillLoader,
