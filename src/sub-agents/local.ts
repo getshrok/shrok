@@ -51,6 +51,11 @@ export const SLASH_NAME_REJECTION =
 // ─── LocalAgentRunner ────────────────────────────────────────────────────────
 
 export interface LocalAgentRunnerOptions {
+  /** Required: head this runner belongs to. All queue events this runner enqueues
+   *  (agent_completed / agent_failed / agent_question / agent_response) are stamped
+   *  with this headId so the corresponding head's activation loop claims them.
+   *  Phase 34 D-RUNNER-HEADID — fixed at construction, mirrors ActivationLoop's pattern. */
+  headId: string
   agentStore: AgentStore
   inboxStore: AgentInboxStore
   queueStore: QueueStore
