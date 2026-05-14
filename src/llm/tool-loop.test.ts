@@ -11,7 +11,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import * as path from 'node:path'
 import * as url from 'node:url'
-import { descriptionForChannel, runToolLoop, AgentAbortedError, type ToolExecutor } from './tool-loop.js'
+import { descriptionForChannel, runToolLoop, AgentAbortedError, stripLeadingBracketPrefixes, type ToolExecutor } from './tool-loop.js'
 import { initDb } from '../db/index.js'
 import { runMigrations } from '../db/migrate.js'
 import { UsageStore } from '../db/usage.js'
@@ -321,5 +321,91 @@ describe('runToolLoop onRoundComplete callback', () => {
     // and the second LLM call has NOT yet happened.
     expect(appendedAtCallback).toBe(2)
     expect(providerCallsAtCallback).toBe(1)
+  })
+})
+
+// ─── stripLeadingBracketPrefixes (Phase 36 D-11/D-12) ─────────────────────────
+
+describe('stripLeadingBracketPrefixes', () => {
+  describe('preserves all existing timestamp strip cases (regression)', () => {
+    it('strips [5m ago] prefix', () => {
+      expect(stripLeadingBracketPrefixes('[5m ago] hi')).toBe('hi')
+    })
+
+    it('strips [3h ago] prefix', () => {
+      expect(stripLeadingBracketPrefixes('[3h ago] hi')).toBe('hi')
+    })
+
+    it('strips [2d ago] prefix', () => {
+      expect(stripLeadingBracketPrefixes('[2d ago] hi')).toBe('hi')
+    })
+
+    it('strips [Apr 3, 2:15 PM] prefix', () => {
+      expect(stripLeadingBracketPrefixes('[Apr 3, 2:15 PM] hi')).toBe('hi')
+    })
+
+    it('strips [Apr 3, 12:00 AM] prefix', () => {
+      expect(stripLeadingBracketPrefixes('[Apr 3, 12:00 AM] hi')).toBe('hi')
+    })
+
+    it('strips [now] prefix', () => {
+      expect(stripLeadingBracketPrefixes('[now] hi')).toBe('hi')
+    })
+
+    it('strips [just now] prefix', () => {
+      expect(stripLeadingBracketPrefixes('[just now] hi')).toBe('hi')
+    })
+  })
+
+  describe('strips new bracket-name prefixes (D-11)', () => {
+    it('strips [Ashley]: prefix (with colon)', () => {
+      expect(stripLeadingBracketPrefixes('[Ashley]: hi')).toBe('hi')
+    })
+
+    it('strips [Ashley] prefix (without colon)', () => {
+      expect(stripLeadingBracketPrefixes('[Ashley] hi')).toBe('hi')
+    })
+
+    it("strips compound [5m ago] [Jarvis]: → 'sunny all day' (user's specifics example)", () => {
+      expect(stripLeadingBracketPrefixes('[5m ago] [Jarvis]: sunny all day')).toBe('sunny all day')
+    })
+
+    it("strips three-prefix chain [a] [b] [c]: x → 'x'", () => {
+      expect(stripLeadingBracketPrefixes('[a] [b] [c]: x')).toBe('x')
+    })
+
+    it("strips bracketed name with internal whitespace [ Ashley ]: hi → 'hi'", () => {
+      expect(stripLeadingBracketPrefixes('[ Ashley ]: hi')).toBe('hi')
+    })
+
+    it("strips [Ashley 🎉]: hi → 'hi' (emoji-name passthrough)", () => {
+      expect(stripLeadingBracketPrefixes('[Ashley 🎉]: hi')).toBe('hi')
+    })
+  })
+
+  describe('does NOT strip non-leading or malformed brackets (anti-regression)', () => {
+    it("leaves middle-of-line bracket unchanged: 'say [Ashley]: hi' → unchanged", () => {
+      expect(stripLeadingBracketPrefixes('say [Ashley]: hi')).toBe('say [Ashley]: hi')
+    })
+
+    it("leaves line-2 bracket unchanged: 'hi\\n[Ashley]: world' → unchanged", () => {
+      expect(stripLeadingBracketPrefixes('hi\n[Ashley]: world')).toBe('hi\n[Ashley]: world')
+    })
+
+    it("leaves unclosed bracket unchanged: '[unclosed hi' → unchanged", () => {
+      expect(stripLeadingBracketPrefixes('[unclosed hi')).toBe('[unclosed hi')
+    })
+
+    it("leaves empty brackets unchanged: '[] hi' → unchanged", () => {
+      expect(stripLeadingBracketPrefixes('[] hi')).toBe('[] hi')
+    })
+
+    it("leaves no-bracket text unchanged: 'plain text' → unchanged", () => {
+      expect(stripLeadingBracketPrefixes('plain text')).toBe('plain text')
+    })
+
+    it("leaves empty string unchanged: '' → ''", () => {
+      expect(stripLeadingBracketPrefixes('')).toBe('')
+    })
   })
 })
