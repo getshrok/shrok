@@ -37,8 +37,12 @@ export class SlackAdapter implements ChannelAdapter {
   // T-36-04: TTL-bounded cache for users.info lookups (D-05 Slack chain).
   // 10 min TTL — accepts brief staleness on display-name renames in exchange
   // for ~1 API call per unique sender per 10 min vs per inbound message.
+  // Size-capped (FIFO eviction) so a busy workspace with thousands of distinct
+  // senders over a process lifetime does not grow the map unboundedly — mirrors
+  // the COLLAPSE_MAP_MAX pattern used elsewhere in this file.
   private senderNameCache = new Map<string, { name: string; fetchedAt: number }>()
   private readonly SENDER_NAME_TTL_MS = 10 * 60 * 1000
+  private readonly SENDER_NAME_CACHE_MAX = 500
 
   constructor(botToken: string, appToken: string, channelId: string, mediaDir: string | undefined, id: string, headId: string) {
     this.botToken = botToken
@@ -153,6 +157,11 @@ export class SlackAdapter implements ChannelAdapter {
       const info = await this.app.client.users.info({ user: userId })
       const profile = info.user?.profile
       const name = profile?.display_name || info.user?.real_name || userId
+      // FIFO eviction at SENDER_NAME_CACHE_MAX entries to bound memory in busy workspaces.
+      if (this.senderNameCache.size >= this.SENDER_NAME_CACHE_MAX) {
+        const oldestKey = this.senderNameCache.keys().next().value
+        if (oldestKey !== undefined) this.senderNameCache.delete(oldestKey)
+      }
       this.senderNameCache.set(userId, { name, fetchedAt: Date.now() })
       return name
     } catch (err) {
