@@ -226,9 +226,9 @@ Plans:
 
 **Requirements**: TBD (no tracked REQ-IDs — Phase 36 adds a new attribution capability layer on top of multi-head infra; no v1.3 requirement maps directly)
 **Depends on:** Phase 35
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 36-01-type-contract-central-prefix-PLAN.md — InboundMessage.senderName field + central buildPrefixedText in headRouteMessage + normalizeSenderName helper + threat model (D-01, D-02, D-04, D-07) [Wave 1]
-- [ ] 36-02-stripper-generalization-PLAN.md — stripTimestampEcho → stripLeadingBracketPrefixes rename + generalized D-11 regex + sole-importer update + regression/anti-regression tests (D-11, D-12) [Wave 1]
+- [x] 36-02-stripper-generalization-PLAN.md — stripTimestampEcho → stripLeadingBracketPrefixes rename + generalized D-11 regex + sole-importer update + regression/anti-regression tests (D-11, D-12) [Wave 1]
 - [ ] 36-03-adapter-sender-extraction-PLAN.md — 5 adapters populate senderName: Discord (member.displayName chain), Telegram (first_name+last_name chain), Slack (TTL-cached users.info), WhatsApp (pushName), Cliq (sender.name); dashboard/voice/webhook NOT modified (D-05, D-06) [Wave 2]

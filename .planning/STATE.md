@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 36-01-PLAN.md (type contract + central prefix choke-point)
-last_updated: "2026-05-14T14:10:15.515Z"
+stopped_at: Completed 36-02-PLAN.md (stripper generalization + rename)
+last_updated: "2026-05-14T14:17:21.479Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 31
-  completed_plans: 29
-  percent: 94
+  completed_plans: 30
+  percent: 97
 ---
 
 # Project State
@@ -19,10 +19,10 @@ progress:
 ## Current Position
 
 Phase: 36 (inbound-sender-attribution) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-14
-Stopped at: Completed 36-01-PLAN.md (type contract + central prefix choke-point)
+Stopped at: Completed 36-02-PLAN.md (stripper generalization + rename)
 
 Progress: [██████████] 96% (27/28 plans complete; phase 35 in progress, 3/4 plans done)
 
@@ -128,6 +128,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-STRICT-TRUNCATE (Plan 36-01): `normalizeSenderName` truncate predicate is strict-greater-than 40 (`out.length > MAX_SENDER_NAME_LEN`). Test 11 pins that an exactly-40-char input passes through unchanged with NO ellipsis — future refactorers must not tighten to `>=`
 - D-NO-BODY-TRIM (Plan 36-01): `buildPrefixedText` does NOT trim `rawText` before append. Test 20 pins `'[Ashley]:    '` (1 separator space + 3 body spaces = 4 trailing spaces) as the locked output for body `'   '` — user-typed body whitespace is preserved verbatim, only senderName side normalizes whitespace
 - AC4-GREP-TYPO (Plan 36-01): Plan 01 acceptance criterion AC4 grep pattern decodes (under bash double-escape) to a regex source spelling that no canonical implementation of the locked `<action>` Step B code block produces. Documented as a planner-text typo; implementation follows the code block byte-identically and all 13 normalizeSenderName tests (covering Tests 4/5/6/18 which functionally pin forbidden-char strip behavior) are GREEN. NOT a code deviation
+- D-HARD-RENAME (Plan 36-02): stripTimestampEcho → stripLeadingBracketPrefixes is a hard rename — no shim/alias. Orphan-reference grep across src/tests/scripts clean. Rationale: keeping a shim would invite future code to use the stale name and dilute D-12 intent that the function name match its broader behavior
+- D-FIRST-LINE-ONLY-PRESERVED (Plan 36-02): stripLeadingBracketPrefixes regex uses single-line `^` anchor (no `/m` flag); line-2+ usage of `[...]` passes through unchanged. Pinned by "leaves line-2 bracket unchanged" anti-regression test. Future regex tightening cannot silently break head responses that legitimately use brackets after a newline
+- D-EMPTY-BRACKETS-DISALLOWED (Plan 36-02): regex uses `[^\]]+` (≥1 non-`]` char inside) rather than `[^\]]*`, so a literal `[]` at start passes through unchanged. Matches locked D-11 spec byte-identically and pinned by "leaves empty brackets unchanged" anti-regression test
 
 ## Performance Metrics
 
@@ -149,3 +152,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | Phase 35 P02 | 13min | 2 tasks | 13 files |
 | Phase 35-per-head-scheduling P03 | 9min | 2 tasks | 7 files |
 | Phase 36 P01 | 4min | 2 tasks | 4 files |
+| Phase 36 P02 | 4min | 2 tasks | 3 files |
