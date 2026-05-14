@@ -222,7 +222,7 @@ export class LocalAgentRunner implements AgentRunner {
           agentId,
           error: (err as Error).message,
           createdAt: new Date().toISOString(),
-        } as import('../types/core.js').QueueEvent, 2)
+        } as import('../types/core.js').QueueEvent, 2, this.headId)
       } catch { /* best effort */ }
     }).finally(() => {
       this.emitters.delete(agentId)
@@ -630,7 +630,7 @@ export class LocalAgentRunner implements AgentRunner {
             agentId: agentId,
             error: (err as Error).message,
             createdAt: now(),
-          }, PRIORITY.AGENT_FAILED)
+          }, PRIORITY.AGENT_FAILED, this.headId)
         }
       } catch { /* ignore secondary failure */ }
     } finally {
@@ -985,7 +985,7 @@ export class LocalAgentRunner implements AgentRunner {
         agentId: agentId,
         output,
         createdAt: now(),
-      }, PRIORITY.AGENT_COMPLETED)
+      }, PRIORITY.AGENT_COMPLETED, this.headId)
     }
   }
 
@@ -1001,7 +1001,7 @@ export class LocalAgentRunner implements AgentRunner {
       this.queueStore.enqueue({
         type: 'agent_question', id: generateId('qe'),
         agentId, question, createdAt: now(),
-      }, PRIORITY.AGENT_QUESTION)
+      }, PRIORITY.AGENT_QUESTION, this.headId)
     }
   }
 
@@ -1029,7 +1029,7 @@ export class LocalAgentRunner implements AgentRunner {
           agentId: agentId,
           output,
           createdAt: now(),
-        }, PRIORITY.AGENT_COMPLETED)
+        }, PRIORITY.AGENT_COMPLETED, this.headId)
         state.completed = true
       },
       fail: (error: string) => { throw new Error(error) },
@@ -1104,7 +1104,7 @@ export class LocalAgentRunner implements AgentRunner {
         this.queueStore.enqueue({
           type: 'agent_response', id: generateId('qe'),
           agentId, response, createdAt: now(),
-        }, PRIORITY.AGENT_RESPONSE)
+        }, PRIORITY.AGENT_RESPONSE, this.headId)
       }
       return 'Response sent.'
     }
