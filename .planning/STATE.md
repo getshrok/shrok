@@ -3,26 +3,26 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 35-03-PLAN.md
-last_updated: "2026-05-14T07:42:04.262Z"
+stopped_at: Completed 36-01-PLAN.md (type contract + central prefix choke-point)
+last_updated: "2026-05-14T14:10:15.515Z"
 last_activity: 2026-05-14
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 7
-  total_plans: 28
-  completed_plans: 28
-  percent: 100
+  total_plans: 31
+  completed_plans: 29
+  percent: 94
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
+Phase: 36 (inbound-sender-attribution) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
 Last activity: 2026-05-14
-Stopped at: Completed 35-03-PLAN.md
+Stopped at: Completed 36-01-PLAN.md (type contract + central prefix choke-point)
 
 Progress: [██████████] 96% (27/28 plans complete; phase 35 in progress, 3/4 plans done)
 
@@ -31,7 +31,7 @@ Progress: [██████████] 96% (27/28 plans complete; phase 35 i
 See: .planning/PROJECT.md (updated 2026-05-12)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 35 — per-head-scheduling
+**Current focus:** Phase 36 — inbound-sender-attribution
 
 ## Accumulated Context
 
@@ -122,6 +122,13 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-16-SPLIT-COUNTS-IN-STORE (Plan 35-03): `ScheduleStore.deleteAllForHead` returns split `{ schedules, reminders }` rather than flat total — different vendor surfaces (tasks run TASK.md vs reminders fire to a channel) so UI renders separately. Iterates `this.list()` so lazy-migration funnel runs first
 - D-17-CASCADE-AFTER-SQL (Plan 35-03): DELETE /api/heads/:id runs SQL transaction FIRST, then file-store cascade (T-35-12 mitigation). SQL failure → FS untouched; SQL success → FS partial-fail is recoverable (orphan files harmless because head is gone from config). Response widens to `{ ok, deletedSchedules, deletedReminders }`
 
+## Decisions (Phase 36)
+
+- D-CHARCLASS (Plan 36-01): forbidden-char strip is a single character-class regex `/[\[\]:]/g` (locked by `<action>` Step B code block in 36-01-PLAN.md). Functionally identical to alternate spellings and runs in one V8 regex pass — chosen over three sequential `replace()` calls
+- D-STRICT-TRUNCATE (Plan 36-01): `normalizeSenderName` truncate predicate is strict-greater-than 40 (`out.length > MAX_SENDER_NAME_LEN`). Test 11 pins that an exactly-40-char input passes through unchanged with NO ellipsis — future refactorers must not tighten to `>=`
+- D-NO-BODY-TRIM (Plan 36-01): `buildPrefixedText` does NOT trim `rawText` before append. Test 20 pins `'[Ashley]:    '` (1 separator space + 3 body spaces = 4 trailing spaces) as the locked output for body `'   '` — user-typed body whitespace is preserved verbatim, only senderName side normalizes whitespace
+- AC4-GREP-TYPO (Plan 36-01): Plan 01 acceptance criterion AC4 grep pattern decodes (under bash double-escape) to a regex source spelling that no canonical implementation of the locked `<action>` Step B code block produces. Documented as a planner-text typo; implementation follows the code block byte-identically and all 13 normalizeSenderName tests (covering Tests 4/5/6/18 which functionally pin forbidden-char strip behavior) are GREEN. NOT a code deviation
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -141,3 +148,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | Phase 35 P01 | 8min | 2 tasks | 10 files |
 | Phase 35 P02 | 13min | 2 tasks | 13 files |
 | Phase 35-per-head-scheduling P03 | 9min | 2 tasks | 7 files |
+| Phase 36 P01 | 4min | 2 tasks | 4 files |

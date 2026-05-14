@@ -79,6 +79,8 @@ Plans:
 - [x] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head (completed 2026-05-12)
 - [x] **Phase 33: Multi-head Management UI** — Dashboard UI for creating/renaming/deleting heads, managing channel adapters (incl. multiple instances per provider), and per-head Send routing (completed 2026-05-13)
 - [x] **Phase 34: Multi-Head Agent Lifecycle** — Plumb head_id through the agent spawn/run/complete lifecycle so non-default heads receive their own agent completion events (currently they default-route to the default head) (completed 2026-05-14)
+- [x] **Phase 35: per-head-scheduling** — Each head owns its own schedules and reminders end-to-end; per-head schedule_trigger events, agent-created schedules inherit spawning head, reminder first-channel fallback, head deletion cascades (completed 2026-05-14)
+- [ ] **Phase 36: Inbound Sender Attribution** — Adapter-side `[Name]:` prefix on inbound messages so the head can tell who is speaking in multi-user channels; generalize the timestamp prefix stripper to strip any leading bracketed segments from head responses; identity disambiguation handled via user.md username mapping
 
 ## Phase Details
 
@@ -217,3 +219,16 @@ Plans:
 - [x] 35-02-PLAN.md — buildScheduleTools/buildReminderTools require headId, ToolSurfaceDeps.headId, update_schedule rejects reassignment, reminder fire first-channel fallback (D-06, D-07, D-08, D-09, D-10) [Wave 2]
 - [x] 35-03-PLAN.md — Dashboard schedules API: POST requires headId, GET cross-head, PATCH rejects headId; heads DELETE cascade + counts; ScheduleStore.deleteAllForHead helper (D-11, D-12, D-13, D-16, D-17) [Wave 2]
 - [x] 35-04-PLAN.md — Dashboard UI: head picker on create forms, Head column on lists; architectural regression test tests/integration/multi-head-scheduling.test.ts (D-14, D-15) [Wave 3]
+
+### Phase 36: Inbound Sender Attribution
+
+**Goal:** Inbound messages from every channel adapter are prefixed with a `[Name]:` segment carrying the sender's adapter-side username/display name, so the head can attribute messages to specific humans in multi-user channels. The existing timestamp prefix stripper generalizes to strip any leading bracketed segments (e.g., `[5m ago] [Ashley]:` or `[Ashley]:`) from head responses so the head never mimics the prefix back. Identity disambiguation across multiple usernames per person is handled in user.md (e.g., "Ashley's usernames are CoolChick123 and AwesomeAshley2"), not a stable DB id — v1 keeps the data path purely string-based.
+
+**Requirements**: TBD (no tracked REQ-IDs — Phase 36 adds a new attribution capability layer on top of multi-head infra; no v1.3 requirement maps directly)
+**Depends on:** Phase 35
+**Plans:** 1/3 plans executed
+
+Plans:
+- [x] 36-01-type-contract-central-prefix-PLAN.md — InboundMessage.senderName field + central buildPrefixedText in headRouteMessage + normalizeSenderName helper + threat model (D-01, D-02, D-04, D-07) [Wave 1]
+- [ ] 36-02-stripper-generalization-PLAN.md — stripTimestampEcho → stripLeadingBracketPrefixes rename + generalized D-11 regex + sole-importer update + regression/anti-regression tests (D-11, D-12) [Wave 1]
+- [ ] 36-03-adapter-sender-extraction-PLAN.md — 5 adapters populate senderName: Discord (member.displayName chain), Telegram (first_name+last_name chain), Slack (TTL-cached users.info), WhatsApp (pushName), Cliq (sender.name); dashboard/voice/webhook NOT modified (D-05, D-06) [Wave 2]
