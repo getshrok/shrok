@@ -126,12 +126,16 @@ export function createSchedulesRouter(
     if (typeof enabled === 'boolean') patch.enabled = enabled
     if (typeof cron === 'string' && cron) patch.cron = cron
     if (typeof runAt === 'string') {
-      if (runAt && isNaN(new Date(runAt).getTime())) {
+      if (!runAt) {
+        res.status(400).json({ error: 'runAt cannot be empty (use cron to make a schedule recurring, or send a valid ISO timestamp)' })
+        return
+      }
+      if (isNaN(new Date(runAt).getTime())) {
         res.status(400).json({ error: 'Invalid runAt date' })
         return
       }
       patch.runAt = runAt
-      if (runAt) patch.nextRun = new Date(runAt).toISOString()
+      patch.nextRun = new Date(runAt).toISOString()
     }
     if (typeof conditions === 'string') patch.conditions = conditions
     if (typeof agentContext === 'string') patch.agentContext = agentContext
