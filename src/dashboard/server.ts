@@ -170,6 +170,11 @@ export class DashboardServer {
         db: headsDb,
         messages: headsMessages,
         queue: headsQueue,
+        // Plan 35-03 D-16: scheduleStore wired so DELETE /api/heads/:id can
+        // cascade-delete schedules + reminders. In real production wiring
+        // schedules is always present when db + queue are present; assert
+        // the non-null so we don't need a cascade-vs-no-cascade branch.
+        scheduleStore: this.opts.schedules!,
       }))
     } else {
       // Tests / legacy: GET-only router with a noop deps payload. POST/PATCH/DELETE
@@ -183,6 +188,8 @@ export class DashboardServer {
         db: null as unknown as DatabaseSync,
         messages: headsMessages,
         queue: null as unknown as QueueStore,
+        // GET-only path: cascade never runs. Same pattern as db/queue above.
+        scheduleStore: null as unknown as ScheduleStore,
       }))
     }
     app.use('/api/steward-runs', createStewardRunsRouter(stewardRuns))

@@ -10,6 +10,7 @@ import type { DatabaseSync } from '../../db/index.js'
 import { transaction } from '../../db/index.js'
 import type { MessageStore } from '../../db/messages.js'
 import type { QueueStore } from '../../db/queue.js'
+import type { ScheduleStore } from '../../db/schedules.js'
 
 /**
  * Head ID rules (D-13): lowercase kebab-case, must start with [a-z0-9],
@@ -88,6 +89,13 @@ export interface HeadsRouterDeps {
   db: DatabaseSync
   messages: MessageStore
   queue: QueueStore
+  /**
+   * Plan 35-03 D-16: cascade-delete the head's schedules + reminders on
+   * DELETE /api/heads/:id. The schedule file store is file-system (not
+   * SQLite), so the cascade runs OUTSIDE the SQL transaction — see DELETE
+   * handler for ordering rationale (T-35-12).
+   */
+  scheduleStore: ScheduleStore
 }
 
 /**
@@ -284,6 +292,14 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
       deps.db.prepare('DELETE FROM app_state WHERE key LIKE ?').run(`${id}:%`)
     })
 
+    // Plan 35-03 D-16: Cascade-delete the head's schedules and reminders
+    // (file-store, not SQLite). Runs AFTER the SQL transaction succeeds so
+    // SQL state is consistent first. FS deletes are non-transactional but
+    // idempotent — partial-failure recovery is "re-run the DELETE call".
+    // Reverse order (FS first, then SQL) would risk losing schedule data on
+    // SQL rollback; this ordering is the T-35-12 mitigation.
+    const cascadeCounts = deps.scheduleStore.deleteAllForHead(id)
+
     // After the DB wipe succeeds, rewrite config.json without the head.
     materializeLazyMigrationIfNeeded(deps)
     const configJson = loadConfigJsonInline(deps.configPath)
@@ -291,7 +307,13 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
     configJson['heads'] = heads.filter(h => h.id !== id)
     writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
 
-    res.status(200).json({ ok: true })
+    // Plan 35-03 D-17: surface cascade counts in response. Legacy { ok: true }
+    // field preserved — additive widening, not a breaking change.
+    res.status(200).json({
+      ok: true,
+      deletedSchedules: cascadeCounts.schedules,
+      deletedReminders: cascadeCounts.reminders,
+    })
   })
 
   /**

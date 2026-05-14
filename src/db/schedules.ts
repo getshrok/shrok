@@ -176,4 +176,30 @@ export class ScheduleStore {
     s.updatedAt = new Date().toISOString()
     this.store.save(s)
   }
+
+  /**
+   * Plan 35-03 D-16 / D-17: cascade-delete all schedules and reminders owned
+   * by a head. Returns split counts so the DELETE /api/heads/:id response can
+   * surface them (D-17).
+   *
+   * Idempotent — non-existent headId returns { schedules: 0, reminders: 0 }
+   * with no error. Reminders and schedules share the same JSON dir; the
+   * `kind` field discriminates the count buckets.
+   *
+   * Uses this.list() so any unstamped legacy rows resolve to 'default' first
+   * (lazy migration funnel per D-03), making the helper safe to call on a
+   * directory that may contain pre-Phase-35 files.
+   */
+  deleteAllForHead(headId: string): { schedules: number; reminders: number } {
+    const all = this.list()
+    let schedules = 0
+    let reminders = 0
+    for (const s of all) {
+      if (s.headId !== headId) continue
+      this.store.delete(s.id)
+      if (s.kind === 'reminder') reminders++
+      else schedules++
+    }
+    return { schedules, reminders }
+  }
 }
