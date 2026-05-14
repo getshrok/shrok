@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
 status: executing
-stopped_at: Completed 35-01-PLAN.md
-last_updated: "2026-05-14T06:42:43.007Z"
+stopped_at: Completed 35-02-PLAN.md
+last_updated: "2026-05-14T06:59:17.990Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 28
-  completed_plans: 25
-  percent: 89
+  completed_plans: 26
+  percent: 93
 ---
 
 # Project State
@@ -19,10 +19,10 @@ progress:
 ## Current Position
 
 Phase: 35 (per-head-scheduling) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
-Last activity: 2026-05-14 -- Plan 35-01 complete (storage foundation)
-Stopped at: Completed 35-01-PLAN.md
+Last activity: 2026-05-14
+Stopped at: Completed 35-02-PLAN.md
 
 Progress: [█████████░] 89% (25/28 plans complete; phase 35 in progress, 1/4 plans done)
 
@@ -112,6 +112,10 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-02-MIGRATION-INLINE (Plan 35-01): `migrateLegacyHeadId()` lives inline in `src/db/schedules.ts` (not generalized into file-store.ts). Reminder has a different legacy shape (no `kind` field defaults to 'task') and Phase 33's `.env` migration is unrelated — generalization has no payoff
 - D-03-GET-IS-MIGRATION-FUNNEL (Plan 35-01): `markFired/advanceNextRun/markSkipped` refactored to route their internal read through `this.get(id)` rather than `this.store.get(id)`, so the migration runs on every public read path with zero duplication. Smaller diff than per-method migration calls
 - D-04-ENQUEUE-3RD-ARG-PER-EVENT (Plan 35-01): `scheduler.tick()` passes `schedule.headId` (per-row, per-event) NOT `this.headId` — no constructor field on `ScheduleEvaluatorImpl`. One global ticker per D-04 in 35-CONTEXT.md; per-head clocks rejected as no-benefit complexity. WR-03 NOTE block at `src/scheduler/index.ts:69-73` removed
+- D-09-FACTORY-CLOSURE-NO-DEFAULT (Plan 35-02): `buildScheduleTools(scheduleStore, timezone, unifiedLoader, headId)` and `buildReminderTools(scheduleStore, timezone, headId)` both take `headId` as a required factory arg with no default value. To preserve TypeScript's required-after-optional rule, the existing `unifiedLoader: UnifiedLoader | null = null` default was removed (`unifiedLoader: UnifiedLoader | null` — explicit pass required). Both known callers (tool-surface.ts + 10 agents.test.ts sites) supply it explicitly. Defaulting headId to 'default' would defeat the type-required safety net
+- D-10-SCHEMA-ABSENCE-PLUS-RUNTIME (Plan 35-02): `update_schedule` defends against headId reassignment via two layers — (a) absent from `inputSchema.properties` (primary defense: agents don't see headId as a valid field), (b) explicit runtime `if ('headId' in input)` reject at the TOP of execute() before patch construction (defense-in-depth for clients that ignore schema). Both contracts pinned by tests
+- D-08-STRUCTURAL-CALLBACK (Plan 35-02): `ActivationLoopOptions.resolveCurrentHeads` typed as minimal structural `() => Array<{ id; channels: Array<{ id }> }>` rather than `() => ResolvedHead[]`. The reminder fire site only needs `.id` and `.channels[].id`; importing ResolvedHead would couple the activation interface to future ResolvedHead fields for no reading-side benefit. Matches Phase 33 D-SCOPE-MIN-CORRECT minimal-contract pattern
+- D-08-DEFAULT-CALLBACK (Plan 35-02): `buildSystem` supplies a default `() => [{ id: deps.headId ?? 'default', channels: [] }]` callback when `SystemDeps.resolveCurrentHeads` is omitted. Empty-channels return exercises the D-07 skip+log path (backward-compatible for single-head hosts and test fixtures). The host (`src/index.ts`) supplies the production `() => resolveHeads(loadConfig())` so dashboard edits between scheduler ticks land without restart. Mirrors `DashboardServerOptions.resolveCurrentHeads` pattern verbatim
 
 ## Performance Metrics
 
@@ -130,3 +134,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | Phase 34 P04 | 3min | 2 tasks | 3 files |
 | Phase 34 P05 | 14min | 2 tasks | 16 files |
 | Phase 35 P01 | 8min | 2 tasks | 10 files |
+| Phase 35 P02 | 13min | 2 tasks | 13 files |

@@ -210,10 +210,10 @@ Plans:
 
 **Requirements**: TBD (XH-F-02 in REQUIREMENTS.md is the closest mapped item — schedules and reminders assigned to a specific head)
 **Depends on:** Phase 34
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] 35-01-PLAN.md — Schedule.headId field + ScheduleStore filter API + lazy JSON migration + ScheduleEvaluator passes schedule.headId on enqueue + WR-03 NOTE removed (D-01, D-02, D-03, D-04, D-05) [Wave 1]
-- [ ] 35-02-PLAN.md — buildScheduleTools/buildReminderTools require headId, ToolSurfaceDeps.headId, update_schedule rejects reassignment, reminder fire first-channel fallback (D-06, D-07, D-08, D-09, D-10) [Wave 2]
+- [x] 35-02-PLAN.md — buildScheduleTools/buildReminderTools require headId, ToolSurfaceDeps.headId, update_schedule rejects reassignment, reminder fire first-channel fallback (D-06, D-07, D-08, D-09, D-10) [Wave 2]
 - [ ] 35-03-PLAN.md — Dashboard schedules API: POST requires headId, GET cross-head, PATCH rejects headId; heads DELETE cascade + counts; ScheduleStore.deleteAllForHead helper (D-11, D-12, D-13, D-16, D-17) [Wave 2]
 - [ ] 35-04-PLAN.md — Dashboard UI: head picker on create forms, Head column on lists; architectural regression test tests/integration/multi-head-scheduling.test.ts (D-14, D-15) [Wave 3]
