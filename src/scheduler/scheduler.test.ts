@@ -122,10 +122,44 @@ describe('ScheduleEvaluatorImpl', () => {
     evaluator.tick()
 
     expect(queueStore.enqueue).toHaveBeenCalledOnce()
-    const [event, priority] = vi.mocked(queueStore.enqueue).mock.calls[0]!
+    const [event, priority, headId] = vi.mocked(queueStore.enqueue).mock.calls[0]!
     expect(event.type).toBe('schedule_trigger')
     expect((event as { taskName: string }).taskName).toBe('email')
     expect(priority).toBe(PRIORITY.SCHEDULE_TRIGGER)
+    expect(headId).toBe('default')
+  })
+
+  it("Test A (Plan 35-01 D-04): passes schedule.headId as 3rd arg to enqueue", () => {
+    const schedule = makeSchedule({ id: 'sched_work', headId: 'work' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluator.tick()
+
+    expect(queueStore.enqueue).toHaveBeenCalledOnce()
+    const [, , headId] = vi.mocked(queueStore.enqueue).mock.calls[0]!
+    expect(headId).toBe('work')
+  })
+
+  it("Test B (Plan 35-01 D-04): fan-out — two heads in one tick stamp distinct headIds", () => {
+    const sDefault = makeSchedule({ id: 'a', headId: 'default', taskName: 'task-a' })
+    const sWork = makeSchedule({ id: 'b', headId: 'work', taskName: 'task-b' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([sDefault, sWork])
+
+    evaluator.tick()
+
+    expect(queueStore.enqueue).toHaveBeenCalledTimes(2)
+    const call0 = vi.mocked(queueStore.enqueue).mock.calls[0]!
+    const call1 = vi.mocked(queueStore.enqueue).mock.calls[1]!
+
+    // Match each call's 3rd arg to its scheduleId
+    const event0 = call0[0] as { scheduleId: string }
+    const event1 = call1[0] as { scheduleId: string }
+    const expectedHeadFor = (sId: string) => (sId === 'a' ? 'default' : 'work')
+
+    expect(call0[2]).toBe(expectedHeadFor(event0.scheduleId))
+    expect(call1[2]).toBe(expectedHeadFor(event1.scheduleId))
+    // And they must differ
+    expect(call0[2]).not.toBe(call1[2])
   })
 
   it("forwards schedule.kind into the schedule_trigger QueueEvent (DISPATCH-03)", () => {
