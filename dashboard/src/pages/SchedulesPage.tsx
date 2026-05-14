@@ -18,6 +18,55 @@ function formatCron(cron: string): string {
   }
 }
 
+// ─── Head color palette (Phase 35 D-15) ───────────────────────────────────────
+//
+// Hex+alpha codes follow Phase 33 D-VENDOR-INLINE-STYLE precedent — Tailwind
+// purge does not keep arbitrary `bg-[#hex]/5` classes unless they're in the
+// safelist, so we expose inline `style` objects using hex-with-alpha codes
+// (`#5865F20d` ≈ 5% alpha) so Tailwind never sees these strings.
+//
+// Each head id hashes deterministically to one of these palette entries so the
+// same head always gets the same color band across page reloads. Palette
+// colors are lifted from the vendor brand colors (Discord, Telegram, Slack,
+// WhatsApp, Zoho) but the mapping is by hash, not by vendor.
+const HEAD_COLORS: Array<{ bg: string; border: string }> = [
+  { bg: '#5865F20d', border: '#5865F2' },  // discord-blue alpha
+  { bg: '#26A5E40d', border: '#26A5E4' },  // telegram-blue alpha
+  { bg: '#4A154B0d', border: '#4A154B' },  // slack-purple alpha
+  { bg: '#25D3660d', border: '#25D366' },  // whatsapp-green alpha
+  { bg: '#E423180d', border: '#E42318' },  // zoho-red alpha
+]
+
+function hashHeadId(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+function headColor(id: string): string {
+  return HEAD_COLORS[hashHeadId(id) % HEAD_COLORS.length]!.bg
+}
+
+function headColorBorder(id: string): string {
+  return HEAD_COLORS[hashHeadId(id) % HEAD_COLORS.length]!.border
+}
+
+// ─── Currently-active head (D-14 seed source) ─────────────────────────────────
+//
+// ConversationsPage stores the active head id under the 'active-head'
+// localStorage key (Phase 32 DASH-01 / D-04). No shared hook exists yet — the
+// SchedulesPage forms read this key directly so the head picker pre-selects
+// whatever the user is currently looking at on the Conversations page. Falls
+// back to heads[0].id if the stored id is no longer in the resolved heads
+// list (mirror Phase 32 D-04's stale-id fallback).
+function readActiveHeadFromStorage(): string | null {
+  try {
+    return localStorage.getItem('active-head')
+  } catch {
+    return null
+  }
+}
+
 function formatRelTime(iso: string | null): string {
   if (!iso) return 'Never'
   const diff = new Date(iso).getTime() - Date.now()
@@ -96,6 +145,15 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
         {schedule.conditions && (
           <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
         )}
+      </div>
+      <div className="w-24 shrink-0 text-xs">
+        <span
+          className="inline-block px-2 py-0.5 rounded font-medium text-zinc-100 truncate max-w-full"
+          style={{ backgroundColor: headColor(schedule.headId), borderLeft: `2px solid ${headColorBorder(schedule.headId)}` }}
+          title={`Head: ${schedule.headId}`}
+        >
+          {schedule.headId}
+        </span>
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
         <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
@@ -216,6 +274,7 @@ function AddScheduleForm({
 }) {
   const qc = useQueryClient()
   const [target, setTarget] = useState<string>('')
+  const [headId, setHeadId] = useState<string>('')
   const [type, setType] = useState<'repeating' | 'once'>('repeating')
   const [cron, setCron] = useState('*/30 * * * *')
   const [runAt, setRunAt] = useState('')
@@ -223,17 +282,38 @@ function AddScheduleForm({
   const [agentContext, setAgentContext] = useState('')
   const [error, setError] = useState('')
 
+  const headsQuery = useQuery({
+    queryKey: ['heads'],
+    queryFn: api.heads.list,
+  })
+
   // Seed target once data arrives (Pitfall 5 — don't seed with empty string)
   useEffect(() => {
     if (target) return
     if (tasks.length > 0) setTarget(tasks[0]!.name)
   }, [tasks, target])
 
+  // Seed headId from localStorage 'active-head' (set by ConversationsPage)
+  // when valid, otherwise fall back to heads[0]. Phase 35 D-14.
+  useEffect(() => {
+    if (headId) return
+    const heads = headsQuery.data?.heads ?? []
+    if (heads.length === 0) return
+    const stored = readActiveHeadFromStorage()
+    if (stored && heads.some(h => h.id === stored)) {
+      setHeadId(stored)
+    } else {
+      setHeadId(heads[0]!.id)
+    }
+  }, [headsQuery.data, headId])
+
   const createMutation = useMutation({
     mutationFn: () => {
+      if (!headId) throw new Error('Pick a head')
       if (!target) throw new Error('Pick a task')
       if (type === 'once' && !runAt) throw new Error('Pick a date and time for the schedule')
       return api.schedules.create({
+        headId,
         taskName: target,
         kind: 'task',
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
@@ -254,6 +334,21 @@ function AddScheduleForm({
       className="p-4 border-t border-zinc-700 space-y-3"
     >
       <div className="flex gap-3 flex-wrap">
+        <div className="flex-1 min-w-40">
+          <label className="text-xs text-zinc-500 mb-1 block">Head</label>
+          <select
+            value={headId}
+            onChange={e => setHeadId(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+            required
+          >
+            {(headsQuery.data?.heads ?? []).length === 0
+              ? <option disabled value="">No heads configured</option>
+              : (headsQuery.data?.heads ?? []).map(h => (
+                  <option key={h.id} value={h.id}>{h.id}</option>
+                ))}
+          </select>
+        </div>
         <div className="flex-1 min-w-40">
           <label className="text-xs text-zinc-500 mb-1 block">Target</label>
           <select
@@ -330,7 +425,7 @@ function AddScheduleForm({
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={createMutation.isPending || loading || !target || (type === 'once' && !runAt)}
+          disabled={createMutation.isPending || loading || !headId || !target || (type === 'once' && !runAt)}
           className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
           {createMutation.isPending ? 'Adding…' : 'Add schedule'}
@@ -415,6 +510,15 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
         {schedule.conditions && (
           <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
         )}
+      </div>
+      <div className="w-24 shrink-0 text-xs">
+        <span
+          className="inline-block px-2 py-0.5 rounded font-medium text-zinc-100 truncate max-w-full"
+          style={{ backgroundColor: headColor(schedule.headId), borderLeft: `2px solid ${headColorBorder(schedule.headId)}` }}
+          title={`Head: ${schedule.headId}`}
+        >
+          {schedule.headId}
+        </span>
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
         <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
@@ -525,17 +629,39 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
 function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
   const qc = useQueryClient()
   const [message, setMessage] = useState('')
+  const [headId, setHeadId] = useState<string>('')
   const [type, setType] = useState<'once' | 'repeating'>('once')
   const [runAt, setRunAt] = useState('')
   const [cron, setCron] = useState('0 9 * * *')
   const [conditions, setConditions] = useState('')
   const [error, setError] = useState('')
 
+  const headsQuery = useQuery({
+    queryKey: ['heads'],
+    queryFn: api.heads.list,
+  })
+
+  // Seed headId from localStorage 'active-head' when valid, otherwise fall back
+  // to heads[0]. Phase 35 D-14 — mirrors AddScheduleForm.
+  useEffect(() => {
+    if (headId) return
+    const heads = headsQuery.data?.heads ?? []
+    if (heads.length === 0) return
+    const stored = readActiveHeadFromStorage()
+    if (stored && heads.some(h => h.id === stored)) {
+      setHeadId(stored)
+    } else {
+      setHeadId(heads[0]!.id)
+    }
+  }, [headsQuery.data, headId])
+
   const createMutation = useMutation({
     mutationFn: () => {
+      if (!headId) throw new Error('Pick a head')
       if (!message.trim()) throw new Error('Enter a reminder message')
       if (type === 'once' && !runAt) throw new Error('Pick a date and time for the reminder')
       return api.schedules.create({
+        headId,
         kind: 'reminder',
         agentContext: message.trim(),
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
@@ -551,6 +677,22 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
       onSubmit={e => { e.preventDefault(); setError(''); createMutation.mutate() }}
       className="p-4 border-t border-zinc-700 space-y-3"
     >
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Head</label>
+        <select
+          value={headId}
+          onChange={e => setHeadId(e.target.value)}
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          required
+        >
+          {(headsQuery.data?.heads ?? []).length === 0
+            ? <option disabled value="">No heads configured</option>
+            : (headsQuery.data?.heads ?? []).map(h => (
+                <option key={h.id} value={h.id}>{h.id}</option>
+              ))}
+        </select>
+      </div>
+
       <div>
         <label className="text-xs text-zinc-500 mb-1 block">Message</label>
         <input
@@ -611,7 +753,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={createMutation.isPending || !message.trim() || (type === 'once' && !runAt)}
+          disabled={createMutation.isPending || !headId || !message.trim() || (type === 'once' && !runAt)}
           className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
           {createMutation.isPending ? 'Adding…' : 'Add reminder'}

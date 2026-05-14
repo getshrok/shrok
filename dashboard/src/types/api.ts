@@ -251,6 +251,7 @@ export interface EvalRun {
 
 export interface Schedule {
   id: string
+  headId: string
   taskName: string | null
   kind: 'task' | 'reminder'
   cron: string | null
