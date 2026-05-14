@@ -78,6 +78,7 @@ Plans:
 - [x] **Phase 31: Adapter Registry & Config & Startup** — Multi-instance adapters with headId stamping; heads[] config schema; startup creates one loop and router per head (completed 2026-05-12)
 - [x] **Phase 32: Dashboard Head Selector** — Head selector UI; conversation view scoped to selected head (completed 2026-05-12)
 - [x] **Phase 33: Multi-head Management UI** — Dashboard UI for creating/renaming/deleting heads, managing channel adapters (incl. multiple instances per provider), and per-head Send routing (completed 2026-05-13)
+- [ ] **Phase 34: Multi-Head Agent Lifecycle** — Plumb head_id through the agent spawn/run/complete lifecycle so non-default heads receive their own agent completion events (currently they default-route to the default head)
 
 ## Phase Details
 
@@ -174,4 +175,31 @@ Plans:
 | 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
 | 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
 | 32. Dashboard Head Selector | 3/3 | Complete    | 2026-05-12 |
-| 33. Multi-head Management UI | 7/7 | Complete   | 2026-05-13 |
+| 33. Multi-head Management UI | 7/7 | Complete    | 2026-05-13 |
+
+### Phase 34: Multi-Head Agent Lifecycle
+
+Plumb `head_id` through the agent spawn/run/complete lifecycle so non-default heads receive their own agent completion events instead of having them default-routed to the default head.
+
+**Root cause:** Phase 29 added `head_id` to `queue_events` and `messages` but not to the `agents` table. `HeadToolExecutor` doesn't know its own headId, `SpawnOptions` has no headId field, and all six `queueStore.enqueue()` callsites in `src/sub-agents/local.ts` (lines ~208, ~615, ~970, ~989, ~1014, ~1092 — agent_failed×2 / agent_completed×2 / agent_question / agent_response) omit the headId argument so events default to `head_id='default'`. Activation loops correctly filter by their own headId — so completion events from non-default heads are claimed by the default head's loop.
+
+**Scope:**
+1. SQL migration: add `head_id TEXT NOT NULL DEFAULT 'default'` column + head-scoped index to the `agents` table
+2. `HeadToolExecutorOptions.headId` required option field; `SpawnOptions.headId` required field; `LocalAgentRunnerOptions.headId` required field; `AgentState.headId` required field — type-enforced (no silent default)
+3. `LocalAgentRunner` gains `private readonly headId` ctor field; ctor reads `opts.headId`
+4. `AgentStore.create(id, options)` persists `options.headId` on the agents row at creation; `rowToState()` returns it
+5. All **six** `queueStore.enqueue()` callsites in `src/sub-agents/local.ts` thread `this.headId` as the 3rd positional argument
+6. `buildSystem()` threads `headId: deps.headId ?? 'default'` into `LocalAgentRunner` and `toolExecutorOpts`; `HeadToolExecutor`'s `spawn_agent` dispatch injects `headId: this.opts.headId` into SpawnOptions; `resumeSuspended` and `handleSpawnAgent` thread headId; scheduler spawn at `activation.ts:1247` threads `this.opts.headId`
+7. Tests: architectural regression test (`tests/integration/multi-head-agent-lifecycle.test.ts`) with two-head spawn/complete/claim assertion; new schema + round-trip tests in `src/db/db.test.ts`; all ~14 existing test/script SpawnOptions construction sites supply `headId: 'default'`
+
+**Goal**: Each head's activation loop claims only its own agents' completion events; head identity is type-required at every spawn/run/complete site so silent cross-head leakage is a compile error
+**Requirements**: TBD (no tracked REQ-IDs — closes implicit corollary of CORE-01/CORE-04 left half-built by Phase 29's table-coverage gap)
+**Depends on:** Phase 33
+**Plans:** 1/5 plans executed
+
+Plans:
+- [x] 34-01-PLAN.md — sql/007_agents_head_id.sql migration + AgentStore.create/rowToState head_id round-trip + db.test.ts schema pin (Wave 1)
+- [ ] 34-02-PLAN.md — Required headId on SpawnOptions, AgentState, LocalAgentRunnerOptions, HeadToolExecutorOptions (Wave 1)
+- [ ] 34-03-PLAN.md — LocalAgentRunner.headId ctor field + 6 queueStore.enqueue callsites thread this.headId + resumeSuspended/handleSpawnAgent SpawnOptions threading (Wave 2)
+- [ ] 34-04-PLAN.md — HeadToolExecutor spawn_agent dispatch injects headId; buildSystem threads headId into LocalAgentRunner ctor and toolExecutorOpts (Wave 2)
+- [ ] 34-05-PLAN.md — tests/integration/multi-head-agent-lifecycle.test.ts (architectural regression) + ~14 existing test/script callers supply headId + scheduler spawn threads this.opts.headId + full tsc/vitest green (Wave 3)

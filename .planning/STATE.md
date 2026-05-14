@@ -2,36 +2,36 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Multi-Head Support
-status: verifying
-stopped_at: Completed 33-07-typed-confirmation-delete-PLAN.md (phase 33 complete)
-last_updated: "2026-05-13T21:21:04.377Z"
-last_activity: 2026-05-13
+status: executing
+stopped_at: Completed 34-01-PLAN.md
+last_updated: "2026-05-14T03:06:43.679Z"
+last_activity: 2026-05-14
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
-  percent: 100
+  total_plans: 24
+  completed_plans: 20
+  percent: 83
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 33 (multi-head-management-ui) — COMPLETE
-Plan: 7 of 7 (complete)
-Status: Phase complete — ready for verification
-Last activity: 2026-05-13
-Stopped at: Completed 33-07-typed-confirmation-delete-PLAN.md (phase 33 complete)
+Phase: 34 (multi-head-agent-lifecycle) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-14
+Stopped at: Completed 34-01-PLAN.md
 
-Progress: [██████████] 100% (19/19 plans complete; phase 33 done)
+Progress: [████████░░] 83% (20/24 plans complete; phase 34 in progress)
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-12)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 33 — multi-head-management-ui
+**Current focus:** Phase 34 — multi-head-agent-lifecycle
 
 ## Accumulated Context
 
@@ -41,6 +41,7 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - Phase 28 added: Add optional prompt parameter to memory functions
 - Phase 29–32 added: v1.3 Multi-Head Support (data layer, core activation, adapter registry + config + startup, dashboard)
 - Phase 33 added: Multi-head management UI — promoted DASH-F-01/F-03 from Future Requirements into active scope as DASH-03/04/05 (create/rename/delete heads from UI, manage channels per head incl. multiple-of-same-vendor, per-head Send routing)
+- Phase 34 added: Multi-Head Agent Lifecycle — fix head_id routing through agent spawn/run/complete so non-default heads receive their own agent completion events (currently default-route to default head; root cause: agents table missing head_id column and all 4 enqueue() callsites in src/sub-agents/local.ts omit headId)
 
 ### Key Architecture Decisions (v1.3)
 
@@ -82,6 +83,13 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - D-CONFIRM-BEFORE-RESERVED (Plan 33-07): the confirmId mismatch check runs BEFORE the reserved-id check in DELETE /api/heads/:id. A malformed `DELETE /api/heads/default {confirmId: 'work'}` returns 'confirmId does not match' (the more specific error) rather than 'default cannot be deleted'
 - D-MODAL-OWNS-QUERY (Plan 33-07): DeleteHeadModal holds its own useQuery(['heads', id, 'counts']) + useMutation rather than receiving counts via props. Counts must be fresh every time the modal opens; 1:1 mount-lifecycle matches data-lifecycle
 
+## Decisions (Phase 34)
+
+- D-MIGRATION-DEFAULT-ONLY (Plan 34-01): sql/007_agents_head_id.sql uses `ALTER TABLE agents ADD COLUMN head_id TEXT NOT NULL DEFAULT 'default'` and relies on SQLite's constant-DEFAULT semantics to populate existing rows in one shot; no UPDATE backfill. Mirrors Phase 29 sql/005_multi_head.sql verbatim
+- D-ROW-WRITE-FROM-OPTIONS (Plan 34-01): head_id rides along on the existing SpawnOptions parameter; AgentStore.create() binds @head_id from options.headId with no `?? 'default'` fallback — the type-required headId on SpawnOptions (Plan 02) is the safety net, SQL DEFAULT is defense-in-depth
+- D-INDEX-SHAPE (Plan 34-01): idx_agents_head_status on (head_id, status) mirrors idx_queue_head_status_priority and idx_messages_head_created — consistent head-scoped compound shape across all multi-head tables
+- D-WAVE-1-RED (Plan 34-01): tsc --noEmit RED is expected and intentional after Plan 01 alone — SpawnOptions.headId and AgentState.headId are added by Plan 02; vitest passes today because esbuild's transpile-only path tolerates the excess-property issue at runtime
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -93,3 +101,4 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 | 33    | 05   | 4min     | 2     | 2     |
 | 33    | 06   | 6min     | 3     | 7     |
 | 33    | 07   | 5min     | 2     | 5     |
+| 34    | 01   | 3min     | 2     | 3     |
