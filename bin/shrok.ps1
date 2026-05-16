@@ -6,6 +6,7 @@ $ShrokDir = Split-Path -Parent $PSScriptRoot
 $TaskName    = 'Shrok'
 $LogFile     = "$env:USERPROFILE\.shrok\shrok.log"
 $Sentinel    = "$env:USERPROFILE\.shrok\.restart-requested"
+$StopFile    = "$env:USERPROFILE\.shrok\.stop-requested"
 
 function daemon_start {
   schtasks /run /tn $TaskName | Out-Null
@@ -13,6 +14,10 @@ function daemon_start {
 }
 
 function daemon_stop {
+  # Write the stop marker BEFORE killing anything. The daemon supervisor now
+  # relaunches node on any unexpected exit; this marker tells it the exit was
+  # intentional so it exits for good instead of resurrecting itself.
+  New-Item -ItemType File -Path $StopFile -Force | Out-Null
   schtasks /end /tn $TaskName 2>$null | Out-Null
   # Also kill any running tsx process spawned by the daemon
   Get-Process -Name "node" -ErrorAction SilentlyContinue |

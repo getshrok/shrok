@@ -7,6 +7,7 @@ Set-Location $ShrokDir
 
 $LogFile = "$env:USERPROFILE\.shrok\shrok.log"
 $SentinelFile = "$env:USERPROFILE\.shrok\.restart-requested"
+$StopFile = "$env:USERPROFILE\.shrok\.stop-requested"
 
 # --- Log rotation (>10 MB) ----------------------------------------------------
 
@@ -38,6 +39,10 @@ if (Test-Path $envFile) {
 }
 
 # --- Restart loop -------------------------------------------------------------
+
+# Clear any stale stop marker from a previous lifecycle. Without this, a fresh
+# start after `shrok stop` / uninstall would see the old marker and exit at once.
+Remove-Item $StopFile -Force -ErrorAction SilentlyContinue
 
 while ($true) {
   # Re-read .env on every (re)start so settings changes via the dashboard take effect.
@@ -74,11 +79,26 @@ while ($true) {
     Remove-Item $stderrLog -Force -ErrorAction SilentlyContinue
   }
 
+  $ts = (Get-Date).ToUniversalTime().ToString('o')
+
+  # Intentional stop (shrok stop / uninstall write this before killing node).
+  # Checked first so it always wins over a restart request or a crash relaunch.
+  if (Test-Path $StopFile) {
+    Remove-Item $StopFile -Force -ErrorAction SilentlyContinue
+    Write-Host "[shrok-daemon] $ts Stop requested - exiting"
+    exit 0
+  }
+
+  # Explicit restart request (dashboard button, update skill, `shrok restart`).
   if (Test-Path $SentinelFile) {
     Remove-Item $SentinelFile -Force
-    Write-Host "[shrok-daemon] $((Get-Date).ToUniversalTime().ToString('o')) Restart requested - restarting"
+    Write-Host "[shrok-daemon] $ts Restart requested - restarting"
     continue
   }
 
-  exit $proc.ExitCode
+  # Anything else (crash, OOM, external kill) is unexpected: back off briefly
+  # so a boot-loop can't peg the CPU, then relaunch. This is the crash
+  # supervision the wrapper previously lacked.
+  Write-Host "[shrok-daemon] $ts Daemon exited unexpectedly (code $($proc.ExitCode)) - restarting in 5s"
+  Start-Sleep -Seconds 5
 }

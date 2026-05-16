@@ -13,6 +13,9 @@ $TaskName    = 'Shrok'
 
 function Stop-Shrok {
   Write-Step "Stopping Shrok..."
+  # Write the stop marker first: the daemon supervisor relaunches node on any
+  # unexpected exit, so without this it would resurrect itself mid-uninstall.
+  New-Item -ItemType File -Path "${env:USERPROFILE}\.shrok\.stop-requested" -Force -ErrorAction SilentlyContinue | Out-Null
   # Process may not be running - that's fine
   $conns = Get-NetTCPConnection -LocalPort 8888 -State Listen -ErrorAction SilentlyContinue
   foreach ($conn in $conns) {
