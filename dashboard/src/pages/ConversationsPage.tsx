@@ -605,6 +605,19 @@ export default function ConversationsPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Keep the textarea height in sync with its content. Resizing only on
+  // keystroke (onChange) misses every case where `input` changes without a
+  // keypress: the draft restored from sessionStorage on mount, and switching
+  // heads/streams and back. Without this the box snaps back to 1 row and stays
+  // there until the user types a newline. Runs on mount and on every `input`
+  // change (restore, programmatic clear after send).
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [input])
+
   async function handleSend() {
     const text = input.trim()
     if ((!text && pendingFiles.length === 0) || sending) return
@@ -615,7 +628,6 @@ export default function ConversationsPage() {
     sessionStorage.removeItem('conv-draft')
     setPendingFiles([])
     setSelectedStream('head') // Switch to head when sending
-    if (inputRef.current) inputRef.current.style.height = 'auto'
     try {
       const filesToSend = savedFiles
       let files: Array<{ name: string; mediaType: string; data?: string; textContent?: string }> | undefined
@@ -992,9 +1004,6 @@ export default function ConversationsPage() {
             onChange={e => {
               setInput(e.target.value)
               sessionStorage.setItem('conv-draft', e.target.value)
-              const el = e.target
-              el.style.height = 'auto'
-              el.style.height = el.scrollHeight + 'px'
             }}
             onKeyDown={handleKeyDown}
             disabled={sending}
