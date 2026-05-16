@@ -19,7 +19,7 @@ These are distinct from the `shrok` CLI, which manages the service process. Tild
 | `~restart` | Restart Shrok immediately |
 | `~stop` | Shut down Shrok (no auto-restart) |
 | `~changedashboardpassword <pw> <pw>` | Set a new dashboard password |
-| `~feedback [--diagnostics] <text>` | Generate a pre-filled GitHub issue link |
+| `~feedback [--diagnostics] [text]` | Get a GitHub issue link (blank, or pre-filled if you add text) |
 | `~resetthedatabaseimsupersureandnotmakingamistake` | Nuclear reset |
 
 ## Commands
@@ -81,9 +81,9 @@ Unlike `~restart`, this does not write the sentinel file; the supervisor won't r
 
 Sets a new dashboard password. The new password must be typed twice to confirm and must be at least 8 characters. The password is hashed with bcrypt (12 rounds), written to `.env`, and all existing dashboard sessions are revoked immediately.
 
-### `~feedback [--diagnostics] <feedback text>`
+### `~feedback [--diagnostics] [feedback text]`
 
-Generates a GitHub issue URL pre-filled with your feedback text so you can file it with one click. With `--diagnostics` the URL also includes system information: Shrok version, LLM provider, Node version, OS, context settings, active agent counts, configured channels, and MCP capabilities. The body is truncated to 7 500 characters to stay within URL length limits.
+Bare `~feedback` returns a blank GitHub issue link — you write the issue on GitHub, no need to compose the body as a chat argument. Add feedback text and the URL is instead pre-filled with it (and a title) so you can file it with one click. With `--diagnostics` a pre-filled URL also includes system information: Shrok version, LLM provider, Node version, OS, context settings, active agent counts, configured channels, and MCP capabilities. The body is truncated to 7 500 characters to stay within URL length limits.
 
 ### `~resetthedatabaseimsupersureandnotmakingamistake`
 

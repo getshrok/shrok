@@ -392,13 +392,16 @@ export function buildCommandRegistry(): Map<string, SlashCommand> {
   })
 
   registry.set('feedback', {
-    description: 'Generate a pre-filled GitHub issue link for feedback, bugs, or feature requests. Use `--diagnostics` to include system info.',
+    description: 'Get a GitHub issue link for feedback, bugs, or feature requests. Bare `~feedback` gives a blank link; add text to pre-fill it, `--diagnostics` to include system info.',
     handler: async (args, ctx) => {
       const wantsDiag = args.includes('--diagnostics')
       const feedbackText = args.replace('--diagnostics', '').trim()
 
       if (!feedbackText) {
-        await ctx.send('Usage: `~feedback [--diagnostics] your feedback here`\n\nDescribe the issue or suggestion and I\'ll generate a GitHub issue link for you to review and submit.')
+        // No text: just hand over a blank issue form. Composing the whole
+        // body as a chat argument is friction — let the user write it on
+        // GitHub instead. Pass text to prefill title/body/diagnostics.
+        await ctx.send(`Here's a blank issue link — fill it in on GitHub:\n\nhttps://github.com/getshrok/shrok/issues/new`)
         return
       }
 
