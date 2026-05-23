@@ -355,6 +355,8 @@ export function buildSystem(deps: SystemDeps): System {
     agentContinuationEnabled: config.agentContinuationEnabled,
     messageAgentStewardEnabled: config.messageAgentStewardEnabled,
     onIdentityChanged,
+    scheduleStore: stores.schedules,
+    timezone: config.timezone,
     ...(deps.spawnAgentNote !== undefined ? { spawnAgentNote: deps.spawnAgentNote } : {}),
   }
 

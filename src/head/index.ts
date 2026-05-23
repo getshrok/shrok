@@ -141,6 +141,12 @@ export interface HeadToolExecutorOptions {
   onIdentityChanged?: (file: string, content: string) => void
   /** Called when Head queues a file for delivery to the user via send_file. */
   onFileQueued?: (att: import('../types/core.js').Attachment) => void
+  /** Schedule store for the acknowledge_reminder head-direct tool (D-06). Optional — existing
+   *  callers without a store remain tsc-clean. Mirrored from the agentStore? optional pattern. */
+  scheduleStore?: import('../db/schedules.js').ScheduleStore
+  /** IANA timezone string for cron-resume computation in acknowledge_reminder (D-07).
+   *  Falls back to 'UTC' when absent. Optional so existing callers remain tsc-clean. */
+  timezone?: string
 }
 
 export class HeadToolExecutor implements ToolExecutor {
