@@ -85,7 +85,15 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
         log.error(`[scheduler] Failed to enqueue schedule ${schedule.id}:`, (err as Error).message)
       }
       try {
-        if (schedule.cron) {
+        if (schedule.requiresAck && schedule.nagIntervalMinutes !== null) {
+          // ACK-03 nag re-arm: keep enabled=true, point nextRun to now+nagInterval.
+          // Uses advanceNextRun (nextRun-only) so enabled stays true throughout the
+          // nag loop — never falls into the one-time-disable path (Pitfall 2 in RESEARCH).
+          // This branch must be FIRST so a requiresAck one-time reminder (cron===null)
+          // never reaches the `else if (enqueued)` disable path.
+          const nagNext = new Date(now.getTime() + schedule.nagIntervalMinutes * 60_000)
+          this.scheduleStore.advanceNextRun(schedule.id, nagNext.toISOString())
+        } else if (schedule.cron) {
           const tz = schedule.cronTimezone ?? this.timezone
           const next = nextRunAfter(schedule.cron, now, tz)
           this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
