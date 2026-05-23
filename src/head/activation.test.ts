@@ -54,6 +54,10 @@ function makeFixture(opts: {
   lastActiveChannel?: string | null
   /** Phase 35 D-08: override the resolveCurrentHeads callback. Default returns []. */
   resolveCurrentHeads?: () => Array<{ id: string; channels: Array<{ id: string }> }>
+  /** Phase 38: ack-required reminder fields */
+  requiresAck?: boolean
+  nagIntervalMinutes?: number | null
+  ackPending?: boolean
 } = {}): Fixture {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'activation-test-'))
   const skillsDir = path.join(tmpDir, 'skills')
@@ -99,6 +103,7 @@ function makeFixture(opts: {
   const scheduleRow = scheduleKind === 'reminder'
     ? {
         id: 's1',
+        headId: 'default',
         cron: null,
         runAt: '2099-01-01T00:00:00Z',
         lastRun: null,
@@ -109,6 +114,10 @@ function makeFixture(opts: {
         taskName: null,
         kind: 'reminder' as const,
         enabled: true,
+        cronTimezone: null,
+        requiresAck: opts.requiresAck ?? false,
+        nagIntervalMinutes: opts.nagIntervalMinutes ?? null,
+        ackPending: opts.ackPending ?? false,
       }
     : {
         id: 's1',
@@ -233,6 +242,10 @@ function jobEvent(taskName: string | null, kind: 'task' | 'reminder' = 'task'): 
   return { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', taskName, kind, createdAt: new Date().toISOString() }
 }
 
+function reminderEvent(): QueueEvent & { type: 'schedule_trigger' } {
+  return { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', taskName: null, kind: 'reminder', createdAt: new Date().toISOString() }
+}
+
 // We invoke handleScheduleTrigger via the private member; the loop machinery
 // (claimNext / handleEvent / drain) is exercised by head.test.ts already.
 async function fire(loop: ActivationLoop, event: QueueEvent & { type: 'schedule_trigger' }): Promise<void> {
@@ -321,6 +334,69 @@ describe('handleScheduleTrigger — kind-aware dispatch', () => {
     await fire(fix.loop, jobEvent(null, 'reminder'))
     const ctx = vi.mocked(proactive.runReminderDecision).mock.calls[0]![0]
     expect(ctx.conditions).toBeUndefined()
+  })
+
+  // Phase 38 — ack-required reminder semantics (ACK-07, ACK-08, D-05, D-10, D-12)
+
+  it('requiresAck reminder: steward NOT called even when proactiveEnabled=true (D-10 / Test A)', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Take meds',
+      proactiveEnabled: true,
+      requiresAck: true,
+      nagIntervalMinutes: 60,
+      ackPending: false,
+    })
+    await fire(fix.loop, reminderEvent())
+
+    // D-10: steward must not be called — every ack-required fire always delivers
+    expect(proactive.runReminderDecision).not.toHaveBeenCalled()
+  })
+
+  it('requiresAck reminder: scheduleStore.update called with ackPending:true; delete NOT called (D-05 / Test B)', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Take meds',
+      requiresAck: true,
+      nagIntervalMinutes: 60,
+      ackPending: false,
+    })
+    await fire(fix.loop, reminderEvent())
+
+    // D-05: ackPending set before enqueue
+    expect(fix.scheduleStore.update).toHaveBeenCalledWith('s1', expect.objectContaining({ ackPending: true }))
+    // One-time row must NOT be deleted — must survive to keep nagging
+    expect(fix.scheduleStore.delete).not.toHaveBeenCalled()
+  })
+
+  it('requiresAck reminder: enqueued text contains requires-ack="true" and reminderId="s1" (ACK-07 / D-12 / Test C)', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Take meds',
+      requiresAck: true,
+      nagIntervalMinutes: 60,
+      ackPending: false,
+    })
+    await fire(fix.loop, reminderEvent())
+
+    const enqueueArgs = vi.mocked(fix.queueStore.enqueue).mock.calls[0]?.[0] as any
+    expect(enqueueArgs).toBeDefined()
+    expect(enqueueArgs.text).toContain('requires-ack="true"')
+    expect(enqueueArgs.text).toContain('reminderId="s1"')
+    expect(enqueueArgs.text).toContain('acknowledge_reminder')
+  })
+
+  it('ordinary reminder (requiresAck=false): enqueued text does NOT contain requires-ack= attr (regression / Test D)', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'normal reminder',
+      requiresAck: false,
+    })
+    await fire(fix.loop, reminderEvent())
+
+    const enqueueArgs = vi.mocked(fix.queueStore.enqueue).mock.calls[0]?.[0] as any
+    expect(enqueueArgs).toBeDefined()
+    expect(enqueueArgs.text).not.toContain('requires-ack=')
   })
 
 })
