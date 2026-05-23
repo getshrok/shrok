@@ -716,19 +716,19 @@ This phase adds a privileged head-direct tool. The two-layer scoping (D-08) is t
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where is `HeadToolExecutor` constructed (call sites)?**
+1. **Where is `HeadToolExecutor` constructed (call sites)?** — RESOLVED: Plan 04 Task 1 greps for `new HeadToolExecutor(` and has acceptance criteria asserting the construction-site count before threading.
    - What we know: It is constructed inside `ActivationLoop` using `toolExecutorOpts` which already has `scheduleStore` threaded through.
    - What's unclear: Are there other construction sites (e.g., tests, integration tests) that would need updating?
    - Recommendation: Planner should grep for `new HeadToolExecutor(` before writing the threading task.
 
-2. **Does `timezone` need to be threaded separately, or can it be extracted from config?**
+2. **Does `timezone` need to be threaded separately, or can it be extracted from config?** — RESOLVED: Plan 04 threads `timezone?: string` into `HeadToolExecutorOptions` alongside `scheduleStore`.
    - What we know: `HeadToolExecutorOptions` has no `timezone`; the `ActivationLoop` has `this.opts.config.timezone`.
    - What's unclear: Whether the ack tool can read timezone from a config reference already available in `toolExecutorOpts`.
    - Recommendation: Thread `timezone: string` into `HeadToolExecutorOptions` alongside `scheduleStore`. The pattern mirrors how `stewardModel` is already threaded.
 
-3. **Should `list_reminders` project `ackPending`?**
+3. **Should `list_reminders` project `ackPending`?** — RESOLVED: classified as Claude's Discretion in CONTEXT.md (not required by any success criterion); not a planning blocker.
    - What we know: It currently projects `requiresAck` and `nagIntervalMinutes` (Phase 37 D-10 discretion item, already shipped). Adding `ackPending` is a one-liner.
    - What's unclear: Whether there's a success criterion that requires it.
    - Recommendation: Add it — it costs nothing and aids observability/testing.
