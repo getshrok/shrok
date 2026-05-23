@@ -53,7 +53,7 @@ created: 2026-05-23
 | TBD | TBD | TBD | SCHED-02 | — | `requiresAck`/`nagIntervalMinutes` reach frontend `Schedule` type | type-check | `npx tsc --noEmit` | ❌ W0 (type update) | ⬜ pending |
 | TBD | TBD | TBD | SCHED-03 | T-INPUT | POST `cron`+`startAt` → `nextRun = startAt`, `cron` retained | integration | `npm test -- src/dashboard/routes/schedules.test.ts` | ❌ W0 | ⬜ pending |
 | TBD | TBD | TBD | SCHED-03 | T-INPUT | POST `startAt` in the past → 400 | integration | same | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | D-03 | — | registry.ts `nagSum < 1` → error; `nagSum = 1` ok (floor=1) | unit | `npm test -- src/sub-agents/registry.test.ts` | ✅ extend | ⬜ pending |
+| TBD | TBD | TBD | D-03 | — | registry.ts `nagSum < 1` → error; `nagSum = 1` ok (floor=1) | unit | `npm test -- src/sub-agents/agents.test.ts` | ✅ extend | ⬜ pending |
 | TBD | TBD | TBD | D-12 | — | PATCH `requiresAck` true→false while `ackPending=true` clears nag + recomputes `nextRun` | integration | `npm test -- src/db/schedules.test.ts` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -64,7 +64,7 @@ created: 2026-05-23
 
 - [ ] `src/dashboard/routes/schedules.test.ts` — extend with: `requiresAck`+`nagIntervalMinutes` on POST (happy path + all coupling / floor=1 / ceiling rejections); `startAt`+`cron` on POST (happy: `nextRun = startAt`; reject: past `startAt`); PATCH `requiresAck`/`nagIntervalMinutes` (D-11 round-trip).
 - [ ] `src/db/schedules.test.ts` — extend with: `update()` applies `requiresAck`+`nagIntervalMinutes` (D-11); D-12 transition (`requiresAck` true→false + `ackPending=true` → clears `ackPending` + recomputes `nextRun`).
-- [ ] `src/sub-agents/registry.test.ts` (or equivalent) — extend for D-03 floor: `nagSum=1` ok, `nagSum=0` with `requiresAck` → error, `nagSum<1` → error.
+- [ ] `src/sub-agents/agents.test.ts` (or equivalent) — extend for D-03 floor: `nagSum=1` ok, `nagSum=0` with `requiresAck` → error, `nagSum<1` → error.
 
 *If these files do not exist yet, Wave 0 creates them before feature tasks run.*
 

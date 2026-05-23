@@ -477,17 +477,19 @@ if (typeof startAt === 'string' && startAt && typeof cron === 'string' && cron) 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Timezone for D-12 `nextRunAfter` call in `update()`**
    - What we know: `update()` has no timezone parameter; the route closure has `timezone`.
    - What's unclear: Should `update()` accept `tz` as an argument, or should the PATCH route compute `nextRun` before calling `update()` and pass it as `patch.nextRun`?
    - Recommendation: Pass `nextRun` via `patch.nextRun` in the PATCH route handler (option b above). Keeps `update()` signature stable, consistent with existing PATCH pattern at line 155.
+   - **RESOLVED (2026-05-23): option (b) adopted.** The PATCH route handler computes the recomputed `nextRun` for the D-12 ack-OFF-while-nagging transition and passes it via `patch.nextRun`; `update()`'s signature is unchanged. Implemented in Plan 39-01.
 
 2. **Start-date on edit modal (Claude's Discretion item)**
    - What we know: SCHED-03 scopes to create forms. D-07 says "optional start-date field shown in repeating mode" without restricting to create-only. CONTEXT.md Claude's Discretion says "editing `nextRun`... is consistent but not required."
    - What's unclear: Whether the planner should include start-date in the edit modal.
    - Recommendation: Include it for reminders and schedules in edit modal (adds minimal code, prevents user needing to delete+recreate). Gate behind the `schedule.cron !== null` check so it only shows for recurring items.
+   - **RESOLVED (2026-05-23): NOT included in the edit modal.** Per Claude's Discretion the planner scoped the optional start-date field to the two **create** forms only (`AddReminderForm` + `AddScheduleForm`, Plan 39-03); the edit modal receives only the ack/nag fields (D-11). SCHED-03 is satisfied by the create-form coverage; start-date-on-edit can be a cheap future enhancement.
 
 ---
 
