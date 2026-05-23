@@ -19,6 +19,8 @@ export interface Schedule {
   requiresAck: boolean
   /** Total nag cadence in minutes — the interval between repeated nag fires. Null/inert when requiresAck is false (D-07). */
   nagIntervalMinutes: number | null
+  /** Whether an ack-required reminder currently has an outstanding (un-acknowledged) nag in flight. Inert (false) for non-ack reminders and tasks. Set true at activation delivery (D-05), cleared on ack (D-07). */
+  ackPending: boolean
   createdAt: string
   updatedAt: string
 }
@@ -36,9 +38,10 @@ export interface CreateScheduleOptions {
   cronTimezone?: string
   requiresAck?: boolean
   nagIntervalMinutes?: number | null
+  ackPending?: boolean
 }
 
-export type SchedulePatch = Partial<Pick<Schedule, 'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' | 'agentContext' | 'cronTimezone'>>
+export type SchedulePatch = Partial<Pick<Schedule, 'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' | 'agentContext' | 'cronTimezone' | 'ackPending'>>
 
 // ─── Lazy schedule migration (Phase 35 D-03, Phase 37 D-08) ──────────────────
 //
@@ -59,6 +62,7 @@ function migrateLegacySchedule(raw: unknown): { migrated: boolean; data: Schedul
   if (!('headId' in obj)) { obj['headId'] = 'default'; migrated = true }
   if (!('requiresAck' in obj)) { obj['requiresAck'] = false; migrated = true }
   if (!('nagIntervalMinutes' in obj)) { obj['nagIntervalMinutes'] = null; migrated = true }
+  if (!('ackPending' in obj)) { obj['ackPending'] = false; migrated = true }
   return { migrated, data: obj as unknown as Schedule }
 }
 
@@ -88,6 +92,7 @@ export class ScheduleStore {
       cronTimezone: options.cronTimezone ?? null,
       requiresAck: options.requiresAck ?? false,
       nagIntervalMinutes: options.nagIntervalMinutes ?? null,
+      ackPending: options.ackPending ?? false,
       createdAt: now,
       updatedAt: now,
     }
@@ -134,6 +139,7 @@ export class ScheduleStore {
     if (patch.conditions !== undefined) existing.conditions = patch.conditions
     if (patch.agentContext !== undefined) existing.agentContext = patch.agentContext
     if (patch.cronTimezone !== undefined) existing.cronTimezone = patch.cronTimezone
+    if (patch.ackPending !== undefined) existing.ackPending = patch.ackPending
 
     existing.updatedAt = new Date().toISOString()
     this.store.save(existing)
