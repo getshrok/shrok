@@ -1097,7 +1097,10 @@ export class ActivationLoop {
           channel = firstChannelId
         } else {
           log.warn(`[scheduler] reminder:${event.scheduleId} — no active channel and head has no configured channels, skipping`)
-          if (schedule.cron === null) {
+          // WR-01: ack-required reminders must survive a channel outage and keep nagging.
+          // Only delete one-time NON-ack reminders here; the scheduler tick already re-armed
+          // nextRun for ack reminders, so they re-fire on the next tick once a channel exists.
+          if (schedule.cron === null && !schedule.requiresAck) {
             this.opts.scheduleStore.delete(event.scheduleId)
           }
           return

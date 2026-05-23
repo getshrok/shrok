@@ -511,5 +511,20 @@ describe('handleScheduleTrigger reminder branch — D-07 fallback', () => {
     expect(fix.queueStore.enqueue).not.toHaveBeenCalled()
     expect(fix.scheduleStore.delete).toHaveBeenCalledWith('s1')
   })
+
+  it('Test E — WR-01: one-time requiresAck reminder is NOT deleted on channel outage (must survive to keep nagging)', async () => {
+    fix = makeFixture({
+      kind: 'reminder',
+      agentContext: 'Take your medication',
+      requiresAck: true,
+      lastActiveChannel: null,
+      resolveCurrentHeads: () => [{ id: 'default', channels: [] }],
+    })
+    await fire(fix.loop, reminderEvent())
+    // No channel → cannot deliver this tick, but an ack-required reminder must NOT be
+    // discarded; the scheduler already re-armed nextRun and it re-nags next tick.
+    expect(fix.queueStore.enqueue).not.toHaveBeenCalled()
+    expect(fix.scheduleStore.delete).not.toHaveBeenCalled()
+  })
 })
 
