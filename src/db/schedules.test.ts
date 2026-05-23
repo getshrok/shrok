@@ -270,6 +270,127 @@ describe('ScheduleStore — headId', () => {
 
   // ─── Plan 35-03 D-16: deleteAllForHead cascade helper ─────────────────────
 
+  // ── Task 2 (Phase 37-01): ack field round-trip, inert-for-tasks, legacy migration, mtime-stable ──
+
+  it("create reminder with requiresAck + nagIntervalMinutes round-trips through get()", () => {
+    store.create({
+      id: 'rem-ack',
+      headId: 'default',
+      kind: 'reminder',
+      agentContext: 'Take your meds',
+      requiresAck: true,
+      nagIntervalMinutes: 60,
+      runAt: '2099-01-01T09:00:00Z',
+      nextRun: '2099-01-01T09:00:00Z',
+    })
+    const s = store.get('rem-ack')
+    expect(s).not.toBeNull()
+    expect(s!.requiresAck).toBe(true)
+    expect(s!.nagIntervalMinutes).toBe(60)
+  })
+
+  it("create task without ack fields defaults requiresAck:false and nagIntervalMinutes:null (D-07 inert-for-tasks)", () => {
+    store.create({
+      id: 'task-no-ack',
+      headId: 'default',
+      kind: 'task',
+      taskName: 'nightly-vacuum',
+      runAt: '2099-01-01T00:00:00Z',
+      nextRun: '2099-01-01T00:00:00Z',
+    })
+    const s = store.get('task-no-ack')
+    expect(s).not.toBeNull()
+    expect(s!.requiresAck).toBe(false)
+    expect(s!.nagIntervalMinutes).toBeNull()
+  })
+
+  it("first read of legacy reminder JSON (no ack fields) stamps defaults and reminder is still due (SC2 / ACK-09 legacy migration)", () => {
+    const id = 'legacy-reminder-ack'
+    const legacy = {
+      id,
+      headId: 'default',
+      taskName: null,
+      kind: 'reminder',
+      cron: null,
+      runAt: '2025-06-01T09:00:00Z',
+      enabled: true,
+      lastRun: null,
+      nextRun: '2025-06-01T09:00:00Z',
+      lastSkipped: null,
+      lastSkipReason: null,
+      conditions: null,
+      agentContext: 'Doctor appointment',
+      cronTimezone: null,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    }
+    const filePath = path.join(tmpDir, `${id}.json`)
+    fs.writeFileSync(filePath, JSON.stringify(legacy, null, 2) + '\n', 'utf8')
+
+    // Sanity: legacy file has no ack fields
+    const beforeRaw = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    expect('requiresAck' in beforeRaw).toBe(false)
+    expect('nagIntervalMinutes' in beforeRaw).toBe(false)
+
+    // First read: triggers migration, returns stamped defaults
+    const s = store.get(id)
+    expect(s).not.toBeNull()
+    expect(s!.requiresAck).toBe(false)
+    expect(s!.nagIntervalMinutes).toBeNull()
+
+    // After migration: file on disk has the new fields stamped
+    const afterRaw = JSON.parse(fs.readFileSync(filePath, 'utf8')) as Schedule
+    expect(afterRaw.requiresAck).toBe(false)
+    expect(afterRaw.nagIntervalMinutes).toBeNull()
+
+    // Still fires / still due (nextRun in past, enabled)
+    const due = store.getDue('2026-06-01T00:00:00Z')
+    const dueIds = due.map(s => s.id)
+    expect(dueIds).toContain(id)
+  })
+
+  it("first read of a fully-populated row (all new fields present) does NOT rewrite (mtime stable — D-08 fully-populated no-rewrite)", async () => {
+    const id = 'fully-populated'
+    const full = {
+      id,
+      headId: 'default',
+      taskName: null,
+      kind: 'reminder',
+      cron: null,
+      runAt: '2099-01-01T09:00:00Z',
+      enabled: true,
+      lastRun: null,
+      nextRun: '2099-01-01T09:00:00Z',
+      lastSkipped: null,
+      lastSkipReason: null,
+      conditions: null,
+      agentContext: 'Already migrated',
+      cronTimezone: null,
+      requiresAck: true,
+      nagIntervalMinutes: 30,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    }
+    const filePath = path.join(tmpDir, `${id}.json`)
+    fs.writeFileSync(filePath, JSON.stringify(full, null, 2) + '\n', 'utf8')
+
+    const mtimeBefore = fs.statSync(filePath).mtimeMs
+    const bytesBefore = fs.readFileSync(filePath)
+
+    // Sleep so any write would change mtime on most filesystems
+    await new Promise(r => setTimeout(r, 50))
+
+    // First read: must NOT rewrite (all fields present → migrated:false)
+    store.get(id)
+    const mtimeAfterFirst = fs.statSync(filePath).mtimeMs
+    const bytesAfterFirst = fs.readFileSync(filePath)
+
+    expect(mtimeAfterFirst).toBe(mtimeBefore)
+    expect(bytesAfterFirst.equals(bytesBefore)).toBe(true)
+  })
+
+  // ─── Plan 35-03 D-16: deleteAllForHead cascade helper ─────────────────────
+
   it("deleteAllForHead removes only the target head's entries and returns split counts (schedules + reminders)", () => {
     // 'work' head: 2 task schedules + 1 reminder.
     store.create({ id: 'w-t1', headId: 'work', kind: 'task', taskName: 't1', runAt: '2026-01-01T00:00:00Z' })
