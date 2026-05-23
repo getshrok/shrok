@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Unmissable Reminders
-status: planning
-last_updated: "2026-05-23T15:32:02.624Z"
+status: roadmapped
+last_updated: "2026-05-23T00:00:00.000Z"
 last_activity: 2026-05-23
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 37 — Schema & Tool Params (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-23 — Milestone v1.4 started
+Status: Roadmap complete; ready to plan Phase 37
+Last activity: 2026-05-23 — v1.4 roadmap created (Phases 37–39)
+
+Progress: [··········] 0% (0/3 phases)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-12)
+See: .planning/PROJECT.md (updated 2026-05-23)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 36 — inbound-sender-attribution
+**Current focus:** Phase 37 — schema & tool params (v1.4 start)
 
 ## Accumulated Context
 
@@ -39,6 +41,8 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 - Phase 33 added: Multi-head management UI — promoted DASH-F-01/F-03 from Future Requirements into active scope as DASH-03/04/05 (create/rename/delete heads from UI, manage channels per head incl. multiple-of-same-vendor, per-head Send routing)
 - Phase 34 added: Multi-Head Agent Lifecycle — fix head_id routing through agent spawn/run/complete so non-default heads receive their own agent completion events (currently default-route to default head; root cause: agents table missing head_id column and all 4 enqueue() callsites in src/sub-agents/local.ts omit headId)
 - Phase 35 added: Per-head scheduling — schedules and reminders are currently single-shared (one ScheduleStore at {workspacePath}/schedules/, Schedule type has no headId field, ScheduleEvaluator enqueues triggers with default headId). Non-default heads can never receive their own schedule fires. Closes the scheduling counterpart to Phase 34's agent-lifecycle work
+- Phase 36 added: Inbound sender attribution — InboundMessage.senderName field, normalizeSenderName + buildPrefixedText helpers, central prefix construction at headRouteMessage choke point, generalized D-11 stripper, 5 adapters populate senderName
+- Phases 37–39 added: v1.4 Unmissable Reminders — schema + tool params (Phase 37), nag mechanism + ack semantics (Phase 38), dashboard UI (Phase 39). Backlog 999.1 promoted into Phase 39 (SCHED-03).
 
 ### Key Architecture Decisions (v1.3)
 

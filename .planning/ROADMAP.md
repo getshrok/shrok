@@ -169,16 +169,6 @@ Plans:
 - [x] 33-06-heads-tab-frontend-PLAN.md — HeadsTab + HeadCard + ChannelRow + api.heads.* + hide legacy Channels tab (DASH-03, DASH-04)
 - [x] 33-07-typed-confirmation-delete-PLAN.md — DeleteHeadModal with typed-confirmation + counts endpoint + confirmId guard (DASH-03)
 
-## Progress
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
-| 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
-| 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
-| 32. Dashboard Head Selector | 3/3 | Complete    | 2026-05-12 |
-| 33. Multi-head Management UI | 7/7 | Complete    | 2026-05-13 |
-
 ### Phase 34: Multi-Head Agent Lifecycle
 
 Plumb `head_id` through the agent spawn/run/complete lifecycle so non-default heads receive their own agent completion events instead of having them default-routed to the default head.
@@ -232,3 +222,67 @@ Plans:
 - [x] 36-01-type-contract-central-prefix-PLAN.md — InboundMessage.senderName field + central buildPrefixedText in headRouteMessage + normalizeSenderName helper + threat model (D-01, D-02, D-04, D-07) [Wave 1]
 - [x] 36-02-stripper-generalization-PLAN.md — stripTimestampEcho → stripLeadingBracketPrefixes rename + generalized D-11 regex + sole-importer update + regression/anti-regression tests (D-11, D-12) [Wave 1]
 - [x] 36-03-adapter-sender-extraction-PLAN.md — 5 adapters populate senderName: Discord (member.displayName chain), Telegram (first_name+last_name chain), Slack (TTL-cached users.info), WhatsApp (pushName), Cliq (sender.name); dashboard/voice/webhook NOT modified (D-05, D-06) [Wave 2]
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 29. Data Layer | 3/3 | Complete    | 2026-05-12 |
+| 30. Core Activation | 3/3 | Complete    | 2026-05-12 |
+| 31. Adapter Registry & Config & Startup | 3/3 | Complete    | 2026-05-12 |
+| 32. Dashboard Head Selector | 3/3 | Complete    | 2026-05-12 |
+| 33. Multi-head Management UI | 7/7 | Complete    | 2026-05-13 |
+
+---
+
+## v1.4 Unmissable Reminders
+
+## Phases
+
+- [ ] **Phase 37: Schema & Tool Params** — Add `requiresAck` + `nagInterval` fields to the reminder schedule schema with lazy JSON migration; wire both params into `create_reminder`; verify and correct `create_reminder` tool description for `triggerAt` + `cron` start-then-repeat behavior
+- [ ] **Phase 38: Nag Mechanism & Ack Semantics** — System-native nag re-arm in scheduler/activation before delivery; ack semantics by type (one-time delete vs recurring resume); ack cancels in-flight nag; injected fire event carries reminder ID + ack instructions; narrowly-scoped ack tool/agent wired through the head
+- [ ] **Phase 39: Dashboard Reminder UI** — `requiresAck` toggle + `nagInterval` input on dashboard create/edit reminder form; visual marker on ack-required reminder rows; start-date/time control for recurring schedules, reminders, and tasks mapping to `triggerAt` + `cron`
+
+## Phase Details
+
+### Phase 37: Schema & Tool Params
+**Goal**: The reminder schema carries acknowledgment fields and the tool surface exposes them, with backward-compatible migration so existing reminders are unaffected
+**Depends on**: Phase 36
+**Requirements**: ACK-01, ACK-02, ACK-09, SCHED-04
+**Success Criteria** (what must be TRUE):
+  1. A reminder created with `requiresAck: true` and `nagInterval: '1h'` round-trips those fields correctly when read back from the store
+  2. A reminder created before this phase (without `requiresAck` or `nagInterval`) continues to fire exactly as before — no crash, no behavior change
+  3. The `create_reminder` tool description no longer calls `triggerAt` "for one-time reminders only"; both `triggerAt` + `cron` together are documented as start-then-repeat
+  4. `npx tsc --noEmit` is clean and `npx vitest run` passes after schema + migration changes
+**Plans**: TBD
+
+### Phase 38: Nag Mechanism & Ack Semantics
+**Goal**: An ack-required reminder keeps nagging the user via system-native re-arm until the user explicitly acknowledges it, at which point the nag stops and type-appropriate cleanup runs
+**Depends on**: Phase 37
+**Requirements**: ACK-03, ACK-04, ACK-05, ACK-06, ACK-07, ACK-08
+**Success Criteria** (what must be TRUE):
+  1. An ack-required reminder fires, arms the next nag before delivery, and keeps re-firing on the nag interval without any head action between cycles
+  2. Acknowledging a one-time ack-required reminder removes it entirely — no further nags fire
+  3. Acknowledging a recurring ack-required reminder stops the current nag loop while the base cron continues to schedule future occurrences
+  4. When ack is received, the already-armed in-flight nag is cancelled rather than allowed to fire
+  5. The injected fire event includes the reminder ID and ack instructions; the ack tool's description is scoped so it is never applied to an ordinary (non-ack-required) reminder
+**Plans**: TBD
+
+### Phase 39: Dashboard Reminder UI
+**Goal**: Users can configure ack-required reminders and start dates from the dashboard, and can visually identify which reminders require acknowledgment
+**Depends on**: Phase 38
+**Requirements**: SCHED-01, SCHED-02, SCHED-03
+**Success Criteria** (what must be TRUE):
+  1. The dashboard reminder create/edit form shows a `requiresAck` toggle and a `nagInterval` field that activates when the toggle is on
+  2. Reminders that require acknowledgment are visually distinguished from ordinary reminders in the dashboard list (e.g., a badge or icon)
+  3. The dashboard recurring schedule/reminder/task create form includes a start-date/time picker; submitting it sets `triggerAt` on the created item so the first fire occurs at the chosen date and subsequent fires follow the cron
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 37. Schema & Tool Params | 0/TBD | Not started | - |
+| 38. Nag Mechanism & Ack Semantics | 0/TBD | Not started | - |
+| 39. Dashboard Reminder UI | 0/TBD | Not started | - |

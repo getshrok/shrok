@@ -58,25 +58,25 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACK-01 | TBD | Pending |
-| ACK-02 | TBD | Pending |
-| ACK-03 | TBD | Pending |
-| ACK-04 | TBD | Pending |
-| ACK-05 | TBD | Pending |
-| ACK-06 | TBD | Pending |
-| ACK-07 | TBD | Pending |
-| ACK-08 | TBD | Pending |
-| ACK-09 | TBD | Pending |
-| SCHED-01 | TBD | Pending |
-| SCHED-02 | TBD | Pending |
-| SCHED-03 | TBD | Pending |
-| SCHED-04 | TBD | Pending |
+| ACK-01 | Phase 37 | Pending |
+| ACK-02 | Phase 37 | Pending |
+| ACK-03 | Phase 38 | Pending |
+| ACK-04 | Phase 38 | Pending |
+| ACK-05 | Phase 38 | Pending |
+| ACK-06 | Phase 38 | Pending |
+| ACK-07 | Phase 38 | Pending |
+| ACK-08 | Phase 38 | Pending |
+| ACK-09 | Phase 37 | Pending |
+| SCHED-01 | Phase 39 | Pending |
+| SCHED-02 | Phase 39 | Pending |
+| SCHED-03 | Phase 39 | Pending |
+| SCHED-04 | Phase 37 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 13 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-23 — initial v1.4 definition from SEED-001 + backlog 999.1*
+*Last updated: 2026-05-23 — traceability filled during v1.4 roadmap creation (Phases 37–39)*
