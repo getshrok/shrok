@@ -1,13 +1,14 @@
 ---
 phase: 37-schema-tool-params
 verified: 2026-05-23T17:03:13Z
-status: human_needed
+status: passed
 score: 8/8 must-haves verified
 overrides_applied: 0
 human_verification:
   - test: "Confirm the tool description's nagging-behavior promise is acceptable for a foundation phase"
     expected: "Either (a) the team accepts that the description pre-advertises Phase 38 behavior per D-10b, or (b) the description is softened per CR-01 in 37-REVIEW.md before Phase 38 ships"
     why_human: "The description says 'An acknowledgment-required reminder keeps nagging on the nag interval until the user explicitly acknowledges it' but no scheduler code consumes requiresAck or nagIntervalMinutes yet. CONTEXT D-10b explicitly authorized this forward-description. REVIEW CR-01 recommends softening it. Programmatic verification cannot decide between the two positions — a human must ratify one."
+    resolution: "RATIFIED option (a) per D-10b by human on 2026-05-23. Forward-looking description accepted as-is; no code change. See 37-HUMAN-UAT.md."
 ---
 
 # Phase 37: Schema & Tool Params Verification Report
