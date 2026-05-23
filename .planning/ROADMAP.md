@@ -317,7 +317,16 @@ Plans:
   4. When ack is received, the already-armed in-flight nag is cancelled rather than allowed to fire
   5. The injected fire event includes the reminder ID and ack instructions; the ack tool's description is scoped so it is never applied to an ordinary (non-ack-required) reminder
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 38-01-PLAN.md — ackPending field on Schedule/CreateScheduleOptions/SchedulePatch + create/update apply-block + lazy migration + tests (ACK-03/04/05/06 foundation)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 38-02-PLAN.md — Scheduler tick nag re-arm (advanceNextRun to now+nagInterval, enabled stays true) + scheduler.test (ACK-03, ACK-06)
+- [ ] 38-03-PLAN.md — Activation reminder branch: steward bypass + ackPending-before-enqueue + enriched systemTrigger(reminderId, requires-ack) + activation.test (ACK-05, ACK-07, ACK-08)
+- [ ] 38-04-PLAN.md — acknowledge_reminder head-direct tool: scheduleStore+timezone threading, HEAD_TOOLS entry, dispatch (one-time delete / recurring cron-resume / hard-error / no-op) + head-tools.test (ACK-04, ACK-05, ACK-06, ACK-07, ACK-08)
 
 ### Phase 39: Dashboard Reminder UI
 
