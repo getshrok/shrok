@@ -915,7 +915,7 @@ export function buildReminderTools(
       execute: async (_input, _ctx) => {
         const items = scheduleStore.list()
           .filter(s => s.kind === 'reminder' && s.enabled)
-          .map(s => ({ id: s.id, message: s.agentContext ?? '', runAt: s.runAt, cron: s.cron, createdAt: s.createdAt }))
+          .map(s => ({ id: s.id, message: s.agentContext ?? '', runAt: s.runAt, cron: s.cron, createdAt: s.createdAt, requiresAck: s.requiresAck, nagIntervalMinutes: s.nagIntervalMinutes }))
         return JSON.stringify(items)
       },
     },
@@ -923,8 +923,11 @@ export function buildReminderTools(
       definition: {
         name: 'create_reminder',
         description: 'Create a reminder that fires a notification to the user at a specified time. ' +
-          'Use triggerAt (ISO 8601 datetime) for a one-time reminder, or cron for a recurring one. ' +
-          'The reminder message should be written as if it is being delivered to the user at fire time.',
+          'Use triggerAt alone for a one-time reminder. Use cron alone for a recurring reminder (first fire computed from the cron expression). ' +
+          'Use triggerAt together with cron for start-then-repeat: the first fire is at triggerAt, then the reminder repeats on the cron schedule. ' +
+          'The reminder message should be written as if it is being delivered to the user at fire time. ' +
+          'To require explicit acknowledgment, set requiresAck:true and provide at least one of nagMinutes/nagHours/nagDays (summed into the nag cadence). ' +
+          'An acknowledgment-required reminder keeps nagging on the nag interval until the user explicitly acknowledges it.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -938,7 +941,7 @@ export function buildReminderTools(
             },
             triggerAt: {
               type: 'string',
-              description: 'ISO 8601 datetime for one-time reminders (e.g. "2026-04-01T09:00:00Z"). Required if cron is not provided.',
+              description: 'The first (or only) fire time as an ISO 8601 datetime (e.g. "2026-04-01T09:00:00Z"). Use alone for a one-time reminder; combine with cron for start-then-repeat. Required if cron is not provided.',
             },
             cron: {
               type: 'string',
@@ -947,6 +950,22 @@ export function buildReminderTools(
             conditions: {
               type: 'string',
               description: "Optional conditions shown to the scheduler steward when deciding whether to surface this reminder or skip it (e.g. 'Only on weekdays', 'Only after 5pm').",
+            },
+            requiresAck: {
+              type: 'boolean',
+              description: 'Marks the reminder acknowledgment-required — it keeps nagging every nag interval until the user explicitly acknowledges it. Must be paired with at least one of nagMinutes/nagHours/nagDays (minimum 5 minutes total, maximum 30 days).',
+            },
+            nagMinutes: {
+              type: 'integer',
+              description: 'Minutes component of the nag cadence (non-negative integer). Only valid when requiresAck is true. Summed with nagHours and nagDays to compute the total nag interval in minutes.',
+            },
+            nagHours: {
+              type: 'integer',
+              description: 'Hours component of the nag cadence (non-negative integer, each = 60 minutes). Only valid when requiresAck is true. Summed with nagMinutes and nagDays.',
+            },
+            nagDays: {
+              type: 'integer',
+              description: 'Days component of the nag cadence (non-negative integer, each = 1440 minutes). Only valid when requiresAck is true. Summed with nagMinutes and nagHours.',
             },
           },
           required: ['message'],
@@ -957,6 +976,10 @@ export function buildReminderTools(
         const triggerAtArg = input['triggerAt'] as string | undefined
         const cronArg = input['cron'] as string | undefined
         const conditionsArg = input['conditions'] as string | undefined
+        const requiresAckArg = input['requiresAck'] as boolean | undefined
+        const nagMinutesArg = input['nagMinutes'] as number | undefined
+        const nagHoursArg = input['nagHours'] as number | undefined
+        const nagDaysArg = input['nagDays'] as number | undefined
 
         // T-12-01: validate message at tool boundary
         if (typeof message !== 'string' || message.trim().length === 0) {
@@ -968,6 +991,40 @@ export function buildReminderTools(
 
         if (!triggerAtArg && !cronArg) {
           return JSON.stringify({ error: true, message: 'Either triggerAt or cron is required.' })
+        }
+
+        // T-37-05: per-slot integer guard — each present nag slot must be a non-negative integer
+        if (nagMinutesArg !== undefined && !(Number.isInteger(nagMinutesArg) && nagMinutesArg >= 0)) {
+          return JSON.stringify({ error: true, message: 'nagMinutes must be a non-negative integer' })
+        }
+        if (nagHoursArg !== undefined && !(Number.isInteger(nagHoursArg) && nagHoursArg >= 0)) {
+          return JSON.stringify({ error: true, message: 'nagHours must be a non-negative integer' })
+        }
+        if (nagDaysArg !== undefined && !(Number.isInteger(nagDaysArg) && nagDaysArg >= 0)) {
+          return JSON.stringify({ error: true, message: 'nagDays must be a non-negative integer' })
+        }
+
+        // Compute the total nag interval in minutes from the three slots
+        const nagSum = (nagMinutesArg ?? 0) + (nagHoursArg ?? 0) * 60 + (nagDaysArg ?? 0) * 1440
+
+        // T-37-07 D-05: nag slots present but requiresAck not true → reject
+        if (nagSum > 0 && requiresAckArg !== true) {
+          return JSON.stringify({ error: true, message: 'nag slots (nagMinutes/nagHours/nagDays) only apply when requiresAck is true' })
+        }
+
+        // T-37-07 D-04: requiresAck:true but no nag interval provided → reject
+        if (requiresAckArg === true && nagSum === 0) {
+          return JSON.stringify({ error: true, message: 'requiresAck requires a nag interval: set nagMinutes, nagHours, or nagDays (minimum 5 minutes total)' })
+        }
+
+        // T-37-04 D-03 floor: nag interval too short to be useful
+        if (requiresAckArg === true && nagSum > 0 && nagSum < 5) {
+          return JSON.stringify({ error: true, message: 'nag interval must be at least 5 minutes (sum of nagMinutes + nagHours×60 + nagDays×1440)' })
+        }
+
+        // T-37-04 D-03 ceiling: nag interval exceeds 30 days (43200 minutes)
+        if (nagSum > 43200) {
+          return JSON.stringify({ error: true, message: 'nag interval must be at most 30 days (43200 minutes)' })
         }
 
         let triggerAt: string | null = null
@@ -1031,6 +1088,12 @@ export function buildReminderTools(
         }
         if (conditionsArg !== undefined) {
           createOpts.conditions = conditionsArg
+        }
+        if (requiresAckArg !== undefined) {
+          createOpts.requiresAck = requiresAckArg
+        }
+        if (nagSum > 0) {
+          createOpts.nagIntervalMinutes = nagSum
         }
         scheduleStore.create(createOpts)
 
