@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Unmissable Reminders
-status: ready_to_plan
-last_updated: 2026-05-23T17:07:22.600Z
-last_activity: 2026-05-23 -- Phase 37 execution started
+status: planning
+last_updated: "2026-05-23T17:22:50.046Z"
+last_activity: 2026-05-23
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 32
-  percent: 0
-stopped_at: Phase 37 complete (2/2) — ready to discuss Phase 38
+  completed_plans: 2
+  percent: 33
 ---
 
 # Project State
@@ -22,7 +21,7 @@ Phase: 38
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-23
-Resume file: .planning/phases/37-schema-tool-params/37-CONTEXT.md
+Resume file: .planning/phases/38-nag-mechanism-ack-semantics/38-CONTEXT.md
 
 Progress: [··········] 0% (0/3 phases)
 
