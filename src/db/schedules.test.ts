@@ -368,6 +368,7 @@ describe('ScheduleStore — headId', () => {
       cronTimezone: null,
       requiresAck: true,
       nagIntervalMinutes: 30,
+      ackPending: false,
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     }
@@ -424,5 +425,134 @@ describe('ScheduleStore — headId', () => {
 
     const second = store.deleteAllForHead('work')
     expect(second).toEqual({ schedules: 0, reminders: 0 })
+  })
+
+  // ── Task 2 (Phase 38-01): ackPending migration, mtime-stable, create default, update round-trip ──
+
+  it("first read of legacy reminder JSON (no ackPending) stamps ackPending:false (ACK-09 continuation / D-03 lazy migration)", () => {
+    const id = 'legacy-ack-pending'
+    const legacy = {
+      id,
+      headId: 'default',
+      taskName: null,
+      kind: 'reminder',
+      cron: null,
+      runAt: '2025-06-01T09:00:00Z',
+      enabled: true,
+      lastRun: null,
+      nextRun: '2025-06-01T09:00:00Z',
+      lastSkipped: null,
+      lastSkipReason: null,
+      conditions: null,
+      agentContext: 'Morning stand-up',
+      cronTimezone: null,
+      requiresAck: true,
+      nagIntervalMinutes: 30,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      // intentionally missing ackPending
+    }
+    const filePath = path.join(tmpDir, `${id}.json`)
+    fs.writeFileSync(filePath, JSON.stringify(legacy, null, 2) + '\n', 'utf8')
+
+    // Sanity: legacy file has no ackPending field
+    const beforeRaw = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    expect('ackPending' in beforeRaw).toBe(false)
+
+    // First read: triggers migration, returns ackPending:false
+    const s = store.get(id)
+    expect(s).not.toBeNull()
+    expect(s!.ackPending).toBe(false)
+
+    // After migration: file on disk has ackPending stamped
+    const afterRaw = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    expect(afterRaw.ackPending).toBe(false)
+  })
+
+  it("second read of a row that already has ackPending does NOT rewrite (mtime stable — D-03 idempotent guard)", async () => {
+    const id = 'ack-pending-idempotent'
+    const full = {
+      id,
+      headId: 'default',
+      taskName: null,
+      kind: 'reminder',
+      cron: null,
+      runAt: '2099-01-01T09:00:00Z',
+      enabled: true,
+      lastRun: null,
+      nextRun: '2099-01-01T09:00:00Z',
+      lastSkipped: null,
+      lastSkipReason: null,
+      conditions: null,
+      agentContext: 'Already has ackPending',
+      cronTimezone: null,
+      requiresAck: true,
+      nagIntervalMinutes: 15,
+      ackPending: false,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    }
+    const filePath = path.join(tmpDir, `${id}.json`)
+    fs.writeFileSync(filePath, JSON.stringify(full, null, 2) + '\n', 'utf8')
+
+    // Sanity: file already has ackPending
+    const beforeRaw = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    expect('ackPending' in beforeRaw).toBe(true)
+
+    const mtimeBefore = fs.statSync(filePath).mtimeMs
+    const bytesBefore = fs.readFileSync(filePath)
+
+    // Sleep so any write would change mtime
+    await new Promise(r => setTimeout(r, 50))
+
+    // First read: must NOT rewrite (ackPending present → migrated:false)
+    store.get(id)
+    const mtimeAfter = fs.statSync(filePath).mtimeMs
+    const bytesAfter = fs.readFileSync(filePath)
+
+    expect(mtimeAfter).toBe(mtimeBefore)
+    expect(bytesAfter.equals(bytesBefore)).toBe(true)
+  })
+
+  it("create() without ackPending defaults to ackPending:false", () => {
+    store.create({
+      id: 'ack-create-default',
+      headId: 'default',
+      kind: 'reminder',
+      agentContext: 'Meds',
+      requiresAck: true,
+      nagIntervalMinutes: 60,
+      runAt: '2099-01-01T09:00:00Z',
+      nextRun: '2099-01-01T09:00:00Z',
+      // ackPending intentionally omitted
+    })
+    const s = store.get('ack-create-default')
+    expect(s).not.toBeNull()
+    expect(s!.ackPending).toBe(false)
+  })
+
+  it("update(id, { ackPending: true }) round-trips through get() and update(id, { ackPending: false }) clears it", () => {
+    store.create({
+      id: 'ack-update-rt',
+      headId: 'default',
+      kind: 'reminder',
+      agentContext: 'Doctor appointment',
+      requiresAck: true,
+      nagIntervalMinutes: 30,
+      runAt: '2099-01-01T09:00:00Z',
+      nextRun: '2099-01-01T09:00:00Z',
+    })
+
+    // Set ackPending to true
+    store.update('ack-update-rt', { ackPending: true })
+    const s1 = store.get('ack-update-rt')
+    expect(s1).not.toBeNull()
+    expect(s1!.ackPending).toBe(true)
+
+    // Clear ackPending back to false
+    store.update('ack-update-rt', { ackPending: false })
+    const s2 = store.get('ack-update-rt')
+    expect(s2).not.toBeNull()
+    expect(s2!.ackPending).toBe(false)
   })
 })
