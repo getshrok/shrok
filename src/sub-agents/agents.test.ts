@@ -1307,6 +1307,15 @@ describe('buildReminderTools', () => {
     expect(items[0].message).toBe('Hello')
   })
 
+  it('list_reminders projection includes requiresAck and nagIntervalMinutes (Phase 37)', async () => {
+    const { createReminder, listReminder } = await getReminderTools()
+    await createReminder.execute({ message: 'Take meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 60 }, ctx)
+    const result = await listReminder.execute({}, ctx)
+    const items = JSON.parse(result as string)
+    expect(items[0]!.requiresAck).toBe(true)
+    expect(items[0]!.nagIntervalMinutes).toBe(60)
+  })
+
   it('cancel_reminder with valid id deletes schedule record', async () => {
     const { createReminder, cancelReminder, scheduleStore } = await getReminderTools()
     const cr = await createReminder.execute({ message: 'Delete me', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
@@ -1355,6 +1364,108 @@ describe('buildReminderTools', () => {
     }
     expect(schema.properties.conditions).toBeDefined()
     expect(schema.properties.conditions!.type).toBe('string')
+  })
+
+  // ── Phase 37 D-04: requiresAck:true with no nag slots → reject ─────────────
+  it('create_reminder with requiresAck:true and no nag slots returns error JSON (D-04)', async () => {
+    const { createReminder } = await getReminderTools()
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toMatch(/nag interval/i)
+  })
+
+  // ── Phase 37 D-05: nag slots without requiresAck:true → reject ─────────────
+  it('create_reminder with nagMinutes but no requiresAck returns error JSON (D-05)', async () => {
+    const { createReminder } = await getReminderTools()
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', nagMinutes: 30 }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toMatch(/requiresAck/i)
+  })
+
+  // ── Phase 37 D-03 floor: nag sum < 5 min → reject ──────────────────────────
+  it('create_reminder with requiresAck:true and nagMinutes:3 (sum<5) returns error JSON (D-03 floor)', async () => {
+    const { createReminder } = await getReminderTools()
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 3 }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toMatch(/at least 5/i)
+  })
+
+  // ── Phase 37 D-03 ceiling: nag sum > 43200 min → reject ────────────────────
+  it('create_reminder with requiresAck:true and nagDays:31 (sum>43200) returns error JSON (D-03 ceiling)', async () => {
+    const { createReminder } = await getReminderTools()
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagDays: 31 }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toMatch(/30 days|43200/i)
+  })
+
+  // ── Phase 37 V5: non-integer nag slot → reject ──────────────────────────────
+  it('create_reminder with requiresAck:true and nagMinutes:1.5 (non-integer) returns error JSON (V5)', async () => {
+    const { createReminder } = await getReminderTools()
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 1.5 }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toMatch(/integer|non-negative/i)
+  })
+
+  it('create_reminder with requiresAck:true and nagMinutes:-5 (negative) returns error JSON (V5)', async () => {
+    const { createReminder } = await getReminderTools()
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: -5 }, ctx)
+    const parsed = JSON.parse(result as string)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toMatch(/integer|non-negative/i)
+  })
+
+  // ── Phase 37 D-01/D-02: slot-sum round-trip ─────────────────────────────────
+  it('create_reminder with requiresAck:true + nagHours:1 + nagMinutes:30 stores nagIntervalMinutes:90 (D-01/D-02)', async () => {
+    const { createReminder, scheduleStore } = await getReminderTools()
+    const result = await createReminder.execute(
+      { message: 'Take medication', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagHours: 1, nagMinutes: 30 },
+      ctx,
+    )
+    const parsed = JSON.parse(result as string)
+    expect(parsed.ok).toBe(true)
+    const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
+    expect(rows[0]!.nagIntervalMinutes).toBe(90)
+    expect(rows[0]!.requiresAck).toBe(true)
+  })
+
+  // ── Phase 37: default path — no ack params → requiresAck:false, nagIntervalMinutes:null ──
+  it('create_reminder without requiresAck params stores requiresAck:false and nagIntervalMinutes:null (default path)', async () => {
+    const { createReminder, scheduleStore } = await getReminderTools()
+    await createReminder.execute(
+      { message: 'Stand up', triggerAt: '2099-01-01T09:00:00Z' },
+      ctx,
+    )
+    const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
+    expect(rows[0]!.requiresAck).toBe(false)
+    expect(rows[0]!.nagIntervalMinutes).toBeNull()
+  })
+
+  // ── Phase 37 SC3 / SCHED-04: description assertions ─────────────────────────
+  it('create_reminder description does not say "for one-time reminders only" and documents start-then-repeat (SC3/SCHED-04)', async () => {
+    const { createReminder } = await getReminderTools()
+    expect(createReminder.definition.description).not.toMatch(/for one-time reminders only/i)
+    expect(createReminder.definition.description).toMatch(/start.?then.?repeat|repeat on (the )?cron/i)
+  })
+
+  // ── Phase 37: inputSchema declares all four new ack/nag params ──────────────
+  it('create_reminder inputSchema declares requiresAck, nagMinutes, nagHours, nagDays properties (Phase 37)', async () => {
+    const { createReminder } = await getReminderTools()
+    const schema = createReminder.definition.inputSchema as {
+      properties: Record<string, { type: string; description: string }>
+    }
+    expect(schema.properties['requiresAck']).toBeDefined()
+    expect(schema.properties['requiresAck']!.type).toBe('boolean')
+    expect(schema.properties['nagMinutes']).toBeDefined()
+    expect(schema.properties['nagMinutes']!.type).toBe('integer')
+    expect(schema.properties['nagHours']).toBeDefined()
+    expect(schema.properties['nagHours']!.type).toBe('integer')
+    expect(schema.properties['nagDays']).toBeDefined()
+    expect(schema.properties['nagDays']!.type).toBe('integer')
   })
 })
 
@@ -1456,7 +1567,8 @@ describe('phase 23: cronTimezone field', () => {
     const tools = buildReminderTools(scheduleStore, 'UTC', 'default')
     const create = tools.find(t => t.definition.name === 'create_reminder')!
     const keys = Object.keys(create.definition.inputSchema.properties as object)
-    expect(keys).toEqual(['message', 'cronTimezone', 'triggerAt', 'cron', 'conditions'])
+    // Phase 37: new ack/nag params appended after conditions — expected churn flagged in RESEARCH Pitfall 3
+    expect(keys).toEqual(['message', 'cronTimezone', 'triggerAt', 'cron', 'conditions', 'requiresAck', 'nagMinutes', 'nagHours', 'nagDays'])
   })
 
   it('create_reminder.execute: rejects non-standard cron with CADENCE_ERROR_MESSAGE', async () => {
