@@ -276,7 +276,7 @@ Plans:
 ## Phases
 
 - [x] **Phase 37: Schema & Tool Params** — Add `requiresAck` + `nagInterval` fields to the reminder schedule schema with lazy JSON migration; wire both params into `create_reminder`; verify and correct `create_reminder` tool description for `triggerAt` + `cron` start-then-repeat behavior (completed 2026-05-23)
-- [ ] **Phase 38: Nag Mechanism & Ack Semantics** — System-native nag re-arm in scheduler/activation before delivery; ack semantics by type (one-time delete vs recurring resume); ack cancels in-flight nag; injected fire event carries reminder ID + ack instructions; narrowly-scoped ack tool/agent wired through the head
+- [x] **Phase 38: Nag Mechanism & Ack Semantics** — System-native nag re-arm in scheduler/activation before delivery; ack semantics by type (one-time delete vs recurring resume); ack cancels in-flight nag; injected fire event carries reminder ID + ack instructions; narrowly-scoped ack tool/agent wired through the head (completed 2026-05-23)
 - [ ] **Phase 39: Dashboard Reminder UI** — `requiresAck` toggle + `nagInterval` input on dashboard create/edit reminder form; visual marker on ack-required reminder rows; start-date/time control for recurring schedules, reminders, and tasks mapping to `triggerAt` + `cron`
 
 ## Phase Details
@@ -317,16 +317,16 @@ Plans:
   4. When ack is received, the already-armed in-flight nag is cancelled rather than allowed to fire
   5. The injected fire event includes the reminder ID and ack instructions; the ack tool's description is scoped so it is never applied to an ordinary (non-ack-required) reminder
 
-**Plans:** 1/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
 - [x] 38-01-PLAN.md — ackPending field on Schedule/CreateScheduleOptions/SchedulePatch + create/update apply-block + lazy migration + tests (ACK-03/04/05/06 foundation)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 38-02-PLAN.md — Scheduler tick nag re-arm (advanceNextRun to now+nagInterval, enabled stays true) + scheduler.test (ACK-03, ACK-06)
-- [ ] 38-03-PLAN.md — Activation reminder branch: steward bypass + ackPending-before-enqueue + enriched systemTrigger(reminderId, requires-ack) + activation.test (ACK-05, ACK-07, ACK-08)
-- [ ] 38-04-PLAN.md — acknowledge_reminder head-direct tool: scheduleStore+timezone threading, HEAD_TOOLS entry, dispatch (one-time delete / recurring cron-resume / hard-error / no-op) + head-tools.test (ACK-04, ACK-05, ACK-06, ACK-07, ACK-08)
+- [x] 38-02-PLAN.md — Scheduler tick nag re-arm (advanceNextRun to now+nagInterval, enabled stays true) + scheduler.test (ACK-03, ACK-06)
+- [x] 38-03-PLAN.md — Activation reminder branch: steward bypass + ackPending-before-enqueue + enriched systemTrigger(reminderId, requires-ack) + activation.test (ACK-05, ACK-07, ACK-08)
+- [x] 38-04-PLAN.md — acknowledge_reminder head-direct tool: scheduleStore+timezone threading, HEAD_TOOLS entry, dispatch (one-time delete / recurring cron-resume / hard-error / no-op) + head-tools.test (ACK-04, ACK-05, ACK-06, ACK-07, ACK-08)
 
 ### Phase 39: Dashboard Reminder UI
 
@@ -347,5 +347,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 37. Schema & Tool Params | 2/2 | Complete    | 2026-05-23 |
-| 38. Nag Mechanism & Ack Semantics | 1/4 | In Progress|  |
+| 38. Nag Mechanism & Ack Semantics | 4/4 | Complete   | 2026-05-23 |
 | 39. Dashboard Reminder UI | 0/TBD | Not started | - |
