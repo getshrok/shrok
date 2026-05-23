@@ -250,11 +250,15 @@ Plans:
 **Depends on**: Phase 36
 **Requirements**: ACK-01, ACK-02, ACK-09, SCHED-04
 **Success Criteria** (what must be TRUE):
-  1. A reminder created with `requiresAck: true` and `nagInterval: '1h'` round-trips those fields correctly when read back from the store
-  2. A reminder created before this phase (without `requiresAck` or `nagInterval`) continues to fire exactly as before — no crash, no behavior change
+  1. A reminder created with `requiresAck: true` and nag slots (e.g. `nagHours: 1`) summed into a single stored integer-minutes field (`nagIntervalMinutes: 60`) round-trips those fields correctly when read back from the store (multi-slot input + stored-minutes shape per Phase 37 D-01/D-02; the earlier `nagInterval: '1h'` string example is superseded)
+  2. A reminder created before this phase (without `requiresAck` or `nagIntervalMinutes`) continues to fire exactly as before — no crash, no behavior change
   3. The `create_reminder` tool description no longer calls `triggerAt` "for one-time reminders only"; both `triggerAt` + `cron` together are documented as start-then-repeat
   4. `npx tsc --noEmit` is clean and `npx vitest run` passes after schema + migration changes
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 37-01-PLAN.md — Schedule.requiresAck + nagIntervalMinutes fields, create() defaults, migrateLegacySchedule lazy migration + tests (Wave 1; ACK-01, ACK-02, ACK-09)
+- [ ] 37-02-PLAN.md — create_reminder ack/nag params + boundary validation + slot-sum + description reword (SCHED-04) + property-order test update (Wave 2; ACK-01, ACK-02, SCHED-04)
 
 ### Phase 38: Nag Mechanism & Ack Semantics
 **Goal**: An ack-required reminder keeps nagging the user via system-native re-arm until the user explicitly acknowledges it, at which point the nag stops and type-appropriate cleanup runs
