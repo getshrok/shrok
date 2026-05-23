@@ -16,6 +16,7 @@ import { runResumeSteward, runMessageAgentSteward } from './steward.js'
 import { VIEW_IMAGE_DEF, executeViewImage } from '../sub-agents/registry.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { timingMark } from '../timing.js'
+import { nextRunAfter } from '../scheduler/cron.js'
 
 // ─── HEAD_TOOLS definitions ───────────────────────────────────────────────────
 
@@ -94,6 +95,21 @@ export const HEAD_TOOLS: ToolDefinition[] = [
       properties: {
         since: { type: 'string', description: 'ISO timestamp to filter from (e.g. "2026-04-15T00:00:00Z" for today UTC). Omit for all-time.' },
       },
+    },
+  },
+  {
+    name: 'acknowledge_reminder',
+    description: 'Acknowledge an acknowledgment-required reminder, stopping its nag loop. ' +
+      'Only call this for reminders that explicitly require acknowledgment (requiresAck: true) — ' +
+      'NEVER call this on an ordinary reminder that does not require acknowledgment; use cancel_reminder if you need to cancel an ordinary reminder. ' +
+      'Call this only when the user has explicitly confirmed they have seen and handled the reminder. ' +
+      'The reminder ID is provided in the reminder event that triggered this activation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        reminderId: { type: 'string', description: 'The ID of the acknowledgment-required reminder to acknowledge. Found in the reminder event that triggered this activation.' },
+      },
+      required: ['reminderId'],
     },
   },
 ]
@@ -346,6 +362,35 @@ export class HeadToolExecutor implements ToolExecutor {
         }
         this.opts.onFileQueued?.(att)
         return JSON.stringify({ ok: true, file: att.filename, size: `${(stat.size / 1024).toFixed(0)}KB` })
+      }
+
+      // ── Reminders ──────────────────────────────────────────────────────────
+      case 'acknowledge_reminder': {
+        const reminderId = input['reminderId'] as string
+        const schedule = this.opts.scheduleStore?.get(reminderId) ?? null
+        if (!schedule) {
+          // D-09: already acked + deleted (one-time) or never existed → benign no-op
+          return JSON.stringify({ ok: true, note: 'Reminder already acknowledged or not found.' })
+        }
+        if (schedule.requiresAck === false || schedule.kind !== 'reminder') {
+          // D-08 layer b: server-side structural defense — hard error on ordinary reminder or task
+          return JSON.stringify({ error: true, message: `Reminder '${reminderId}' does not require acknowledgment. Use cancel_reminder if you want to cancel it.` })
+        }
+        if (!schedule.ackPending) {
+          // D-09: recurring reminder currently between occurrences, or already acked
+          return JSON.stringify({ ok: true, note: 'Reminder already acknowledged.' })
+        }
+        if (schedule.cron === null) {
+          // ACK-04 + ACK-06: one-time → delete entirely (armed nag is gone with the row)
+          this.opts.scheduleStore!.delete(reminderId)
+        } else {
+          // ACK-05 + ACK-06: recurring → clear ackPending, re-point nextRun to base cron cadence
+          // MUST use nextRunAfter (NOT now+nagInterval) — nag interval is the scheduler's domain
+          const tz = schedule.cronTimezone ?? this.opts.timezone ?? 'UTC'
+          const resumeAt = nextRunAfter(schedule.cron, new Date(), tz).toISOString()
+          this.opts.scheduleStore!.update(reminderId, { ackPending: false, nextRun: resumeAt })
+        }
+        return JSON.stringify({ ok: true })
       }
 
       default:
