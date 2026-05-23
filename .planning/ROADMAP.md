@@ -293,12 +293,12 @@ Plans:
   3. The `create_reminder` tool description no longer calls `triggerAt` "for one-time reminders only"; both `triggerAt` + `cron` together are documented as start-then-repeat
   4. `npx tsc --noEmit` is clean and `npx vitest run` passes after schema + migration changes
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 37-01-PLAN.md — Schedule.requiresAck + nagIntervalMinutes fields, create() defaults, migrateLegacySchedule lazy migration + tests (Wave 1; ACK-01, ACK-02, ACK-09)
+- [x] 37-01-PLAN.md — Schedule.requiresAck + nagIntervalMinutes fields, create() defaults, migrateLegacySchedule lazy migration + tests (Wave 1; ACK-01, ACK-02, ACK-09)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -337,6 +337,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 37. Schema & Tool Params | 0/TBD | Not started | - |
+| 37. Schema & Tool Params | 1/2 | In Progress|  |
 | 38. Nag Mechanism & Ack Semantics | 0/TBD | Not started | - |
 | 39. Dashboard Reminder UI | 0/TBD | Not started | - |
