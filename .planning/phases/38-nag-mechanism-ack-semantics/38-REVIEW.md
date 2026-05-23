@@ -18,6 +18,8 @@ findings:
   warning: 6
   info: 5
   total: 11
+resolved:
+  - WR-01  # fixed in commit 510aab3 (delete guarded with !requiresAck + activation.test.ts Test E)
 status: issues_found
 ---
 
@@ -52,7 +54,10 @@ can immediately re-fire for short crons, producing an instant re-nag (WR-03)**.
 
 ## Warnings
 
-### WR-01: One-time ack reminder is permanently deleted when channel resolution fails
+### WR-01: One-time ack reminder is permanently deleted when channel resolution fails  ✅ RESOLVED (commit 510aab3)
+
+> **Resolved 2026-05-23:** The channel-outage delete is now guarded with `&& !schedule.requiresAck`, so one-time ack reminders survive a channel outage and re-nag on the next tick. Regression covered by `activation.test.ts` Test E.
+
 
 **File:** `src/head/activation.ts:1099-1104`
 **Issue:** In the reminder fire branch, when `last_active_channel` is null AND the head has no

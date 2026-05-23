@@ -347,5 +347,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 37. Schema & Tool Params | 2/2 | Complete    | 2026-05-23 |
-| 38. Nag Mechanism & Ack Semantics | 4/4 | Complete   | 2026-05-23 |
+| 38. Nag Mechanism & Ack Semantics | 4/4 | Complete    | 2026-05-23 |
 | 39. Dashboard Reminder UI | 0/TBD | Not started | - |

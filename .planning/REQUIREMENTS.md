@@ -13,12 +13,12 @@ Backend schema + scheduler/activation mechanism + head integration + tool.
 
 - [x] **ACK-01**: User can create a reminder flagged as acknowledgment-required, which keeps re-firing until the user explicitly acknowledges it
 - [x] **ACK-02**: User can set a nag interval for an ack-required reminder that is independent of its base recurrence (e.g., a weekly reminder that nags hourly until acked)
-- [ ] **ACK-03**: The scheduler arms the next nag in code before delivering the current one, so an ack-required reminder keeps nagging even if the head does no work between fires
-- [ ] **ACK-04**: Acknowledging a one-time ack-required reminder deletes it so no further nags fire
-- [ ] **ACK-05**: Acknowledging a recurring ack-required reminder stops the current occurrence's nag loop while the base recurrence still fires future occurrences
-- [ ] **ACK-06**: Acknowledgment cancels the already-armed in-flight nag rather than only setting a flag
-- [ ] **ACK-07**: When an ack-required reminder fires, the injected reminder event carries the reminder ID and acknowledgment instructions so the head can mark it acknowledged when the user confirms
-- [ ] **ACK-08**: The acknowledgment capability is scoped so the head only applies it to ack-required reminders, never to ordinary reminders
+- [x] **ACK-03**: The scheduler arms the next nag in code before delivering the current one, so an ack-required reminder keeps nagging even if the head does no work between fires
+- [x] **ACK-04**: Acknowledging a one-time ack-required reminder deletes it so no further nags fire
+- [x] **ACK-05**: Acknowledging a recurring ack-required reminder stops the current occurrence's nag loop while the base recurrence still fires future occurrences
+- [x] **ACK-06**: Acknowledgment cancels the already-armed in-flight nag rather than only setting a flag
+- [x] **ACK-07**: When an ack-required reminder fires, the injected reminder event carries the reminder ID and acknowledgment instructions so the head can mark it acknowledged when the user confirms
+- [x] **ACK-08**: The acknowledgment capability is scoped so the head only applies it to ack-required reminders, never to ordinary reminders
 - [x] **ACK-09**: Reminders created before this milestone (without the new fields) continue firing unchanged via lazy default migration
 
 ### Scheduling Dashboard & Docs (SCHED)
@@ -60,12 +60,12 @@ Which phases cover which requirements. Filled during roadmap creation.
 |-------------|-------|--------|
 | ACK-01 | Phase 37 | Complete |
 | ACK-02 | Phase 37 | Complete |
-| ACK-03 | Phase 38 | Pending |
-| ACK-04 | Phase 38 | Pending |
-| ACK-05 | Phase 38 | Pending |
-| ACK-06 | Phase 38 | Pending |
-| ACK-07 | Phase 38 | Pending |
-| ACK-08 | Phase 38 | Pending |
+| ACK-03 | Phase 38 | Complete |
+| ACK-04 | Phase 38 | Complete |
+| ACK-05 | Phase 38 | Complete |
+| ACK-06 | Phase 38 | Complete |
+| ACK-07 | Phase 38 | Complete |
+| ACK-08 | Phase 38 | Complete |
 | ACK-09 | Phase 37 | Complete |
 | SCHED-01 | Phase 39 | Pending |
 | SCHED-02 | Phase 39 | Pending |
