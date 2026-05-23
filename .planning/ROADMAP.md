@@ -275,7 +275,7 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 37: Schema & Tool Params** — Add `requiresAck` + `nagInterval` fields to the reminder schedule schema with lazy JSON migration; wire both params into `create_reminder`; verify and correct `create_reminder` tool description for `triggerAt` + `cron` start-then-repeat behavior
+- [x] **Phase 37: Schema & Tool Params** — Add `requiresAck` + `nagInterval` fields to the reminder schedule schema with lazy JSON migration; wire both params into `create_reminder`; verify and correct `create_reminder` tool description for `triggerAt` + `cron` start-then-repeat behavior (completed 2026-05-23)
 - [ ] **Phase 38: Nag Mechanism & Ack Semantics** — System-native nag re-arm in scheduler/activation before delivery; ack semantics by type (one-time delete vs recurring resume); ack cancels in-flight nag; injected fire event carries reminder ID + ack instructions; narrowly-scoped ack tool/agent wired through the head
 - [ ] **Phase 39: Dashboard Reminder UI** — `requiresAck` toggle + `nagInterval` input on dashboard create/edit reminder form; visual marker on ack-required reminder rows; start-date/time control for recurring schedules, reminders, and tasks mapping to `triggerAt` + `cron`
 
@@ -293,7 +293,7 @@ Plans:
   3. The `create_reminder` tool description no longer calls `triggerAt` "for one-time reminders only"; both `triggerAt` + `cron` together are documented as start-then-repeat
   4. `npx tsc --noEmit` is clean and `npx vitest run` passes after schema + migration changes
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -302,7 +302,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 37-02-PLAN.md — create_reminder ack/nag params + boundary validation + slot-sum + description reword (SCHED-04) + property-order test update (Wave 2; ACK-01, ACK-02, SCHED-04)
+- [x] 37-02-PLAN.md — create_reminder ack/nag params + boundary validation + slot-sum + description reword (SCHED-04) + property-order test update (Wave 2; ACK-01, ACK-02, SCHED-04)
 
 ### Phase 38: Nag Mechanism & Ack Semantics
 
@@ -337,6 +337,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 37. Schema & Tool Params | 1/2 | In Progress|  |
+| 37. Schema & Tool Params | 2/2 | Complete   | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | 0/TBD | Not started | - |
 | 39. Dashboard Reminder UI | 0/TBD | Not started | - |
