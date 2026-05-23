@@ -1,91 +1,82 @@
-# Requirements — v1.3 Multi-Head Support
+# Requirements — v1.4 Unmissable Reminders
 
-**Defined:** 2026-05-12
+**Defined:** 2026-05-23
 **Core Value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
 
-## v1.3 Requirements
+## v1.4 Requirements
 
-### Data Layer
+Sourced from SEED-001 (acknowledgment-required reminders, full design settled) and backlog 999.1 (dashboard start-date inputs).
 
-- [ ] **DATA-01**: Migration assigns `head_id = 'default'` to all existing `queue_events` rows so single-head deployments continue working unchanged
-- [ ] **DATA-02**: Migration assigns `head_id = 'default'` to all existing `messages` rows
-- [ ] **DATA-03**: `QueueStore.claimNext(headId)` atomically claims only events belonging to the specified head
-- [ ] **DATA-04**: `MessageStore.getRecent(headId, tokenBudget)` returns conversation history scoped to the specified head
+### Acknowledgment-Required Reminders (ACK)
 
-### Core Activation
+Backend schema + scheduler/activation mechanism + head integration + tool.
 
-- [x] **CORE-01**: `ActivationLoop` is parameterized by `headId` and scopes all queue and message operations to that head
-- [x] **CORE-02**: Per-head last-active-channel stored as `{headId}:lastActiveChannel` in `AppStateStore`
-- [x] **CORE-03**: Per-head archival lock stored as `{headId}:archivalLock` in `AppStateStore` so concurrent heads cannot race on archival
-- [x] **CORE-04**: Each head owns an independent `ChannelRouter` instance populated only with its assigned adapters
+- [ ] **ACK-01**: User can create a reminder flagged as acknowledgment-required, which keeps re-firing until the user explicitly acknowledges it
+- [ ] **ACK-02**: User can set a nag interval for an ack-required reminder that is independent of its base recurrence (e.g., a weekly reminder that nags hourly until acked)
+- [ ] **ACK-03**: The scheduler arms the next nag in code before delivering the current one, so an ack-required reminder keeps nagging even if the head does no work between fires
+- [ ] **ACK-04**: Acknowledging a one-time ack-required reminder deletes it so no further nags fire
+- [ ] **ACK-05**: Acknowledging a recurring ack-required reminder stops the current occurrence's nag loop while the base recurrence still fires future occurrences
+- [ ] **ACK-06**: Acknowledgment cancels the already-armed in-flight nag rather than only setting a flag
+- [ ] **ACK-07**: When an ack-required reminder fires, the injected reminder event carries the reminder ID and acknowledgment instructions so the head can mark it acknowledged when the user confirms
+- [ ] **ACK-08**: The acknowledgment capability is scoped so the head only applies it to ack-required reminders, never to ordinary reminders
+- [ ] **ACK-09**: Reminders created before this milestone (without the new fields) continue firing unchanged via lazy default migration
 
-### Adapter Registry
+### Scheduling Dashboard & Docs (SCHED)
 
-- [x] **ADPT-01**: Channel adapters accept a `headId` config field and stamp it on every inbound event they enqueue
-- [x] **ADPT-02**: Multiple adapter instances of the same vendor type can be registered with distinct IDs (e.g., `telegram-personal`, `telegram-work`)
+Dashboard create/edit form surface + start-date control + tool-description correctness.
 
-### Config & Startup
-
-- [ ] **CONF-01**: `config.json` accepts a `heads` array where each entry has an `id` and a `channels` list of adapter IDs
-- [x] **CONF-02**: When no `heads` array is configured, a single implicit `default` head is used (backward compatible with all existing deployments)
-- [x] **CONF-03**: Startup creates one `ActivationLoop` and one `ChannelRouter` per configured head
-
-### Dashboard
-
-- [x] **DASH-01**: Dashboard displays a head selector so the user can switch the active head context
-- [x] **DASH-02**: Conversation view returns only messages scoped to the currently selected head
-- [x] **DASH-03**: Dashboard allows creating, renaming, and deleting heads from the UI without editing config.json directly
-- [x] **DASH-04**: Dashboard allows adding, editing, and removing channel adapters within a head, including multiple instances of the same vendor (e.g., two Telegram bots, two Slack workspaces)
-- [x] **DASH-05**: Sending a message from the dashboard routes to the currently selected head's outbound channel rather than always to the default head
+- [ ] **SCHED-01**: User can set `requiresAck` and `nagInterval` on a reminder from the dashboard create/edit form
+- [ ] **SCHED-02**: Dashboard reminder/schedule views visibly mark which reminders require acknowledgment
+- [ ] **SCHED-03**: User can set a start date/time for a recurring schedule, reminder, or task in the dashboard, mapping to `triggerAt` + `cron` (first fire at the start date, then cron cadence)
+- [ ] **SCHED-04**: The `create_reminder` tool description accurately documents that `triggerAt` + `cron` together produce start-then-repeat behavior (verify backend, loosen the misleading "one-time only" wording — do not rebuild)
 
 ## Future Requirements
 
+Acknowledged but deferred — not in the v1.4 roadmap.
+
+### Acknowledgment UX
+
+- **ACK-F-01**: User can acknowledge a nagging reminder directly from the dashboard (button), not only via the conversational head
+- **ACK-F-02**: Ack-required reminder escalates to a different channel after N unacknowledged nags
+
 ### Dashboard Management
 
-- **DASH-F-02**: Dashboard shows per-head usage metrics (tokens, cost)
-
-### Cross-Head Features
-
-- **XH-F-01**: Agent running under one head can send a message that surfaces in another head's conversation
-- **XH-F-02**: Schedules and reminders can be assigned to a specific head
+- **DASH-F-02**: Dashboard shows per-head usage metrics (tokens, cost) — carried over from v1.3
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Cross-head message passing | Heads are independent; routing between them adds complexity without clear benefit at this stage |
-| Per-head identity or skills | Core design principle — single identity, shared context across all heads |
-| Per-head memory | Shared memory is what makes heads feel like one entity rather than separate bots |
-| Multi-process isolation | Single process + SQLite WAL is sufficient; multiprocessing adds ops complexity |
+| Ack instructions in the global system prompt | Per SEED-001 decision 5 — instructions ride in the injected fire event; worst-case (event ages out before next nag) is one redundant nag, not worth prompt bloat |
+| Ack-required as a default/automatic severity | Opt-in only by design — making ordinary reminders nag would cause alarm fatigue (SEED-001 core premise) |
+| Max-nag count / auto-stop after N tries | "Unmissable" means it nags until acked; a silent auto-stop would defeat the purpose. Escalation captured as ACK-F-02 future instead |
+| Rebuilding start-then-repeat backend | Already supported (`triggerAt` + `cron`); SCHED-04 only verifies + documents it |
 
 ## Traceability
 
+Which phases cover which requirements. Filled during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | Phase 29 | Pending |
-| DATA-02 | Phase 29 | Pending |
-| DATA-03 | Phase 29 | Pending |
-| DATA-04 | Phase 29 | Pending |
-| CORE-01 | Phase 30 | Complete |
-| CORE-02 | Phase 30 | Complete |
-| CORE-03 | Phase 30 | Complete |
-| CORE-04 | Phase 30 | Complete |
-| ADPT-01 | Phase 31 | Complete |
-| ADPT-02 | Phase 31 | Complete |
-| CONF-01 | Phase 31 | Pending |
-| CONF-02 | Phase 31 | Complete |
-| CONF-03 | Phase 31 | Complete |
-| DASH-01 | Phase 32 | Complete |
-| DASH-02 | Phase 32 | Complete |
-| DASH-03 | Phase 33 | Complete |
-| DASH-04 | Phase 33 | Complete |
-| DASH-05 | Phase 33 | Complete |
+| ACK-01 | TBD | Pending |
+| ACK-02 | TBD | Pending |
+| ACK-03 | TBD | Pending |
+| ACK-04 | TBD | Pending |
+| ACK-05 | TBD | Pending |
+| ACK-06 | TBD | Pending |
+| ACK-07 | TBD | Pending |
+| ACK-08 | TBD | Pending |
+| ACK-09 | TBD | Pending |
+| SCHED-01 | TBD | Pending |
+| SCHED-02 | TBD | Pending |
+| SCHED-03 | TBD | Pending |
+| SCHED-04 | TBD | Pending |
 
 **Coverage:**
-- v1.3 requirements: 18 total
-- Mapped to phases: 18 (roadmap complete)
-- Unmapped: 0 ✓
+- v1.4 requirements: 13 total
+- Mapped to phases: 0 (roadmap pending)
+- Unmapped: 13 ⚠️
 
 ---
-*Requirements defined: 2026-05-12*
-*Last updated: 2026-05-13 — promoted DASH-F-01/F-03 from Future Requirements into active scope as DASH-03/04/05 (multi-head management UI + per-head Send routing)*
+*Requirements defined: 2026-05-23*
+*Last updated: 2026-05-23 — initial v1.4 definition from SEED-001 + backlog 999.1*
