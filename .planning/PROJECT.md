@@ -8,19 +8,19 @@ Shrok is a self-hosted personal AI agent that maintains a single persistent iden
 
 A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
 
-## Current Milestone: v1.3 Multi-Head Support
+## Current Milestone: v1.4 Unmissable Reminders
 
-**Goal:** Enable multiple parallel conversation heads that each own their own queue, message history, and activation loop while sharing memory, identity, and skills.
+**Goal:** Add an opt-in reminder severity that nags on a configurable interval until the user explicitly acknowledges it — so high-stakes reminders (appointments, meds) can't fire into the void — and surface dashboard start-date controls for recurring schedules.
 
 **Target features:**
-- Head registry in config (named heads, each with assigned channel adapters)
-- Per-head queue claims (`head_id` column on `queue_events` and `messages`)
-- Per-head activation loop instances running concurrently in one process
-- Per-head `AppStateStore` namespacing (lastActiveChannel, archival lock, etc.)
-- Multiple adapter instances per vendor type (e.g., `telegram-personal`, `telegram-work`)
-- Dashboard head selector — conversations scoped to active head
-- Shared memory, identity files, and skills across all heads (untouched)
-- Backward-compatible default head — single-head deployments unchanged
+- `requiresAck` + `nagInterval` fields on the reminder schedule schema (lazy JSON/SQL migration, mirroring Phase 35's `headId` addition)
+- `create_reminder` tool gains `requiresAck` + `nagInterval` params
+- A new, narrowly-scoped ack tool/agent — description airtight so the model never fires it on ordinary reminders
+- System-native nag re-arm: the scheduler/activation layer arms the next nag in code *before* delivering the current one (nagging never depends on the head doing work each cycle)
+- Ack semantics by type: one-time → delete; recurring → mark this occurrence acked + stop the nag sub-loop while base cron continues; ack also cancels the already-armed in-flight nag
+- Injected reminder event carries the reminder ID + ack instructions (no system-prompt entry)
+- Dashboard reminder forms expose `requiresAck` + `nagInterval` toggles
+- Dashboard start-date inputs for recurring schedules/reminders/tasks (backlog 999.1 — maps to `triggerAt` + `cron`)
 
 ## Requirements
 
@@ -48,7 +48,12 @@ A single coherent AI identity that remembers everything, works across every chan
 
 ### Active
 
-- [ ] Existing single-head deployments continue to work unchanged after migration
+- [ ] Opt-in `requiresAck` reminders that nag on a configurable `nagInterval` until explicitly acknowledged
+- [ ] Narrowly-scoped ack tool/agent the head invokes only on acknowledgment of an ack-required reminder
+- [ ] System-native nag re-arm — scheduler arms the next nag before delivering the current one, independent of head work
+- [ ] Ack semantics by type: one-time → delete; recurring → ack this occurrence, base cron continues
+- [ ] Dashboard exposes `requiresAck` + `nagInterval` on reminder forms
+- [ ] Dashboard start-date inputs for recurring schedules/reminders/tasks (maps `triggerAt` + `cron`)
 
 ### Out of Scope
 
@@ -65,6 +70,9 @@ A single coherent AI identity that remembers everything, works across every chan
 - `AppStateStore` uses flat K-V pairs (e.g., `lastActiveChannel`) that need namespacing (e.g., `personal:lastActiveChannel`) for multi-head
 - The archival lock (`archivalLock`) is currently global — needs per-head lock in `AppStateStore`
 - All existing `queue_events` and `messages` rows will be assigned `head_id = 'default'` via migration
+- Reminders are `kind:'reminder'` schedule rows (NOT workspace tasks), stored as JSON files via `src/db/file-store.ts`; tools `create_reminder`/`list_reminders`/`cancel_reminder` are built in `src/sub-agents/registry.ts`
+- Start-date for recurring reminders is **already a backend capability**: `create_reminder` accepts `triggerAt` + `cron` together (first fire at `triggerAt`, then `scheduler` advances `nextRun` from cron). 999.1 is UI-only — verify + document/loosen, do not rebuild
+- Reminder fire path lives in `src/head/activation.ts` (channel resolve → steward skip check → one-time self-delete → `systemTrigger('reminder', …)` inject); no ack/nag/escalation concept exists today
 
 ## Constraints
 
@@ -103,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-14 — Phase 36 complete: inbound sender attribution — `InboundMessage.senderName?: string` type contract, `normalizeSenderName` + `buildPrefixedText` helpers in `src/head/sender-prefix.ts`, central prefix construction inside `headRouteMessage` (slash-command detection runs first on raw text), generalized D-11 stripper `/^(\s*\[[^\]]+\]\s*:?\s*)+/` renamed `stripTimestampEcho` → `stripLeadingBracketPrefixes`, five adapters populate senderName (Discord, Telegram, Slack TTL-cached `users.info`, WhatsApp, Cliq), voice/dashboard/webhook untouched per D-06, 20 sender-prefix unit tests + 19 stripper regression tests, 1489/1490 vitest passing. Phase 35 complete: per-head scheduling. Milestone v1.3 ready for completion (audit + smoke tests pending).*
+*Last updated: 2026-05-23 — Milestone v1.4 Unmissable Reminders started (ack-required reminders with system-native nag re-arm, sourced from SEED-001; bundled with backlog 999.1 dashboard start-date inputs). Phase numbering continues from 37. Note: v1.3 was never formally closed via /gsd-complete-milestone (status was `verifying`, audit + live smoke tests pending). Prior: Phase 36 complete — inbound sender attribution* — `InboundMessage.senderName?: string` type contract, `normalizeSenderName` + `buildPrefixedText` helpers in `src/head/sender-prefix.ts`, central prefix construction inside `headRouteMessage` (slash-command detection runs first on raw text), generalized D-11 stripper `/^(\s*\[[^\]]+\]\s*:?\s*)+/` renamed `stripTimestampEcho` → `stripLeadingBracketPrefixes`, five adapters populate senderName (Discord, Telegram, Slack TTL-cached `users.info`, WhatsApp, Cliq), voice/dashboard/webhook untouched per D-06, 20 sender-prefix unit tests + 19 stripper regression tests, 1489/1490 vitest passing. Phase 35 complete: per-head scheduling. Milestone v1.3 ready for completion (audit + smoke tests pending).*

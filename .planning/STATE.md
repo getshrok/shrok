@@ -1,30 +1,26 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Multi-Head Support
-status: verifying
-stopped_at: Completed 36-03-PLAN.md (adapter sender extraction)
-last_updated: "2026-05-14T14:39:36.527Z"
-last_activity: 2026-05-14
+milestone: v1.4
+milestone_name: Unmissable Reminders
+status: planning
+last_updated: "2026-05-23T15:32:02.624Z"
+last_activity: 2026-05-23
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 31
-  completed_plans: 31
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 36
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-14
-Stopped at: Completed 36-03-PLAN.md (adapter sender extraction)
-
-Progress: [██████████] 100% (31/31 plans complete; phase 36 complete — ready for verification)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-23 — Milestone v1.4 started
 
 ## Project Reference
 
