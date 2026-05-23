@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Unmissable Reminders
-status: roadmapped
-last_updated: "2026-05-23T00:00:00.000Z"
-last_activity: 2026-05-23
+status: planning
+last_updated: "2026-05-23T16:16:21.410Z"
+last_activity: 2026-05-23 — v1.4 roadmap created (Phases 37–39)
 progress:
   total_phases: 3
   completed_phases: 0
@@ -17,10 +17,11 @@ progress:
 
 ## Current Position
 
-Phase: 37 — Schema & Tool Params (not started)
+Phase: 37 — Schema & Tool Params (context gathered)
 Plan: —
-Status: Roadmap complete; ready to plan Phase 37
-Last activity: 2026-05-23 — v1.4 roadmap created (Phases 37–39)
+Status: Phase 37 context captured; ready to plan
+Last activity: 2026-05-23 — Phase 37 context captured (schema & tool params decisions)
+Resume file: .planning/phases/37-schema-tool-params/37-CONTEXT.md
 
 Progress: [··········] 0% (0/3 phases)
 
