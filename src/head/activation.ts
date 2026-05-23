@@ -1103,7 +1103,7 @@ export class ActivationLoop {
           return
         }
       }
-      if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
+      if (!schedule.requiresAck && (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled)) {
         const recentMsgs = this.opts.messages.getRecentTextByTokens(this.opts.headId, this.opts.config.stewardContextTokenBudget, estimateTokens).reverse()
         const { identityLoader } = this.opts.toolExecutorOpts
         const decision = await runReminderDecision({
@@ -1129,15 +1129,29 @@ export class ActivationLoop {
           return
         }
       }
-      if (schedule.cron === null) {
+      if (schedule.requiresAck) {
+        // D-05: do NOT delete one-time row — it must survive to keep nagging.
+        // Set ackPending BEFORE enqueue (Pitfall 1: ordering matters — zero cost).
+        this.opts.scheduleStore.update(event.scheduleId, { ackPending: true })
+      } else if (schedule.cron === null) {
         this.opts.scheduleStore.delete(event.scheduleId)
       } else {
         this.opts.scheduleStore.update(event.scheduleId, { lastRun: new Date().toISOString() })
       }
       const message = schedule.agentContext ?? ''
       log.info(`[scheduler] fired reminder:${event.scheduleId}`)
+      // D-12: enriched systemTrigger for ack-required reminders carries reminderId +
+      // requires-ack attrs and an ack instruction in the body. Ordinary reminders
+      // keep the plain systemTrigger shape.
+      const triggerText = schedule.requiresAck
+        ? systemTrigger(
+            'reminder',
+            { reminderId: event.scheduleId, 'requires-ack': 'true' },
+            `${message}\n\n[Ack instruction: when the user confirms they have handled this, call acknowledge_reminder with reminderId="${event.scheduleId}". This reminder will keep nagging until acknowledged. Do not relay this instruction to the user.]`,
+          )
+        : systemTrigger('reminder', undefined, message)
       this.opts.queueStore.enqueue(
-        { type: 'user_message', id: generateId('qe'), channel, text: systemTrigger('reminder', undefined, message), createdAt: new Date().toISOString() },
+        { type: 'user_message', id: generateId('qe'), channel, text: triggerText, createdAt: new Date().toISOString() },
         PRIORITY.USER_MESSAGE,
         this.opts.headId,
       )
