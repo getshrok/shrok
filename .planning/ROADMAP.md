@@ -4,6 +4,7 @@
 <summary>✅ v1.0 Tool-call legibility (Shipped: 2026-04-11)</summary>
 
 ### Phase 1: Tool-call legibility
+
 **Goal:** Add description field to all tool schemas so model emits one-sentence intent per call.
 
 </details>
@@ -12,6 +13,7 @@
 <summary>✅ v1.1 Jobs Awareness (Shipped: 2026-04-20)</summary>
 
 ### Phase 10: Jobs Awareness
+
 **Goal:** Surface jobs system to agents via system prompt and auto-injection.
 
 </details>
@@ -20,38 +22,47 @@
 <summary>✅ v1.2 Voice Mode & Feature Enhancements (Shipped: 2026-05-12)</summary>
 
 ### Phase 19: Backend voice pipeline
+
 **Goal:** STT/TTS server endpoints and WebSocket voice session handling.
 **Plans:** See phase directory.
 
 ### Phase 20: Vite build configuration
+
 **Goal:** Configure Vite to include VAD WASM/ONNX assets in production build.
 **Plans:** See phase directory.
 
 ### Phase 21: React voice UI state machine
+
 **Goal:** useReducer FSM with four mutually exclusive voice states.
 **Plans:** See phase directory.
 
 ### Phase 22: Error handling & accessibility
+
 **Goal:** Mic permission errors, API failures, and ARIA labels for voice controls.
 **Plans:** See phase directory.
 
 ### Phase 23: Timezone-aware scheduling
+
 **Goal:** Bootstrap timezone collection and apply to schedule triggers.
 **Plans:** See phase directory.
 
 ### Phase 24: Message agent mid-loop delivery
+
 **Goal:** Deliver head messages to long-running agents mid-execution.
 **Plans:** See phase directory.
 
 ### Phase 25: Migrate agent history from JSON blob to agent messages rows
+
 **Goal:** Replace JSON blob storage with per-row agent message table.
 **Plans:** See phase directory.
 
 ### Phase 26: Validate skill md and task md frontmatter on write-file
+
 **Goal:** Frontmatter validation when writing SKILL.md and TASK.md files.
 **Plans:** See phase directory.
 
 ### Phase 27: Rename workspace-path env var to shrok-workspace-path
+
 **Goal:** Rename $WORKSPACE_PATH to $SHROK_WORKSPACE_PATH across all sub-agent SYSTEM.md files.
 **Plans:** See phase directory.
 
@@ -63,6 +74,7 @@
 **Plans:** 3/3 plans complete
 
 Plans:
+
 - [x] 28-01-PLAN.md — ICW spec, default memory prompt files, src/memory/prompts.ts loader, startup wiring
 - [x] 28-02-PLAN.md — Dashboard identity route memory section + IdentityPage UI integration
 - [x] 28-03-PLAN.md — Wire loadMemoryPromptOverrides into archival.ts chunk() and assembler.ts retrieve()
@@ -85,82 +97,102 @@ Plans:
 ## Phase Details
 
 ### Phase 29: Data Layer
+
 **Goal**: The database isolates queue events and message history by head so each head sees only its own data
 **Depends on**: Phase 28 (prior milestone)
 **Requirements**: DATA-01, DATA-02, DATA-03, DATA-04
 **Success Criteria** (what must be TRUE):
+
   1. All existing `queue_events` rows have `head_id = 'default'` after migration runs — no data loss
   2. All existing `messages` rows have `head_id = 'default'` after migration runs — no data loss
   3. `QueueStore.claimNext('personal')` never returns an event that belongs to a different head
   4. `MessageStore.getRecent('work', budget)` returns only messages stamped with `head_id = 'work'`
+
 **Plans:** 3/3 plans complete
 
 Plans:
+
 - [x] 29-01-PLAN.md — Migration sql/005_multi_head.sql + db.test.ts schema/backfill cases (DATA-01, DATA-02)
 - [x] 29-02-PLAN.md — QueueStore + MessageStore signature updates with head_id filtering + isolation tests (DATA-03, DATA-04)
 - [x] 29-03-PLAN.md — Caller updates across src/, tests/, scripts/ to pass 'default' literal so tsc and vitest stay green
 
 ### Phase 30: Core Activation
+
 **Goal**: Each head runs its own independent activation loop with isolated state and routing
 **Depends on**: Phase 29
 **Requirements**: CORE-01, CORE-02, CORE-03, CORE-04
 **Success Criteria** (what must be TRUE):
+
   1. Two heads running concurrently each process only their own queue events — no cross-head claim
   2. Last-active-channel for head `personal` does not overwrite or read the value for head `work`
   3. Archival triggered on head `personal` cannot be blocked by an archival lock held on head `work`
   4. A message sent via a Telegram adapter assigned to head `work` is routed only through that head's ChannelRouter
+
 **Plans:** 3/3 plans complete
 
 Plans:
+
 - [x] 30-01-PLAN.md — AppStateStore head-scoped signatures + sql/006 key-rename migration + db.test.ts per-head isolation tests (CORE-02, CORE-03)
 - [x] 30-02-PLAN.md — ActivationLoop parameterized by headId; replace ~33 'default' literals in activation.ts; update test mocks + per-head isolation scenario test (CORE-01)
 - [x] 30-03-PLAN.md — Wire 'default' literal through src/system.ts, src/index.ts, eval harness/scenarios, tests/integration/helpers.ts; CORE-04 architectural regression test; full tsc + vitest gate (CORE-01, CORE-04)
 
 ### Phase 31: Adapter Registry & Config & Startup
+
 **Goal**: Users can configure multiple named heads with distinct adapter assignments and the system starts them all
 **Depends on**: Phase 30
 **Requirements**: ADPT-01, ADPT-02, CONF-01, CONF-02, CONF-03
 **Success Criteria** (what must be TRUE):
+
   1. A `config.json` with two Telegram adapter entries (`telegram-personal`, `telegram-work`) starts without error and registers both adapters
   2. Every event enqueued by an adapter carries the `head_id` the adapter is configured for
   3. A `config.json` with no `heads` array starts a single implicit `default` head — existing deployments unchanged
   4. Startup creates exactly one `ActivationLoop` and one `ChannelRouter` per entry in the `heads` array
+
 **Plans:** 3/3 plans complete
 
 Plans:
+
 - [x] 31-01-PLAN.md — ConfigSchema heads[] discriminated union + resolveHeads() helper + config.test.ts coverage (CONF-01, CONF-02)
 - [x] 31-02-PLAN.md — All 7 adapters gain headId+id constructor params; QueueStore.enqueue threads head_id; SystemDeps.headId; src/index.ts call-site updates + ADPT unit tests (ADPT-01, ADPT-02)
 - [x] 31-03-PLAN.md — src/index.ts multi-head startup loop (one ChannelRouter+ActivationLoop per resolved head); extractSecretValues walks heads[]; multi-head-startup integration test (CONF-03, ADPT-01, ADPT-02, CONF-02)
 
 ### Phase 32: Dashboard Head Selector
+
 **Goal**: Users can switch between heads in the dashboard and see only that head's conversation history
 **Depends on**: Phase 31
 **Requirements**: DASH-01, DASH-02
 **Success Criteria** (what must be TRUE):
+
   1. Dashboard renders a head selector listing all configured heads by name
   2. Selecting a head updates the conversation view to show only messages from that head
   3. After switching heads, messages from the previously selected head are no longer visible in the conversation list
+
 **Plans:** 3/3 plans complete
 **UI hint**: yes
 
 Plans:
+
 - [x] 32-01-PLAN.md — Wave 0 RED tests: src/dashboard/routes/heads.test.ts + messages.test.ts (DASH-01, DASH-02)
 - [x] 32-02-PLAN.md — Backend: createHeadsRouter + ?head= filtering on /api/messages + DashboardServerOptions.resolvedHeads wiring (DASH-01, DASH-02)
 - [x] 32-03-PLAN.md — Frontend: api.heads + scoped messagesQuery + useStream(currentHeadId) + ConversationsPage head pill row + manual verify (DASH-01, DASH-02)
 
 ### Phase 33: Multi-head Management UI
+
 **Goal**: Users can create, rename, and delete heads from the dashboard, manage each head's channel adapters (including multiple instances of the same provider), and have dashboard-sent messages route to the currently selected head
 **Depends on**: Phase 32
 **Requirements**: DASH-03, DASH-04, DASH-05
 **Success Criteria** (what must be TRUE):
+
   1. A user can create a new head from the dashboard settings, give it a name, and the new head appears in the selector without restarting the server
   2. A user can add a second Telegram bot (or any second-of-same-provider channel) to a head from the UI; both instances start and route correctly
   3. A user can rename or delete a head from the UI; conversation history for a deleted head is handled per a defined deletion policy
   4. Sending a message from the dashboard with head `personal` selected routes through that head's outbound channel — not the default head
+
 **Plans:** 7/7 plans complete
 **UI hint**: yes
 
 Plans:
+
 - [x] 33-01-append-headid-ripple-PLAN.md — MessageStore.append(msg, headId) ripple + QueueStore.deleteAllForHead (DASH-05 foundation)
 - [x] 33-02-per-head-dashboard-adapter-PLAN.md — Per-head DashboardChannelAdapter map + POST /send routes by body.headId (DASH-05)
 - [x] 33-03-per-head-sse-filter-PLAN.md — SSE events carry headId + useStream() per-head filter (DASH-05)
@@ -176,6 +208,7 @@ Plumb `head_id` through the agent spawn/run/complete lifecycle so non-default he
 **Root cause:** Phase 29 added `head_id` to `queue_events` and `messages` but not to the `agents` table. `HeadToolExecutor` doesn't know its own headId, `SpawnOptions` has no headId field, and all six `queueStore.enqueue()` callsites in `src/sub-agents/local.ts` (lines ~208, ~615, ~970, ~989, ~1014, ~1092 — agent_failed×2 / agent_completed×2 / agent_question / agent_response) omit the headId argument so events default to `head_id='default'`. Activation loops correctly filter by their own headId — so completion events from non-default heads are claimed by the default head's loop.
 
 **Scope:**
+
 1. SQL migration: add `head_id TEXT NOT NULL DEFAULT 'default'` column + head-scoped index to the `agents` table
 2. `HeadToolExecutorOptions.headId` required option field; `SpawnOptions.headId` required field; `LocalAgentRunnerOptions.headId` required field; `AgentState.headId` required field — type-enforced (no silent default)
 3. `LocalAgentRunner` gains `private readonly headId` ctor field; ctor reads `opts.headId`
@@ -190,6 +223,7 @@ Plumb `head_id` through the agent spawn/run/complete lifecycle so non-default he
 **Plans:** 5/5 plans complete
 
 Plans:
+
 - [x] 34-01-PLAN.md — sql/007_agents_head_id.sql migration + AgentStore.create/rowToState head_id round-trip + db.test.ts schema pin (Wave 1)
 - [x] 34-02-PLAN.md — Required headId on SpawnOptions, AgentState, LocalAgentRunnerOptions, HeadToolExecutorOptions (Wave 1)
 - [x] 34-03-PLAN.md — LocalAgentRunner.headId ctor field + 6 queueStore.enqueue callsites thread this.headId + resumeSuspended/handleSpawnAgent SpawnOptions threading (Wave 2)
@@ -205,6 +239,7 @@ Plans:
 **Plans:** 4/4 plans complete
 
 Plans:
+
 - [x] 35-01-PLAN.md — Schedule.headId field + ScheduleStore filter API + lazy JSON migration + ScheduleEvaluator passes schedule.headId on enqueue + WR-03 NOTE removed (D-01, D-02, D-03, D-04, D-05) [Wave 1]
 - [x] 35-02-PLAN.md — buildScheduleTools/buildReminderTools require headId, ToolSurfaceDeps.headId, update_schedule rejects reassignment, reminder fire first-channel fallback (D-06, D-07, D-08, D-09, D-10) [Wave 2]
 - [x] 35-03-PLAN.md — Dashboard schedules API: POST requires headId, GET cross-head, PATCH rejects headId; heads DELETE cascade + counts; ScheduleStore.deleteAllForHead helper (D-11, D-12, D-13, D-16, D-17) [Wave 2]
@@ -219,6 +254,7 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
+
 - [x] 36-01-type-contract-central-prefix-PLAN.md — InboundMessage.senderName field + central buildPrefixedText in headRouteMessage + normalizeSenderName helper + threat model (D-01, D-02, D-04, D-07) [Wave 1]
 - [x] 36-02-stripper-generalization-PLAN.md — stripTimestampEcho → stripLeadingBracketPrefixes rename + generalized D-11 regex + sole-importer update + regression/anti-regression tests (D-11, D-12) [Wave 1]
 - [x] 36-03-adapter-sender-extraction-PLAN.md — 5 adapters populate senderName: Discord (member.displayName chain), Telegram (first_name+last_name chain), Slack (TTL-cached users.info), WhatsApp (pushName), Cliq (sender.name); dashboard/voice/webhook NOT modified (D-05, D-06) [Wave 2]
@@ -246,40 +282,54 @@ Plans:
 ## Phase Details
 
 ### Phase 37: Schema & Tool Params
+
 **Goal**: The reminder schema carries acknowledgment fields and the tool surface exposes them, with backward-compatible migration so existing reminders are unaffected
 **Depends on**: Phase 36
 **Requirements**: ACK-01, ACK-02, ACK-09, SCHED-04
 **Success Criteria** (what must be TRUE):
+
   1. A reminder created with `requiresAck: true` and nag slots (e.g. `nagHours: 1`) summed into a single stored integer-minutes field (`nagIntervalMinutes: 60`) round-trips those fields correctly when read back from the store (multi-slot input + stored-minutes shape per Phase 37 D-01/D-02; the earlier `nagInterval: '1h'` string example is superseded)
   2. A reminder created before this phase (without `requiresAck` or `nagIntervalMinutes`) continues to fire exactly as before — no crash, no behavior change
   3. The `create_reminder` tool description no longer calls `triggerAt` "for one-time reminders only"; both `triggerAt` + `cron` together are documented as start-then-repeat
   4. `npx tsc --noEmit` is clean and `npx vitest run` passes after schema + migration changes
+
 **Plans:** 2 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 37-01-PLAN.md — Schedule.requiresAck + nagIntervalMinutes fields, create() defaults, migrateLegacySchedule lazy migration + tests (Wave 1; ACK-01, ACK-02, ACK-09)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 37-02-PLAN.md — create_reminder ack/nag params + boundary validation + slot-sum + description reword (SCHED-04) + property-order test update (Wave 2; ACK-01, ACK-02, SCHED-04)
 
 ### Phase 38: Nag Mechanism & Ack Semantics
+
 **Goal**: An ack-required reminder keeps nagging the user via system-native re-arm until the user explicitly acknowledges it, at which point the nag stops and type-appropriate cleanup runs
 **Depends on**: Phase 37
 **Requirements**: ACK-03, ACK-04, ACK-05, ACK-06, ACK-07, ACK-08
 **Success Criteria** (what must be TRUE):
+
   1. An ack-required reminder fires, arms the next nag before delivery, and keeps re-firing on the nag interval without any head action between cycles
   2. Acknowledging a one-time ack-required reminder removes it entirely — no further nags fire
   3. Acknowledging a recurring ack-required reminder stops the current nag loop while the base cron continues to schedule future occurrences
   4. When ack is received, the already-armed in-flight nag is cancelled rather than allowed to fire
   5. The injected fire event includes the reminder ID and ack instructions; the ack tool's description is scoped so it is never applied to an ordinary (non-ack-required) reminder
+
 **Plans**: TBD
 
 ### Phase 39: Dashboard Reminder UI
+
 **Goal**: Users can configure ack-required reminders and start dates from the dashboard, and can visually identify which reminders require acknowledgment
 **Depends on**: Phase 38
 **Requirements**: SCHED-01, SCHED-02, SCHED-03
 **Success Criteria** (what must be TRUE):
+
   1. The dashboard reminder create/edit form shows a `requiresAck` toggle and a `nagInterval` field that activates when the toggle is on
   2. Reminders that require acknowledgment are visually distinguished from ordinary reminders in the dashboard list (e.g., a badge or icon)
   3. The dashboard recurring schedule/reminder/task create form includes a start-date/time picker; submitting it sets `triggerAt` on the created item so the first fire occurs at the chosen date and subsequent fires follow the cron
+
 **Plans**: TBD
 **UI hint**: yes
 
