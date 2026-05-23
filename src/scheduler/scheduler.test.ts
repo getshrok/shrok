@@ -273,4 +273,82 @@ describe('ScheduleEvaluatorImpl', () => {
     evaluator.start()
     evaluator.stop()
   })
+
+  // ─── ACK-03 nag re-arm tests ──────────────────────────────────────────────
+
+  it('(ACK-03) requiresAck one-time reminder: advanceNextRun to now+nagInterval, NOT update(enabled:false)', () => {
+    const schedule = makeSchedule({
+      id: 'rem_ack_1',
+      kind: 'reminder',
+      cron: null,
+      runAt: '2026-01-01T10:00:00Z',
+      requiresAck: true,
+      nagIntervalMinutes: 60,
+      ackPending: false,
+    })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    const before = Date.now()
+    evaluator.tick()
+
+    // advanceNextRun must be called (not update with enabled:false)
+    expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
+    const [id, nextRunIso] = vi.mocked(scheduleStore.advanceNextRun).mock.calls[0]!
+    expect(id).toBe('rem_ack_1')
+    const nextRunMs = new Date(nextRunIso).getTime()
+    // nextRun must be approximately now + 60 minutes (within 2s tolerance)
+    expect(nextRunMs).toBeGreaterThanOrEqual(before + 60 * 60_000 - 2000)
+    expect(nextRunMs).toBeLessThanOrEqual(before + 60 * 60_000 + 2000)
+    // The one-time-disable path must NOT be taken
+    expect(scheduleStore.update).not.toHaveBeenCalled()
+  })
+
+  it('(ACK-06 setup) requiresAck recurring: re-arms to nag interval, NOT next cron occurrence', () => {
+    // Weekly Monday cron — next occurrence is many hours away
+    const schedule = makeSchedule({
+      id: 'rem_ack_2',
+      kind: 'reminder',
+      cron: '0 9 * * 1',  // weekly, Monday at 09:00
+      requiresAck: true,
+      nagIntervalMinutes: 30,
+      ackPending: true,
+    })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    const before = Date.now()
+    evaluator.tick()
+
+    expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
+    const [id, nextRunIso] = vi.mocked(scheduleStore.advanceNextRun).mock.calls[0]!
+    expect(id).toBe('rem_ack_2')
+    const nextRunMs = new Date(nextRunIso).getTime()
+    // Must re-arm to nag interval (~30 min from now), not the next Monday occurrence
+    expect(nextRunMs).toBeGreaterThanOrEqual(before + 30 * 60_000 - 2000)
+    expect(nextRunMs).toBeLessThanOrEqual(before + 30 * 60_000 + 2000)
+    // The next Monday at 09:00 is at least 1 hour away — confirm we're NOT scheduling that far ahead
+    expect(nextRunMs).toBeLessThan(before + 60 * 60_000)
+  })
+
+  it('(regression) ordinary cron reminder still advances via nextRunAfter/cron path', () => {
+    const schedule = makeSchedule({
+      id: 'sched_ordinary',
+      kind: 'reminder',
+      cron: '*/5 * * * *',
+      requiresAck: false,
+      nagIntervalMinutes: null,
+      ackPending: false,
+    })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluator.tick()
+
+    // advanceNextRun called (cron path)
+    expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
+    const [id, nextRunIso] = vi.mocked(scheduleStore.advanceNextRun).mock.calls[0]!
+    expect(id).toBe('sched_ordinary')
+    // The cron path sets nextRun to the next cron occurrence (strictly after now)
+    expect(new Date(nextRunIso).getTime()).toBeGreaterThan(Date.now())
+    // Must NOT call update (no disable)
+    expect(scheduleStore.update).not.toHaveBeenCalled()
+  })
 })
