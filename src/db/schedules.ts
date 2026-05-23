@@ -15,6 +15,10 @@ export interface Schedule {
   conditions: string | null
   agentContext: string | null
   cronTimezone: string | null  // per-schedule timezone override; null = use workspace default
+  /** Whether this reminder requires explicit user acknowledgment before it stops nagging. */
+  requiresAck: boolean
+  /** Total nag cadence in minutes — the interval between repeated nag fires. Null/inert when requiresAck is false (D-07). */
+  nagIntervalMinutes: number | null
   createdAt: string
   updatedAt: string
 }
@@ -30,29 +34,32 @@ export interface CreateScheduleOptions {
   conditions?: string
   agentContext?: string
   cronTimezone?: string
+  requiresAck?: boolean
+  nagIntervalMinutes?: number | null
 }
 
 export type SchedulePatch = Partial<Pick<Schedule, 'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' | 'agentContext' | 'cronTimezone'>>
 
-// ─── Lazy headId migration (Phase 35 D-03) ────────────────────────────────────
+// ─── Lazy schedule migration (Phase 35 D-03, Phase 37 D-08) ──────────────────
 //
-// Legacy schedule JSON files (pre-Phase-35) have no `headId` field. The first
-// read stamps `headId='default'`. The idempotent guard (the `headId in raw`
-// check) makes repeated calls cheap and keeps the file's mtime stable on the
-// second read — mirrors Phase 33 D-MIGRATION-IDEMPOTENT.
+// Legacy schedule JSON files (pre-Phase-35) have no `headId` field; pre-Phase-37
+// files additionally lack `requiresAck` and `nagIntervalMinutes`. The first read
+// stamps all missing fields with their defaults. The idempotent `'field' in obj`
+// guard (NOT a `??` coalesce) makes repeated calls cheap and keeps the file's
+// mtime stable on the second read — mirrors Phase 33 D-MIGRATION-IDEMPOTENT.
 //
 // Kept inline (rather than generalized into file-store.ts) per Plan 35-01
 // Claude's Discretion item #2: Reminder has a different legacy shape and
 // Phase 33's .env migration is unrelated, so generalization has no payoff.
 
-function migrateLegacyHeadId(raw: unknown): { migrated: boolean; data: Schedule | null } {
+function migrateLegacySchedule(raw: unknown): { migrated: boolean; data: Schedule | null } {
   if (raw === null || typeof raw !== 'object') return { migrated: false, data: null }
   const obj = raw as Record<string, unknown>
-  if (!('headId' in obj)) {
-    obj['headId'] = 'default'
-    return { migrated: true, data: obj as unknown as Schedule }
-  }
-  return { migrated: false, data: obj as unknown as Schedule }
+  let migrated = false
+  if (!('headId' in obj)) { obj['headId'] = 'default'; migrated = true }
+  if (!('requiresAck' in obj)) { obj['requiresAck'] = false; migrated = true }
+  if (!('nagIntervalMinutes' in obj)) { obj['nagIntervalMinutes'] = null; migrated = true }
+  return { migrated, data: obj as unknown as Schedule }
 }
 
 export class ScheduleStore {
@@ -79,6 +86,8 @@ export class ScheduleStore {
       conditions: options.conditions ?? null,
       agentContext: options.agentContext ?? null,
       cronTimezone: options.cronTimezone ?? null,
+      requiresAck: options.requiresAck ?? false,
+      nagIntervalMinutes: options.nagIntervalMinutes ?? null,
       createdAt: now,
       updatedAt: now,
     }
@@ -89,7 +98,7 @@ export class ScheduleStore {
   get(id: string): Schedule | null {
     const raw = this.store.get(id)
     if (raw === null) return null
-    const { migrated, data } = migrateLegacyHeadId(raw)
+    const { migrated, data } = migrateLegacySchedule(raw)
     if (migrated && data !== null) this.store.save(data)
     return data
   }
@@ -98,7 +107,7 @@ export class ScheduleStore {
     const raws = this.store.list()
     const out: Schedule[] = []
     for (const raw of raws) {
-      const { migrated, data } = migrateLegacyHeadId(raw)
+      const { migrated, data } = migrateLegacySchedule(raw)
       if (data === null) continue
       if (migrated) this.store.save(data)
       out.push(data)
@@ -140,7 +149,7 @@ export class ScheduleStore {
     const raws = this.store.list()
     const out: Schedule[] = []
     for (const raw of raws) {
-      const { migrated, data } = migrateLegacyHeadId(raw)
+      const { migrated, data } = migrateLegacySchedule(raw)
       if (data === null) continue
       if (migrated) this.store.save(data)
       out.push(data)

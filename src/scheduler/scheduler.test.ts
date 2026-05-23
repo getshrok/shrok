@@ -80,6 +80,8 @@ function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
     conditions: null,
     agentContext: null,
     cronTimezone: null,
+    requiresAck: false,
+    nagIntervalMinutes: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
