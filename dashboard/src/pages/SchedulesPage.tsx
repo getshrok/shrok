@@ -538,12 +538,17 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     if (nagValidationError) return
     const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
     const messageUnchanged = trimmedMessage === (schedule.agentContext ?? '')
+    const editNag = editRequiresAck && editNagSum > 0 ? editNagSum : null
     const ackFields = {
       requiresAck: editRequiresAck,
-      nagIntervalMinutes: editRequiresAck && editNagSum > 0 ? editNagSum : null,
+      nagIntervalMinutes: editNag,
     }
+    // Include ack/nag dirtiness in the early-return guards — otherwise an
+    // ack-only or nag-only edit (message/cron/conditions untouched) closes the
+    // modal without sending a PATCH and the change is lost.
+    const ackUnchanged = editRequiresAck === schedule.requiresAck && editNag === schedule.nagIntervalMinutes
     if (schedule.cron !== null) {
-      if (trimmedValue === schedule.cron && conditionsUnchanged && messageUnchanged) { setEditing(false); return }
+      if (trimmedValue === schedule.cron && conditionsUnchanged && messageUnchanged && ackUnchanged) { setEditing(false); return }
       updateMutation.mutate({ cron: trimmedValue, conditions: editConditions, agentContext: trimmedMessage, ...ackFields })
       return
     }
@@ -551,7 +556,7 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     const d = new Date(trimmedValue)
     if (Number.isNaN(d.getTime())) return
     const runAtUnchanged = d.toISOString() === schedule.runAt
-    if (runAtUnchanged && conditionsUnchanged && messageUnchanged) { setEditing(false); return }
+    if (runAtUnchanged && conditionsUnchanged && messageUnchanged && ackUnchanged) { setEditing(false); return }
     updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: trimmedMessage, ...ackFields })
   }
 
