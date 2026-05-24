@@ -4,11 +4,27 @@ import { HomeAssistantChannelAdapter } from './adapter.js'
 import { ChannelRouterImpl } from '../router.js'
 import type { InboundMessage } from '../../types/channel.js'
 
-// ─── Block A: Adapter contract + loud-but-safe send ──────────────────────────
+/** ANNOUNCE_TIMEOUT_MS must match the constant in adapter.ts */
+const ANNOUNCE_TIMEOUT_MS = 30_000
+
+const TEST_INBOUND_KEY = 'test-inbound-key'
+const TEST_HA_TOKEN = 'test-ha-token-12345678'
+const TEST_BASE_URL = 'http://ha.test:8123'
+const TEST_ENTITY_ID = 'assist_satellite.test_speaker'
+
+/** Helper: build an adapter with full outbound config wired */
+function makeAdapter(id = 'home-assistant', headId = 'default') {
+  return new HomeAssistantChannelAdapter(id, headId, {
+    haBaseUrl: TEST_BASE_URL,
+    haVoiceSatelliteEntityId: TEST_ENTITY_ID,
+  })
+}
+
+// ─── Block A: Adapter contract ────────────────────────────────────────────────
 
 describe('HomeAssistantChannelAdapter — contract', () => {
   beforeEach(() => {
-    process.env['HA_INBOUND_API_KEY'] = 'test-inbound-key'
+    process.env['HA_INBOUND_API_KEY'] = TEST_INBOUND_KEY
   })
 
   afterEach(() => {
@@ -33,46 +49,6 @@ describe('HomeAssistantChannelAdapter — contract', () => {
   it('stop() resolves without throwing', async () => {
     const adapter = new HomeAssistantChannelAdapter()
     await expect(adapter.stop()).resolves.not.toThrow()
-  })
-
-  describe('send() — loud-but-safe (D-05)', () => {
-    let warnSpy: ReturnType<typeof vi.spyOn>
-
-    beforeEach(() => {
-      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-      warnSpy.mockRestore()
-    })
-
-    it('resolves to undefined and does not throw', async () => {
-      const adapter = new HomeAssistantChannelAdapter()
-      const result = await adapter.send('hello world')
-      expect(result).toBeUndefined()
-    })
-
-    it('calls console.warn exactly once', async () => {
-      const adapter = new HomeAssistantChannelAdapter()
-      await adapter.send('hello world')
-      expect(warnSpy).toHaveBeenCalledTimes(1)
-    })
-
-    it('warn message mentions Phase 42 (not wired yet)', async () => {
-      const adapter = new HomeAssistantChannelAdapter()
-      await adapter.send('some text')
-      const warnArg: unknown = warnSpy.mock.calls[0]?.[0]
-      expect(typeof warnArg).toBe('string')
-      expect(warnArg as string).toMatch(/Phase 42/)
-    })
-
-    it('warn message does not log any token value', async () => {
-      const adapter = new HomeAssistantChannelAdapter()
-      await adapter.send('some text')
-      const warnArg: unknown = warnSpy.mock.calls[0]?.[0]
-      expect(typeof warnArg).toBe('string')
-      expect(warnArg as string).not.toMatch(/HA_ACCESS_TOKEN|Bearer/)
-    })
   })
 
   describe('injectMessage()', () => {
@@ -120,23 +96,30 @@ describe('HomeAssistantChannelAdapter — SC3 lastActiveChannel routing', () => 
   // outbound router.send() call does.
   // If a future refactor moves the stamp to the inbound path, step (3) will fail.
 
-  let warnSpy: ReturnType<typeof vi.spyOn>
+  let mockFetch: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    process.env['HA_INBOUND_API_KEY'] = 'test-inbound-key'
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    process.env['HA_INBOUND_API_KEY'] = TEST_INBOUND_KEY
+    process.env['HA_ACCESS_TOKEN'] = TEST_HA_TOKEN
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
   })
 
   afterEach(() => {
     delete process.env['HA_INBOUND_API_KEY']
-    warnSpy.mockRestore()
+    delete process.env['HA_ACCESS_TOKEN']
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('inbound injectMessage delivers to handler; only outbound router.send stamps lastActiveChannel', async () => {
     // (1) Build minimal wiring inline (self-contained, per channel-router-isolation precedent)
     const router = new ChannelRouterImpl()
-    const adapter = new HomeAssistantChannelAdapter()
+    const adapter = makeAdapter()
     router.register(adapter)
+
+    // Mock fetch to return 200 for the outbound announce
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
 
     const received: InboundMessage[] = []
     // (2) Register the inbound handler — simulates what headRouteMessage does at startup
@@ -164,12 +147,14 @@ describe('HomeAssistantChannelAdapter — SC3 lastActiveChannel routing', () => 
 
 describe('HomeAssistantChannelAdapter — Phase 41 slot lifecycle + fail-fast', () => {
   beforeEach(() => {
-    process.env['HA_INBOUND_API_KEY'] = 'test-inbound-key'
+    process.env['HA_INBOUND_API_KEY'] = TEST_INBOUND_KEY
   })
 
   afterEach(() => {
     delete process.env['HA_INBOUND_API_KEY']
     vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   // ── D-02: constructor fail-fast ──────────────────────────────────────────
@@ -204,8 +189,13 @@ describe('HomeAssistantChannelAdapter — Phase 41 slot lifecycle + fail-fast', 
       await expect(replyReceived).resolves.toBe('hello from head')
     })
 
-    it('send() with an open slot leaves pendingReply null afterward', async () => {
-      const adapter = new HomeAssistantChannelAdapter()
+    it('send() with an open slot leaves pendingReply null afterward (second send hits announce path)', async () => {
+      process.env['HA_ACCESS_TOKEN'] = TEST_HA_TOKEN
+      const mockFetch = vi.fn()
+      vi.stubGlobal('fetch', mockFetch)
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+
+      const adapter = makeAdapter()
       let resolveSlot!: (text: string) => void
       const replyReceived = new Promise<string>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('timeout')), 1000)
@@ -214,34 +204,35 @@ describe('HomeAssistantChannelAdapter — Phase 41 slot lifecycle + fail-fast', 
       })
       await adapter.send('reply text')
       await replyReceived
-      // Sending again should hit the null-slot path (warn), not throw or resolve a second time
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      // Sending again hits the null-slot path → calls announceOrStartConversation
       await expect(adapter.send('second send')).resolves.toBeUndefined()
-      expect(warnSpy).toHaveBeenCalledTimes(1)
-      warnSpy.mockRestore()
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+
+      delete process.env['HA_ACCESS_TOKEN']
       void resolveSlot // suppress unused warning
     })
   })
 
-  // ── send() with null slot → Phase 42 warn seam ──────────────────────────
+  // ── send() with null slot → Phase 42 outbound announce ──────────────────
 
-  describe('send() null-slot path (Phase 42 seam)', () => {
-    it('logs a warn mentioning Phase 42 when no slot is open', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  describe('send() null-slot path (Phase 42 announce)', () => {
+    it('throws when HA_ACCESS_TOKEN is missing (announce path requires token)', async () => {
+      // HA_ACCESS_TOKEN not set in Block C beforeEach → fast error path
       const adapter = new HomeAssistantChannelAdapter()
-      await adapter.send('drop me')
-      expect(warnSpy).toHaveBeenCalledTimes(1)
-      const warnArg: unknown = warnSpy.mock.calls[0]?.[0]
-      expect(typeof warnArg).toBe('string')
-      expect(warnArg as string).toMatch(/Phase 42/)
-      warnSpy.mockRestore()
+      await expect(adapter.send('drop me')).rejects.toThrow(/HA_ACCESS_TOKEN/)
     })
 
-    it('does not throw when no slot is open', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      const adapter = new HomeAssistantChannelAdapter()
+    it('resolves on the happy path when HA returns 200', async () => {
+      process.env['HA_ACCESS_TOKEN'] = TEST_HA_TOKEN
+      const mockFetch = vi.fn()
+      vi.stubGlobal('fetch', mockFetch)
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+
+      const adapter = makeAdapter()
       await expect(adapter.send('x')).resolves.toBeUndefined()
-      warnSpy.mockRestore()
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+
+      delete process.env['HA_ACCESS_TOKEN']
     })
   })
 
@@ -312,8 +303,13 @@ describe('HomeAssistantChannelAdapter — Phase 41 slot lifecycle + fail-fast', 
   // ── clearPendingReply ────────────────────────────────────────────────────
 
   describe('clearPendingReply()', () => {
-    it('clears the timer and nulls the slot', async () => {
-      const adapter = new HomeAssistantChannelAdapter()
+    it('clears the timer and nulls the slot (send after clear hits announce path)', async () => {
+      process.env['HA_ACCESS_TOKEN'] = TEST_HA_TOKEN
+      const mockFetch = vi.fn()
+      vi.stubGlobal('fetch', mockFetch)
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+
+      const adapter = makeAdapter()
       let slotReject!: (err: Error) => void
       const slotPromise: Promise<string> = new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('timeout')), 1000)
@@ -323,16 +319,15 @@ describe('HomeAssistantChannelAdapter — Phase 41 slot lifecycle + fail-fast', 
 
       adapter.clearPendingReply()
 
-      // After clearPendingReply, send() should hit the null-slot path (warn)
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      // After clearPendingReply, send() should hit the null-slot announce path
       await adapter.send('x')
-      expect(warnSpy).toHaveBeenCalledTimes(1)
-      warnSpy.mockRestore()
+      expect(mockFetch).toHaveBeenCalledTimes(1)
 
       // slotPromise stays pending (no resolve or reject called by clearPendingReply)
-      // — just void it to avoid unhandled rejection
       void slotPromise.catch(() => {})
       void slotReject // suppress unused warning
+
+      delete process.env['HA_ACCESS_TOKEN']
     })
 
     it('timer does not fire after send() resolves the slot', async () => {
@@ -385,5 +380,170 @@ describe('HomeAssistantChannelAdapter — Phase 41 slot lifecycle + fail-fast', 
       const adapter = new HomeAssistantChannelAdapter()
       expect(() => adapter.dispatchInbound('hi', 'conv-1')).not.toThrow()
     })
+  })
+})
+
+// ─── Block D: Phase 42 outbound announce ─────────────────────────────────────
+
+describe('HomeAssistantChannelAdapter — Phase 42 outbound announce', () => {
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    process.env['HA_INBOUND_API_KEY'] = TEST_INBOUND_KEY
+    process.env['HA_ACCESS_TOKEN'] = TEST_HA_TOKEN
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+  })
+
+  afterEach(() => {
+    delete process.env['HA_INBOUND_API_KEY']
+    delete process.env['HA_ACCESS_TOKEN']
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  // Case 1: send() with pendingReply === null calls fetch on the correct announce URL
+  it('case 1: null-slot send() POSTs to the correct HA REST announce URL', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+    const adapter = makeAdapter()
+    await adapter.send('hello satellite')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const callArgs = mockFetch.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (callArgs) {
+      const [url, opts] = callArgs as [string, RequestInit]
+      expect(url).toBe(`${TEST_BASE_URL}/api/services/assist_satellite/announce`)
+      expect((opts as RequestInit).method).toBe('POST')
+    }
+  })
+
+  // Case 2: fetch body equals JSON { entity_id, message }
+  it('case 2: fetch body contains entity_id and message fields', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+    const adapter = makeAdapter()
+    const text = 'your timer has fired'
+    await adapter.send(text)
+    const callArgs = mockFetch.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (callArgs) {
+      const [, opts] = callArgs as [string, RequestInit]
+      const parsed = JSON.parse((opts as RequestInit & { body: string }).body) as unknown
+      expect(parsed).toEqual({
+        entity_id: TEST_ENTITY_ID,
+        message: text,
+      })
+    }
+  })
+
+  // Case 3: fetch headers include Authorization: Bearer and Content-Type
+  it('case 3: fetch headers include Authorization Bearer and Content-Type json', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+    const adapter = makeAdapter()
+    await adapter.send('some message')
+    const callArgs = mockFetch.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (callArgs) {
+      const [, opts] = callArgs as [string, RequestInit]
+      const headers = (opts as RequestInit).headers as Record<string, string>
+      expect(headers['Authorization']).toBe(`Bearer ${TEST_HA_TOKEN}`)
+      expect(headers['Content-Type']).toBe('application/json')
+    }
+  })
+
+  // Case 4: Redaction — no log.* call receives a string containing the raw token value
+  it('case 4: token value never appears in any log.* argument (D-05 redaction)', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+    const adapter = makeAdapter()
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await adapter.send('announce me')
+
+    // Collect all args from every log call and check none contain the raw token
+    const allLogArgs = [
+      ...warnSpy.mock.calls.flat(),
+      ...infoSpy.mock.calls.flat(),
+      ...errorSpy.mock.calls.flat(),
+    ]
+    for (const arg of allLogArgs) {
+      if (typeof arg === 'string') {
+        expect(arg).not.toContain(TEST_HA_TOKEN)
+      }
+    }
+  })
+
+  // Case 5: HA returns 404 → send() rejects/throws
+  it('case 5: HA returns 404 → send() throws (router would fall back)', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 404 }))
+    const adapter = makeAdapter()
+    await expect(adapter.send('test')).rejects.toThrow(/HTTP 404/)
+  })
+
+  // Case 6: HA returns 500 → send() rejects/throws
+  it('case 6: HA returns 500 → send() throws (router would fall back)', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 500 }))
+    const adapter = makeAdapter()
+    await expect(adapter.send('test')).rejects.toThrow(/HTTP 500/)
+  })
+
+  // Case 7: 30s timeout fires → send() resolves (does NOT throw), fetch called once
+  it('case 7: 30s timeout → send() resolves to undefined (no throw, no re-announce)', async () => {
+    vi.useFakeTimers()
+
+    // mockFetch returns a promise that rejects with AbortError when the signal is aborted,
+    // simulating the real Node fetch behavior under AbortController
+    mockFetch.mockImplementation((_url: unknown, opts: { signal?: AbortSignal } = {}) => {
+      return new Promise<Response>((_resolve, reject) => {
+        const signal = opts.signal
+        if (signal) {
+          if (signal.aborted) {
+            const err = new DOMException('The operation was aborted.', 'AbortError')
+            reject(err)
+          } else {
+            signal.addEventListener('abort', () => {
+              const err = new DOMException('The operation was aborted.', 'AbortError')
+              reject(err)
+            })
+          }
+        }
+        // Otherwise never resolves (hangs)
+      })
+    })
+
+    const adapter = makeAdapter()
+    const sendPromise = adapter.send('background result')
+
+    vi.advanceTimersByTime(ANNOUNCE_TIMEOUT_MS + 100)
+    await vi.runAllTimersAsync()
+
+    await expect(sendPromise).resolves.toBeUndefined()
+    // fetch was called exactly once — no re-announce
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    vi.useRealTimers()
+  }, 10_000)
+
+  // Case 8: HA_ACCESS_TOKEN absent → send() throws with clear error naming env var
+  it('case 8: HA_ACCESS_TOKEN absent → send() throws naming the env var', async () => {
+    delete process.env['HA_ACCESS_TOKEN']
+    const adapter = makeAdapter()
+    await expect(adapter.send('test')).rejects.toThrow(/HA_ACCESS_TOKEN/)
+  })
+
+  // Case 9: wantsReply=false default → URL ends in /announce not /start_conversation
+  it('case 9: wantsReply=false default → URL path ends in /announce', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+    const adapter = makeAdapter()
+    await adapter.send('background announce')
+    const callArgs = mockFetch.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (callArgs) {
+      const [url] = callArgs as [string]
+      expect(url).toMatch(/\/announce$/)
+      expect(url).not.toMatch(/start_conversation/)
+    }
   })
 })

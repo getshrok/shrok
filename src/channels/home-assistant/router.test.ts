@@ -381,15 +381,16 @@ describe('POST /v1/chat/completions', () => {
       controller.abort()
       await vi.runAllTimersAsync()
 
-      // After the deadline, the slot is cleared — send() hits null-slot warn path
+      // After the deadline, the slot is cleared — send() hits null-slot announce path (Phase 42)
       vi.useRealTimers()
-      const warnCount = warnSpy.mock.calls.length
+      process.env['HA_ACCESS_TOKEN'] = 'test-ha-token-deadlinetest'
+      const mockFetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 200 }))
+      vi.stubGlobal('fetch', mockFetch)
       await fx.adapter.send('too late')
-      // One more warn should have been added
-      expect(warnSpy.mock.calls.length).toBe(warnCount + 1)
-      const lastWarnArg = warnSpy.mock.calls[warnSpy.mock.calls.length - 1]?.[0]
-      expect(typeof lastWarnArg).toBe('string')
-      expect(lastWarnArg as string).toMatch(/Phase 42/)
+      // fetch was called once for the announce
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      delete process.env['HA_ACCESS_TOKEN']
+      vi.unstubAllGlobals()
 
       warnSpy.mockRestore()
     })
@@ -434,10 +435,14 @@ describe('POST /v1/chat/completions', () => {
       // Give the server time to process the 'close' event
       await new Promise<void>(r => setTimeout(r, 100))
 
-      // After close, slot should be cleared — send hits null-slot path
-      const warnCount = warnSpy.mock.calls.length
+      // After close, slot should be cleared — send hits null-slot announce path (Phase 42)
+      process.env['HA_ACCESS_TOKEN'] = 'test-ha-token-sc4test'
+      const mockFetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 200 }))
+      vi.stubGlobal('fetch', mockFetch)
       await expect(fx.adapter.send('x')).resolves.toBeUndefined()
-      expect(warnSpy.mock.calls.length).toBe(warnCount + 1)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      delete process.env['HA_ACCESS_TOKEN']
+      vi.unstubAllGlobals()
 
       warnSpy.mockRestore()
     })
