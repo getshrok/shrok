@@ -12,9 +12,27 @@ A single coherent AI identity that remembers everything, works across every chan
 
 **Shipped:** v1.4 Unmissable Reminders (2026-05-24) — opt-in acknowledgment-required reminders that re-nag until acked, plus dashboard ack/nag + recurring start-date controls. All 13 requirements validated.
 
-Latest five shipped milestones: v1.0 Tool-call Legibility · v1.1 Jobs Awareness · v1.2 Voice Mode & Enhancements · v1.3 Multi-Head Support · v1.4 Unmissable Reminders. Full history in `.planning/MILESTONES.md`; per-milestone detail in `.planning/milestones/`.
+Shipped milestones: v1.0 Tool-call Legibility · v1.1 Jobs Awareness · v1.2 Voice Mode & Enhancements · v1.3 Multi-Head Support · v1.4 Unmissable Reminders. Full history in `.planning/MILESTONES.md`; per-milestone detail in `.planning/milestones/`.
 
-**Planning next milestone (v1.5): Home Assistant Voice integration** — a `home-assistant` channel adapter that bridges Shrok's async, delegating head to Home Assistant's Assist pipeline (for the Voice Preview Edition device). The adapter is bidirectional/asymmetric: a synchronous in-turn reply for the live voice turn, and unprompted `assist_satellite.announce` callbacks for async sub-agent results and reminders. Reuses the channel-adapter pattern + `lastActiveChannel` routing that already exists; HA owns STT/TTS/wake-word/audio. Known sharp edge to address: `lastActiveChannel` is per-head global, so async results can misroute if another channel is used during the wait — candidate to tag sub-agent origin channel. Scope being finalized via `/gsd:new-milestone`.
+## Current Milestone: v1.5 Home Assistant Voice
+
+**Goal:** Make Shrok a Home Assistant conversation agent so the Voice Preview Edition device can talk to it — converse-only — with unprompted spoken replies for asynchronous results.
+
+**Target features:**
+- **OpenAI-compatible endpoint** — Shrok exposes a `/v1/chat/completions` endpoint that HA's conversation agent (Extended OpenAI Conversation HACS component, or any base-URL-configurable equivalent) points at. HA owns STT, TTS, wake word, and audio transport; Shrok is the text brain.
+- **`home-assistant` channel adapter (bidirectional/asymmetric):**
+  - *Inbound:* an HA conversation turn → enqueue a `user_message` → head processes → the in-turn reply is returned synchronously on the held HTTP request (so HA can TTS it for the live voice turn), with a timeout.
+  - *Outbound/unprompted:* a single HA-service-call mechanism that speaks on the device — `assist_satellite.announce` for statements, `assist_satellite.start_conversation` when the head wants a spoken reply (the reply returns through the same inbound endpoint). Routed by the existing `lastActiveChannel` behavior ("respond wherever you're currently talking").
+- **Converse-only brain** — Q&A, deploy sub-agents, report back. No HA device control.
+- **Auth** for the HA-facing endpoint (bearer / API key) that coexists with the Apache vhost in front of Shrok.
+- **Config** — HA base URL + long-lived access token + target satellite entity / device mapping (so unprompted announces reach the right device).
+
+**Key context / decisions:**
+- The async-result bridge is the headline: e.g. "check the score" → synchronous "on it" → sub-agent runs → device speaks the score unprompted via the announce mechanism. The async model (head delegates to sub-agents) is intentional and unchanged.
+- `lastActiveChannel` routing is **intended behavior**, not a limitation — async results follow wherever the user is currently talking to Shrok. No agent-origin-tagging change.
+- `announce` vs `start_conversation` is **one parameterized mechanism**, not separate features — the head picks the variant based on whether it wants a reply.
+
+**Out of scope (this milestone):** HA device control (function-calling passthrough); the Wyoming protocol path / Shrok-side STT/TTS (HA already does STT/TTS well).
 
 ## Requirements
 

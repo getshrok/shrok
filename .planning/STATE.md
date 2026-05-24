@@ -1,30 +1,26 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Unmissable Reminders
-status: milestone_archived
-last_updated: 2026-05-24T00:00:00.000Z
+milestone: v1.5
+milestone_name: Home Assistant Voice
+status: planning
+last_updated: "2026-05-24T08:18:50.433Z"
 last_activity: 2026-05-24
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 39
-  percent: 100
-stopped_at: v1.4 formally archived (+ retroactive v1.3 archive); planning v1.5 Home Assistant Voice
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 39 (v1.4 final — archived)
-Plan: Not started
-Status: v1.4 formally archived; planning v1.5
-Last activity: 2026-05-24
-Resume file: None
-
-Progress: [██████████] 100% (v1.4 closed)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-24 — Milestone v1.5 started
 
 ## Project Reference
 
