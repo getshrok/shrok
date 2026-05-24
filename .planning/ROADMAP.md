@@ -111,7 +111,7 @@ Opt-in acknowledgment-required reminders that re-nag on a configurable interval 
 
 A new `home-assistant` channel adapter that bridges Shrok's async, delegating head to Home Assistant's Assist pipeline — synchronous in-turn acknowledgment reply for the live voice turn (<3s, hard 5s device timeout budget), and unprompted `assist_satellite.announce` / `start_conversation` callbacks for async sub-agent results, reminders, and scheduled fires.
 
-- [ ] **Phase 40: Config & Adapter Skeleton** — `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live
+- [x] **Phase 40: Config & Adapter Skeleton** — `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live (completed 2026-05-24)
 - [ ] **Phase 41: Inbound Synchronous Reply Endpoint** — `/v1/chat/completions` on Express, bearer auth, CSRF exclusion, pendingReply promise slot, <3s ACK, Apache auth bypass
 - [ ] **Phase 42: Outbound HA REST Announce** — `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget with 30s timeout, invoked from `adapter.send()` when no live turn is open
 - [ ] **Phase 43: End-to-End Smoke Test & Setup Docs** — live VPE validation, resolves all open research questions, HADOC-01 setup guide
@@ -138,7 +138,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 40-02-PLAN.md — HomeAssistantChannelAdapter stub + index.ts boot wiring + SC3 lastActiveChannel routing test
+- [x] 40-02-PLAN.md — HomeAssistantChannelAdapter stub + index.ts boot wiring + SC3 lastActiveChannel routing test
 
 ### Phase 41: Inbound Synchronous Reply Endpoint
 
@@ -203,7 +203,7 @@ Plans:
 | 37. Schema & Tool Params | v1.4 | 2/2 | Complete | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | v1.4 | 4/4 | Complete | 2026-05-23 |
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
-| 40. Config & Adapter Skeleton | v1.5 | 1/2 | In Progress|  |
+| 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete   | 2026-05-24 |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 0/? | Not started | — |
 | 42. Outbound HA REST Announce | v1.5 | 0/? | Not started | — |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |

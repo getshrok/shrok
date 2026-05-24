@@ -2,28 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
-status: executing
-last_updated: "2026-05-24T10:38:51.004Z"
-last_activity: 2026-05-24 -- Phase 40 Plan 01 complete (home-assistant config schema + ENV_KEY_ALLOWLIST)
+status: verifying
+last_updated: "2026-05-24T10:44:58.818Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 25
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 40 (config-adapter-skeleton) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
+Phase: 40 (config-adapter-skeleton) — COMPLETE
+Plan: 2 of 2 (all plans complete)
+Status: Phase 40 complete — ready for Phase 41
 Last activity: 2026-05-24
 
 ```
-[          ] 0% — 0/4 phases complete
+[##        ] 25% — 1/4 phases complete
 ```
 
 ## Project Reference
@@ -37,7 +37,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 40. Config & Adapter Skeleton | `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live | HACF-01, HACF-02 | Not started |
+| 40. Config & Adapter Skeleton | `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live | HACF-01, HACF-02 | Complete |
 | 41. Inbound Synchronous Reply Endpoint | `/v1/chat/completions` on Express, bearer auth, CSRF exclusion, pendingReply slot, <3s ACK, Apache auth bypass | HACV-01–06 | Not started |
 | 42. Outbound HA REST Announce | `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget 30s timeout, from `adapter.send()` when no live turn | HAAN-01–03 | Not started |
 | 43. End-to-End Smoke Test & Setup Docs | Live VPE validation, open research questions resolved, HADOC-01 setup guide | HADOC-01 | Not started |
@@ -170,6 +170,9 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-04 (Plan 40-01): HA_ACCESS_TOKEN added to ENV_KEY_ALLOWLIST only — no per-channel `haAccessToken` field on ChannelConfigSchema, no flat ConfigSchema key; adapter reads `process.env['HA_ACCESS_TOKEN']` directly at call-time in Phase 42; token never in git-tracked config.json (T-40-01 mitigated)
 - D-06 (Plan 40-01): `id: z.string().min(1)` kept on home-assistant union member for consistency with all other vendors; adapter routing id is fixed to 'home-assistant' regardless
 - Rule-2-heads-ts (Plan 40-01): `ChannelConfigMasked` type and `maskChannel()` switch in `src/dashboard/routes/heads.ts` extended to cover the new 'home-assistant' union member — exhaustiveness enforcement (tsc TS2366)
+- D-05 (Plan 40-02): send() emits log.warn with text.length only, never throws, never logs token — loud-but-safe stub until Phase 42
+- D-06-adapter (Plan 40-02): adapter registered under fixed id 'home-assistant'; headId stored for Phase 41+ use; no singleton tracking per single-instance decision
+- SC3-corrected (Plan 40-02): lastActiveChannel is OUTBOUND-ONLY (router.ts:21); injectMessage alone does NOT stamp it; only outbound router.send() stamps it — pinned by the corrected-assumption guard in adapter.test.ts Block B step 4
 
 ## Performance Metrics
 
@@ -195,3 +198,4 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 36 P03 | 7min | 5 tasks | 5 files |
 | Phase 39 P01 | 6min | 3 tasks | 7 files |
 | Phase 40 P01 | 4min | 2 tasks | 3 files |
+| Phase 40 P02 | 3min | 3 tasks | 3 files |
