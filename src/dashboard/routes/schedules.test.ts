@@ -720,3 +720,168 @@ describe('ack/nag validation, startAt, and D-12 (Plan 39-01)', () => {
     expect(schedule.nextRun).toBe(future)
   })
 })
+
+// ─── Plan 44-03: deliverToHeadIds validation (POST + PATCH) ──────────────────
+
+describe('deliverToHeadIds validation (Plan 44-03 D-08 / T-44-06 / T-44-07 / T-44-08)', () => {
+  let skillsRoot: string
+  let tasksRoot: string
+  let storeDir: string
+  let store: ScheduleStore
+  let unified: UnifiedLoader
+  let server: Server
+  let port: number
+
+  beforeEach(async () => {
+    skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sched44-skills-'))
+    tasksRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sched44-tasks-'))
+    seedEntry(skillsRoot, 'existing-skill', 'SKILL.md')
+    seedEntry(tasksRoot, 'existing-task', 'TASK.md')
+
+    const skillLoader = new FileSystemKindLoader({ root: skillsRoot, kind: 'skill', filename: 'SKILL.md' })
+    const taskLoader = new FileSystemKindLoader({ root: tasksRoot, kind: 'task', filename: 'TASK.md' })
+    unified = new UnifiedLoader(skillLoader, taskLoader)
+
+    storeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sched44-store-'))
+    store = new ScheduleStore(storeDir)
+
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    // Two known heads: 'a' (owner) and 'b' (delivery target)
+    app.use('/api/schedules', createSchedulesRouter(store, 'UTC', () => [{ id: 'a' }, { id: 'b' }], unified))
+
+    port = await getFreePort()
+    await new Promise<void>((resolve, reject) => {
+      server = app.listen(port, '127.0.0.1', () => resolve())
+      server.once('error', reject)
+    })
+  })
+
+  afterEach(async () => {
+    await new Promise<void>(r => server.close(() => r()))
+    fs.rmSync(skillsRoot, { recursive: true, force: true })
+    fs.rmSync(tasksRoot, { recursive: true, force: true })
+    fs.rmSync(storeDir, { recursive: true, force: true })
+  })
+
+  async function post(body: Record<string, unknown>) {
+    const r = await fetch(`http://127.0.0.1:${port}/api/schedules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await r.json().catch(() => ({})) as Record<string, unknown>
+    return { status: r.status, data }
+  }
+
+  async function patch(id: string, body: Record<string, unknown>) {
+    const r = await fetch(`http://127.0.0.1:${port}/api/schedules/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await r.json().catch(() => ({})) as Record<string, unknown>
+    return { status: r.status, data }
+  }
+
+  // ── POST: task-create-with-set (happy path) ──────────────────────────────────
+
+  it('POST task with deliverToHeadIds:[b] → 200 and schedule has deliverToHeadIds:[b]', async () => {
+    const r = await post({
+      kind: 'task', taskName: 'existing-task', cron: '*/5 * * * *',
+      headId: 'a', deliverToHeadIds: ['b'],
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { deliverToHeadIds: string[] } }).schedule
+    expect(schedule.deliverToHeadIds).toEqual(['b'])
+    // Also verify on-disk persistence
+    const persisted = store.get((r.data as { schedule: { id: string } }).schedule.id)
+    expect(persisted?.deliverToHeadIds).toEqual(['b'])
+  })
+
+  // ── POST: dedup ──────────────────────────────────────────────────────────────
+
+  it('POST task with deliverToHeadIds:[b,b] → 200 and stored set is deduped to [b]', async () => {
+    const r = await post({
+      kind: 'task', taskName: 'existing-task', cron: '*/5 * * * *',
+      headId: 'a', deliverToHeadIds: ['b', 'b'],
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { deliverToHeadIds: string[] } }).schedule
+    expect(schedule.deliverToHeadIds).toEqual(['b'])
+  })
+
+  // ── POST: empty-as-absent ────────────────────────────────────────────────────
+
+  it('POST task with deliverToHeadIds:[] → 200 and returned schedule has NO deliverToHeadIds key', async () => {
+    const r = await post({
+      kind: 'task', taskName: 'existing-task', cron: '*/5 * * * *',
+      headId: 'a', deliverToHeadIds: [],
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: Record<string, unknown> }).schedule
+    expect('deliverToHeadIds' in schedule).toBe(false)
+  })
+
+  // ── POST: reminder-reject (T-44-07) ─────────────────────────────────────────
+
+  it('POST reminder with deliverToHeadIds → 400 (task-only guard)', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'a', deliverToHeadIds: ['b'],
+    })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error).toContain('deliverToHeadIds is only valid for task schedules')
+  })
+
+  // ── POST: unknown-head-404 (T-44-06 / D-11 admin-404) ───────────────────────
+
+  it('POST task with deliverToHeadIds:[zzz] (unknown head) → 404', async () => {
+    const r = await post({
+      kind: 'task', taskName: 'existing-task', cron: '*/5 * * * *',
+      headId: 'a', deliverToHeadIds: ['zzz'],
+    })
+    expect(r.status).toBe(404)
+    expect((r.data as { error: string }).error).toContain('zzz')
+  })
+
+  // ── PATCH: add then clear (D-08 delivery set editable) ──────────────────────
+
+  it('PATCH task to add deliverToHeadIds:[b] → 200 with set present; PATCH with [] → 200 key absent (owner-only)', async () => {
+    // Create a task schedule
+    const created = await post({
+      kind: 'task', taskName: 'existing-task', cron: '*/5 * * * *',
+      headId: 'a',
+    })
+    expect(created.status).toBe(200)
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    // Add deliverToHeadIds
+    const addR = await patch(id, { deliverToHeadIds: ['b'] })
+    expect(addR.status).toBe(200)
+    const addedSchedule = (addR.data as { schedule: { deliverToHeadIds: string[] } }).schedule
+    expect(addedSchedule.deliverToHeadIds).toEqual(['b'])
+
+    // Clear to owner-only
+    const clearR = await patch(id, { deliverToHeadIds: [] })
+    expect(clearR.status).toBe(200)
+    const clearedSchedule = (clearR.data as { schedule: Record<string, unknown> }).schedule
+    expect('deliverToHeadIds' in clearedSchedule).toBe(false)
+  })
+
+  // ── PATCH: headId reassignment still 400 (T-44-08 / D-13 ban) ───────────────
+
+  it('PATCH with headId:b still → 400 (D-13 ban not weakened by new deliverToHeadIds field)', async () => {
+    const created = await post({
+      kind: 'task', taskName: 'existing-task', cron: '*/5 * * * *',
+      headId: 'a',
+    })
+    expect(created.status).toBe(200)
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    const r = await patch(id, { headId: 'b' })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error).toContain('headId cannot be reassigned')
+  })
+})
