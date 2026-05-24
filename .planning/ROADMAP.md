@@ -184,7 +184,12 @@ Plans:
   3. An announce call that takes longer than 30 seconds (stuck-in-RESPONDING satellite bug) times out and is logged — the activation loop is unblocked and no retry loop is started
   4. The head can choose `assist_satellite.start_conversation` instead of `announce` (one parameterized mechanism), causing the satellite to keep its mic open for a follow-up reply that arrives through the `/v1/chat/completions` endpoint
 
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+**Wave 1**
+
+- [ ] 42-01-PLAN.md — D-05 token redaction: HA_ACCESS_TOKEN added to extractSecretValues() so the outbound bearer token is masked in logs
+- [ ] 42-02-PLAN.md — adapter announceOrStartConversation() HA REST call + config-bearing constructor + index.ts wiring + Block D mocked-fetch tests (D-01..D-04, HAAN-01/02/03)
 
 ### Phase 43: End-to-End Smoke Test & Setup Docs
 
