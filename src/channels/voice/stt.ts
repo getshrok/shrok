@@ -24,6 +24,72 @@ export class InvalidWavError extends Error {
  *  calling Whisper to avoid hallucinated transcripts on silence/noise (D-05). */
 export const MIN_WAV_DURATION_SECONDS = 0.5
 
+/** Map a filename or MIME type to a Whisper-safe { name, mimeType } pair.
+ *  Whisper relies on the File extension / type to pick the correct audio decoder.
+ *  Supported extensions: mp3 mp4 mpeg mpga m4a wav webm ogg.
+ */
+function resolveAudioFile(nameOrMediaType: string): { name: string; mimeType: string } {
+  // If it looks like a filename with a supported extension, reuse it as-is.
+  const supportedExtRe = /\.(mp3|mp4|mpeg|mpga|m4a|wav|webm|ogg)$/i
+  if (supportedExtRe.test(nameOrMediaType)) {
+    // Derive mimeType from extension
+    const ext = nameOrMediaType.split('.').pop()?.toLowerCase() ?? ''
+    const extToMime: Record<string, string> = {
+      mp3: 'audio/mpeg', mp4: 'audio/mp4', mpeg: 'audio/mpeg',
+      mpga: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav',
+      webm: 'audio/webm', ogg: 'audio/ogg',
+    }
+    return { name: nameOrMediaType, mimeType: extToMime[ext] ?? 'audio/octet-stream' }
+  }
+
+  // Otherwise treat as a MIME type — strip parameters (e.g. '; codecs=opus')
+  const baseMime = (nameOrMediaType.split(';')[0] ?? nameOrMediaType).trim().toLowerCase()
+  const mimeToExt: Record<string, string> = {
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/mp4': 'm4a',
+    'audio/m4a': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/webm': 'webm',
+    'audio/mpga': 'mp3',
+    'audio/mpegx': 'mp3',
+  }
+  const ext = mimeToExt[baseMime]
+  if (ext) {
+    return { name: `audio.${ext}`, mimeType: baseMime }
+  }
+  // Unrecognized — fall back to generic name + original MIME type; let Whisper try
+  return { name: 'audio.bin', mimeType: nameOrMediaType }
+}
+
+/**
+ * Transcribe any audio buffer using OpenAI Whisper.
+ *
+ * Unlike transcribeWav, this function:
+ *  - accepts any audio format supported by Whisper (ogg, mp3, m4a, wav, webm, …)
+ *  - does NOT parse RIFF/WAV headers
+ *  - does NOT enforce the 0.5s minimum duration gate (that is live-mic-specific)
+ *  - propagates SDK errors unchanged — callers own graceful-degradation try/catch
+ *
+ * @param buf         Audio bytes to transcribe
+ * @param nameOrMediaType  Either a filename with supported extension (e.g. 'voice.m4a')
+ *                         or a MIME type (e.g. 'audio/ogg'). Used to derive the File
+ *                         name+type so Whisper selects the correct decoder.
+ * @param openai      Authenticated OpenAI client
+ */
+export async function transcribeAudio(buf: Buffer, nameOrMediaType: string, openai: OpenAI): Promise<string> {
+  const { name, mimeType } = resolveAudioFile(nameOrMediaType)
+  const file = new File([buf], name, { type: mimeType })
+  const result = await openai.audio.transcriptions.create({
+    file,
+    model: 'whisper-1',
+  })
+  return (result.text ?? '').trim()
+}
+
 /**
  * Transcribe a WAV buffer using OpenAI Whisper.
  *

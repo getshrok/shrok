@@ -1,6 +1,6 @@
 // src/channels/voice/stt.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { transcribeWav, TooShortError, InvalidWavError, MIN_WAV_DURATION_SECONDS } from './stt.js'
+import { transcribeWav, transcribeAudio, TooShortError, InvalidWavError, MIN_WAV_DURATION_SECONDS } from './stt.js'
 
 // Same WAV helper as wav.test.ts, inlined (duplicate-by-design until a shared helper is needed)
 function buildWav(byteRate: number, dataBytes: number): Buffer {
@@ -85,5 +85,64 @@ describe('transcribeWav', () => {
       },
     } as unknown as import('openai').default
     await expect(transcribeWav(wav, client)).rejects.toBe(err)
+  })
+})
+
+describe('transcribeAudio', () => {
+  it('(a) trims and returns the transcript text', async () => {
+    const buf = Buffer.from('fake-ogg-bytes')
+    const { client, create } = makeMockOpenAI('  hello world\n')
+    const result = await transcribeAudio(buf, 'audio/ogg', client)
+    expect(result).toBe('hello world')
+    expect(create).toHaveBeenCalledTimes(1)
+  })
+
+  it('(b) derives File name+type from mediaType audio/ogg', async () => {
+    const buf = Buffer.from('fake-ogg-bytes')
+    const { client, create } = makeMockOpenAI('ok')
+    await transcribeAudio(buf, 'audio/ogg', client)
+    const params = create.mock.calls[0]![0] as { file: File; model: string }
+    expect(params.file).toBeInstanceOf(File)
+    expect(params.file.name).toMatch(/\.ogg$/)
+    expect(params.file.type).toBe('audio/ogg')
+  })
+
+  it('(c) derives File name+type from an .m4a filename', async () => {
+    const buf = Buffer.from('fake-m4a-bytes')
+    const { client, create } = makeMockOpenAI('ok')
+    await transcribeAudio(buf, 'voice.m4a', client)
+    const params = create.mock.calls[0]![0] as { file: File; model: string }
+    expect(params.file).toBeInstanceOf(File)
+    expect(params.file.name).toMatch(/\.m4a$/)
+  })
+
+  it('(d) always calls with model whisper-1', async () => {
+    const buf = Buffer.from('fake-mp3-bytes')
+    const { client, create } = makeMockOpenAI('test')
+    await transcribeAudio(buf, 'audio/mpeg', client)
+    const params = create.mock.calls[0]![0] as { file: File; model: string }
+    expect(params.model).toBe('whisper-1')
+  })
+
+  it('(e) propagates SDK errors unchanged', async () => {
+    const buf = Buffer.from('fake-bytes')
+    const err = new Error('sdk-error')
+    const client = {
+      audio: {
+        transcriptions: {
+          create: vi.fn(async () => { throw err }),
+        },
+      },
+    } as unknown as import('openai').default
+    await expect(transcribeAudio(buf, 'audio/ogg', client)).rejects.toBe(err)
+  })
+
+  it('(f) does NOT throw TooShortError or InvalidWavError for a tiny non-WAV buffer', async () => {
+    // A 10-byte fake-ogg buffer: no RIFF/WAV headers, no duration gate
+    const buf = Buffer.from([0x4f, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00])
+    const { client, create } = makeMockOpenAI('transcribed')
+    // Must NOT throw TooShortError or InvalidWavError — those are transcribeWav-only
+    await expect(transcribeAudio(buf, 'audio/ogg', client)).resolves.toBe('transcribed')
+    expect(create).toHaveBeenCalledTimes(1)
   })
 })
