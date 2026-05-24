@@ -508,6 +508,7 @@ export const ENV_KEY_ALLOWLIST = [
   'ZOHO_REFRESH_TOKEN',
   'ZOHO_CLIQ_CHAT_ID',
   'HA_ACCESS_TOKEN',
+  'HA_INBOUND_API_KEY',   // Phase 41: bearer key HA presents on /v1/* (D-02)
   'SEARCH_PROVIDER',
   'TAVILY_API_KEY',
   'BRAVE_API_KEY',

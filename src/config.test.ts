@@ -601,6 +601,20 @@ describe('Phase 40 home-assistant channel vendor', () => {
     expect(ENV_KEY_ALLOWLIST).toContain('HA_ACCESS_TOKEN')
   })
 
+  it('ENV_KEY_ALLOWLIST includes HA_INBOUND_API_KEY (D-02)', () => {
+    expect(ENV_KEY_ALLOWLIST).toContain('HA_INBOUND_API_KEY')
+  })
+
+  it('HA_INBOUND_API_KEY and HA_ACCESS_TOKEN are distinct entries in ENV_KEY_ALLOWLIST (D-02)', () => {
+    expect(ENV_KEY_ALLOWLIST).toContain('HA_ACCESS_TOKEN')
+    expect(ENV_KEY_ALLOWLIST).toContain('HA_INBOUND_API_KEY')
+    // Both must be separate entries (not the same key)
+    const allowlistArr = ENV_KEY_ALLOWLIST as readonly string[]
+    expect(allowlistArr.indexOf('HA_INBOUND_API_KEY')).not.toBe(
+      allowlistArr.indexOf('HA_ACCESS_TOKEN'),
+    )
+  })
+
   it('a config with no home-assistant channel loads unchanged (SC4 backward-compat)', () => {
     fs.writeFileSync(tmpConfigPath, JSON.stringify({
       dbPath: '/tmp/test.db',
