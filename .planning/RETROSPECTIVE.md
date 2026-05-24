@@ -5,6 +5,45 @@
 > Started 2026-05-24 during the combined v1.3 + v1.4 close-out (both milestones were
 > completed earlier but never formally closed). v1.0–v1.2 predate this document.
 
+## Milestone: v1.6 — Multi-Head Task Delivery
+
+**Shipped:** 2026-05-24
+**Phases:** 1 (44) | **Plans:** 5 | **Sessions:** 1 (orchestrated, wave-based)
+
+### What Was Built
+- Data model: `sql/008` `deliver_to_head_ids` JSON column + `deliverToHeadIds` on `AgentState`/`SpawnOptions` and `Schedule`/`CreateScheduleOptions`/`SchedulePatch` (empty-as-absent) — Plan 44-01
+- Runtime fan-out: `agent_completed` enqueued per head over `[...new Set([headId, ...deliverToHeadIds])]` at **both** completion sites; `agent_failed` owner-only; delivery set survives resume; scheduled agents force-complete instead of suspending-as-question (D-06) — Plan 44-02
+- Schedules API: POST/PATCH validation (task-only, unknown-head 404, dedupe, empty-as-absent, editable) with the owner-`headId` ban intact — Plan 44-03
+- Dashboard: "deliver to" multi-select (owner excluded) + N deduped HEAD_COLORS chips; reminder form untouched — Plan 44-04
+- Integration regression: 5-case suite via the live `LocalAgentRunner` — Plan 44-05
+
+### What Worked
+- Wave-based dependency phasing (data model → fan-out ‖ API → UI ‖ integration test) kept each layer building on a verified foundation; the post-wave `tsc` + targeted-test gate caught nothing because each layer was clean, which is the point.
+- **Code review earned its keep as a real gate even after green tests + an approved human-verify checkpoint** — it found two genuine, must-have-violating criticals that both the 1640-test suite and the user's UI check missed: CR-01 (a force-completed scheduled agent re-entered the loop as suspended and spun on `waitForInbox` forever — a task/timer leak) and CR-02 (a delivery-set-only task edit silently dropped). Both fixed in-phase with a regression test.
+- The integration suite dropping **~5.3s → ~0.3s** after the CR-01 fix was an unmistakable signal the leaked-loop was real (the never-settling task had been burning the full `awaitAll` timeout every run).
+
+### What Was Inefficient
+- **`.planning/` gitignore now defeats worktree isolation, not just commits.** v1.5's retro already flagged the `git add -f` commit friction; this milestone it escalated — worktrees check out from HEAD and can't see the untracked `PLAN.md`/`SUMMARY.md` files, and new gitignored SUMMARYs can't be staged without `-f`. The whole phase ran **sequentially on the main tree** to sidestep it, losing intra-wave parallelism (waves 2 and 3 each had 2 independent plans). This is a recurring structural tax worth fixing once.
+- The auto-extracted MILESTONES.md accomplishments came out as raw code-symbol fragments ("`resumeSuspended` (~line 401)", "POST handler") and needed a full rewrite.
+
+### Patterns Established
+- **Gitignored `.planning/` → run executors sequentially on the main tree** (worktree isolation is unsafe: untracked planning files are invisible in the worktree); the orchestrator owns every planning commit via `git add -f`, and executors are told explicitly to force-add SUMMARY/STATE/ROADMAP.
+- **Assert task *settlement*, not just final status.** An `awaitAll(timeout)` race silently tolerates a non-terminating task; the regression test asserts `activeTaskCount === 0`, which a status-only check could never catch.
+- Lifecycle bugs hide at the *seams*: the fan-out math was correct on the first pass — the defects were in loop termination after force-completion and in edit-diffing. Review the edges (resume, force-complete, "nothing changed" guards), not just the happy path.
+
+### Key Lessons
+1. A green test suite can mask a resource leak when an assertion races a timeout — assert that the work *settles*, not just that the end state looks right.
+2. Human-verify checkpoints have blind spots (the UI was approved, but the approver tested *add*, not *delivery-set-only edit*) — pair them with code review rather than treating either as sufficient alone.
+3. `.planning/` being gitignored is no longer just commit friction — it breaks worktree-based parallel execution outright. Either un-ignore the planning artifacts (force-tracked already by convention) or accept sequential-on-main as the standing mode for this repo.
+4. Code review is worth running even when tests are green and a human approved the UI — it was the only gate that caught CR-01 and CR-02.
+
+### Cost Observations
+- Model mix: orchestrator Opus 4.7 (1M); executors + verifier + code-reviewer Sonnet
+- Sessions: 1 (single orchestrated session, discuss/plan already done)
+- Notable: 5 plans / 3 waves same-day; code review surfaced 2 criticals *after* green tests + an approved checkpoint; integration suite 5.3s→0.3s once the leaked loop was fixed
+
+---
+
 ## Milestone: v1.5 — Home Assistant Voice
 
 **Shipped:** 2026-05-24
@@ -128,6 +167,7 @@
 | v1.3 | 8 | 31 | Single-primitive (`head_id`) swept across all layers; architectural regression tests per boundary |
 | v1.4 | 3 | 9 | Schema → runtime → UI phasing; wave-based RED-first plans; parallel worktree execution (with hygiene cost) |
 | v1.5 | 4 | 11 | Skeleton → inbound → outbound → live-e2e phasing; final phase was a real-hardware smoke test run inline (orchestrator-driven human checkpoints); conditional tuning honestly resolved to no-op |
+| v1.6 | 1 | 5 | Data-model → fan-out ‖ API → UI ‖ integration phasing; ran sequential-on-main (gitignored `.planning/` defeats worktree isolation); code review caught 2 criticals after green tests + an approved human checkpoint |
 
 ### Cumulative Quality
 
@@ -136,9 +176,12 @@
 | v1.3 | green | architectural regression tests added for each isolation boundary |
 | v1.4 | 1544 | tsc clean + dashboard build green |
 | v1.5 | 1625 (HA-suite baseline) | integration code landed in Phases 40–42; Phase 43 changed 0 source files; validated live on real VPE hardware |
+| v1.6 | 1640 unit + 5 integration | tsc clean + dashboard build green; 14/14 must-haves; 2 code-review criticals (loop-leak, dropped edit) fixed in-phase with a settlement regression test |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. **Close milestones as they finish.** Both v1.3 and v1.4 were left open; bulk reconstruction loses fresh signal and let v1.3's "pending" verification debt drift. (v1.5 was closed same-day — fresh signal captured.)
 2. **When sweeping a cross-cutting change, enumerate every site first.** v1.3's missed `agents` table and v1.4's worktree drift are the same failure mode at different scales — incomplete coverage of "everywhere."
 3. **Sample before concluding — and prefer live integration tests for integration claims.** v1.5's "~16s HA latency" was a one-datapoint artifact that dissolved under 5-turn sampling; meanwhile the live smoke test caught three real setup bugs no unit test would (component "Skip Authentication", a stale shadowing conversation agent, Apache `<Location>` ordering).
+4. **Run code review even when tests are green and a human approved the UI.** v1.6's two must-have-violating criticals (a forever-spinning force-completed loop, a silently-dropped delivery-set edit) passed the full 1640-test suite *and* an approved human-verify checkpoint — only code review caught them. Green ≠ correct; assert that work *settles*, not just that the end state looks right.
+5. **The gitignored `.planning/` is a standing structural tax.** Flagged in v1.5 (commit friction) and worse in v1.6 (it defeats worktree isolation, forcing sequential-on-main and losing intra-wave parallelism). Two milestones running — either un-ignore the force-tracked planning artifacts or make sequential-on-main the documented default for this repo.
