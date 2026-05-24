@@ -114,7 +114,7 @@ A new `home-assistant` channel adapter that bridges Shrok's async, delegating he
 - [x] **Phase 40: Config & Adapter Skeleton** — `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live (completed 2026-05-24)
 - [x] **Phase 41: Inbound Synchronous Reply Endpoint** — `/v1/chat/completions` on Express, bearer auth, CSRF exclusion, pendingReply promise slot, <3s ACK, Apache auth bypass (completed 2026-05-24)
 - [x] **Phase 42: Outbound HA REST Announce** — `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget with 30s timeout, invoked from `adapter.send()` when no live turn is open (completed 2026-05-24)
-- [ ] **Phase 43: End-to-End Smoke Test & Setup Docs** — live VPE validation, resolves all open research questions, HADOC-01 setup guide
+- [x] **Phase 43: End-to-End Smoke Test & Setup Docs** — live VPE validation, resolves all open research questions, HADOC-01 setup guide (completed 2026-05-24)
 
 ## Phase Details
 
@@ -212,11 +212,11 @@ Plans:
 **Wave 1** *(parallel — docs track and live-test track have no file overlap)*
 
 - [x] 43-01-PLAN.md — HADOC-01 operator setup guide (`docs/user-guide/home-assistant.md`) + cross-link from `channel-integrations.md` *(autonomous)*
-- [ ] 43-02-PLAN.md — live VPE smoke test: rig-up + Scenarios A–D (SC1) + Apache `/v1` apply→curl→revert (SC2) + SC4 ledger into `43-VERIFICATION.md` *(operator checkpoints — not autonomous)*
+- [x] 43-02-PLAN.md — live VPE smoke test: rig-up + Scenarios A–D (SC1) + Apache `/v1` apply→curl→revert (SC2) + SC4 ledger into `43-VERIFICATION.md` *(operator checkpoints — not autonomous)*
 
 **Wave 2** *(blocked on 43-02; conditional)*
 
-- [ ] 43-03-PLAN.md — CONDITIONAL D-01 bounded tuning (`REPLY_DEADLINE_MS` bump / P6 busy-satellite skip / entity-existence check) — applied only if the live test demands it, else a no-op shipping zero production code *(decision checkpoint gated on the 43-02 verdict)*
+- [x] 43-03-PLAN.md — CONDITIONAL D-01 bounded tuning (`REPLY_DEADLINE_MS` bump / P6 busy-satellite skip / entity-existence check) — applied only if the live test demands it, else a no-op shipping zero production code *(decision checkpoint gated on the 43-02 verdict)*
 
 ## Progress
 
@@ -239,4 +239,4 @@ Plans:
 | 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete    | 2026-05-24 |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 4/4 | Complete    | 2026-05-24 |
 | 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete    | 2026-05-24 |
-| 43. End-to-End Smoke Test & Setup Docs | v1.5 | 1/3 | In Progress|  |
+| 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete    | 2026-05-24 |
