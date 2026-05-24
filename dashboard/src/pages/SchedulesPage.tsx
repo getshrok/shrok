@@ -730,7 +730,13 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
   const [runAt, setRunAt] = useState('')
   const [cron, setCron] = useState('0 9 * * *')
   const [conditions, setConditions] = useState('')
+  const [requiresAck, setRequiresAck] = useState(false)
+  const [nagMinutes, setNagMinutes] = useState(0)
+  const [nagHours, setNagHours] = useState(0)
+  const [nagDays, setNagDays] = useState(0)
   const [error, setError] = useState('')
+
+  const nagSum = nagMinutes + nagHours * 60 + nagDays * 1440
 
   const headsQuery = useQuery({
     queryKey: ['heads'],
@@ -762,9 +768,17 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
         agentContext: message.trim(),
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
         ...(conditions ? { conditions } : {}),
+        ...(requiresAck ? { requiresAck, nagIntervalMinutes: nagSum } : {}),
       })
     },
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); onDone() },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['schedules'] })
+      setRequiresAck(false)
+      setNagMinutes(0)
+      setNagHours(0)
+      setNagDays(0)
+      onDone()
+    },
     onError: (err: Error) => setError(err.message),
   })
 
@@ -844,12 +858,74 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
         />
       </div>
 
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Requires acknowledgment</label>
+        <button
+          type="button"
+          onClick={() => setRequiresAck(v => !v)}
+          title={requiresAck ? 'Acknowledgment required' : 'No acknowledgment required'}
+          className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+            requiresAck ? 'bg-emerald-600' : 'bg-zinc-700'
+          }`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+            requiresAck ? 'translate-x-[18px]' : 'translate-x-0'
+          }`} />
+        </button>
+      </div>
+
+      {requiresAck && (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Nag every</label>
+          <div className="flex gap-2 items-center">
+            <input
+              type="number"
+              min={0}
+              value={nagDays}
+              onChange={e => setNagDays(Number(e.target.value))}
+              className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 text-center"
+            />
+            <span className="text-xs text-zinc-500">d</span>
+            <input
+              type="number"
+              min={0}
+              value={nagHours}
+              onChange={e => setNagHours(Number(e.target.value))}
+              className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 text-center"
+            />
+            <span className="text-xs text-zinc-500">h</span>
+            <input
+              type="number"
+              min={0}
+              value={nagMinutes}
+              onChange={e => setNagMinutes(Number(e.target.value))}
+              className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 text-center"
+            />
+            <span className="text-xs text-zinc-500">m</span>
+          </div>
+        </div>
+      )}
+
+      {requiresAck && nagSum === 0 && (
+        <div className="text-xs text-red-400">Set a nag interval when &quot;Requires acknowledgment&quot; is on.</div>
+      )}
+      {nagSum > 43200 && (
+        <div className="text-xs text-red-400">Nag interval must be at most 30 days.</div>
+      )}
+
       {error && <div className="text-xs text-red-400">{error}</div>}
 
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={createMutation.isPending || !headId || !message.trim() || (type === 'once' && !runAt)}
+          disabled={
+            createMutation.isPending
+            || !headId
+            || !message.trim()
+            || (type === 'once' && !runAt)
+            || (requiresAck && nagSum === 0)
+            || nagSum > 43200
+          }
           className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
           {createMutation.isPending ? 'Adding…' : 'Add reminder'}
