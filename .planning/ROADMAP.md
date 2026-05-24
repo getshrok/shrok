@@ -339,7 +339,7 @@ Plans:
   2. Reminders that require acknowledgment are visually distinguished from ordinary reminders in the dashboard list (e.g., a badge or icon)
   3. The dashboard recurring schedule/reminder/task create form includes a start-date/time picker; submitting it sets `triggerAt` on the created item so the first fire occurs at the chosen date and subsequent fires follow the cron
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 **UI hint**: yes
 
 Plans:
@@ -349,7 +349,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 39-02-PLAN.md — Frontend list/edit: api.ts create/update payloads (F-02), NAGS badge + nag sub-label on ReminderRow (D-05/D-06), reminder edit-modal ack/nag fields (D-11) + manual verify (SCHED-01, SCHED-02)
+- [x] 39-02-PLAN.md — Frontend list/edit: api.ts create/update payloads (F-02), NAGS badge + nag sub-label on ReminderRow (D-05/D-06), reminder edit-modal ack/nag fields (D-11) + manual verify (SCHED-01, SCHED-02)
 
 **Wave 3** *(blocked on Wave 2 — shares SchedulesPage.tsx)*
 
@@ -361,4 +361,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 37. Schema & Tool Params | 2/2 | Complete    | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | 4/4 | Complete    | 2026-05-23 |
-| 39. Dashboard Reminder UI | 1/3 | In Progress|  |
+| 39. Dashboard Reminder UI | 2/3 | In Progress|  |
