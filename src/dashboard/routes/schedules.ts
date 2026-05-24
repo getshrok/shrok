@@ -64,6 +64,13 @@ export function createSchedulesRouter(
       res.status(400).json({ error: 'nag interval must be at least 1 minute' })
       return
     }
+    // Integer: nag cadence must be a whole number of minutes (WR-03). Mirrors the
+    // create_reminder tool's Number.isInteger guard — the < 1 floor above only
+    // catches fractional values in (0,1), so 60.7 etc. would otherwise persist.
+    if (typeof nagIntervalMinutes === 'number' && !Number.isInteger(nagIntervalMinutes)) {
+      res.status(400).json({ error: 'nagIntervalMinutes must be an integer number of minutes' })
+      return
+    }
     // Ceiling: 30 days = 43200 minutes
     if (nagNum > 43200) {
       res.status(400).json({ error: 'nag interval must be at most 30 days (43200 minutes)' })
@@ -213,6 +220,12 @@ export function createSchedulesRouter(
 
     if (typeof patchRequiresAck === 'boolean') {
       const patchNag = typeof patchNagInterval === 'number' ? patchNagInterval : 0
+      // Integer guard (WR-03): reject fractional nag cadences before any other
+      // nag logic, matching the POST handler and the create_reminder tool.
+      if (typeof patchNagInterval === 'number' && !Number.isInteger(patchNagInterval)) {
+        res.status(400).json({ error: 'nagIntervalMinutes must be an integer number of minutes' })
+        return
+      }
       if (patchRequiresAck && patchNag === 0) {
         res.status(400).json({ error: 'requiresAck requires a nag interval (minimum 1 minute)' })
         return
@@ -256,6 +269,11 @@ export function createSchedulesRouter(
       // read the existing row to check stored requiresAck before applying a bare nag patch
       const existing = scheduleStore.get(id)
       const patchNag = patchNagInterval
+      // Integer guard (WR-03): reject fractional nag cadences on the bare-nag path too.
+      if (!Number.isInteger(patchNag)) {
+        res.status(400).json({ error: 'nagIntervalMinutes must be an integer number of minutes' })
+        return
+      }
       if (patchNag > 43200) {
         res.status(400).json({ error: 'nag interval must be at most 30 days (43200 minutes)' })
         return

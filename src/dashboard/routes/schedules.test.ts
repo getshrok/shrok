@@ -635,6 +635,47 @@ describe('ack/nag validation, startAt, and D-12 (Plan 39-01)', () => {
     expect(r.status).toBe(200)
   })
 
+  // ── WR-03: non-integer nagIntervalMinutes rejected on POST + PATCH ────────────
+
+  it('POST reminder with fractional nagIntervalMinutes:60.7 → 400 mentions "integer"', async () => {
+    const before = store.list().length
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 60.7,
+    })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('integer')
+    // No row persisted
+    expect(store.list().length).toBe(before)
+  })
+
+  it('PATCH reminder with fractional nagIntervalMinutes:60.7 (requiresAck:true) → 400 mentions "integer"', async () => {
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *', headId: 'default',
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    const r = await patch(id, { requiresAck: true, nagIntervalMinutes: 60.7 })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('integer')
+    // Row unchanged: requiresAck still false
+    expect(store.get(id)!.requiresAck).toBe(false)
+  })
+
+  it('PATCH standalone fractional nagIntervalMinutes:90.5 on ack-required reminder → 400 mentions "integer"', async () => {
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 60,
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    const r = await patch(id, { nagIntervalMinutes: 90.5 })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('integer')
+    // Stored nag cadence unchanged
+    expect(store.get(id)!.nagIntervalMinutes).toBe(60)
+  })
+
   // ── WR-04: one-time ack-off does not re-fire an already-delivered reminder ────
 
   it('PATCH requiresAck:false on an already-fired, nagging one-time reminder → nextRun cleared (no re-fire)', async () => {
