@@ -44,6 +44,8 @@ import type { SkillLoader } from '../types/skill.js'
 import type { UnifiedLoader } from '../skills/unified.js'
 import type { DatabaseSync } from '../db/index.js'
 import type { DashboardChannelAdapter } from '../channels/dashboard/adapter.js'
+import type { HomeAssistantChannelAdapter } from '../channels/home-assistant/adapter.js'
+import { createHomeAssistantRouter } from '../channels/home-assistant/router.js'
 import type { ScheduleStore } from '../db/schedules.js'
 import type { McpRegistry } from '../mcp/registry.js'
 import type { AgentRunner } from '../types/agent.js'
@@ -98,6 +100,10 @@ export interface DashboardServerOptions {
    *  so the heads router sees the latest config.json without an in-memory
    *  cache. When omitted, falls back to `resolvedHeads`. */
   resolveCurrentHeads?: () => ResolvedHead[]
+  /** Phase 41: Home Assistant inbound adapters. When present, mounts /v1/chat/completions
+   *  for each adapter before the SPA catch-all. Auth is bearer-token (HA_INBOUND_API_KEY);
+   *  /v1/* is excluded from the dashboard CSRF guard (HACV-06). */
+  homeAssistantAdapters?: HomeAssistantChannelAdapter[]
 }
 
 export class DashboardServer {
@@ -145,6 +151,7 @@ export class DashboardServer {
     // CSRF protection: block cross-origin state-changing requests
     app.use((req, res, next) => {
       if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
+      if (req.path.startsWith('/v1/')) return next()   // HA bearer-auth; /v1 router validates
       requireSameOrigin(req, res, next)
     })
 
@@ -266,6 +273,16 @@ export class DashboardServer {
     if (controls) {
       app.use('/api/controls', createControlsRouter(controls))
       app.use('/api/status', createStatusRouter(controls.getStatus))
+    }
+
+    // Phase 41: Home Assistant inbound endpoint — mount BEFORE the SPA catch-all
+    // so /v1/chat/completions is not intercepted by the GET '*' fallback (HACV-06).
+    // HA_INBOUND_API_KEY is read at start() time (not module-eval time) — Pitfall 4.
+    if (this.opts.homeAssistantAdapters?.length) {
+      const haInboundApiKey = process.env['HA_INBOUND_API_KEY'] ?? ''
+      for (const haAdapter of this.opts.homeAssistantAdapters) {
+        app.use('/v1', createHomeAssistantRouter(haAdapter, haInboundApiKey))
+      }
     }
 
     // Serve built frontend in production (dashboard/dist must exist)
