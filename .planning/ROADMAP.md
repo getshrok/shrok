@@ -189,6 +189,9 @@ Plans:
 **Wave 1**
 
 - [x] 42-01-PLAN.md — D-05 token redaction: HA_ACCESS_TOKEN added to extractSecretValues() so the outbound bearer token is masked in logs
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [x] 42-02-PLAN.md — adapter announceOrStartConversation() HA REST call + config-bearing constructor + index.ts wiring + Block D mocked-fetch tests (D-01..D-04, HAAN-01/02/03)
 
 ### Phase 43: End-to-End Smoke Test & Setup Docs
@@ -204,7 +207,16 @@ Plans:
   3. A self-hosting operator following HADOC-01 can install Extended OpenAI Conversation (HACS), point its base URL at Shrok with the API key, select Shrok as the VPE conversation agent, and wire up the satellite entity — all from the docs with no guesswork
   4. All live-VPE open questions from the research SUMMARY are resolved and the outcomes are recorded (conversation_id stitching, start_conversation round-trip behavior, exact safe reply window)
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1** *(parallel — docs track and live-test track have no file overlap)*
+
+- [ ] 43-01-PLAN.md — HADOC-01 operator setup guide (`docs/user-guide/home-assistant.md`) + cross-link from `channel-integrations.md` *(autonomous)*
+- [ ] 43-02-PLAN.md — live VPE smoke test: rig-up + Scenarios A–D (SC1) + Apache `/v1` apply→curl→revert (SC2) + SC4 ledger into `43-VERIFICATION.md` *(operator checkpoints — not autonomous)*
+
+**Wave 2** *(blocked on 43-02; conditional)*
+
+- [ ] 43-03-PLAN.md — CONDITIONAL D-01 bounded tuning (`REPLY_DEADLINE_MS` bump / P6 busy-satellite skip / entity-existence check) — applied only if the live test demands it, else a no-op shipping zero production code *(decision checkpoint gated on the 43-02 verdict)*
 
 ## Progress
 
@@ -227,4 +239,4 @@ Plans:
 | 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete    | 2026-05-24 |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 4/4 | Complete    | 2026-05-24 |
 | 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete    | 2026-05-24 |
-| 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |
+| 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/3 | Not started | — |
