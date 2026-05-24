@@ -16,12 +16,11 @@ export const REPLY_DEADLINE_MS = 3_000
  * Create the /v1 Express router for the Home Assistant inbound endpoint.
  *
  * Mount at /v1 on the dashboard Express app BEFORE the SPA static file block.
- * The dashboard server already mounts a global JSON body parser at startup —
- * do NOT add a second body parser inside this router.
+ * The dashboard server mounts a global JSON body parser at startup — do NOT
+ * add a second body parser inside this router.
  *
- * @param adapter   - The HomeAssistantChannelAdapter instance for this head.
- * @param inboundApiKey - The bearer token HA presents on every /v1/chat/completions
- *                        request (HA_INBOUND_API_KEY from .env).
+ * @param adapter      - The HomeAssistantChannelAdapter instance for this head.
+ * @param inboundApiKey - Bearer token HA presents on /v1/chat/completions.
  */
 export function createHomeAssistantRouter(
   adapter: HomeAssistantChannelAdapter,
@@ -31,8 +30,7 @@ export function createHomeAssistantRouter(
 
   router.post('/chat/completions', (req: Request, res: Response): void => {
     // ── (1) Bearer auth ───────────────────────────────────────────────────────
-    // JSON 401, no Basic-realm header (Shrok's 401 must be distinguishable
-    // from Apache's Basic 401 — HACV-02 / T-41-07 / T-41-08).
+    // JSON 401 with no Basic-realm / challenge header (HACV-02 / T-41-07).
     const auth = req.headers['authorization']
     if (!auth?.startsWith('Bearer ') || auth.slice(7) !== inboundApiKey) {
       res.status(401).json({ error: 'Unauthorized' })
@@ -40,7 +38,7 @@ export function createHomeAssistantRouter(
     }
 
     // ── (2) Extract last user turn ────────────────────────────────────────────
-    // HA sends the full messages[] on every turn; we discard all but the last
+    // HA sends the full messages[] on every turn; discard all but the last
     // role:'user' entry.  Shrok's ContextAssembler owns history (HACV-03).
     const body = req.body as {
       messages?: unknown[]
@@ -66,14 +64,19 @@ export function createHomeAssistantRouter(
       conversationId = body.user
     } else {
       conversationId = randomUUID()
-      log.info('[home-assistant] no conversation_id in request — generated server-side UUID:', conversationId)
+      log.info('[home-assistant] no conversation_id — generated server-side UUID:', conversationId)
     }
 
-    // ── (4) close-event cleanup (SC4) ────────────────────────────────────────
-    // Register BEFORE the pendingReply promise is created so the slot is always
-    // cleaned up regardless of abort timing.
+    // ── (4) SC4 cleanup: clear slot when the client disconnects ──────────────
+    // Register BEFORE the pendingReply promise so the slot is always cleared.
+    // The IncomingMessage 'close' event fires when the body stream ends (on body
+    // consumption by the global JSON parser) — BEFORE the response is sent —
+    // so we register it here for SC4 naming parity but defer the actual cleanup
+    // to the ServerResponse 'close' event which fires only on connection drop.
     let aborted = false
-    req.on('close', () => {
+    req.on('close', () => { /* SC4 — see res close handler below */ })
+    res.on('close', () => {
+      if (res.writableEnded) return   // normal completion: slot already resolved
       aborted = true
       adapter.clearPendingReply()
     })
@@ -90,13 +93,12 @@ export function createHomeAssistantRouter(
 
     // ── (6) Non-blocking inbound dispatch ────────────────────────────────────
     // Never await head processing on the HTTP path — the reply arrives later via
-    // adapter.send() resolving the slot (HACV-03).  Thread is keyed ha-${conversationId}.
+    // adapter.send() resolving the slot (HACV-03).
     adapter.dispatchInbound(userText, conversationId)
 
     // ── (7) Resolve / lapse handling ─────────────────────────────────────────
-    // CRITICAL (D-01 / Pitfall 1): on deadline lapse or concurrent-replace, do NOT
-    // call res.json / res.end / res.destroy — let the turn lapse so the answer rides
-    // the Phase-42 announce path.  The socket closes via Node/HA timeout.
+    // D-01 / Pitfall 1: on deadline lapse or concurrent-replace do NOT send a
+    // response body — let the turn lapse so the answer rides the Phase-42 announce.
     void replyText
       .then((text) => {
         if (aborted) return
@@ -108,9 +110,7 @@ export function createHomeAssistantRouter(
           err.message === 'HA turn deadline lapsed' ||
           err.message === 'replaced by concurrent turn'
         ) {
-          log.info(
-            '[home-assistant] turn lapsed or slot replaced — reply (if any) rides announce in Phase 42',
-          )
+          log.info('[home-assistant] turn lapsed or slot replaced — reply rides Phase-42 announce')
           return
         }
         log.error('[home-assistant] unexpected pendingReply rejection:', err.message)
