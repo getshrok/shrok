@@ -290,6 +290,7 @@ function AddScheduleForm({
   const [type, setType] = useState<'repeating' | 'once'>('repeating')
   const [cron, setCron] = useState('*/30 * * * *')
   const [runAt, setRunAt] = useState('')
+  const [startAt, setStartAt] = useState('')
   const [conditions, setConditions] = useState('')
   const [agentContext, setAgentContext] = useState('')
   const [error, setError] = useState('')
@@ -331,10 +332,12 @@ function AddScheduleForm({
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
         ...(conditions ? { conditions } : {}),
         ...(agentContext ? { agentContext } : {}),
+        ...(type === 'repeating' && startAt ? { startAt: new Date(startAt).toISOString() } : {}),
       })
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['schedules'] })
+      setStartAt('')
       onDone()
     },
     onError: (err: Error) => setError(err.message),
@@ -410,6 +413,21 @@ function AddScheduleForm({
         </div>
       )}
 
+      {type === 'repeating' && (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Start date (optional)</label>
+          <input
+            type="datetime-local"
+            value={startAt}
+            onChange={e => setStartAt(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          />
+          <div className="text-[11px] text-zinc-500 mt-0.5">
+            First fire at this time, then repeating. Browser local time (workspace timezone: {tz})
+          </div>
+        </div>
+      )}
+
       <div>
         <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
         <textarea
@@ -432,12 +450,23 @@ function AddScheduleForm({
         />
       </div>
 
+      {startAt && new Date(startAt) <= new Date() && (
+        <div className="text-xs text-red-400">Start date must be in the future.</div>
+      )}
+
       {error && <div className="text-xs text-red-400">{error}</div>}
 
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={createMutation.isPending || loading || !headId || !target || (type === 'once' && !runAt)}
+          disabled={
+            createMutation.isPending
+            || loading
+            || !headId
+            || !target
+            || (type === 'once' && !runAt)
+            || (startAt !== '' && new Date(startAt) <= new Date())
+          }
           className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
           {createMutation.isPending ? 'Adding…' : 'Add schedule'}
@@ -734,6 +763,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
   const [nagMinutes, setNagMinutes] = useState(0)
   const [nagHours, setNagHours] = useState(0)
   const [nagDays, setNagDays] = useState(0)
+  const [startAt, setStartAt] = useState('')
   const [error, setError] = useState('')
 
   const nagSum = nagMinutes + nagHours * 60 + nagDays * 1440
@@ -769,6 +799,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
         ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
         ...(conditions ? { conditions } : {}),
         ...(requiresAck ? { requiresAck, nagIntervalMinutes: nagSum } : {}),
+        ...(type === 'repeating' && startAt ? { startAt: new Date(startAt).toISOString() } : {}),
       })
     },
     onSuccess: () => {
@@ -777,6 +808,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
       setNagMinutes(0)
       setNagHours(0)
       setNagDays(0)
+      setStartAt('')
       onDone()
     },
     onError: (err: Error) => setError(err.message),
@@ -847,6 +879,21 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
         <CronPicker value={cron} onChange={setCron} />
       )}
 
+      {type === 'repeating' && (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Start date (optional)</label>
+          <input
+            type="datetime-local"
+            value={startAt}
+            onChange={e => setStartAt(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          />
+          <div className="text-[11px] text-zinc-500 mt-0.5">
+            First fire at this time, then repeating. Browser local time (workspace timezone: {tz})
+          </div>
+        </div>
+      )}
+
       <div>
         <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
         <textarea
@@ -912,6 +959,9 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
       {nagSum > 43200 && (
         <div className="text-xs text-red-400">Nag interval must be at most 30 days.</div>
       )}
+      {startAt && new Date(startAt) <= new Date() && (
+        <div className="text-xs text-red-400">Start date must be in the future.</div>
+      )}
 
       {error && <div className="text-xs text-red-400">{error}</div>}
 
@@ -925,6 +975,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
             || (type === 'once' && !runAt)
             || (requiresAck && nagSum === 0)
             || nagSum > 43200
+            || (startAt !== '' && new Date(startAt) <= new Date())
           }
           className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
