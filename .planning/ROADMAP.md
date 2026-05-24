@@ -203,7 +203,7 @@ Plans:
 | 37. Schema & Tool Params | v1.4 | 2/2 | Complete | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | v1.4 | 4/4 | Complete | 2026-05-23 |
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
-| 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete   | 2026-05-24 |
+| 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete    | 2026-05-24 |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 0/? | Not started | — |
 | 42. Outbound HA REST Announce | v1.5 | 0/? | Not started | — |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |

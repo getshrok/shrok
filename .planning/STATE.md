@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
-status: verifying
-last_updated: "2026-05-24T10:44:58.818Z"
+status: ready_to_plan
+last_updated: 2026-05-24T10:53:14.384Z
 last_activity: 2026-05-24
 progress:
   total_phases: 4
@@ -11,15 +11,16 @@ progress:
   total_plans: 2
   completed_plans: 2
   percent: 25
+stopped_at: Phase 40 complete (2/2) — ready to discuss Phase 41
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 40 (config-adapter-skeleton) — COMPLETE
-Plan: 2 of 2 (all plans complete)
-Status: Phase 40 complete — ready for Phase 41
+Phase: 41
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-24
 
 ```
@@ -31,7 +32,7 @@ Last activity: 2026-05-24
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 40 — config-adapter-skeleton
+**Current focus:** Phase 41 — inbound synchronous reply endpoint
 
 ## v1.5 Phase Map
 
