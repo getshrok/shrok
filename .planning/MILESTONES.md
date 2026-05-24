@@ -1,5 +1,25 @@
 # Project Milestones: Shrok
 
+## v1.6 Multi-Head Task Delivery (Shipped: 2026-05-24)
+
+**Delivered:** A scheduled **task** runs once but delivers its result to every head in an opt-in delivery set — `completeAgent` fans out `agent_completed` to each head in the deduped set `[headId, ...deliverToHeadIds]`, so the work runs once and the report reaches N heads. Scheduled agents now force-complete instead of suspending-as-question (no human in the loop). Tasks only — reminders are unchanged.
+
+**Phases completed:** Phase 44 (5 plans, 11 tasks)
+
+**Key accomplishments:**
+
+- **Data model** — `sql/008` adds a `deliver_to_head_ids` JSON column to the agents table; `deliverToHeadIds` added to `AgentState`/`SpawnOptions` and `Schedule`/`CreateScheduleOptions`/`SchedulePatch` with create/update (empty-as-absent) handling (Plan 44-01)
+- **Runtime fan-out** — both top-level completion sites (`completeAgent` + the `ctx.complete` closure) enqueue `agent_completed` per head over `[...new Set([this.headId, ...deliverToHeadIds])]`; `agent_failed` stays owner-only; the delivery set survives suspend/resume; scheduled agents force-complete rather than suspend-as-question (D-06) (Plan 44-02)
+- **Schedules API** — POST/PATCH validate `deliverToHeadIds` (task-only, unknown-head 404, dedupe, empty-as-absent, editable/clearable) with the owner-`headId` reassignment ban (D-13) intact (Plan 44-03)
+- **Dashboard UI** — a "deliver to" multi-select on the task add/edit forms (owner excluded) + N deduped HEAD_COLORS chips on task rows, wired to create/PATCH; reminder form untouched (Plan 44-04)
+- **Integration regression** — a self-contained 5-case suite pinning fan-out at both sites, Set-dedup, no-delivery-set backward compat, scheduled question-suppression (D-06), and `agent_failed` owner-only (D-05) via the live `LocalAgentRunner` (Plan 44-05)
+
+**Code review:** standard depth surfaced 2 critical + 4 warning + 3 info. CR-01 (a force-completed scheduled agent re-entered the run-loop as suspended and spun on `waitForInbox` forever — task/timer leak), CR-02 (a delivery-set-only task edit was silently dropped by the "nothing changed" guard), and WR-02 (unguarded `deliver_to_head_ids` parse) were **fixed in-phase** with a regression assertion (`activeTaskCount===0`; integration suite ~5.3s→~0.3s). WR-01/WR-03/WR-04/IN-01–03 are documented non-blocking deferrals in `44-REVIEW.md`.
+
+**What's next:** next milestone via `/gsd:new-milestone`.
+
+---
+
 ## v1.5 Home Assistant Voice (Shipped: 2026-05-24)
 
 **Delivered:** Shrok is now a Home Assistant conversation agent — the Voice PE device talks to it over an OpenAI-compatible `/v1/chat/completions` endpoint and speaks Shrok's replies, with asynchronous results delivered unprompted via `assist_satellite.announce`. Converse-only (no HA device control). Validated end-to-end on real hardware.
