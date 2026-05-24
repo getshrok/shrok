@@ -953,7 +953,7 @@ export function buildReminderTools(
             },
             requiresAck: {
               type: 'boolean',
-              description: 'Marks the reminder acknowledgment-required — it keeps nagging every nag interval until the user explicitly acknowledges it. Must be paired with at least one of nagMinutes/nagHours/nagDays (minimum 5 minutes total, maximum 30 days).',
+              description: 'Marks the reminder acknowledgment-required — it keeps nagging every nag interval until the user explicitly acknowledges it. Must be paired with at least one of nagMinutes/nagHours/nagDays (minimum 1 minute, maximum 30 days).',
             },
             nagMinutes: {
               type: 'integer',
@@ -1014,12 +1014,12 @@ export function buildReminderTools(
 
         // T-37-07 D-04: requiresAck:true but no nag interval provided → reject
         if (requiresAckArg === true && nagSum === 0) {
-          return JSON.stringify({ error: true, message: 'requiresAck requires a nag interval: set nagMinutes, nagHours, or nagDays (minimum 5 minutes total)' })
+          return JSON.stringify({ error: true, message: 'requiresAck requires a nag interval: set nagMinutes, nagHours, or nagDays (minimum 1 minute)' })
         }
 
-        // T-37-04 D-03 floor: nag interval too short to be useful
-        if (requiresAckArg === true && nagSum > 0 && nagSum < 5) {
-          return JSON.stringify({ error: true, message: 'nag interval must be at least 5 minutes (sum of nagMinutes + nagHours×60 + nagDays×1440)' })
+        // T-37-04 D-03 floor: nag interval too short to be useful (Phase 39 D-03: floor corrected 5→1)
+        if (requiresAckArg === true && nagSum > 0 && nagSum < 1) {
+          return JSON.stringify({ error: true, message: 'nag interval must be at least 1 minute (sum of nagMinutes + nagHours×60 + nagDays×1440)' })
         }
 
         // T-37-04 D-03 ceiling: nag interval exceeds 30 days (43200 minutes)

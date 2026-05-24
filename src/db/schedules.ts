@@ -41,7 +41,10 @@ export interface CreateScheduleOptions {
   ackPending?: boolean
 }
 
-export type SchedulePatch = Partial<Pick<Schedule, 'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' | 'agentContext' | 'cronTimezone' | 'ackPending'>>
+export type SchedulePatch = Partial<Pick<Schedule,
+  'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' |
+  'agentContext' | 'cronTimezone' | 'ackPending' | 'requiresAck' | 'nagIntervalMinutes'
+>>
 
 // ─── Lazy schedule migration (Phase 35 D-03, Phase 37 D-08) ──────────────────
 //
@@ -140,6 +143,8 @@ export class ScheduleStore {
     if (patch.agentContext !== undefined) existing.agentContext = patch.agentContext
     if (patch.cronTimezone !== undefined) existing.cronTimezone = patch.cronTimezone
     if (patch.ackPending !== undefined) existing.ackPending = patch.ackPending
+    if (patch.requiresAck !== undefined) existing.requiresAck = patch.requiresAck
+    if (patch.nagIntervalMinutes !== undefined) existing.nagIntervalMinutes = patch.nagIntervalMinutes
 
     existing.updatedAt = new Date().toISOString()
     this.store.save(existing)

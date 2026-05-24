@@ -261,6 +261,9 @@ export interface Schedule {
   nextRun: string | null
   conditions: string | null
   agentContext: string | null
+  requiresAck: boolean
+  nagIntervalMinutes: number | null
+  ackPending: boolean
   createdAt: string
   updatedAt: string
 }
