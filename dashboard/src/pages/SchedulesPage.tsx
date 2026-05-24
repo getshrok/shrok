@@ -158,14 +158,16 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
           <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
         )}
       </div>
-      <div className="w-24 shrink-0 text-xs">
-        <span
-          className="inline-block px-2 py-0.5 rounded font-medium text-zinc-100 truncate max-w-full"
-          style={{ backgroundColor: headColor(schedule.headId), borderLeft: `2px solid ${headColorBorder(schedule.headId)}` }}
-          title={`Head: ${schedule.headId}`}
-        >
-          {schedule.headId}
-        </span>
+      <div className="min-w-24 shrink-0 text-xs flex flex-wrap gap-1">
+        {[schedule.headId, ...(schedule.deliverToHeadIds ?? [])].filter((v, i, a) => a.indexOf(v) === i).map(hid => (
+          <span key={hid}
+            className="inline-block px-2 py-0.5 rounded font-medium text-zinc-100 truncate max-w-full"
+            style={{ backgroundColor: headColor(hid), borderLeft: `2px solid ${headColorBorder(hid)}` }}
+            title={`Head: ${hid}`}
+          >
+            {hid}
+          </span>
+        ))}
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
         <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>

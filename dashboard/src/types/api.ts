@@ -266,6 +266,8 @@ export interface Schedule {
   ackPending: boolean
   createdAt: string
   updatedAt: string
+  /** Phase 44 — delivery set for task schedules. Absent = owner-only. */
+  deliverToHeadIds?: string[]
 }
 
 export interface ApiKeyStatus { isSet: boolean }
