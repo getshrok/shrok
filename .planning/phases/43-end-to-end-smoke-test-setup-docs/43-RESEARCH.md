@@ -146,7 +146,7 @@ docs/
 **File:** `src/channels/home-assistant/router.ts` line 13
 **Name:** `REPLY_DEADLINE_MS`
 **Current value:** `3_000` (3 seconds)
-**How to tune (D-01):** Change the numeric value on that line. No other file references this constant. Export is not needed — the constant is module-private to `router.ts`.
+**How to tune (D-01):** Change the numeric value on that line. The constant is declared `export const` and is imported by `src/channels/home-assistant/router.test.ts` — **preserve the `export` keyword** when tuning (changing only the numeric literal). Existing tests cover the behavior, so no test changes are needed for a value bump.
 
 The tuning envelope (Claude's Discretion per CONTEXT.md):
 - Start: 3000 ms (current). This is conservative.
