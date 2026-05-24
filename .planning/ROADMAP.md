@@ -117,7 +117,10 @@ A new `home-assistant` channel adapter that bridges Shrok's async, delegating he
   2. An invalid entity ID (wrong domain prefix) or missing required field causes a clear startup error rather than a silent failure at first use
   3. `HomeAssistantChannelAdapter` instantiates, registers as a named adapter in the head's channel map, and sets `lastActiveChannel` on receipt of a manually-injected test message — the full routing path is exercised without any HTTP
   4. Existing single-head deployments with no `home-assistant` channel are unaffected — zero-config backward compatibility preserved
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 40-01-PLAN.md — home-assistant Zod config member + entity-id/URL validation + HA_ACCESS_TOKEN in ENV_KEY_ALLOWLIST
+- [ ] 40-02-PLAN.md — HomeAssistantChannelAdapter stub + index.ts boot wiring + SC3 lastActiveChannel routing test
 
 ### Phase 41: Inbound Synchronous Reply Endpoint
 **Goal**: Home Assistant can send a conversation turn to Shrok via `/v1/chat/completions` and receive an OpenAI-compatible acknowledgment reply within the 5-second device timeout — the held-connection contract is fully established
@@ -173,7 +176,7 @@ A new `home-assistant` channel adapter that bridges Shrok's async, delegating he
 | 37. Schema & Tool Params | v1.4 | 2/2 | Complete | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | v1.4 | 4/4 | Complete | 2026-05-23 |
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
-| 40. Config & Adapter Skeleton | v1.5 | 0/? | Not started | — |
+| 40. Config & Adapter Skeleton | v1.5 | 0/2 | Planned | — |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 0/? | Not started | — |
 | 42. Outbound HA REST Announce | v1.5 | 0/? | Not started | — |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |
