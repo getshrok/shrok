@@ -339,13 +339,13 @@ Plans:
   2. Reminders that require acknowledgment are visually distinguished from ordinary reminders in the dashboard list (e.g., a badge or icon)
   3. The dashboard recurring schedule/reminder/task create form includes a start-date/time picker; submitting it sets `triggerAt` on the created item so the first fire occurs at the chosen date and subsequent fires follow the cron
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 **UI hint**: yes
 
 Plans:
 **Wave 1**
 
-- [ ] 39-01-PLAN.md — Backend + type contract: frontend Schedule type fix (F-01), SchedulePatch + update() ack/nag (D-11), POST/PATCH validation + startAt->nextRun (D-04/D-09/D-10) + D-12 transition, registry nag floor 5->1 (D-03), Wave-0 backend tests (SCHED-01, SCHED-02, SCHED-03)
+- [x] 39-01-PLAN.md — Backend + type contract: frontend Schedule type fix (F-01), SchedulePatch + update() ack/nag (D-11), POST/PATCH validation + startAt->nextRun (D-04/D-09/D-10) + D-12 transition, registry nag floor 5->1 (D-03), Wave-0 backend tests (SCHED-01, SCHED-02, SCHED-03)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -361,4 +361,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 37. Schema & Tool Params | 2/2 | Complete    | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | 4/4 | Complete    | 2026-05-23 |
-| 39. Dashboard Reminder UI | 0/3 | Not started | - |
+| 39. Dashboard Reminder UI | 1/3 | In Progress|  |

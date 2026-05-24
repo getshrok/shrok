@@ -25,9 +25,9 @@ Backend schema + scheduler/activation mechanism + head integration + tool.
 
 Dashboard create/edit form surface + start-date control + tool-description correctness.
 
-- [ ] **SCHED-01**: User can set `requiresAck` and `nagInterval` on a reminder from the dashboard create/edit form
-- [ ] **SCHED-02**: Dashboard reminder/schedule views visibly mark which reminders require acknowledgment
-- [ ] **SCHED-03**: User can set a start date/time for a recurring schedule, reminder, or task in the dashboard, mapping to `triggerAt` + `cron` (first fire at the start date, then cron cadence)
+- [x] **SCHED-01**: User can set `requiresAck` and `nagInterval` on a reminder from the dashboard create/edit form
+- [x] **SCHED-02**: Dashboard reminder/schedule views visibly mark which reminders require acknowledgment
+- [x] **SCHED-03**: User can set a start date/time for a recurring schedule, reminder, or task in the dashboard, mapping to `triggerAt` + `cron` (first fire at the start date, then cron cadence)
 - [x] **SCHED-04**: The `create_reminder` tool description accurately documents that `triggerAt` + `cron` together produce start-then-repeat behavior (verify backend, loosen the misleading "one-time only" wording — do not rebuild)
 
 ## Future Requirements
@@ -67,9 +67,9 @@ Which phases cover which requirements. Filled during roadmap creation.
 | ACK-07 | Phase 38 | Complete |
 | ACK-08 | Phase 38 | Complete |
 | ACK-09 | Phase 37 | Complete |
-| SCHED-01 | Phase 39 | Pending |
-| SCHED-02 | Phase 39 | Pending |
-| SCHED-03 | Phase 39 | Pending |
+| SCHED-01 | Phase 39 | Complete |
+| SCHED-02 | Phase 39 | Complete |
+| SCHED-03 | Phase 39 | Complete |
 | SCHED-04 | Phase 37 | Complete |
 
 **Coverage:**

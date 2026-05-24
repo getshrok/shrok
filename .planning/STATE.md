@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Unmissable Reminders
 status: executing
-last_updated: "2026-05-23T19:34:17.698Z"
-last_activity: 2026-05-23 -- Phase 39 planning complete
+last_updated: "2026-05-24T05:13:29.694Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 67
 ---
 
@@ -17,20 +17,20 @@ progress:
 
 ## Current Position
 
-Phase: 39
-Plan: Not started
+Phase: 39 (dashboard-reminder-ui) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-23 -- Phase 39 planning complete
-Resume file: .planning/phases/39-dashboard-reminder-ui/39-CONTEXT.md
+Last activity: 2026-05-24
+Resume file: None
 
-Progress: [··········] 0% (0/3 phases)
+Progress: [████████░░] 78%
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-23)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 39 — dashboard reminder ui
+**Current focus:** Phase 39 — dashboard-reminder-ui
 
 ## Accumulated Context
 
@@ -136,6 +136,13 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 - D-CLIQ-INLINE-HELPER (Plan 36-03): `senderNameOf` is defined inline inside `poll()` rather than as a top-level helper. Used only at two call sites inside the same loop body. File-message background closure synchronously captures `senderName` before the void IIFE, matching how `handler` and `channel` are already captured at the same spot
 - D-WHATSAPP-DIRECT-FIELD (Plan 36-03): WhatsApp's chain always resolves to a non-empty string (`'unknown'` fallback per D-05) so the handler object literal writes `senderName,` directly without the conditional-spread guard used in Discord/Slack/Cliq. Telegram keeps the spread as defensive shape-consistency despite also always-resolving
 
+## Decisions (Phase 39)
+
+- D-03-FLOOR-1 (Plan 39-01): nag floor corrected 5→1 in registry.ts (`nagSum < 1`) and route handler; error strings say "minimum 1 minute"; old `nagSum < 5` condition fully removed
+- D-10-STARTAT (Plan 39-01): startAt override implemented in POST route — when cron + future startAt provided, `nextRun = startAt.toISOString()` while cron is retained in createOpts (Pitfall 4 avoided)
+- D-12-ROUTE-COMPUTE (Plan 39-01): D-12 ack-off-while-nagging transition computed in PATCH route (option b from RESEARCH): resets `nagIntervalMinutes=null`, conditionally clears `ackPending` and recomputes `nextRun` via `nextRunAfter(cron, now, timezone)`; `update()` signature unchanged
+- D-04-STANDALONE-NAG (Plan 39-01): PATCH bare `{ nagIntervalMinutes: 0 }` on a stored `requiresAck:true` reminder reads existing row via `scheduleStore.get(id)` and rejects with 400 — prevents stranding an ack-required reminder with no nag interval (T-39-09 mitigated)
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -158,3 +165,4 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 | Phase 36 P01 | 4min | 2 tasks | 4 files |
 | Phase 36 P02 | 4min | 2 tasks | 3 files |
 | Phase 36 P03 | 7min | 5 tasks | 5 files |
+| Phase 39 P01 | 6min | 3 tasks | 7 files |
