@@ -18,7 +18,16 @@ findings:
   warning: 4
   info: 4
   total: 8
-status: issues_found
+status: resolved
+resolution:
+  warnings_fixed: 4
+  fix_commits:
+    - "64ea29f WR-01 persist ack/nag-only edits in reminder modal"
+    - "2dcc2cc WR-02 use schedule cronTimezone in ack-off nextRun recompute"
+    - "86f87fd WR-04 clear nextRun on ack-off for already-fired one-time reminder"
+    - "d3a42ee WR-03 reject non-integer nagIntervalMinutes on POST and PATCH"
+  info_deferred: 4
+  resolved: 2026-05-24
 ---
 
 # Phase 39: Code Review Report
@@ -26,7 +35,9 @@ status: issues_found
 **Reviewed:** 2026-05-24
 **Depth:** standard
 **Files Reviewed:** 9
-**Status:** issues_found
+**Status:** resolved — all 4 warnings fixed (see resolution frontmatter); 4 info findings deferred
+
+> **Resolution (2026-05-24):** All 4 Warning findings fixed and committed atomically; +5 tests added; full suite (1544) green; `tsc --noEmit` clean. WR-03's integer guard makes IN-01's floor branch provably dead (left as harmless defense-in-depth). The 4 Info findings (IN-01..IN-04) were intentionally deferred.
 
 ## Summary
 
