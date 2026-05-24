@@ -81,6 +81,18 @@ function formatRelTime(iso: string | null): string {
   return past ? `${days}d ago` : `in ${days}d`
 }
 
+function formatNagInterval(minutes: number | null): string {
+  if (!minutes) return '?'
+  const d = Math.floor(minutes / 1440)
+  const h = Math.floor((minutes % 1440) / 60)
+  const m = minutes % 60
+  const parts: string[] = []
+  if (d > 0) parts.push(`${d}d`)
+  if (h > 0) parts.push(`${h}h`)
+  if (m > 0) parts.push(`${m}m`)
+  return parts.join(' ') || '?'
+}
+
 // ─── Row ───────────────────────────────────────────────────────────────────────
 
 function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
