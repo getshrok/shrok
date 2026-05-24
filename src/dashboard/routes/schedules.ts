@@ -84,6 +84,36 @@ export function createSchedulesRouter(
     }
     const kind: 'task' | 'reminder' = rawKind === 'reminder' ? 'reminder' : 'task'
 
+    // Phase 44 D-08: deliverToHeadIds — task-only, validate shape + known heads, dedupe
+    let deliverToHeadIds: string[] | undefined
+    if (kind === 'task') {
+      const rawDeliverTo = (req.body as { deliverToHeadIds?: unknown }).deliverToHeadIds
+      if (rawDeliverTo !== undefined) {
+        if (!Array.isArray(rawDeliverTo)) {
+          res.status(400).json({ error: 'deliverToHeadIds must be an array of head id strings' })
+          return
+        }
+        const ids = rawDeliverTo as unknown[]
+        if (!ids.every(id => typeof id === 'string' && (id as string).trim())) {
+          res.status(400).json({ error: 'deliverToHeadIds must contain non-empty strings' })
+          return
+        }
+        const currentHeads = resolveCurrentHeads()
+        for (const hid of ids) {
+          if (!currentHeads.some(h => h.id === hid)) {
+            res.status(404).json({ error: `deliverToHeadIds: head "${hid as string}" not found` })
+            return
+          }
+        }
+        const deduped = [...new Set(ids as string[])]
+        if (deduped.length > 0) deliverToHeadIds = deduped
+      }
+    } else if ((req.body as { deliverToHeadIds?: unknown }).deliverToHeadIds !== undefined) {
+      // 400 on reminders — clearer than silently ignoring (D-08)
+      res.status(400).json({ error: 'deliverToHeadIds is only valid for task schedules' })
+      return
+    }
+
     if (kind === 'task') {
       if (typeof taskName !== 'string' || !taskName.trim()) {
         res.status(400).json({ error: 'taskName is required for task schedules' })
@@ -151,6 +181,8 @@ export function createSchedulesRouter(
       // D-04: apply validated ack/nag fields
       if (ackBool) createOpts.requiresAck = true
       if (ackBool && nagNum > 0) createOpts.nagIntervalMinutes = nagNum
+      // Phase 44 D-08: persist delivery set (task-only, already validated + deduped above)
+      if (deliverToHeadIds !== undefined) createOpts.deliverToHeadIds = deliverToHeadIds
       const schedule = scheduleStore.create(createOpts)
       res.json({ schedule })
     } catch (err) {
@@ -283,6 +315,32 @@ export function createSchedulesRouter(
         return
       }
       patch.nagIntervalMinutes = patchNag
+    }
+
+    // Phase 44 D-08: delivery set is editable via PATCH (unlike headId, which is banned D-13).
+    // Use !== undefined (not key-presence) — mirrors the D-13 headId guard rationale so
+    // in-process callers with { deliverToHeadIds: undefined } don't accidentally trip this.
+    const rawDeliverTo = bodyObj['deliverToHeadIds']
+    if (rawDeliverTo !== undefined) {
+      const existing = scheduleStore.get(id)
+      if (!existing) { res.status(404).json({ error: 'Not found' }); return }
+      if (existing.kind !== 'task') {
+        res.status(400).json({ error: 'deliverToHeadIds is only valid for task schedules' })
+        return
+      }
+      if (!Array.isArray(rawDeliverTo) || !(rawDeliverTo as unknown[]).every(x => typeof x === 'string' && (x as string).trim())) {
+        res.status(400).json({ error: 'deliverToHeadIds must be an array of non-empty head id strings' })
+        return
+      }
+      const ids = rawDeliverTo as string[]
+      const currentHeads = resolveCurrentHeads()
+      for (const hid of ids) {
+        if (!currentHeads.some(h => h.id === hid)) {
+          res.status(404).json({ error: `deliverToHeadIds: head "${hid}" not found` })
+          return
+        }
+      }
+      patch.deliverToHeadIds = [...new Set(ids)]  // empty array = cleared (owner-only after store.update)
     }
 
     const schedule = scheduleStore.update(id, patch)
