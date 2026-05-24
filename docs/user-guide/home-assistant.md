@@ -71,8 +71,12 @@ journalctl --user -u shrok | grep home-assistant
    - **Base URL**: the address HA uses to reach Shrok's `/v1` endpoint
      - Co-located (same host): `http://127.0.0.1:8888/v1` (or whatever address is reachable from HA's perspective — on `network_mode: host` this is the host's LAN IP, e.g. `http://192.168.1.100:8888/v1`)
      - Remote (Shrok behind a reverse proxy): `https://your-domain.com/v1` — configure the Apache bypass first (Section 5)
+   - **Skip Authentication**: **check this box.** The integration validates the connection at
+     setup by calling `GET /v1/models`, which Shrok does not implement — leaving it unchecked makes
+     the form fail on submit with a generic "Unexpected error". Skipping validation is correct here;
+     Shrok authenticates each turn via the Bearer key on `/v1/chat/completions`.
 
-5. Go to Settings → Voice Assistants → edit your assistant → Conversation Agent → select **Extended OpenAI Conversation**.
+5. Go to Settings → Voice Assistants → edit the pipeline **your Voice PE actually uses** → Conversation Agent → select **Extended OpenAI Conversation**. Confirm which pipeline the device uses under Settings → Devices & Services → Devices → your Voice PE. If a previous conversation integration is installed, a stale agent will silently keep handling turns and produce a misleading "could not reach …" error while never touching Shrok — disable or remove the old integration once the new agent works.
 
 6. Go to Settings → Devices & Services → Devices → click your Voice PE → copy the `assist_satellite.*` entity ID (you will need it for `haVoiceSatelliteEntityId` in Section 3).
 
@@ -84,13 +88,14 @@ When Shrok is behind a reverse proxy (Apache, nginx, etc.) that uses basic authe
 
 ### Apache
 
-Add the following block to your vhost file, **before** the catch-all basic-auth `<Location />` block:
+Add the following block to your vhost file, **after** the catch-all basic-auth `<Location />` block. Apache 2.4 applies overlapping `<Location>` sections in the order they appear, with later sections winning — so the more-specific `/v1/` exemption must come *after* the catch-all, or the catch-all re-imposes Basic auth on `/v1/`:
 
 ```apache
-# Place BEFORE the catch-all basic-auth <Location /> block in your vhost.
-# Required so Home Assistant's Bearer token reaches Shrok's /v1 router
-# instead of hitting Apache's Basic auth (which HA cannot respond to).
-# Shrok's own bearer check on /v1 handles authentication.
+# Place AFTER the catch-all basic-auth <Location /> block in your vhost.
+# Apache 2.4 merges overlapping <Location> in config order (later wins), so this
+# must follow <Location /> to take effect. Required so Home Assistant's Bearer
+# token reaches Shrok's /v1 router instead of hitting Apache's Basic auth (which
+# HA cannot respond to). Shrok's own bearer check on /v1 handles authentication.
 <Location "/v1/">
     AuthType None
     Require all granted
@@ -109,7 +114,7 @@ Confirm the bypass is working:
 curl -v https://your-domain.com/v1/chat/completions
 ```
 
-Expected: an HTTP 401 response with body `{"error":"Unauthorized"}` and **no** `WWW-Authenticate: Basic` header. This is Shrok's own authentication rejection, which means HA's Bearer token reached Shrok correctly. If you see `WWW-Authenticate: Basic realm=...` instead, the bypass block is not positioned before the catch-all, or the reload did not take effect.
+Expected: an HTTP 401 response with body `{"error":"Unauthorized"}` and **no** `WWW-Authenticate: Basic` header. This is Shrok's own authentication rejection, which means HA's Bearer token reached Shrok correctly. If you see `WWW-Authenticate: Basic realm=...` instead, the bypass block is not positioned after the catch-all, or the reload did not take effect.
 
 The `AuthType None` block is safe because Shrok's own bearer check on `/v1` is the authentication gate — Apache is simply forwarding the request.
 
@@ -134,7 +139,7 @@ Check Shrok's journal to see inbound dispatches and outbound announce calls:
 journalctl --user -u shrok | grep home-assistant
 ```
 
-Look for lines like `[home-assistant] turn dispatched` (inbound received) and `[home-assistant] announce delivered` (async result spoken).
+Look for `[home-assistant] adapter registered` at startup (the channel loaded) and `[home-assistant] announce delivered via announce` (async result spoken on the device). If a turn takes longer than the reply deadline you will also see `[home-assistant] turn lapsed or slot replaced — reply rides Phase-42 announce`, which is normal — the answer is delivered via announce.
 
 ## Troubleshooting
 
