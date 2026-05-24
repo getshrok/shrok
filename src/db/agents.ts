@@ -30,6 +30,20 @@ interface AgentRow {
   color_slot: number | null
 }
 
+/**
+ * Defensive parse of the `deliver_to_head_ids` JSON column. The migration's
+ * `NOT NULL DEFAULT '[]'` and the stringify on write keep this valid in practice,
+ * but a hand-edited or otherwise corrupt row must degrade to owner-only (empty set)
+ * rather than throw and take down the entire agent read path (#WR-02).
+ */
+function parseDeliverToHeadIds(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed.filter((v): v is string => typeof v === 'string')
+  } catch { /* corrupt column → owner-only */ }
+  return []
+}
+
 function rowToState(row: AgentRow, history: Message[]): AgentState {
   return {
     id: row.id,
@@ -46,7 +60,7 @@ function rowToState(row: AgentRow, history: Message[]): AgentState {
     ...(row.error != null ? { error: row.error } : {}),
     ...(row.parent_agent_id != null ? { parentAgentId: row.parent_agent_id } : {}),
     headId: row.head_id,
-    deliverToHeadIds: JSON.parse(row.deliver_to_head_ids) as string[],
+    deliverToHeadIds: parseDeliverToHeadIds(row.deliver_to_head_ids),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.completed_at != null ? { completedAt: row.completed_at } : {}),
