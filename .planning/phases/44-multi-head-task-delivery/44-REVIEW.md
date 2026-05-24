@@ -22,8 +22,18 @@ findings:
   warning: 4
   info: 3
   total: 9
-status: issues_found
+status: remediated
+remediation:
+  fixed: [CR-01, CR-02, WR-02]
+  deferred: [WR-01, WR-03, WR-04, IN-01, IN-02, IN-03]
 ---
+
+> **Remediation (2026-05-24, during execute-phase):**
+> - **CR-01 fixed** — `suspendAsQuestion` returns `'completed'|'suspended'`; caller exits the loop on force-completion (commit `fix(44): terminate run-loop after scheduled force-completion`). Regression locked in via a new `activeTaskCount` assertion in the integration suite (Test 4), which now runs in ~0.3s instead of ~5.3s.
+> - **CR-02 fixed** — `commitEdit` now folds delivery-set dirtiness into both "nothing changed" guards (commit `fix(44): persist delivery-set-only task edit`).
+> - **WR-02 fixed** — `rowToState` parses `deliver_to_head_ids` defensively, degrading a corrupt row to owner-only (commit `fix(44): defensively parse deliver_to_head_ids column`). This also subsumes WR-04's intent (settlement is now asserted).
+> - **Deferred (non-blocking quality follow-ups, do not affect phase must-haves):** WR-01 (strip owner from stored set — fan-out already dedups, so delivery is correct), WR-03 (single-row-read PATCH refactor), IN-01/IN-02/IN-03 (redundant client dedup, stale add-form selection on owner change, SQL comment wording).
+
 
 # Phase 44: Code Review Report
 
