@@ -188,7 +188,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 42-01-PLAN.md — D-05 token redaction: HA_ACCESS_TOKEN added to extractSecretValues() so the outbound bearer token is masked in logs
+- [x] 42-01-PLAN.md — D-05 token redaction: HA_ACCESS_TOKEN added to extractSecretValues() so the outbound bearer token is masked in logs
 - [ ] 42-02-PLAN.md — adapter announceOrStartConversation() HA REST call + config-bearing constructor + index.ts wiring + Block D mocked-fetch tests (D-01..D-04, HAAN-01/02/03)
 
 ### Phase 43: End-to-End Smoke Test & Setup Docs
@@ -226,5 +226,5 @@ Plans:
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
 | 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete    | 2026-05-24 |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 4/4 | Complete    | 2026-05-24 |
-| 42. Outbound HA REST Announce | v1.5 | 0/? | Not started | — |
+| 42. Outbound HA REST Announce | v1.5 | 1/2 | In Progress|  |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
 status: executing
-last_updated: "2026-05-24T13:16:52.650Z"
-last_activity: 2026-05-24 -- Phase 42 planning complete
+last_updated: "2026-05-24T13:24:47.151Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 50
 ---
 
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-Phase: 42
-Plan: Not started
+Phase: 42 (outbound-ha-rest-announce) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-05-24 -- Phase 42 planning complete
+Last activity: 2026-05-24
 
 ```
 [##        ] 25% — 1/4 phases complete
@@ -31,7 +31,7 @@ Last activity: 2026-05-24 -- Phase 42 planning complete
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 42 — outbound ha rest announce
+**Current focus:** Phase 42 — outbound-ha-rest-announce
 
 ## v1.5 Phase Map
 
