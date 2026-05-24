@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Multi-Head Task Delivery
 status: executing
-last_updated: "2026-05-24T17:46:24.126Z"
-last_activity: 2026-05-24 -- Phase 44 execution started
+last_updated: "2026-05-24T17:54:46.449Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 Phase: 44 (multi-head-task-delivery) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 44
-Last activity: 2026-05-24 -- Phase 44 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-24
 
 ## Project Reference
 
@@ -170,10 +170,19 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-06-adapter (Plan 40-02): adapter registered under fixed id 'home-assistant'; headId stored for Phase 41+ use; no singleton tracking per single-instance decision
 - SC3-corrected (Plan 40-02): lastActiveChannel is OUTBOUND-ONLY (router.ts:21); injectMessage alone does NOT stamp it; only outbound router.send() stamps it — pinned by the corrected-assumption guard in adapter.test.ts Block B step 4
 
+## Decisions (Phase 44)
+
+- D-AGENTS-DELIVER-JSON (Plan 44-01): deliver_to_head_ids is a JSON TEXT column on agents with DEFAULT '[]'; rowToState always JSON.parse it (no conditional spread — always present from DEFAULT); create() always JSON.stringify(options.deliverToHeadIds ?? []) — mirrors tools/capabilities pattern
+- D-SCHEDULE-ABSENT-NOT-EMPTY (Plan 44-01): deliverToHeadIds is ABSENT on legacy and reminder rows (no migrateLegacySchedule guard added); absent = owner-only behavior; adding a guard would mark files migrated and update mtime with no semantic gain (D-02)
+- D-CONDITIONAL-SPREAD-CREATE (Plan 44-01): create() uses ...(options.deliverToHeadIds?.length ? { deliverToHeadIds: options.deliverToHeadIds } : {}) — NOT ?? [] — to avoid writing empty-array key noise onto every task/reminder row
+- D-DELETE-ON-EMPTY-UPDATE (Plan 44-01): update() deletes the key when patch.deliverToHeadIds === [] rather than setting to [] or undefined — exactOptionalPropertyTypes compliance + clean JSON (key-absent = owner-only)
+- D-13-PRESERVED (Plan 44-01): headId stays excluded from SchedulePatch Pick<> union (Phase 35 D-13 ban intact); deliverToHeadIds IS in the union (editable per D-08)
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 44    | 01   | 3min     | 2     | 5     |
 | 33    | 01   | 14min    | 3     | 26    |
 | 33    | 02   | 5min     | 3     | 4     |
 | 33    | 03   | 3min     | 2     | 6     |
