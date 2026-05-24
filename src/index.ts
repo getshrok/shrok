@@ -325,7 +325,7 @@ async function main() {
         if (!isMultiHead) currentZohoCliqAdapter = z
         adapter = z
       } else if (ch.vendor === 'home-assistant') {
-        const ha = new HomeAssistantChannelAdapter(ch.id, head.id)
+        const ha = new HomeAssistantChannelAdapter(ch.id, head.id, ch)
         adapter = ha
         haAdapters.push(ha)   // Phase 41: collect for DashboardServer.homeAssistantAdapters
       } else {

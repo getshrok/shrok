@@ -3,6 +3,17 @@ import type { Attachment } from '../../types/core.js'
 import type { ChannelAdapter, InboundMessage } from '../../types/channel.js'
 import { log } from '../../logger.js'
 
+/** Timeout for the HA announce REST call.  Known HA bug: satellites can get stuck
+ *  in RESPONDING forever — never wait more than this for a playback confirmation. */
+const ANNOUNCE_TIMEOUT_MS = 30_000
+
+/** Minimal config shape the adapter needs for outbound REST calls.
+ *  Matches the home-assistant union member of ChannelConfigSchema. */
+interface HAConfig {
+  haBaseUrl: string
+  haVoiceSatelliteEntityId: string
+}
+
 /** Internal slot that holds the pending HTTP reply promise while the head is processing.
  *  Mirrors VoiceChannelAdapter.activeSocket — store resolve/reject + timer, NOT the
  *  Express Response object, so the contract is testable without a live HTTP server. */
@@ -15,10 +26,11 @@ interface PendingReply {
 export class HomeAssistantChannelAdapter implements ChannelAdapter {
   readonly id: string
   private readonly headId: string
+  private readonly config: HAConfig
   private handler: ((msg: InboundMessage) => void) | null = null
   private pendingReply: PendingReply | null = null
 
-  constructor(id: string = 'home-assistant', headId: string = 'default') {
+  constructor(id: string = 'home-assistant', headId: string = 'default', config: HAConfig = { haBaseUrl: '', haVoiceSatelliteEntityId: '' }) {
     const inboundKey = process.env['HA_INBOUND_API_KEY']
     if (!inboundKey) {
       throw new Error(
@@ -28,6 +40,7 @@ export class HomeAssistantChannelAdapter implements ChannelAdapter {
     }
     this.id = id
     this.headId = headId
+    this.config = config
   }
 
   onMessage(handler: (msg: InboundMessage) => void): void {
@@ -66,8 +79,7 @@ export class HomeAssistantChannelAdapter implements ChannelAdapter {
    *  If a pendingReply slot is open: clear the deadline timer, resolve the held
    *  HTTP promise with the reply text, and null the slot.
    *
-   *  If no slot is open (pendingReply === null): log a warn and return.  This is
-   *  the Phase 42 announce seam — Phase 42 will call HA REST here instead. */
+   *  If no slot is open (pendingReply === null): call HA REST announce. */
   async send(text: string, _attachments?: Attachment[]): Promise<void> {
     if (this.pendingReply !== null) {
       clearTimeout(this.pendingReply.timer)
@@ -75,8 +87,57 @@ export class HomeAssistantChannelAdapter implements ChannelAdapter {
       this.pendingReply = null
       return
     }
-    // pendingReply === null → log stub; Phase 42 will call HA REST announce here
-    log.warn(`[home-assistant] send() — no pendingReply slot open, dropping reply (${text.length} chars) until Phase 42`)
+    // pendingReply === null → fire announce via HA REST (D-01 / HAAN-01)
+    await this.announceOrStartConversation(text)
+  }
+
+  /** Call HA REST assist_satellite service (announce or start_conversation).
+   *
+   *  D-03 failure semantics:
+   *  - Fast errors (network, 4xx/5xx) → throw so the router retries + cross-channel falls back.
+   *  - 30s AbortController timeout → log.warn and return (do NOT throw — HA already accepted;
+   *    throwing risks double-delivery on retry + pins the activation loop).
+   *
+   *  D-05: the raw HA_ACCESS_TOKEN value is NEVER passed to log.* and NEVER embedded
+   *  in a thrown Error message.
+   */
+  private async announceOrStartConversation(text: string, wantsReply = false): Promise<void> {
+    const token = process.env['HA_ACCESS_TOKEN']
+    if (!token) {
+      throw new Error('[home-assistant] HA_ACCESS_TOKEN is required for outbound announce — set it in .env')
+    }
+    const service = wantsReply ? 'start_conversation' : 'announce'
+    const url = `${this.config.haBaseUrl}/api/services/assist_satellite/${service}`
+    const body = JSON.stringify({ entity_id: this.config.haVoiceSatelliteEntityId, message: text })
+
+    const ac = new AbortController()
+    const timeout = setTimeout(() => ac.abort(), ANNOUNCE_TIMEOUT_MS)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body,
+        signal: ac.signal,
+      })
+      if (!res.ok) {
+        throw new Error(`[home-assistant] announce failed: HTTP ${res.status}`)
+      }
+      log.info(`[home-assistant] announce delivered via ${service} (${text.length} chars)`)
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        // 30s timeout — satellite accepted call but playback confirmation never arrived (P5)
+        // Do NOT throw — HA already accepted; throwing risks double-delivery + loop pinning
+        log.warn('[home-assistant] announce timed out after 30s (satellite stuck in RESPONDING?) — continuing')
+        return
+      }
+      // Fast error (network, 4xx/5xx) — throw so router triggers cross-channel fallback (D-03)
+      throw err
+    } finally {
+      clearTimeout(timeout)
+    }
   }
 
   /** Production inbound path used by the router (Plan 03).
