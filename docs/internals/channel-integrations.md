@@ -84,6 +84,43 @@ Cliq has no push events, so the adapter polls the REST API every `pollIntervalMs
 
 The dashboard adapter is local-only. `send()` and `sendDebug()` are no-ops — the dashboard reads messages directly from the store. User input arrives via `injectMessage()`, which the HTTP layer calls after validating the session. `sendTyping()` emits a `dashboard` event with `type: 'typing'` on the internal event bus. Agent work surfaces to the dashboard via SSE (`agent_message_added` events) rather than through the adapter at all.
 
+## Home Assistant
+
+**Config fields:** `vendor: 'home-assistant'` in a `channels[]` entry; `HA_INBOUND_API_KEY` and `HA_ACCESS_TOKEN` in `.env`
+
+The Home Assistant adapter exposes a synchronous inbound HTTP endpoint (`POST /v1/chat/completions`) on the same Express server as the dashboard (port 8888 by default). This allows Home Assistant's Extended OpenAI Conversation integration (or any OpenAI-compatible client) to route voice assistant turns through Shrok.
+
+**Authentication:** The endpoint requires a `Bearer <HA_INBOUND_API_KEY>` header. This key is distinct from `HA_ACCESS_TOKEN` (used for outbound HA REST calls in Phase 42). The adapter constructor throws at boot if `HA_INBOUND_API_KEY` is missing from `.env` (fail-fast). The bearer check returns a JSON 401 with no `WWW-Authenticate` challenge — HA cannot respond to a Basic auth challenge, so the JSON form is used to produce a clear error.
+
+**Inbound message extraction:** Home Assistant's Extended OpenAI Conversation sends the full `messages[]` array on every turn. The adapter extracts only the last `role: 'user'` entry; Shrok's own ContextAssembler owns conversation history, keyed to a thread ID derived from `ha-${conversation_id}`.
+
+**Synchronous reply with deadline lapse:** The endpoint holds the HTTP connection open for up to 3 seconds while the head processes the turn. If a reply arrives within the deadline, it is returned as an OpenAI-format `chat.completions` response. If the deadline lapses (or a concurrent turn replaces the slot), the connection is released without a body — the reply rides the Phase-42 outbound announce path instead (`assist_satellite.announce`).
+
+**CSRF exclusion:** The `/v1/*` path prefix is excluded from the dashboard's CSRF/same-origin middleware so Home Assistant's cross-origin POST is not rejected. The `/v1` router enforces its own bearer authentication, so excluding CSRF does not create an unauthenticated mutation path (T-41-13).
+
+**Single-instance design:** Phase 40 D-04 mandates one HA channel per process. The adapter array in `src/index.ts` supports multiple instances at the type level, but the Phase-40 constraint means only one HA channel will be configured in practice.
+
+### Apache /v1 auth-bypass configuration (RECORDED, NOT APPLIED — Phase 43)
+
+> **Important:** The Apache block below is captured here for documentation purposes (HADOC-01). It is NOT applied to the live vhost in Phase 41. The live vhost edit, configuration test, and `curl -v` verification are deferred to Phase 43.
+
+Apache's `gigaashley-le-ssl.conf` has a catch-all basic-auth block that covers all paths. Home Assistant presents a `Bearer` token, not `Basic` credentials — if that token reaches Apache's basic-auth gate first, Apache returns a `401 Unauthorized` with `WWW-Authenticate: Basic realm=...`. HA cannot respond to a Basic challenge and the request fails before Shrok sees it.
+
+The fix is to add a `<Location "/v1/">` block with `AuthType None` and `Require all granted` **before** the catch-all basic-auth block in the vhost file. Once in place, HA's Bearer token passes through Apache unmodified and reaches Shrok's `/v1` router, which validates it independently.
+
+```apache
+# Place BEFORE the catch-all basic-auth <Location /> block in gigaashley-le-ssl.conf.
+# Required so Home Assistant's Bearer token reaches Shrok's /v1 router instead of
+# hitting Apache's Basic 401 (which HA cannot respond to).
+# Applied and verified in Phase 43 — do NOT add this to the live vhost during Phase 41.
+<Location "/v1/">
+    AuthType None
+    Require all granted
+</Location>
+```
+
+`HA_INBOUND_API_KEY` is the bearer token value that HA will present. It must be set in `.env` and configured in the Home Assistant integration as the API key.
+
 ## Related docs
 
 - [architecture.md](./architecture.md) — how adapters sit in the full message flow

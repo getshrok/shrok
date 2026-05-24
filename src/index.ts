@@ -232,6 +232,9 @@ async function main() {
   // them into a Map<headId, adapter> that the dashboard's messages router
   // uses to look up the right adapter for /send.
   const dashboardAdapters = new Map<string, DashboardChannelAdapter>()
+  // Phase 41: collect Home Assistant adapters (one per configured HA channel)
+  // into an array typed to match DashboardServerOptions.homeAssistantAdapters?
+  const haAdapters: HomeAssistantChannelAdapter[] = []
 
   for (const head of resolvedHeads) {
     const headRouter = new ChannelRouterImpl()
@@ -324,6 +327,7 @@ async function main() {
       } else if (ch.vendor === 'home-assistant') {
         const ha = new HomeAssistantChannelAdapter(ch.id, head.id)
         adapter = ha
+        haAdapters.push(ha)   // Phase 41: collect for DashboardServer.homeAssistantAdapters
       } else {
         // Exhaustiveness guard — discriminated union covers all six vendors
         const _exhaustive: never = ch
@@ -438,6 +442,7 @@ async function main() {
     db,
     evalResultsDir: path.join(workspacePath, 'eval-results'),
     dashboardAdapters,
+    homeAssistantAdapters: haAdapters,   // Phase 41: wire HA adapters so /v1 router mounts
     schedules,
     mcpRegistry,
     agentRunner,
