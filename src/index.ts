@@ -81,6 +81,7 @@ import type { ChannelAdapter, InboundMessage } from './types/channel.js'
 import { fileURLToPath } from 'node:url'
 import { setStewardWorkspaceDir } from './head/steward.js'
 import { buildPrefixedText } from './head/sender-prefix.js'
+import { transcribeInboundAudio } from './head/transcribe-attachments.js'
 import { setProactiveWorkspaceDir } from './scheduler/proactive.js'
 import { setMemoryPromptsWorkspaceDir } from './memory/prompts.js'
 import { readAssistantName } from './config-file.js'
@@ -212,7 +213,7 @@ async function main() {
     channelRouter: ChannelRouterImpl
     system: ReturnType<typeof buildSystem>
     channelAdapters: ChannelAdapter[]
-    routeMessage: (msg: InboundMessage) => void
+    routeMessage: (msg: InboundMessage) => Promise<void>
   }
   const headSystems: HeadSystem[] = []
 
@@ -235,6 +236,11 @@ async function main() {
   // Phase 41: collect Home Assistant adapters (one per configured HA channel)
   // into an array typed to match DashboardServerOptions.homeAssistantAdapters?
   const haAdapters: HomeAssistantChannelAdapter[] = []
+
+  // Phase me4: shared OpenAI client for inbound audio transcription at the headRouteMessage
+  // seam. Constructed once (outside the per-head loop) — all heads share the same API key.
+  // null when OPENAI_API_KEY is not set → transcribeInboundAudio returns msg unchanged.
+  const ingestionOpenAI = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null
 
   for (const head of resolvedHeads) {
     const headRouter = new ChannelRouterImpl()
@@ -273,18 +279,22 @@ async function main() {
       }, 50, head.id)
     }
 
-    // Per-head routeMessage closure — captures head.id + this head's loop + queue
-    const headRouteMessage = (msg: InboundMessage): void => {
+    // Per-head routeMessage closure — captures head.id + this head's loop + queue.
+    // Made async (Phase me4): awaits transcribeInboundAudio before enqueue so the head
+    // sees transcript text on the first turn. Callers ignore the return value (fire-and-forget
+    // is safe — confirmed across all adapter .onMessage usages).
+    const headRouteMessage = async (msg: InboundMessage): Promise<void> => {
       if (msg.text.trim().startsWith('~')) {
         headLoop.handleCommand(msg.text.trim(), msg.channel).catch(err => {
           log.error(`[routeMessage:${head.id}] handleCommand rejected: ${err instanceof Error ? err.message : String(err)}`)
         })
         return
       }
+      const routed = await transcribeInboundAudio(msg, ingestionOpenAI)
       headQueue.enqueue(
-        { type: 'user_message', id: generateId('qe'), channel: msg.channel,
-          text: buildPrefixedText(msg.text, msg.senderName),
-          ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
+        { type: 'user_message', id: generateId('qe'), channel: routed.channel,
+          text: buildPrefixedText(routed.text, msg.senderName),
+          ...(routed.attachments?.length ? { attachments: routed.attachments } : {}),
           createdAt: new Date().toISOString() },
         100,
         head.id,
