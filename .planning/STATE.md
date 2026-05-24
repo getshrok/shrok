@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
 status: executing
-last_updated: "2026-05-24T15:44:43.682Z"
-last_activity: 2026-05-24 -- Phase 43 execution started
+last_updated: "2026-05-24T15:49:05.593Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 11
-  completed_plans: 8
-  percent: 73
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -18,9 +18,9 @@ progress:
 ## Current Position
 
 Phase: 43 (end-to-end-smoke-test-setup-docs) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 43
-Last activity: 2026-05-24 -- Phase 43 execution started
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-05-24
 
 ```
 [##        ] 25% — 1/4 phases complete

@@ -33,7 +33,7 @@ Shrok speaks on the device when it has something to say outside a live turn — 
 
 ### Setup Documentation (HADOC)
 
-- [ ] **HADOC-01**: Setup docs cover the Home Assistant side end-to-end — install Extended OpenAI Conversation (HACS), point its base URL at Shrok and set the API key, select Shrok as the VPE's conversation agent, add the satellite `entity_id`, and apply the Apache `/v1` auth-bypass — so a self-hosting user can wire it up from scratch
+- [x] **HADOC-01**: Setup docs cover the Home Assistant side end-to-end — install Extended OpenAI Conversation (HACS), point its base URL at Shrok and set the API key, select Shrok as the VPE's conversation agent, add the satellite `entity_id`, and apply the Apache `/v1` auth-bypass — so a self-hosting user can wire it up from scratch
 
 ## Future Requirements
 
@@ -78,7 +78,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | HAAN-01 | Phase 42 | Complete |
 | HAAN-02 | Phase 42 | Complete |
 | HAAN-03 | Phase 42 | Complete |
-| HADOC-01 | Phase 43 | Pending |
+| HADOC-01 | Phase 43 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 12 total

@@ -211,7 +211,7 @@ Plans:
 Plans:
 **Wave 1** *(parallel — docs track and live-test track have no file overlap)*
 
-- [ ] 43-01-PLAN.md — HADOC-01 operator setup guide (`docs/user-guide/home-assistant.md`) + cross-link from `channel-integrations.md` *(autonomous)*
+- [x] 43-01-PLAN.md — HADOC-01 operator setup guide (`docs/user-guide/home-assistant.md`) + cross-link from `channel-integrations.md` *(autonomous)*
 - [ ] 43-02-PLAN.md — live VPE smoke test: rig-up + Scenarios A–D (SC1) + Apache `/v1` apply→curl→revert (SC2) + SC4 ledger into `43-VERIFICATION.md` *(operator checkpoints — not autonomous)*
 
 **Wave 2** *(blocked on 43-02; conditional)*
@@ -239,4 +239,4 @@ Plans:
 | 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete    | 2026-05-24 |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 4/4 | Complete    | 2026-05-24 |
 | 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete    | 2026-05-24 |
-| 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/3 | Not started | — |
+| 43. End-to-End Smoke Test & Setup Docs | v1.5 | 1/3 | In Progress|  |
