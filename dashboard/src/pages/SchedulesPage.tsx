@@ -136,15 +136,20 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     if (!trimmed) { setEditing(false); return }
     const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
     const agentContextUnchanged = editAgentContext === (schedule.agentContext ?? '')
+    // A delivery-set-only edit must still PATCH — otherwise the modal closes and the
+    // change is silently lost (#CR-02; ReminderRow guards the same way for ack/nag).
+    const deliverUnchanged =
+      JSON.stringify([...editDeliverToHeadIds].sort()) ===
+      JSON.stringify([...(schedule.deliverToHeadIds ?? [])].sort())
     if (schedule.cron !== null) {
-      if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
+      if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged && deliverUnchanged) { setEditing(false); return }
       updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
       return
     }
     const d = new Date(trimmed)
     if (Number.isNaN(d.getTime())) return
     const runAtUnchanged = d.toISOString() === schedule.runAt
-    if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
+    if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged && deliverUnchanged) { setEditing(false); return }
     updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
   }
 
