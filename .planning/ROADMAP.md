@@ -113,7 +113,7 @@ A new `home-assistant` channel adapter that bridges Shrok's async, delegating he
 
 - [x] **Phase 40: Config & Adapter Skeleton** — `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live (completed 2026-05-24)
 - [x] **Phase 41: Inbound Synchronous Reply Endpoint** — `/v1/chat/completions` on Express, bearer auth, CSRF exclusion, pendingReply promise slot, <3s ACK, Apache auth bypass (completed 2026-05-24)
-- [ ] **Phase 42: Outbound HA REST Announce** — `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget with 30s timeout, invoked from `adapter.send()` when no live turn is open
+- [x] **Phase 42: Outbound HA REST Announce** — `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget with 30s timeout, invoked from `adapter.send()` when no live turn is open (completed 2026-05-24)
 - [ ] **Phase 43: End-to-End Smoke Test & Setup Docs** — live VPE validation, resolves all open research questions, HADOC-01 setup guide
 
 ## Phase Details
@@ -189,7 +189,7 @@ Plans:
 **Wave 1**
 
 - [x] 42-01-PLAN.md — D-05 token redaction: HA_ACCESS_TOKEN added to extractSecretValues() so the outbound bearer token is masked in logs
-- [ ] 42-02-PLAN.md — adapter announceOrStartConversation() HA REST call + config-bearing constructor + index.ts wiring + Block D mocked-fetch tests (D-01..D-04, HAAN-01/02/03)
+- [x] 42-02-PLAN.md — adapter announceOrStartConversation() HA REST call + config-bearing constructor + index.ts wiring + Block D mocked-fetch tests (D-01..D-04, HAAN-01/02/03)
 
 ### Phase 43: End-to-End Smoke Test & Setup Docs
 
@@ -226,5 +226,5 @@ Plans:
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
 | 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete    | 2026-05-24 |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 4/4 | Complete    | 2026-05-24 |
-| 42. Outbound HA REST Announce | v1.5 | 1/2 | In Progress|  |
+| 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete   | 2026-05-24 |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |
