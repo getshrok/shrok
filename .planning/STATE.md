@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Unmissable Reminders
-status: milestone_complete
-last_updated: 2026-05-24T06:17:04.898Z
+status: milestone_archived
+last_updated: 2026-05-24T00:00:00.000Z
 last_activity: 2026-05-24
 progress:
   total_phases: 3
@@ -11,27 +11,27 @@ progress:
   total_plans: 9
   completed_plans: 39
   percent: 100
-stopped_at: Milestone complete (Phase 39 was final phase)
+stopped_at: v1.4 formally archived (+ retroactive v1.3 archive); planning v1.5 Home Assistant Voice
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 39
+Phase: 39 (v1.4 final — archived)
 Plan: Not started
-Status: Milestone complete
+Status: v1.4 formally archived; planning v1.5
 Last activity: 2026-05-24
 Resume file: None
 
-Progress: [██████████] 100%
+Progress: [██████████] 100% (v1.4 closed)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-23)
+See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Milestone complete
+**Current focus:** Planning v1.5 — Home Assistant Voice integration (`home-assistant` channel adapter bridging the async head to HA's Assist pipeline; unprompted `assist_satellite.announce` for async results). Run `/gsd:new-milestone` to define requirements + roadmap.
 
 ## Accumulated Context
 
