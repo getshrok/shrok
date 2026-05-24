@@ -101,6 +101,12 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   const [editValue, setEditValue] = useState('')
   const [editConditions, setEditConditions] = useState('')
   const [editAgentContext, setEditAgentContext] = useState('')
+  const [editDeliverToHeadIds, setEditDeliverToHeadIds] = useState<string[]>([])
+
+  const headsQuery = useQuery({
+    queryKey: ['heads'],
+    queryFn: api.heads.list,
+  })
 
   const toggleMutation = useMutation({
     mutationFn: (enabled: boolean) => api.schedules.update(schedule.id, { enabled }),
@@ -113,7 +119,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string }) => api.schedules.update(schedule.id, update),
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string; deliverToHeadIds?: string[] }) => api.schedules.update(schedule.id, update),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
   })
 
@@ -121,6 +127,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     setEditValue(schedule.cron ?? schedule.runAt ?? '')
     setEditConditions(schedule.conditions ?? '')
     setEditAgentContext(schedule.agentContext ?? '')
+    setEditDeliverToHeadIds(schedule.deliverToHeadIds ?? [])
     setEditing(true)
   }
 
@@ -131,14 +138,14 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     const agentContextUnchanged = editAgentContext === (schedule.agentContext ?? '')
     if (schedule.cron !== null) {
       if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
-      updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext })
+      updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
       return
     }
     const d = new Date(trimmed)
     if (Number.isNaN(d.getTime())) return
     const runAtUnchanged = d.toISOString() === schedule.runAt
     if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged) { setEditing(false); return }
-    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: editAgentContext })
+    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
   }
 
   const scheduleLabel = schedule.cron
@@ -245,6 +252,21 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                     className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
                   />
                 </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Also deliver to</label>
+                  <select
+                    multiple
+                    value={editDeliverToHeadIds}
+                    onChange={e => setEditDeliverToHeadIds(Array.from(e.target.selectedOptions, o => o.value))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+                    size={Math.min(4, Math.max(2, (headsQuery.data?.heads ?? []).filter(h => h.id !== schedule.headId).length))}
+                  >
+                    {(headsQuery.data?.heads ?? []).filter(h => h.id !== schedule.headId).map(h => (
+                      <option key={h.id} value={h.id}>{h.id}</option>
+                    ))}
+                  </select>
+                  <div className="text-[11px] text-zinc-500 mt-0.5">Hold Ctrl/Cmd to select multiple. Owner head always included.</div>
+                </div>
                 {updateMutation.isError && (
                   <div className="text-xs text-red-400">{(updateMutation.error as Error).message}</div>
                 )}
@@ -289,6 +311,7 @@ function AddScheduleForm({
   const qc = useQueryClient()
   const [target, setTarget] = useState<string>('')
   const [headId, setHeadId] = useState<string>('')
+  const [deliverToHeadIds, setDeliverToHeadIds] = useState<string[]>([])
   const [type, setType] = useState<'repeating' | 'once'>('repeating')
   const [cron, setCron] = useState('*/30 * * * *')
   const [runAt, setRunAt] = useState('')
@@ -335,6 +358,7 @@ function AddScheduleForm({
         ...(conditions ? { conditions } : {}),
         ...(agentContext ? { agentContext } : {}),
         ...(type === 'repeating' && startAt ? { startAt: new Date(startAt).toISOString() } : {}),
+        ...(deliverToHeadIds.length ? { deliverToHeadIds } : {}),
       })
     },
     onSuccess: () => {
@@ -366,6 +390,22 @@ function AddScheduleForm({
                 ))}
           </select>
         </div>
+        {(headsQuery.data?.heads ?? []).filter(h => h.id !== headId).length > 0 && (
+          <div className="flex-1 min-w-40">
+            <label className="text-xs text-zinc-500 mb-1 block">Also deliver to</label>
+            <select
+              multiple
+              value={deliverToHeadIds}
+              onChange={e => setDeliverToHeadIds(Array.from(e.target.selectedOptions, o => o.value))}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+              size={Math.min(4, Math.max(2, (headsQuery.data?.heads ?? []).filter(h => h.id !== headId).length))}
+            >
+              {(headsQuery.data?.heads ?? []).filter(h => h.id !== headId).map(h => (
+                <option key={h.id} value={h.id}>{h.id}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex-1 min-w-40">
           <label className="text-xs text-zinc-500 mb-1 block">Target</label>
           <select
