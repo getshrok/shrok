@@ -67,23 +67,24 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HACV-01 | TBD | Pending |
-| HACV-02 | TBD | Pending |
-| HACV-03 | TBD | Pending |
-| HACV-04 | TBD | Pending |
-| HACV-05 | TBD | Pending |
-| HACV-06 | TBD | Pending |
-| HAAN-01 | TBD | Pending |
-| HAAN-02 | TBD | Pending |
-| HAAN-03 | TBD | Pending |
-| HACF-01 | TBD | Pending |
-| HACF-02 | TBD | Pending |
-| HADOC-01 | TBD | Pending |
+| HACF-01 | Phase 40 | Pending |
+| HACF-02 | Phase 40 | Pending |
+| HACV-01 | Phase 41 | Pending |
+| HACV-02 | Phase 41 | Pending |
+| HACV-03 | Phase 41 | Pending |
+| HACV-04 | Phase 41 | Pending |
+| HACV-05 | Phase 41 | Pending |
+| HACV-06 | Phase 41 | Pending |
+| HAAN-01 | Phase 42 | Pending |
+| HAAN-02 | Phase 42 | Pending |
+| HAAN-03 | Phase 42 | Pending |
+| HADOC-01 | Phase 43 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 12 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 12
+- Mapped to phases: 12 (Phases 40–43)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-24 — grounded in this session's investigation + .planning/research/ ecosystem study*
+*Traceability filled: 2026-05-24 — roadmap created*

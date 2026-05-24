@@ -7,7 +7,7 @@
 - ✅ **v1.2 Voice Mode & Feature Enhancements** — Phases 19–28 (shipped 2026-05-12)
 - ✅ **v1.3 Multi-Head Support** — Phases 29–36 (shipped 2026-05-14)
 - ✅ **v1.4 Unmissable Reminders** — Phases 37–39 (shipped 2026-05-24)
-- 📋 **v1.5 (next)** — Home Assistant Voice integration *(scoping via `/gsd:new-milestone`)*
+- 📋 **v1.5 Home Assistant Voice** — Phases 40–43
 
 Full per-phase detail for shipped milestones lives in `.planning/milestones/` and `.planning/MILESTONES.md`.
 
@@ -97,9 +97,63 @@ Opt-in acknowledgment-required reminders that re-nag on a configurable interval 
 
 </details>
 
-### 📋 v1.5 Home Assistant Voice (planned)
+### 📋 v1.5 Home Assistant Voice (Phases 40–43)
 
-Scoping in progress via `/gsd:new-milestone`. Working thesis: a new `home-assistant` channel adapter that bridges Shrok's async, delegating head to Home Assistant's Assist pipeline — synchronous in-turn reply for the live voice turn, and unprompted `assist_satellite.announce` callbacks for async sub-agent results and reminders.
+A new `home-assistant` channel adapter that bridges Shrok's async, delegating head to Home Assistant's Assist pipeline — synchronous in-turn acknowledgment reply for the live voice turn (<3s, hard 5s device timeout budget), and unprompted `assist_satellite.announce` / `start_conversation` callbacks for async sub-agent results, reminders, and scheduled fires.
+
+- [ ] **Phase 40: Config & Adapter Skeleton** — `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live
+- [ ] **Phase 41: Inbound Synchronous Reply Endpoint** — `/v1/chat/completions` on Express, bearer auth, CSRF exclusion, pendingReply promise slot, <3s ACK, Apache auth bypass
+- [ ] **Phase 42: Outbound HA REST Announce** — `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget with 30s timeout, invoked from `adapter.send()` when no live turn is open
+- [ ] **Phase 43: End-to-End Smoke Test & Setup Docs** — live VPE validation, resolves all open research questions, HADOC-01 setup guide
+
+## Phase Details
+
+### Phase 40: Config & Adapter Skeleton
+**Goal**: The `home-assistant` channel vendor is wired into Shrok's config and adapter registry — operators can configure the adapter and it registers at boot with no HTTP or HA REST calls yet
+**Depends on**: Nothing (first v1.5 phase)
+**Requirements**: HACF-01, HACF-02
+**Success Criteria** (what must be TRUE):
+  1. A `{ vendor: 'home-assistant', haBaseUrl, haVoiceSatelliteEntityId }` channel config block parses without error and `haAccessToken` in `.env` is picked up via `ENV_KEY_ALLOWLIST`
+  2. An invalid entity ID (wrong domain prefix) or missing required field causes a clear startup error rather than a silent failure at first use
+  3. `HomeAssistantChannelAdapter` instantiates, registers as a named adapter in the head's channel map, and sets `lastActiveChannel` on receipt of a manually-injected test message — the full routing path is exercised without any HTTP
+  4. Existing single-head deployments with no `home-assistant` channel are unaffected — zero-config backward compatibility preserved
+**Plans**: TBD
+
+### Phase 41: Inbound Synchronous Reply Endpoint
+**Goal**: Home Assistant can send a conversation turn to Shrok via `/v1/chat/completions` and receive an OpenAI-compatible acknowledgment reply within the 5-second device timeout — the held-connection contract is fully established
+**Depends on**: Phase 40
+**Requirements**: HACV-01, HACV-02, HACV-03, HACV-04, HACV-05, HACV-06
+**Success Criteria** (what must be TRUE):
+  1. A `POST /v1/chat/completions` request with a valid bearer token enqueues a `user_message` on the `home-assistant` channel extracting only the last user turn (HA's full `messages[]` history is discarded)
+  2. The endpoint returns a well-formed OpenAI Chat Completions JSON response (`choices[0].message.content` non-empty, `finish_reason: "stop"`, `conversation_id` echoed) within 3 seconds — regardless of how long the head's actual processing takes
+  3. A request with a missing or invalid bearer token receives a JSON 401 from Shrok (not an Apache `WWW-Authenticate: Basic` 401) — confirmed via `curl -v` against `https://jarvis.gigaashley.click/v1/chat/completions`
+  4. If the HTTP client closes the connection before the reply is sent, the pending promise slot is cleaned up and no dangling timer or memory leak remains
+  5. The CSRF / same-origin middleware in `src/dashboard/server.ts` is explicitly excluded for the `/v1/*` path so HA's cross-origin requests are not rejected
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 42: Outbound HA REST Announce
+**Goal**: Shrok speaks on the configured Home Assistant satellite device for background events — when `home-assistant` is the active channel and no live turn is open, async results are delivered via `assist_satellite.announce` or `start_conversation`
+**Depends on**: Phase 41
+**Requirements**: HAAN-01, HAAN-02, HAAN-03
+**Success Criteria** (what must be TRUE):
+  1. When a sub-agent completes and `lastActiveChannel === 'home-assistant'` with no pending live turn, the result text is sent to the configured satellite via `assist_satellite.announce` — the device speaks it unprompted
+  2. When a reminder or scheduled fire targets the `home-assistant` channel and no live turn is open, it is likewise spoken on the satellite via the same announce mechanism
+  3. An announce call that takes longer than 30 seconds (stuck-in-RESPONDING satellite bug) times out and is logged — the activation loop is unblocked and no retry loop is started
+  4. The head can choose `assist_satellite.start_conversation` instead of `announce` (one parameterized mechanism), causing the satellite to keep its mic open for a follow-up reply that arrives through the `/v1/chat/completions` endpoint
+**Plans**: TBD
+
+### Phase 43: End-to-End Smoke Test & Setup Docs
+**Goal**: The full two-leg voice flow is validated against a live VPE device — user speaks, Shrok acknowledges synchronously and delivers the real answer via announce — and a self-hosting operator can wire up the complete HA side from the setup docs
+**Depends on**: Phase 42
+**Requirements**: HADOC-01
+**Research flag**: HIGH — live VPE smoke test required; several open questions (exact timeout headroom under real network conditions, `continue_conversation` pipeline behavior, `start_conversation` end-to-end round-trip, `device_id` availability, correct satellite entity slug) can only be resolved against real hardware
+**Success Criteria** (what must be TRUE):
+  1. A user speaks to the VPE device, Shrok acknowledges within the 5s timeout ("on it"), and the actual answer is spoken on the device unprompted via announce — the full async two-leg flow confirmed on real hardware
+  2. Apache `/v1` auth bypass is verified in the production vhost — `curl` from the HA server's network perspective shows Shrok's JSON 401, not Apache's `WWW-Authenticate: Basic` 401
+  3. A self-hosting operator following HADOC-01 can install Extended OpenAI Conversation (HACS), point its base URL at Shrok with the API key, select Shrok as the VPE conversation agent, and wire up the satellite entity — all from the docs with no guesswork
+  4. All live-VPE open questions from the research SUMMARY are resolved and the outcomes are recorded (conversation_id stitching, start_conversation round-trip behavior, exact safe reply window)
+**Plans**: TBD
 
 ## Progress
 
@@ -119,3 +173,7 @@ Scoping in progress via `/gsd:new-milestone`. Working thesis: a new `home-assist
 | 37. Schema & Tool Params | v1.4 | 2/2 | Complete | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | v1.4 | 4/4 | Complete | 2026-05-23 |
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
+| 40. Config & Adapter Skeleton | v1.5 | 0/? | Not started | — |
+| 41. Inbound Synchronous Reply Endpoint | v1.5 | 0/? | Not started | — |
+| 42. Outbound HA REST Announce | v1.5 | 0/? | Not started | — |
+| 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |

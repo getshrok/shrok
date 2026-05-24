@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
 status: planning
-last_updated: "2026-05-24T08:18:50.433Z"
+last_updated: "2026-05-24"
 last_activity: 2026-05-24
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,30 @@ progress:
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 40 — Config & Adapter Skeleton (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-24 — Milestone v1.5 started
+Status: Roadmap created; ready to plan Phase 40
+Last activity: 2026-05-24 — v1.5 roadmap created (Phases 40–43)
+
+```
+[          ] 0% — 0/4 phases complete
+```
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Planning v1.5 — Home Assistant Voice integration (`home-assistant` channel adapter bridging the async head to HA's Assist pipeline; unprompted `assist_satellite.announce` for async results). Run `/gsd:new-milestone` to define requirements + roadmap.
+**Current focus:** v1.5 Home Assistant Voice — `home-assistant` channel adapter bridging Shrok's async head to HA's Assist pipeline. Synchronous <3s ACK reply for the live voice turn; unprompted `assist_satellite.announce` / `start_conversation` for async results. Four phases (40–43).
+
+## v1.5 Phase Map
+
+| Phase | Goal | Requirements | Status |
+|-------|------|--------------|--------|
+| 40. Config & Adapter Skeleton | `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live | HACF-01, HACF-02 | Not started |
+| 41. Inbound Synchronous Reply Endpoint | `/v1/chat/completions` on Express, bearer auth, CSRF exclusion, pendingReply slot, <3s ACK, Apache auth bypass | HACV-01–06 | Not started |
+| 42. Outbound HA REST Announce | `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget 30s timeout, from `adapter.send()` when no live turn | HAAN-01–03 | Not started |
+| 43. End-to-End Smoke Test & Setup Docs | Live VPE validation, open research questions resolved, HADOC-01 setup guide | HADOC-01 | Not started |
 
 ## Accumulated Context
 
@@ -41,6 +54,18 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - Phase 35 added: Per-head scheduling — schedules and reminders are currently single-shared (one ScheduleStore at {workspacePath}/schedules/, Schedule type has no headId field, ScheduleEvaluator enqueues triggers with default headId). Non-default heads can never receive their own schedule fires. Closes the scheduling counterpart to Phase 34's agent-lifecycle work
 - Phase 36 added: Inbound sender attribution — InboundMessage.senderName field, normalizeSenderName + buildPrefixedText helpers, central prefix construction at headRouteMessage choke point, generalized D-11 stripper, 5 adapters populate senderName
 - Phases 37–39 added: v1.4 Unmissable Reminders — schema + tool params (Phase 37), nag mechanism + ack semantics (Phase 38), dashboard UI (Phase 39). Backlog 999.1 promoted into Phase 39 (SCHED-03).
+- Phases 40–43 added: v1.5 Home Assistant Voice — config + adapter skeleton (Phase 40), inbound sync reply endpoint (Phase 41), outbound HA REST announce (Phase 42), e2e smoke test + setup docs (Phase 43).
+
+### Key Architecture Decisions (v1.5)
+
+- The ESPHome nabu HTTP client timeout of 5,000 ms is the headline constraint — the synchronous reply must be pre-computed and sent before the `user_message` is even enqueued. Never await head processing before responding.
+- `pendingReply` promise slot in the adapter mirrors `VoiceChannelAdapter.activeSocket` — stores resolve/reject functions (not the Express Response object) for testability.
+- Apache `/v1/*` must have `AuthType None Require all granted` before the vhost's catch-all basic-auth block — HA's Bearer token otherwise hits a 401 it cannot distinguish from Shrok's own auth rejection.
+- HA's ChatLog sends the full `messages[]` array on every turn — adapter extracts only the last user turn; Shrok's own ContextAssembler owns history via a thread ID keyed to `ha-${conversation_id}`.
+- `haAccessToken` in `.env` via `ENV_KEY_ALLOWLIST`, never in `config.json` — long-lived HA tokens inherit full user permission level.
+- `assist_satellite.announce` fire-and-forget with 30s timeout (`Promise.race`) — known HA bug: satellites regularly get stuck in RESPONDING forever; never retry in a loop.
+- `/v1/chat/completions` mounted on the existing dashboard Express server (port 8888), not a new port — Apache already proxies `:8888`, so all paths register automatically.
+- `announce` vs `start_conversation` is one parameterized mechanism in `adapter.send()` — the head's intent determines which HA service call is made when no live turn is open.
 
 ### Key Architecture Decisions (v1.3)
 
