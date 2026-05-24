@@ -23,6 +23,7 @@ interface AgentRow {
   error: string | null
   parent_agent_id: string | null
   head_id: string
+  deliver_to_head_ids: string
   created_at: string
   updated_at: string
   completed_at: string | null
@@ -45,6 +46,7 @@ function rowToState(row: AgentRow, history: Message[]): AgentState {
     ...(row.error != null ? { error: row.error } : {}),
     ...(row.parent_agent_id != null ? { parentAgentId: row.parent_agent_id } : {}),
     headId: row.head_id,
+    deliverToHeadIds: JSON.parse(row.deliver_to_head_ids) as string[],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.completed_at != null ? { completedAt: row.completed_at } : {}),
@@ -76,9 +78,9 @@ export class AgentStore {
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
     this.stmtCreate = db.prepare(`
       INSERT INTO agents
-        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, head_id, color_slot, created_at, updated_at)
+        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, head_id, deliver_to_head_ids, color_slot, created_at, updated_at)
       VALUES
-        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @head_id, @color_slot, datetime('now'), datetime('now'))
+        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @head_id, @deliver_to_head_ids, @color_slot, datetime('now'), datetime('now'))
     `)
 
     this.stmtListActiveSlots = db.prepare(
@@ -192,6 +194,7 @@ export class AgentStore {
       trigger: options.trigger,
       parent_agent_id: options.parentAgentId ?? null,
       head_id: options.headId,
+      deliver_to_head_ids: JSON.stringify(options.deliverToHeadIds ?? []),
       color_slot: colorSlot,
     })
     return this.get(id)!

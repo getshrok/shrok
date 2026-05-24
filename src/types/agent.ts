@@ -43,6 +43,9 @@ export interface AgentState {
   trigger: 'manual' | 'scheduled' | 'ad_hoc'
   /** Head this agent belongs to (Phase 34). Carried through the agents.head_id column. */
   headId: string
+  /** Additional heads to deliver task completion to (Phase 44). Only populated on top-level
+   *  scheduled agents. Empty array = owner-only (today's single-head behavior). */
+  deliverToHeadIds: string[]
   workStart: number              // index into history[] where agent's own work begins (after prepended head history)
   history: Message[]             // full message history; populated when suspended/completed
   pendingQuestion?: string
@@ -70,6 +73,9 @@ export interface SpawnOptions {
   headId: string
   skillName?: string             // if spawned from a skill, associates the agent with that skill for tool-surface derivation
   parentAgentId?: string
+  /** Optional delivery set (Phase 44). Only meaningful for top-level scheduled agents.
+   *  Sub-agents and manual spawns leave this absent (treated as empty = owner-only). */
+  deliverToHeadIds?: string[]
   /** Head conversation history to prepend as context. Agent sees what led to the task. */
   headHistory?: Message[]
   /** Attachments from the triggering message to include in the agent's initial context. */
