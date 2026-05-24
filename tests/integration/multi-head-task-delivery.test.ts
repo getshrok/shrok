@@ -364,6 +364,12 @@ describe('Multi-Head Task Delivery (Phase 44)', () => {
     await waitForStatus(agentStore, agentId, 'completed', 5000)
     expect(agentStore.get(agentId)?.status).toBe('completed')
 
+    // #CR-01 regression: the run-loop must TERMINATE after force-completion, not
+    // re-enter as suspended and spin on waitForInbox forever. A settled task removes
+    // itself from the runner via .finally cleanup; a lingering count here means the
+    // loop leaked (status alone is insufficient — it is 'completed' either way).
+    expect(runner.activeTaskCount).toBe(0)
+
     // An agent_completed event must exist for this agentId
     const completedRow = await waitForQueueEvent(db, 'agent_completed', agentId, 3000)
     expect(completedRow).toBeDefined()

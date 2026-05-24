@@ -340,6 +340,15 @@ export class LocalAgentRunner implements AgentRunner {
     ])
   }
 
+  /**
+   * Number of agent run-loops still in flight. A settled task removes itself via
+   * the `.finally` cleanup, so a lingering count after `awaitAll` resolves means a
+   * loop never terminated (#CR-01 regression guard).
+   */
+  get activeTaskCount(): number {
+    return this.tasks.size
+  }
+
   // ─── Tool surface assembly ───────────────────────────────────────────────────
 
   /** Resolve a skill or task by name.
@@ -949,7 +958,12 @@ export class LocalAgentRunner implements AgentRunner {
         )
 
         if (stewardResult.type === 'question') {
-          this.suspendAsQuestion(agentId, output, options, history)
+          const outcome = this.suspendAsQuestion(agentId, output, options, history)
+          // D-06: a scheduled agent is force-completed (no human attached). The loop
+          // MUST terminate — re-entering with isSuspended would spin on waitForInbox
+          // forever (a completed agent whose inbox no human will ever fill), leaking
+          // the task promise and its emitter/abortController/timer (#CR-01).
+          if (outcome === 'completed') return
           isSuspended = true
           continue
         }
@@ -996,11 +1010,12 @@ export class LocalAgentRunner implements AgentRunner {
 
   private suspendAsQuestion(
     agentId: string, question: string, options: SpawnOptions, history: Message[],
-  ): void {
+  ): 'completed' | 'suspended' {
     // D-06: scheduled agents have no human attached — force completion instead of suspension.
+    // Returns 'completed' so the caller exits the loop rather than re-entering as suspended.
     if (options.trigger === 'scheduled') {
       this.completeAgent(agentId, question, options, history)
-      return
+      return 'completed'
     }
     this.agentStore.suspend(agentId, question)
     if (options.parentAgentId) {
@@ -1013,6 +1028,7 @@ export class LocalAgentRunner implements AgentRunner {
         agentId, question, createdAt: now(),
       }, PRIORITY.AGENT_QUESTION, this.headId)
     }
+    return 'suspended'
   }
 
   // ─── Tool executor ───────────────────────────────────────────────────────────
