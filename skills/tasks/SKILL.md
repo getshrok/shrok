@@ -13,7 +13,7 @@ Common examples: inbox monitoring, daily briefings, news alerts, system health c
 
 A task is a directory in `$SHROK_TASKS_DIR` with:
 - `TASK.md` — frontmatter (YAML) + instructions (markdown). Same format as skills, different filename.
-- `MEMORY.md` — persistent state: credentials, watermarks, configuration.
+- `MEMORY.md` — persistent **non-secret, instance-specific** state: watermarks, thresholds, configuration. **Secrets do NOT go here** — see the `skills` skill's Credentials section; a task's own secrets (if any) belong in a `.<service>-credentials.json` store, not MEMORY.md.
 - Scripts (optional) — same conventions as skills.
 
 Use `$SHROK_TASKS_DIR` in all paths. Resolve it via `bash` before using in file tools.
@@ -75,4 +75,4 @@ Same conventions as skills:
 
 - **Watermarks** — For tasks that process a feed, store a last-checked timestamp instead of item ID lists. See the `scheduling` skill for the correct format. Prevents unbounded growth.
 - **Thresholds and state** — Store the current threshold and last known value.
-- **Credentials** — API keys, resolved user IDs. Though for tasks using `skill-deps`, credentials usually live in the dep skill's MEMORY.md, not the task's.
+- **Instance data only, no secrets** — non-secret config and resolved IDs are fine; API keys/tokens are not. For tasks using `skill-deps`, credentials live in the dep skill's credential store (`.<service>-credentials.json`), and the task selects an account with `--account <alias>` — it never handles the secret itself.
