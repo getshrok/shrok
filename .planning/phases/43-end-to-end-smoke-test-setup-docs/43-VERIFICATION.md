@@ -7,7 +7,7 @@ started: 2026-05-24
 updated: 2026-05-24
 requirements: [HADOC-01]
 success_criteria: [SC1, SC2, SC3, SC4]
-verdict: "All four success criteria met on real hardware. deadline tuning needed: NO (43-03 = no-op). 5 findings filed (1 fixed in-phase: HADOC-01 corrections; 1 high-value follow-up: ~16s HA-route latency)."
+verdict: "All four success criteria met on real hardware. deadline tuning needed: NO (43-03 = no-op). 5 findings (HADOC-01 doc bugs fixed in-phase; the ~16s HA-latency suspicion was investigated post-phase and DISPROVEN — HA path is ~4.5s, the one 18s turn was a non-reproducible transient blip)."
 ---
 
 # Phase 43 — Live VPE Smoke Test Ledger (Plan 43-02)
@@ -66,7 +66,7 @@ _Pending operator execution at the VPE._
 
 | Question | Observed Behavior | Outcome |
 |---|---|---|
-| Exact safe reply window (POST→in-turn latency) | In-turn slot effectively never wins. **Voice turn: ~20s end-to-end (model 2.1s).** Isolating **text test on the same head: ~4s end-to-end (claude-sonnet-4-6 @ 1.8s).** → the HA inbound path adds **~16s over the text path**; this is HA-route-specific, not general head latency. | Resolved (measured) + **follow-up filed** (see Findings #4) |
+| Exact safe reply window (POST→in-turn latency) | In-turn slot effectively never wins (head ~4.5s > 3s deadline). **HA path is ~4.5s end-to-end** across 5 sampled turns (head LLM ~2s + ~2.5s assemble/memory/queue) — parity with the dashboard (~3.6s). The one 18s "France" turn was a non-reproducible anomaly (likely a transient provider blip — see Findings #4). | Resolved — no HA latency penalty; earlier "~16s overhead" was a sampling artifact |
 | Deadline lapse UX (silence / chime / error tone) | Operator heard silence for ~20s then "Paris" via announce — no error tone, no double-response | Resolved — acceptable |
 | conversation_id stitching (ha-${conversation_id} thread) | On real spoken turns HA **sends** a `conversation_id` (0 server-side-UUID fallbacks in the journal); Shrok's `ha-${conversation_id}` thread keys off it | Resolved — stitching works |
 | start_conversation round-trip | No app-path to trigger `announceOrStartConversation(text, true)` this session; ESPHome firmware support is per-device | Deferred (D-03 observe-only) |
@@ -116,13 +116,33 @@ recorded here as backlog, NOT implemented in this phase.
 3. **`/v1` sends no HTTP body on lapse (by design, D-02).** Works acceptably here (HA waited, the
    answer arrived via announce, no device error), but the HA OpenAI client is left hanging until its own
    timeout. *Follow-up (optional, contested by D-02):* consider a fast minimal ack on lapse.
-4. **HIGH-VALUE — ~16s HA-route-specific latency overhead.** Voice turn ~20s end-to-end (model 2.1s)
-   vs an isolating same-head text turn ~4s (model 1.8s). The ~16s delta is specific to the HA inbound
-   path; `adapter.dispatchInbound` is a trivial synchronous handler call, so the cost is downstream —
-   prime suspects: cold `ha-${conversation_id}` thread context assembly / memory retrieval / prompt-cache
-   miss on a fresh thread. *Follow-up:* dedicated debug session (e.g. `/gsd:debug`) to localize whether
-   it's context assembly, memory retrieval, or a cache-cold thread, then decide on a fix in the
-   context/memory layer (spin-out from this phase).
+4. **RESOLVED (post-phase investigation) — NOT a structural HA latency; the ~16s was a one-off anomaly.**
+   The original "~16s HA overhead" was a sampling artifact: one slow HA turn (capital of France, 18s)
+   compared against one fast text turn (4s). Controlled re-measurement disproves it:
+
+   | Turn (HA `/v1` unless noted) | POST → answer |
+   |---|---|
+   | "tallest mountain" | 4.8s |
+   | "chemical symbol for gold" | 4.5s |
+   | "how many continents" | 4.4s |
+   | "pong" probes ×3 | 4.5–5.6s |
+   | "capital of italy" (dashboard) | 3.6s |
+   | "capital of France" (the anomaly) | **18.0s** |
+
+   The HA path is consistently **~4.5s end-to-end** (head LLM ~2s + ~2.5s assemble/memory/queue) — no
+   HA penalty, parity with the dashboard. The single 18s France turn had a ~16s gap between enqueue
+   (16:18:48) and its first LLM call (16:19:04) with **zero competing local work** in the window
+   (`queue_events`/`agents`/`steward_runs`/`memories` all empty 16:12:54→16:19:04) and no MCP servers
+   configured (so `buildCapabilitiesBlock` can't block). The only thing that turn did that the fast
+   probes didn't was fire a per-turn **memory query-rewriter (haiku) call**, whose usage row lands at
+   the end of the gap (16:19:04) — so the most plausible cause is a **transient LLM-provider latency
+   blip on that one haiku call**, not Shrok's HA code. Not reproducible across 5+ subsequent turns;
+   **no code change warranted.** *If it recurs:* add lightweight assemble-phase timing logs
+   (query-rewriter / `topicMemory.retrieve` / head call) to confirm the provider-blip hypothesis.
+
+   Note on the deadline: head turns are ~4.5s (> the 3s `REPLY_DEADLINE_MS`), so the in-turn slot still
+   never wins and answers ride `announce` — confirms 43-03 deadline = no-op (a 4s bump wouldn't reliably
+   beat ~4.5s either, and the announce UX is acceptable).
 
 5. **FIXED IN-PHASE — HADOC-01 corrections from live SC3 findings.** Two doc bugs caught by the live
    test were corrected in `docs/user-guide/home-assistant.md` during this phase (not deferred, because a
