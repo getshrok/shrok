@@ -48,6 +48,15 @@ export const ChannelConfigSchema = z.discriminatedUnion('vendor', [
     refreshToken: z.string().min(1),
     chatId: z.string().min(1),
   }),
+  z.object({
+    id: z.string().min(1),
+    vendor: z.literal('home-assistant'),
+    haBaseUrl: z.string().url(),
+    haVoiceSatelliteEntityId: z.string().regex(
+      /^assist_satellite\.[a-z0-9_]+$/,
+      'haVoiceSatelliteEntityId must match assist_satellite.<object_id>',
+    ),
+  }),
 ])
 
 export type ChannelConfig = z.infer<typeof ChannelConfigSchema>
@@ -396,6 +405,7 @@ export function extractSecretValues(config: Config): string[] {
           case 'slack':     candidates.push(ch.botToken, ch.appToken, ch.channelId); break
           case 'whatsapp':  candidates.push(ch.allowedJid); break
           case 'zoho-cliq': candidates.push(ch.clientId, ch.clientSecret, ch.refreshToken, ch.chatId); break
+          case 'home-assistant': break  // token is global (HA_ACCESS_TOKEN), not per-channel
         }
         for (const v of candidates) {
           if (typeof v === 'string' && v.length >= 8) out.push(v)

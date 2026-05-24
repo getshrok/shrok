@@ -58,6 +58,7 @@ export type ChannelConfigMasked =
   | { id: string; vendor: 'slack';    botToken: { isSet: boolean }; appToken: { isSet: boolean }; channelId: string }
   | { id: string; vendor: 'whatsapp'; allowedJid: string }
   | { id: string; vendor: 'zoho-cliq'; clientId: { isSet: boolean }; clientSecret: { isSet: boolean }; refreshToken: { isSet: boolean }; chatId: string }
+  | { id: string; vendor: 'home-assistant'; haBaseUrl: string; haVoiceSatelliteEntityId: string }
 
 function maskChannel(ch: ChannelConfig): ChannelConfigMasked {
   switch (ch.vendor) {
@@ -78,6 +79,8 @@ function maskChannel(ch: ChannelConfig): ChannelConfigMasked {
         refreshToken: { isSet: !!ch.refreshToken },
         chatId: ch.chatId,
       }
+    case 'home-assistant':
+      return { id: ch.id, vendor: 'home-assistant', haBaseUrl: ch.haBaseUrl, haVoiceSatelliteEntityId: ch.haVoiceSatelliteEntityId }
   }
 }
 
