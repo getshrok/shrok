@@ -130,7 +130,7 @@ A `home-assistant` channel adapter bridging Shrok's async, delegating head to Ho
 
 **Goal:** A scheduled **task** runs once but delivers its result to every head in an opt-in delivery set. Add optional `Schedule.deliverToHeadIds`; thread the delivery set through spawn → agent record → completion so `completeAgent` fans out `agent_completed` to each head in `[headId, ...deliverToHeadIds]` (deduped) — the work is done once, the report reaches N heads. Also stop scheduled agents from ever suspending-as-question (no human in the loop). Tasks only — **reminders are unchanged** (no multi-select, no schema change). Dashboard task form gains a "deliver to" multi-select; reminder form untouched.
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 **Wave 1**
@@ -139,7 +139,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 44-02-PLAN.md — Spawn/complete path: agent_completed fan-out at both top-level sites + scheduled question-suppression + resume/spawn pass-through
+- [x] 44-02-PLAN.md — Spawn/complete path: agent_completed fan-out at both top-level sites + scheduled question-suppression + resume/spawn pass-through
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -175,4 +175,4 @@ Plans:
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 4/4 | Complete | 2026-05-24 |
 | 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete | 2026-05-24 |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
-| 44. Multi-head task delivery | v1.6 | 1/5 | In Progress|  |
+| 44. Multi-head task delivery | v1.6 | 2/5 | In Progress|  |

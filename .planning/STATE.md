@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Multi-Head Task Delivery
 status: executing
-last_updated: "2026-05-24T17:54:46.449Z"
+last_updated: "2026-05-24T17:59:31.667Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -18,7 +18,7 @@ progress:
 ## Current Position
 
 Phase: 44 (multi-head-task-delivery) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-24
 
@@ -177,11 +177,16 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-CONDITIONAL-SPREAD-CREATE (Plan 44-01): create() uses ...(options.deliverToHeadIds?.length ? { deliverToHeadIds: options.deliverToHeadIds } : {}) — NOT ?? [] — to avoid writing empty-array key noise onto every task/reminder row
 - D-DELETE-ON-EMPTY-UPDATE (Plan 44-01): update() deletes the key when patch.deliverToHeadIds === [] rather than setting to [] or undefined — exactOptionalPropertyTypes compliance + clean JSON (key-absent = owner-only)
 - D-13-PRESERVED (Plan 44-01): headId stays excluded from SchedulePatch Pick<> union (Phase 35 D-13 ban intact); deliverToHeadIds IS in the union (editable per D-08)
+- D-FAN-OUT-BOTH-SITES (Plan 44-02): both completeAgent and ctx.complete closure receive identical fan-out loops over dedupe([headId,...deliverToHeadIds]) — missing the closure site silently delivers tool-driven early-exits to owner only
+- D-DEDUP-OWNER (Plan 44-02): deliverySet uses new Set([this.headId, ...]) so owner is never double-enqueued even if listed in deliverToHeadIds
+- D-TRIGGER-GATE (Plan 44-02): options.trigger === 'scheduled' predicate in suspendAsQuestion is narrow — manual agents keep suspending; sub-agent parentAgentId branch unchanged
+- D-ACTIVATION-SINGLE-SITE (Plan 44-02): only handleScheduleTrigger touched (D-07: multi-head is scheduled path only); manual spawn_agent and sub-agent spawns byte-identical to before
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 44    | 02   | 5min     | 2     | 2     |
 | 44    | 01   | 3min     | 2     | 5     |
 | 33    | 01   | 14min    | 3     | 26    |
 | 33    | 02   | 5min     | 3     | 4     |
