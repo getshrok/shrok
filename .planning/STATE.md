@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Multi-Head Task Delivery
 status: executing
-last_updated: "2026-05-24T18:03:55.626Z"
+last_updated: "2026-05-24T18:10:57.678Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -18,8 +18,8 @@ progress:
 ## Current Position
 
 Phase: 44 (multi-head-task-delivery) — EXECUTING
-Plan: 4 of 5
-Status: Ready to execute
+Plan: 5 of 5 (COMPLETE)
+Status: All plans executed — ready for /gsd:verify-work
 Last activity: 2026-05-24
 
 ## Project Reference
@@ -184,6 +184,8 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-44-03-POST-BLOCK-PLACEMENT (Plan 44-03): deliverToHeadIds validation block placed after kind determination and before task-name check — kind is the gate for task-only enforcement
 - D-44-03-PATCH-BLOCK-PLACEMENT (Plan 44-03): deliverToHeadIds PATCH block placed after ack/nag block and before scheduleStore.update; uses existing bodyObj variable (constructed for D-13 guard)
 - D-44-03-EMPTY-ARRAY-PATCH (Plan 44-03): empty array on PATCH passes through to patch.deliverToHeadIds = [] so store.update delete-on-empty reverts to owner-only; returned schedule body has key absent
+- D-WAIT-ALL (Plan 44-05): waitForAllQueueEvents helper inlined in test file for multi-row fan-out assertions — polls until minCount rows appear; waitForQueueEvent(LIMIT 1) is insufficient for fan-out/dedup tests
+- D-TEST-TRIGGER-SCHEDULED (Plan 44-05): fan-out, dedup, and regression tests use trigger:'scheduled' to exercise the production handleScheduleTrigger spawn path through activation.ts
 
 ## Performance Metrics
 
@@ -213,6 +215,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 39 P01 | 6min | 3 tasks | 7 files |
 | Phase 40 P01 | 4min | 2 tasks | 3 files |
 | Phase 40 P02 | 3min | 3 tasks | 3 files |
+| Phase 44 P05 | 3min | 2 tasks | 1 files |
 
 ## Operator Next Steps
 
