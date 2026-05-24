@@ -5,6 +5,46 @@
 > Started 2026-05-24 during the combined v1.3 + v1.4 close-out (both milestones were
 > completed earlier but never formally closed). v1.0–v1.2 predate this document.
 
+## Milestone: v1.5 — Home Assistant Voice
+
+**Shipped:** 2026-05-24
+**Phases:** 4 (40–43) | **Plans:** 11 | **Sessions:** 1 (interactive, live-hardware)
+
+### What Was Built
+- `home-assistant` channel vendor (Zod discriminated union, `.env`-only token, fail-fast config) — Phase 40
+- OpenAI-compatible `POST /v1/chat/completions`: bearer JSON-401 auth boundary, CSRF `/v1/*` exclusion, `pendingReply` held-connection slot with a ~3s deadline → in-turn reply or no-filler lapse — Phase 41
+- Outbound `assist_satellite.announce` / `start_conversation` via Node `fetch`, one parameterized mechanism, 30s fire-and-forget timeout, token log-redaction — Phase 42
+- HADOC-01 operator setup guide, then a live VPE smoke test confirming the full two-leg spoken flow on real hardware — Phase 43
+
+### What Worked
+- Phasing skeleton → inbound → outbound → live-e2e (40→41→42→43) kept each phase shippable, with the e2e validation as its own final phase
+- Running the hardware-gated phase **inline as the orchestrator** (no subagents for `checkpoint:human-action` plans that would just bounce) and recording outcomes into the live VERIFICATION ledger as we went — the ledger doubles as the phase verification artifact (D-06)
+- The conditional tuning phase (43-03) correctly resolved to **no-op / zero production code** — the live test gated it honestly instead of inventing work
+- Fixing the doc bugs the live test surfaced **in-phase** rather than deferring (a setup guide with wrong steps fails its own purpose)
+
+### What Was Inefficient
+- **Jumped to a structural conclusion on latency from one datapoint.** The "~16s HA-route overhead" was a sampling artifact — one anomalous 18s turn vs one fast 4s turn. It only unraveled after the operator supplied the 2.1s model time, and a 5-turn re-sample showed the HA path is ~4.5s. Sample before concluding.
+- **RESEARCH and the first draft of HADOC-01 had the Apache `/v1/` block placement backwards** ("before the catch-all" — Apache 2.4 actually needs it *after*). Only the live curl caught it.
+- **`.planning/` is gitignored**, so every planning-artifact commit needed `git add -f` — the `gsd-sdk query commit` helper refuses ignored paths. Constant low-grade friction.
+
+### Patterns Established
+- Hardware/human-gated phases: orchestrator runs inline; the live `*-VERIFICATION.md` ledger is both the test record and the phase verification (D-06), so don't spawn a verifier that would clobber it.
+- Diagnose latency from the DB (`usage` + `messages` tables give per-turn model, tokens, cache, and timestamps) and **sample several turns** before drawing conclusions.
+- A live smoke test earns its keep: it caught the "Skip Authentication" requirement, a stale shadowing conversation agent, and the proxy-placement bug — none of which any unit test would surface.
+
+### Key Lessons
+1. One anomalous datapoint is not a trend — sample before concluding (the "~16s latency" evaporated under proper sampling).
+2. Apache 2.4 merges overlapping `<Location>` in config order (later wins); a more-specific auth exemption must go **after** the catch-all.
+3. Live integration testing surfaces reality-bugs (component setup quirks, stale config shadowing, proxy ordering) that unit tests structurally cannot.
+4. When `.planning/` is gitignored, planning commits need `git add -f`; the GSD commit helper won't force-add.
+
+### Cost Observations
+- Model mix: head turns Sonnet 4.6; per-turn memory query-rewriter Haiku 4.5; the one docs executor Sonnet
+- Sessions: 1 (single interactive session, live at the hardware)
+- Notable: 11 plans across 4 phases in ~6 hours same-day; 43-03 shipped zero production code; phase changed 0 source files overall (the integration code all landed in 40–42)
+
+---
+
 ## Milestone: v1.4 — Unmissable Reminders
 
 **Shipped:** 2026-05-24
@@ -87,6 +127,7 @@
 |-----------|--------|-------|------------|
 | v1.3 | 8 | 31 | Single-primitive (`head_id`) swept across all layers; architectural regression tests per boundary |
 | v1.4 | 3 | 9 | Schema → runtime → UI phasing; wave-based RED-first plans; parallel worktree execution (with hygiene cost) |
+| v1.5 | 4 | 11 | Skeleton → inbound → outbound → live-e2e phasing; final phase was a real-hardware smoke test run inline (orchestrator-driven human checkpoints); conditional tuning honestly resolved to no-op |
 
 ### Cumulative Quality
 
@@ -94,8 +135,10 @@
 |-----------|------------------|-------|
 | v1.3 | green | architectural regression tests added for each isolation boundary |
 | v1.4 | 1544 | tsc clean + dashboard build green |
+| v1.5 | 1625 (HA-suite baseline) | integration code landed in Phases 40–42; Phase 43 changed 0 source files; validated live on real VPE hardware |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. **Close milestones as they finish.** Both v1.3 and v1.4 were left open; bulk reconstruction loses fresh signal and let v1.3's "pending" verification debt drift.
+1. **Close milestones as they finish.** Both v1.3 and v1.4 were left open; bulk reconstruction loses fresh signal and let v1.3's "pending" verification debt drift. (v1.5 was closed same-day — fresh signal captured.)
 2. **When sweeping a cross-cutting change, enumerate every site first.** v1.3's missed `agents` table and v1.4's worktree drift are the same failure mode at different scales — incomplete coverage of "everywhere."
+3. **Sample before concluding — and prefer live integration tests for integration claims.** v1.5's "~16s HA latency" was a one-datapoint artifact that dissolved under 5-turn sampling; meanwhile the live smoke test caught three real setup bugs no unit test would (component "Skip Authentication", a stale shadowing conversation agent, Apache `<Location>` ordering).
