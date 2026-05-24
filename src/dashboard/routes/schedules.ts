@@ -196,7 +196,10 @@ export function createSchedulesRouter(
         return
       }
       try {
-        patch.nextRun = nextRunAfter(cron, new Date(), timezone).toISOString()
+        // WR-02 (consistency): honor the schedule's own cronTimezone override here
+        // too, mirroring the D-12 ack-off recompute below.
+        const existingForTz = scheduleStore.get(id)
+        patch.nextRun = nextRunAfter(cron, new Date(), existingForTz?.cronTimezone ?? timezone).toISOString()
       } catch {
         res.status(400).json({ error: 'Invalid cron expression' })
         return
@@ -232,7 +235,10 @@ export function createSchedulesRouter(
         if (existing?.ackPending) {
           patch.ackPending = false
           if (existing.cron) {
-            patch.nextRun = nextRunAfter(existing.cron, new Date(), timezone).toISOString()
+            // WR-02: recompute in the schedule's own timezone, not the workspace
+            // default — a per-schedule cronTimezone override must be honored or the
+            // first post-ack fire shifts by the UTC offset.
+            patch.nextRun = nextRunAfter(existing.cron, new Date(), existing.cronTimezone ?? timezone).toISOString()
           } else if (existing.runAt !== null) {
             patch.nextRun = existing.runAt
           }
