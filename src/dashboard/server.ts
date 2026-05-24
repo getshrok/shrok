@@ -279,9 +279,14 @@ export class DashboardServer {
     // so /v1/chat/completions is not intercepted by the GET '*' fallback (HACV-06).
     // HA_INBOUND_API_KEY is read at start() time (not module-eval time) — Pitfall 4.
     if (this.opts.homeAssistantAdapters?.length) {
-      const haInboundApiKey = process.env['HA_INBOUND_API_KEY'] ?? ''
-      for (const haAdapter of this.opts.homeAssistantAdapters) {
-        app.use('/v1', createHomeAssistantRouter(haAdapter, haInboundApiKey))
+      const haInboundApiKey = process.env['HA_INBOUND_API_KEY']
+      // Never mount /v1 without a configured key — CR-01: an empty key must not
+      // produce an open endpoint. The adapter constructor (D-02) already throws
+      // on a missing key at boot; this is defense-in-depth at the mount site.
+      if (haInboundApiKey) {
+        for (const haAdapter of this.opts.homeAssistantAdapters) {
+          app.use('/v1', createHomeAssistantRouter(haAdapter, haInboundApiKey))
+        }
       }
     }
 

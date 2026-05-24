@@ -205,6 +205,29 @@ describe('POST /v1/chat/completions', () => {
       expect(result.status).toBe(401)
       expect(result.body).toEqual({ error: 'Unauthorized' })
     })
+
+    it('CR-01: empty configured key rejects `Authorization: Bearer ` (empty token) — self-contained auth boundary', async () => {
+      // Simulate the prior server.ts `?? ''` fallback reaching the router with an
+      // empty key. The router must reject ALL requests rather than letting a
+      // Bearer-with-empty-token through. (adapter ctor passes — env key is set in beforeEach.)
+      const adapter = new HomeAssistantChannelAdapter()
+      const app = express()
+      app.use(express.json())
+      app.use('/v1', createHomeAssistantRouter(adapter, ''))
+      const port = await getFreePort()
+      const server = await new Promise<Server>((resolve, reject) => {
+        const s = app.listen(port, '127.0.0.1', () => resolve(s))
+        s.once('error', reject)
+      })
+      fx = { server, port, adapter } // let afterEach close it
+      const result = await postCompletions(
+        port,
+        { messages: [{ role: 'user', content: 'pwn' }] },
+        '', // sends literal `Authorization: Bearer ` with an empty token
+      )
+      expect(result.status).toBe(401)
+      expect(result.body).toEqual({ error: 'Unauthorized' })
+    })
   })
 
   // ── HACV-03: last user turn extraction ───────────────────────────────────

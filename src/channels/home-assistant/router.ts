@@ -31,8 +31,11 @@ export function createHomeAssistantRouter(
   router.post('/chat/completions', (req: Request, res: Response): void => {
     // ── (1) Bearer auth ───────────────────────────────────────────────────────
     // JSON 401 with no Basic-realm / challenge header (HACV-02 / T-41-07).
+    // The router is a SELF-CONTAINED auth boundary (CR-01): an empty configured
+    // key rejects every request rather than letting `Authorization: Bearer `
+    // (empty token) through — do not rely on an upstream throw to gate this.
     const auth = req.headers['authorization']
-    if (!auth?.startsWith('Bearer ') || auth.slice(7) !== inboundApiKey) {
+    if (!inboundApiKey || !auth?.startsWith('Bearer ') || auth.slice(7) !== inboundApiKey) {
       res.status(401).json({ error: 'Unauthorized' })
       return
     }
