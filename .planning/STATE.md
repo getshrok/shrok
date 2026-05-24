@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
 status: planning
-last_updated: "2026-05-24"
-last_activity: 2026-05-24
+last_updated: "2026-05-24T10:08:18.162Z"
+last_activity: 2026-05-24 — Phase 40 context gathered (40-CONTEXT.md)
 progress:
   total_phases: 4
   completed_phases: 0
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-Phase: Phase 40 — Config & Adapter Skeleton (not started)
+Phase: Phase 40 — Config & Adapter Skeleton (context gathered)
 Plan: —
-Status: Roadmap created; ready to plan Phase 40
-Last activity: 2026-05-24 — v1.5 roadmap created (Phases 40–43)
+Status: Phase 40 context captured; ready to plan
+Last activity: 2026-05-24 — Phase 40 context gathered → .planning/phases/40-config-adapter-skeleton/40-CONTEXT.md (resume: /gsd:plan-phase 40)
 
 ```
 [          ] 0% — 0/4 phases complete
