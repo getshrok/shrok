@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Multi-Head Task Delivery
 status: executing
-last_updated: "2026-05-24T17:59:31.667Z"
+last_updated: "2026-05-24T18:03:55.626Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -18,7 +18,7 @@ progress:
 ## Current Position
 
 Phase: 44 (multi-head-task-delivery) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-24
 
@@ -181,11 +181,15 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-DEDUP-OWNER (Plan 44-02): deliverySet uses new Set([this.headId, ...]) so owner is never double-enqueued even if listed in deliverToHeadIds
 - D-TRIGGER-GATE (Plan 44-02): options.trigger === 'scheduled' predicate in suspendAsQuestion is narrow — manual agents keep suspending; sub-agent parentAgentId branch unchanged
 - D-ACTIVATION-SINGLE-SITE (Plan 44-02): only handleScheduleTrigger touched (D-07: multi-head is scheduled path only); manual spawn_agent and sub-agent spawns byte-identical to before
+- D-44-03-POST-BLOCK-PLACEMENT (Plan 44-03): deliverToHeadIds validation block placed after kind determination and before task-name check — kind is the gate for task-only enforcement
+- D-44-03-PATCH-BLOCK-PLACEMENT (Plan 44-03): deliverToHeadIds PATCH block placed after ack/nag block and before scheduleStore.update; uses existing bodyObj variable (constructed for D-13 guard)
+- D-44-03-EMPTY-ARRAY-PATCH (Plan 44-03): empty array on PATCH passes through to patch.deliverToHeadIds = [] so store.update delete-on-empty reverts to owner-only; returned schedule body has key absent
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 44    | 03   | 2min     | 2     | 2     |
 | 44    | 02   | 5min     | 2     | 2     |
 | 44    | 01   | 3min     | 2     | 5     |
 | 33    | 01   | 14min    | 3     | 26    |
