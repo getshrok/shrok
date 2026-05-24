@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadConfig, updateUserConfig, resolveHeads, type Config } from './config.js'
+import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, type Config } from './config.js'
 
 describe('loadConfig', () => {
   const originalEnv = process.env
@@ -499,5 +499,115 @@ describe('Phase 31 resolveHeads()', () => {
     expect(heads[0]?.channels).toHaveLength(2)
     const ids = heads[0]?.channels.map(c => c.id).sort()
     expect(ids).toEqual(['discord', 'telegram'])
+  })
+})
+
+// ─── Phase 40: home-assistant channel vendor ───────────────────────────────
+
+describe('Phase 40 home-assistant channel vendor', () => {
+  let tmpConfigPath: string
+
+  beforeEach(() => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'shrok-config-test-ha-'))
+    tmpConfigPath = path.join(tmp, 'config.json')
+    process.env['USER_CONFIG_PATH'] = tmpConfigPath
+    // Scrub flat adapter env vars that synthesized-head logic would pick up
+    delete process.env['TELEGRAM_BOT_TOKEN']
+    delete process.env['TELEGRAM_CHAT_ID']
+    delete process.env['DISCORD_BOT_TOKEN']
+    delete process.env['DISCORD_CHANNEL_ID']
+    delete process.env['SLACK_BOT_TOKEN']
+    delete process.env['SLACK_APP_TOKEN']
+    delete process.env['SLACK_CHANNEL_ID']
+    delete process.env['WHATSAPP_ALLOWED_JID']
+    delete process.env['ZOHO_CLIENT_ID']
+    delete process.env['ZOHO_CLIENT_SECRET']
+    delete process.env['ZOHO_REFRESH_TOKEN']
+    delete process.env['ZOHO_CLIQ_CHAT_ID']
+    delete process.env['HA_ACCESS_TOKEN']
+  })
+
+  afterEach(() => {
+    delete process.env['USER_CONFIG_PATH']
+  })
+
+  it('parses a valid home-assistant channel block (SC1)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [
+        {
+          id: 'home',
+          channels: [{
+            id: 'home-assistant',
+            vendor: 'home-assistant',
+            haBaseUrl: 'http://homeassistant.local:8123',
+            haVoiceSatelliteEntityId: 'assist_satellite.home_assistant_voice_pe',
+          }],
+        },
+      ],
+    }))
+    const cfg = loadConfig()
+    expect(cfg.heads?.[0]?.channels[0]?.vendor).toBe('home-assistant')
+    const ch = cfg.heads?.[0]?.channels[0]
+    if (ch?.vendor === 'home-assistant') {
+      expect(ch.haBaseUrl).toBe('http://homeassistant.local:8123')
+      expect(ch.haVoiceSatelliteEntityId).toBe('assist_satellite.home_assistant_voice_pe')
+    } else {
+      throw new Error('Expected home-assistant vendor')
+    }
+  })
+
+  it('rejects wrong entity id domain prefix (and no-domain) (SC2/D-02)', () => {
+    // Wrong domain prefix: 'light.kitchen'
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'http://homeassistant.local:8123', haVoiceSatelliteEntityId: 'light.kitchen' }] }],
+    }))
+    expect(() => loadConfig()).toThrow(/Configuration error/)
+
+    // No-domain value: 'home_assistant_voice_pe'
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'http://homeassistant.local:8123', haVoiceSatelliteEntityId: 'home_assistant_voice_pe' }] }],
+    }))
+    expect(() => loadConfig()).toThrow(/Configuration error/)
+  })
+
+  it('rejects malformed haBaseUrl (SC2/D-03)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'not-a-url', haVoiceSatelliteEntityId: 'assist_satellite.test_satellite' }] }],
+    }))
+    expect(() => loadConfig()).toThrow(/Configuration error/)
+  })
+
+  it('rejects missing haBaseUrl (SC2/D-01)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haVoiceSatelliteEntityId: 'assist_satellite.test_satellite' }] }],
+    }))
+    expect(() => loadConfig()).toThrow(/Configuration error/)
+  })
+
+  it('rejects missing haVoiceSatelliteEntityId (SC2/D-01)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'http://homeassistant.local:8123' }] }],
+    }))
+    expect(() => loadConfig()).toThrow(/Configuration error/)
+  })
+
+  it('ENV_KEY_ALLOWLIST includes HA_ACCESS_TOKEN (D-04)', () => {
+    expect(ENV_KEY_ALLOWLIST).toContain('HA_ACCESS_TOKEN')
+  })
+
+  it('a config with no home-assistant channel loads unchanged (SC4 backward-compat)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+    }))
+    // Should parse without error; no HA channel present
+    expect(() => loadConfig()).not.toThrow()
+    const cfg = loadConfig()
+    expect(cfg.heads).toBeUndefined()
   })
 })
