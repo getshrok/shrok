@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
 status: executing
-last_updated: "2026-05-24T10:27:44.642Z"
-last_activity: 2026-05-24 -- Phase 40 planning complete
+last_updated: "2026-05-24T10:38:51.004Z"
+last_activity: 2026-05-24 -- Phase 40 Plan 01 complete (home-assistant config schema + ENV_KEY_ALLOWLIST)
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-Phase: Phase 40 — Config & Adapter Skeleton (context gathered)
-Plan: —
+Phase: 40 (config-adapter-skeleton) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-05-24 -- Phase 40 planning complete
+Last activity: 2026-05-24
 
 ```
 [          ] 0% — 0/4 phases complete
@@ -31,7 +31,7 @@ Last activity: 2026-05-24 -- Phase 40 planning complete
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** v1.5 Home Assistant Voice — `home-assistant` channel adapter bridging Shrok's async head to HA's Assist pipeline. Synchronous <3s ACK reply for the live voice turn; unprompted `assist_satellite.announce` / `start_conversation` for async results. Four phases (40–43).
+**Current focus:** Phase 40 — config-adapter-skeleton
 
 ## v1.5 Phase Map
 
@@ -165,6 +165,12 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-12-ROUTE-COMPUTE (Plan 39-01): D-12 ack-off-while-nagging transition computed in PATCH route (option b from RESEARCH): resets `nagIntervalMinutes=null`, conditionally clears `ackPending` and recomputes `nextRun` via `nextRunAfter(cron, now, timezone)`; `update()` signature unchanged
 - D-04-STANDALONE-NAG (Plan 39-01): PATCH bare `{ nagIntervalMinutes: 0 }` on a stored `requiresAck:true` reminder reads existing row via `scheduleStore.get(id)` and rejects with 400 — prevents stranding an ack-required reminder with no nag interval (T-39-09 mitigated)
 
+## Decisions (Phase 40)
+
+- D-04 (Plan 40-01): HA_ACCESS_TOKEN added to ENV_KEY_ALLOWLIST only — no per-channel `haAccessToken` field on ChannelConfigSchema, no flat ConfigSchema key; adapter reads `process.env['HA_ACCESS_TOKEN']` directly at call-time in Phase 42; token never in git-tracked config.json (T-40-01 mitigated)
+- D-06 (Plan 40-01): `id: z.string().min(1)` kept on home-assistant union member for consistency with all other vendors; adapter routing id is fixed to 'home-assistant' regardless
+- Rule-2-heads-ts (Plan 40-01): `ChannelConfigMasked` type and `maskChannel()` switch in `src/dashboard/routes/heads.ts` extended to cover the new 'home-assistant' union member — exhaustiveness enforcement (tsc TS2366)
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -188,3 +194,4 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 36 P02 | 4min | 2 tasks | 3 files |
 | Phase 36 P03 | 7min | 5 tasks | 5 files |
 | Phase 39 P01 | 6min | 3 tasks | 7 files |
+| Phase 40 P01 | 4min | 2 tasks | 3 files |

@@ -28,8 +28,8 @@ Shrok speaks on the device when it has something to say outside a live turn — 
 
 ### Configuration & Operations (HACF)
 
-- [ ] **HACF-01**: The Shrok operator configures the Home Assistant base URL, a long-lived access token (stored in `.env` via `ENV_KEY_ALLOWLIST`, never in `config.json`), and the target satellite `entity_id`
-- [ ] **HACF-02**: `home-assistant` is a configurable channel vendor in the head/channel config (Zod discriminated union) and is started at boot like every other adapter; invalid or missing HA config fails with a clear startup error (including `entity_id` shape validation) rather than silently at first use
+- [x] **HACF-01**: The Shrok operator configures the Home Assistant base URL, a long-lived access token (stored in `.env` via `ENV_KEY_ALLOWLIST`, never in `config.json`), and the target satellite `entity_id`
+- [x] **HACF-02**: `home-assistant` is a configurable channel vendor in the head/channel config (Zod discriminated union) and is started at boot like every other adapter; invalid or missing HA config fails with a clear startup error (including `entity_id` shape validation) rather than silently at first use
 
 ### Setup Documentation (HADOC)
 
@@ -67,8 +67,8 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HACF-01 | Phase 40 | Pending |
-| HACF-02 | Phase 40 | Pending |
+| HACF-01 | Phase 40 | Complete |
+| HACF-02 | Phase 40 | Complete |
 | HACV-01 | Phase 41 | Pending |
 | HACV-02 | Phase 41 | Pending |
 | HACV-03 | Phase 41 | Pending |

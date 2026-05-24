@@ -134,7 +134,7 @@ A new `home-assistant` channel adapter that bridges Shrok's async, delegating he
 Plans:
 **Wave 1**
 
-- [ ] 40-01-PLAN.md — home-assistant Zod config member + entity-id/URL validation + HA_ACCESS_TOKEN in ENV_KEY_ALLOWLIST
+- [x] 40-01-PLAN.md — home-assistant Zod config member + entity-id/URL validation + HA_ACCESS_TOKEN in ENV_KEY_ALLOWLIST
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -203,7 +203,7 @@ Plans:
 | 37. Schema & Tool Params | v1.4 | 2/2 | Complete | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | v1.4 | 4/4 | Complete | 2026-05-23 |
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
-| 40. Config & Adapter Skeleton | v1.5 | 0/2 | Planned | — |
+| 40. Config & Adapter Skeleton | v1.5 | 1/2 | In Progress|  |
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 0/? | Not started | — |
 | 42. Outbound HA REST Announce | v1.5 | 0/? | Not started | — |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |
