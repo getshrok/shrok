@@ -153,7 +153,23 @@ Plans:
   4. If the HTTP client closes the connection before the reply is sent, the pending promise slot is cleaned up and no dangling timer or memory leak remains
   5. The CSRF / same-origin middleware in `src/dashboard/server.ts` is explicitly excluded for the `/v1/*` path so HA's cross-origin requests are not rejected
 
-**Plans**: TBD
+> **Note:** SC2 and SC3 are reframed by CONTEXT.md decisions D-01 and D-03 — those decisions are authoritative for planning. D-01: no manufactured ack; hold the connection and return the head's real reply if it lands inside a conservative ~3s deadline, otherwise let the turn lapse (the answer rides the Phase-42 announce path). D-03: the live `curl -v` against the production domain and the live Apache vhost edit are Phase 43; Phase 41 delivers the Shrok-side CSRF exclusion + a captured (unapplied) Apache snippet, and verifies JSON-401 via vitest against the Express endpoint directly.
+
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 41-01-PLAN.md — types.ts (extractLastUserTurn + buildChatCompletionResponse) + HA_INBOUND_API_KEY in ENV_KEY_ALLOWLIST + config tests
+- [ ] 41-02-PLAN.md — adapter.ts upgrade: pendingReply slot lifecycle, send() decision branch, dispatchInbound, D-02 boot fail-fast + Block C tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 41-03-PLAN.md — router.ts (bearer JSON-401, last-turn extraction, deadline lapse, conversation_id, req.on('close')) + router.test.ts integration suite
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 41-04-PLAN.md — server.ts CSRF /v1/* exclusion + homeAssistantAdapters option + /v1 mount; index.ts wiring; captured Apache /v1 auth-bypass snippet for HADOC-01
+
 **UI hint**: yes
 
 ### Phase 42: Outbound HA REST Announce
@@ -204,6 +220,6 @@ Plans:
 | 38. Nag Mechanism & Ack Semantics | v1.4 | 4/4 | Complete | 2026-05-23 |
 | 39. Dashboard Reminder UI | v1.4 | 3/3 | Complete | 2026-05-24 |
 | 40. Config & Adapter Skeleton | v1.5 | 2/2 | Complete    | 2026-05-24 |
-| 41. Inbound Synchronous Reply Endpoint | v1.5 | 0/? | Not started | — |
+| 41. Inbound Synchronous Reply Endpoint | v1.5 | 0/4 | Planned | — |
 | 42. Outbound HA REST Announce | v1.5 | 0/? | Not started | — |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 0/? | Not started | — |
