@@ -22,7 +22,7 @@ Shrok answers when Home Assistant's conversation agent calls it.
 
 Shrok speaks on the device when it has something to say outside a live turn — one parameterized `assist_satellite` mechanism.
 
-- [ ] **HAAN-01**: When `home-assistant` is the active channel and no live turn is open, background results routed to it — asynchronous sub-agent completions, reminders (incl. ack-required nags), and scheduled fires — are spoken on the configured satellite via `assist_satellite.announce`
+- [x] **HAAN-01**: When `home-assistant` is the active channel and no live turn is open, background results routed to it — asynchronous sub-agent completions, reminders (incl. ack-required nags), and scheduled fires — are spoken on the configured satellite via `assist_satellite.announce`
 - [ ] **HAAN-02**: Outbound HA service calls are fire-and-forget with a timeout (≈30s) so a stuck, asleep, or offline satellite never hangs Shrok's activation loop
 - [ ] **HAAN-03**: The head can speak via `assist_satellite.start_conversation` (the device re-opens its mic for a reply) instead of `announce` when it wants a spoken response — the reply returns through the same inbound `/v1/chat/completions` endpoint (one mechanism, parameterized by the head's intent)
 
@@ -75,7 +75,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | HACV-04 | Phase 41 | Complete |
 | HACV-05 | Phase 41 | Complete |
 | HACV-06 | Phase 41 | Complete |
-| HAAN-01 | Phase 42 | Pending |
+| HAAN-01 | Phase 42 | Complete |
 | HAAN-02 | Phase 42 | Pending |
 | HAAN-03 | Phase 42 | Pending |
 | HADOC-01 | Phase 43 | Pending |
