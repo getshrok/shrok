@@ -630,84 +630,84 @@ describe('Phase 40 home-assistant channel vendor', () => {
 
 describe('extractSecretValues — home-assistant HA_ACCESS_TOKEN (D-05)', () => {
   const HA_TOKEN = 'test-ha-access-token-secret-abc123'
-
-  const haConfig: Config = {
-    llmProvider: 'anthropic',
-    anthropicModelStandard: 'claude-haiku-4-5-20251001',
-    anthropicModelCapable: 'claude-sonnet-4-6',
-    anthropicModelExpert: 'claude-opus-4-6',
-    dbPath: '/tmp/test.db',
-    workspacePath: '/tmp/test-workspace',
-    identityDir: '/tmp/test-workspace/identity',
-    migrationsDir: './sql',
-    webhookPort: 8766,
-    webhookRateLimitPerMinute: 60,
-    contextWindowTokens: 100_000,
-    archivalThresholdFraction: 0.80,
-    mcpConfigPath: './mcp.json',
-    logLevel: 'info',
-    heads: [
-      {
-        id: 'home',
-        channels: [{
-          id: 'ha',
-          vendor: 'home-assistant' as const,
-          haBaseUrl: 'http://homeassistant.local:8123',
-          haVoiceSatelliteEntityId: 'assist_satellite.home_assistant_voice_pe',
-        }],
-      },
-    ],
-  }
-
-  const nonHaConfig: Config = {
-    ...haConfig,
-    heads: [
-      {
-        id: 'main',
-        channels: [{
-          id: 'tg',
-          vendor: 'telegram' as const,
-          botToken: 'bot123456789:AAABBBCCCDDDEEEFFFGGG',
-          chatId: '-100123456789',
-        }],
-      },
-    ],
-  }
+  let tmpConfigPath: string
 
   beforeEach(() => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'shrok-config-test-ha-d05-'))
+    tmpConfigPath = path.join(tmp, 'config.json')
+    process.env['USER_CONFIG_PATH'] = tmpConfigPath
+    // Scrub flat adapter env vars to avoid synthesized-head interference
+    delete process.env['TELEGRAM_BOT_TOKEN']
+    delete process.env['TELEGRAM_CHAT_ID']
+    delete process.env['DISCORD_BOT_TOKEN']
+    delete process.env['DISCORD_CHANNEL_ID']
+    delete process.env['SLACK_BOT_TOKEN']
+    delete process.env['SLACK_APP_TOKEN']
+    delete process.env['SLACK_CHANNEL_ID']
+    delete process.env['WHATSAPP_ALLOWED_JID']
+    delete process.env['ZOHO_CLIENT_ID']
+    delete process.env['ZOHO_CLIENT_SECRET']
+    delete process.env['ZOHO_REFRESH_TOKEN']
+    delete process.env['ZOHO_CLIQ_CHAT_ID']
     delete process.env['HA_ACCESS_TOKEN']
   })
 
   afterEach(() => {
+    delete process.env['USER_CONFIG_PATH']
     delete process.env['HA_ACCESS_TOKEN']
   })
 
   it('includes HA_ACCESS_TOKEN when a home-assistant channel is present and env token is set', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'http://homeassistant.local:8123', haVoiceSatelliteEntityId: 'assist_satellite.home_assistant_voice_pe' }] }],
+    }))
     process.env['HA_ACCESS_TOKEN'] = HA_TOKEN
-    const secrets = extractSecretValues(haConfig)
+    const cfg = loadConfig()
+    const secrets = extractSecretValues(cfg)
     expect(secrets).toContain(HA_TOKEN)
   })
 
   it('does NOT include HA_ACCESS_TOKEN when env token is unset', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'http://homeassistant.local:8123', haVoiceSatelliteEntityId: 'assist_satellite.home_assistant_voice_pe' }] }],
+    }))
     // HA_ACCESS_TOKEN deleted in beforeEach
-    const secrets = extractSecretValues(haConfig)
+    const cfg = loadConfig()
+    const secrets = extractSecretValues(cfg)
     expect(secrets).not.toContain(HA_TOKEN)
   })
 
   it('does NOT include HA_ACCESS_TOKEN when no home-assistant channel is present (backward-compat)', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'main', channels: [{ id: 'tg', vendor: 'telegram', botToken: 'bot123456789:AAABBBCCCDDDEEEFFFGGG', chatId: '-100123456789' }] }],
+    }))
     process.env['HA_ACCESS_TOKEN'] = HA_TOKEN
-    const secrets = extractSecretValues(nonHaConfig)
+    const cfg = loadConfig()
+    const secrets = extractSecretValues(cfg)
     expect(secrets).not.toContain(HA_TOKEN)
   })
 
   it('does NOT throw when HA_ACCESS_TOKEN is unset and home-assistant channel is present', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'http://homeassistant.local:8123', haVoiceSatelliteEntityId: 'assist_satellite.home_assistant_voice_pe' }] }],
+    }))
     // HA_ACCESS_TOKEN deleted in beforeEach
-    expect(() => extractSecretValues(haConfig)).not.toThrow()
+    const cfg = loadConfig()
+    expect(() => extractSecretValues(cfg)).not.toThrow()
   })
 
   it('does NOT include undefined in the result when HA_ACCESS_TOKEN is unset', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      dbPath: '/tmp/test.db',
+      heads: [{ id: 'home', channels: [{ id: 'ha', vendor: 'home-assistant', haBaseUrl: 'http://homeassistant.local:8123', haVoiceSatelliteEntityId: 'assist_satellite.home_assistant_voice_pe' }] }],
+    }))
     // HA_ACCESS_TOKEN deleted in beforeEach
-    const secrets = extractSecretValues(haConfig)
+    const cfg = loadConfig()
+    const secrets = extractSecretValues(cfg)
     expect(secrets.every(s => typeof s === 'string')).toBe(true)
   })
 })

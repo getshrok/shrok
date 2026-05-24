@@ -405,7 +405,11 @@ export function extractSecretValues(config: Config): string[] {
           case 'slack':     candidates.push(ch.botToken, ch.appToken, ch.channelId); break
           case 'whatsapp':  candidates.push(ch.allowedJid); break
           case 'zoho-cliq': candidates.push(ch.clientId, ch.clientSecret, ch.refreshToken, ch.chatId); break
-          case 'home-assistant': break  // token is global (HA_ACCESS_TOKEN), not per-channel
+          case 'home-assistant': {
+            const haToken = process.env['HA_ACCESS_TOKEN']
+            if (haToken) candidates.push(haToken)
+            break
+          }
         }
         for (const v of candidates) {
           if (typeof v === 'string' && v.length >= 8) out.push(v)
