@@ -69,6 +69,7 @@ import { ZohoCliqStateStore } from './db/zoho_cliq_state.js'
 // WhatsApp adapter is dynamically imported — Baileys is an optional dependency
 import { DashboardChannelAdapter } from './channels/dashboard/adapter.js'
 import { VoiceChannelAdapter } from './channels/voice/adapter.js'
+import { HomeAssistantChannelAdapter } from './channels/home-assistant/adapter.js'
 import { ScheduleEvaluatorImpl } from './scheduler/index.js'
 import { WebhookListenerImpl } from './webhook/index.js'
 import { DashboardServer } from './dashboard/server.js'
@@ -320,8 +321,11 @@ async function main() {
         )
         if (!isMultiHead) currentZohoCliqAdapter = z
         adapter = z
+      } else if (ch.vendor === 'home-assistant') {
+        const ha = new HomeAssistantChannelAdapter(ch.id, head.id)
+        adapter = ha
       } else {
-        // Exhaustiveness guard — discriminated union covers all five vendors
+        // Exhaustiveness guard — discriminated union covers all six vendors
         const _exhaustive: never = ch
         throw new Error(`unreachable: unhandled vendor in channels[]: ${JSON.stringify(_exhaustive)}`)
       }
