@@ -462,6 +462,10 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   const [editMessage, setEditMessage] = useState('')
   const [editValue, setEditValue] = useState('')      // holds cron OR runAt string
   const [editConditions, setEditConditions] = useState('')
+  const [editRequiresAck, setEditRequiresAck] = useState(false)
+  const [editNagMinutes, setEditNagMinutes] = useState(0)
+  const [editNagHours, setEditNagHours] = useState(0)
+  const [editNagDays, setEditNagDays] = useState(0)
 
   const toggleMutation = useMutation({
     mutationFn: (enabled: boolean) => api.schedules.update(schedule.id, { enabled }),
@@ -474,7 +478,7 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string }) =>
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string; requiresAck?: boolean; nagIntervalMinutes?: number | null }) =>
       api.schedules.update(schedule.id, update),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
   })
@@ -483,18 +487,35 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     setEditMessage(schedule.agentContext ?? '')
     setEditValue(schedule.cron ?? schedule.runAt ?? '')
     setEditConditions(schedule.conditions ?? '')
+    setEditRequiresAck(schedule.requiresAck)
+    const totalMins = schedule.nagIntervalMinutes ?? 0
+    setEditNagDays(Math.floor(totalMins / 1440))
+    setEditNagHours(Math.floor((totalMins % 1440) / 60))
+    setEditNagMinutes(totalMins % 60)
     setEditing(true)
   }
+
+  const editNagSum = editNagMinutes + editNagHours * 60 + editNagDays * 1440
+  const nagValidationError = editRequiresAck && editNagSum === 0
+    ? 'Set a nag interval when "Requires acknowledgment" is on.'
+    : editNagSum > 43200
+      ? 'Nag interval must be at most 30 days (43200 minutes).'
+      : null
 
   function commitEdit() {
     const trimmedValue = editValue.trim()
     const trimmedMessage = editMessage.trim()
     if (!trimmedValue || !trimmedMessage) { setEditing(false); return }
+    if (nagValidationError) return
     const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
     const messageUnchanged = trimmedMessage === (schedule.agentContext ?? '')
+    const ackFields = {
+      requiresAck: editRequiresAck,
+      nagIntervalMinutes: editRequiresAck && editNagSum > 0 ? editNagSum : null,
+    }
     if (schedule.cron !== null) {
       if (trimmedValue === schedule.cron && conditionsUnchanged && messageUnchanged) { setEditing(false); return }
-      updateMutation.mutate({ cron: trimmedValue, conditions: editConditions, agentContext: trimmedMessage })
+      updateMutation.mutate({ cron: trimmedValue, conditions: editConditions, agentContext: trimmedMessage, ...ackFields })
       return
     }
     // one-time: editValue is a datetime-local string
@@ -502,7 +523,7 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     if (Number.isNaN(d.getTime())) return
     const runAtUnchanged = d.toISOString() === schedule.runAt
     if (runAtUnchanged && conditionsUnchanged && messageUnchanged) { setEditing(false); return }
-    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: trimmedMessage })
+    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: trimmedMessage, ...ackFields })
   }
 
   const scheduleLabel = schedule.cron
@@ -518,19 +539,33 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     <div className="flex items-center gap-4 px-4 py-3 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/30 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="text-sm text-zinc-100 truncate">{message}</div>
-        <div className="text-xs text-zinc-500 mt-0.5">{scheduleLabel}</div>
+        <div className="text-xs text-zinc-500 mt-0.5">
+          {scheduleLabel}
+          {schedule.requiresAck && schedule.nagIntervalMinutes
+            ? ` · nags every ${formatNagInterval(schedule.nagIntervalMinutes)}`
+            : null}
+        </div>
         {schedule.conditions && (
           <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
         )}
       </div>
-      <div className="w-24 shrink-0 text-xs">
+      <div className="shrink-0 text-xs flex flex-col gap-1 items-start">
         <span
-          className="inline-block px-2 py-0.5 rounded font-medium text-zinc-100 truncate max-w-full"
+          className="inline-block px-2 py-0.5 rounded font-medium text-zinc-100 truncate max-w-[6rem]"
           style={{ backgroundColor: headColor(schedule.headId), borderLeft: `2px solid ${headColorBorder(schedule.headId)}` }}
           title={`Head: ${schedule.headId}`}
         >
           {schedule.headId}
         </span>
+        {schedule.requiresAck && (
+          <span
+            className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold text-zinc-100 shrink-0"
+            style={{ backgroundColor: '#92400e', borderLeft: '2px solid #f59e0b' }}
+            title={`Nags every ${formatNagInterval(schedule.nagIntervalMinutes)} until acknowledged`}
+          >
+            NAGS
+          </span>
+        )}
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
         <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
@@ -608,6 +643,55 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                     className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
                   />
                 </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Requires acknowledgment</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditRequiresAck(v => !v)}
+                    title={editRequiresAck ? 'Acknowledgment required' : 'No acknowledgment required'}
+                    className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+                      editRequiresAck ? 'bg-emerald-600' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      editRequiresAck ? 'translate-x-[18px]' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+                {editRequiresAck && (
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">Nag every</label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        value={editNagDays}
+                        onChange={e => setEditNagDays(Number(e.target.value))}
+                        className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 text-center"
+                      />
+                      <span className="text-xs text-zinc-500">d</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editNagHours}
+                        onChange={e => setEditNagHours(Number(e.target.value))}
+                        className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 text-center"
+                      />
+                      <span className="text-xs text-zinc-500">h</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editNagMinutes}
+                        onChange={e => setEditNagMinutes(Number(e.target.value))}
+                        className="w-16 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 text-center"
+                      />
+                      <span className="text-xs text-zinc-500">m</span>
+                    </div>
+                  </div>
+                )}
+                {nagValidationError && (
+                  <div className="text-xs text-red-400">{nagValidationError}</div>
+                )}
                 {updateMutation.isError && (
                   <div className="text-xs text-red-400">{(updateMutation.error as Error).message}</div>
                 )}
@@ -620,7 +704,7 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                   </button>
                   <button
                     onClick={commitEdit}
-                    disabled={updateMutation.isPending}
+                    disabled={updateMutation.isPending || !!nagValidationError}
                     className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
                   >
                     {updateMutation.isPending ? 'Saving...' : 'Save'}
