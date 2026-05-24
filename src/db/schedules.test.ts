@@ -555,4 +555,62 @@ describe('ScheduleStore — headId', () => {
     expect(s2).not.toBeNull()
     expect(s2!.ackPending).toBe(false)
   })
+
+  // ── Plan 39-01: update() applies requiresAck + nagIntervalMinutes (D-11) ──────
+
+  it("update(id, { requiresAck: true, nagIntervalMinutes: 90 }) sets both on the stored row", () => {
+    store.create({
+      id: 'ack-nag-update',
+      headId: 'default',
+      kind: 'reminder',
+      agentContext: 'Check in',
+      runAt: '2099-01-01T09:00:00Z',
+      nextRun: '2099-01-01T09:00:00Z',
+    })
+
+    store.update('ack-nag-update', { requiresAck: true, nagIntervalMinutes: 90 })
+    const s = store.get('ack-nag-update')
+    expect(s).not.toBeNull()
+    expect(s!.requiresAck).toBe(true)
+    expect(s!.nagIntervalMinutes).toBe(90)
+  })
+
+  // ── Plan 39-01 D-12: update() applies full D-12 transition patch ────────────
+  //
+  // The route computes nextRun and passes it via patch.nextRun. This test pins
+  // that update() faithfully applies all four patch fields together:
+  // requiresAck:false, nagIntervalMinutes:null, ackPending:false, nextRun:<recomputed>
+
+  it("update() applies D-12 four-field transition: requiresAck:false, nagIntervalMinutes:null, ackPending:false, nextRun:recomputed", () => {
+    const originalNextRun = '2099-01-01T09:00:00Z'
+    store.create({
+      id: 'd12-transition',
+      headId: 'default',
+      kind: 'reminder',
+      agentContext: 'Morning stand-up',
+      cron: '0 9 * * *',
+      requiresAck: true,
+      nagIntervalMinutes: 60,
+      nextRun: originalNextRun,
+    })
+
+    // Simulate ackPending:true (as would happen during nag in-flight)
+    store.update('d12-transition', { ackPending: true })
+
+    // Now apply the full D-12 transition patch (as the PATCH route would compute)
+    const recomputedNextRun = '2099-06-01T09:00:00Z'
+    store.update('d12-transition', {
+      requiresAck: false,
+      nagIntervalMinutes: null,
+      ackPending: false,
+      nextRun: recomputedNextRun,
+    })
+
+    const s = store.get('d12-transition')
+    expect(s).not.toBeNull()
+    expect(s!.requiresAck).toBe(false)
+    expect(s!.nagIntervalMinutes).toBeNull()
+    expect(s!.ackPending).toBe(false)
+    expect(s!.nextRun).toBe(recomputedNextRun)
+  })
 })

@@ -397,3 +397,241 @@ describe('headId routing (Plan 35-03 D-11/D-12/D-13)', () => {
     expect(schedule.headId).toBe('default')
   })
 })
+
+// ─── Plan 39-01: ack/nag coupling, startAt->nextRun, D-12, D-04 standalone-nag ─
+
+describe('ack/nag validation, startAt, and D-12 (Plan 39-01)', () => {
+  let skillsRoot: string
+  let tasksRoot: string
+  let storeDir: string
+  let store: ScheduleStore
+  let unified: UnifiedLoader
+  let server: Server
+  let port: number
+
+  beforeEach(async () => {
+    skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sched39-skills-'))
+    tasksRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sched39-tasks-'))
+    seedEntry(skillsRoot, 'existing-skill', 'SKILL.md')
+    seedEntry(tasksRoot, 'existing-task', 'TASK.md')
+
+    const skillLoader = new FileSystemKindLoader({ root: skillsRoot, kind: 'skill', filename: 'SKILL.md' })
+    const taskLoader = new FileSystemKindLoader({ root: tasksRoot, kind: 'task', filename: 'TASK.md' })
+    unified = new UnifiedLoader(skillLoader, taskLoader)
+
+    storeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sched39-store-'))
+    store = new ScheduleStore(storeDir)
+
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    app.use('/api/schedules', createSchedulesRouter(store, 'UTC', () => [{ id: 'default' }], unified))
+
+    port = await getFreePort()
+    await new Promise<void>((resolve, reject) => {
+      server = app.listen(port, '127.0.0.1', () => resolve())
+      server.once('error', reject)
+    })
+  })
+
+  afterEach(async () => {
+    await new Promise<void>(r => server.close(() => r()))
+    fs.rmSync(skillsRoot, { recursive: true, force: true })
+    fs.rmSync(tasksRoot, { recursive: true, force: true })
+    fs.rmSync(storeDir, { recursive: true, force: true })
+  })
+
+  async function post(body: Record<string, unknown>) {
+    const r = await fetch(`http://127.0.0.1:${port}/api/schedules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await r.json().catch(() => ({})) as Record<string, unknown>
+    return { status: r.status, data }
+  }
+
+  async function patch(id: string, body: Record<string, unknown>) {
+    const r = await fetch(`http://127.0.0.1:${port}/api/schedules/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await r.json().catch(() => ({})) as Record<string, unknown>
+    return { status: r.status, data }
+  }
+
+  // ── POST: ack+nag happy path ─────────────────────────────────────────────────
+
+  it('POST reminder with requiresAck:true + nagIntervalMinutes:60 → 200, fields persisted', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Take meds', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 60,
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { requiresAck: boolean; nagIntervalMinutes: number } }).schedule
+    expect(schedule.requiresAck).toBe(true)
+    expect(schedule.nagIntervalMinutes).toBe(60)
+  })
+
+  // ── POST: coupling errors ────────────────────────────────────────────────────
+
+  it('POST reminder with requiresAck:true and no nagIntervalMinutes → 400 mentions "nag"', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true,
+    })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('nag')
+  })
+
+  it('POST reminder with requiresAck:true and nagIntervalMinutes:0 → 400 mentions "nag"', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 0,
+    })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('nag')
+  })
+
+  it('POST reminder with nagIntervalMinutes > 0 and requiresAck:false → 400 mentions ack/coupling', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: false, nagIntervalMinutes: 30,
+    })
+    expect(r.status).toBe(400)
+    const err = (r.data as { error: string }).error.toLowerCase()
+    expect(err.match(/ack|coupling|only applies/)).toBeTruthy()
+  })
+
+  it('POST reminder with nagIntervalMinutes > 0 and requiresAck omitted → 400 mentions ack/coupling', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', nagIntervalMinutes: 30,
+    })
+    expect(r.status).toBe(400)
+    const err = (r.data as { error: string }).error.toLowerCase()
+    expect(err.match(/ack|coupling|only applies/)).toBeTruthy()
+  })
+
+  it('POST reminder with requiresAck:true and nagIntervalMinutes:1 → 200 (floor boundary)', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 1,
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { requiresAck: boolean; nagIntervalMinutes: number } }).schedule
+    expect(schedule.requiresAck).toBe(true)
+    expect(schedule.nagIntervalMinutes).toBe(1)
+  })
+
+  // ── POST: ceiling error ──────────────────────────────────────────────────────
+
+  it('POST reminder with nagIntervalMinutes:43201 → 400 mentions "30 days" or "43200"', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 43201,
+    })
+    expect(r.status).toBe(400)
+    const err = (r.data as { error: string }).error.toLowerCase()
+    expect(err.match(/30 days|43200/)).toBeTruthy()
+  })
+
+  // ── POST: startAt -> nextRun mapping (D-10) ──────────────────────────────────
+
+  it('POST reminder with cron + future startAt → 200; nextRun===startAt, cron retained', async () => {
+    const futureDate = new Date(Date.now() + 86400000).toISOString()
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', startAt: futureDate,
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { nextRun: string; cron: string } }).schedule
+    expect(schedule.nextRun).toBe(futureDate)
+    expect(schedule.cron).toBe('0 9 * * *')
+  })
+
+  it('POST reminder with cron + past startAt → 400 mentions future/startAt', async () => {
+    const pastDate = new Date(Date.now() - 86400000).toISOString()
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', startAt: pastDate,
+    })
+    expect(r.status).toBe(400)
+    const err = (r.data as { error: string }).error.toLowerCase()
+    expect(err.match(/future|startat/)).toBeTruthy()
+  })
+
+  // ── PATCH: requiresAck/nagIntervalMinutes round-trip (D-11) ─────────────────
+
+  it('PATCH reminder updates requiresAck:true + nagIntervalMinutes:120 → 200', async () => {
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default',
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    const r = await patch(id, { requiresAck: true, nagIntervalMinutes: 120 })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { requiresAck: boolean; nagIntervalMinutes: number } }).schedule
+    expect(schedule.requiresAck).toBe(true)
+    expect(schedule.nagIntervalMinutes).toBe(120)
+  })
+
+  it('PATCH reminder requiresAck:false → 200; nagIntervalMinutes becomes null', async () => {
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 60,
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    const r = await patch(id, { requiresAck: false })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { requiresAck: boolean; nagIntervalMinutes: number | null } }).schedule
+    expect(schedule.requiresAck).toBe(false)
+    expect(schedule.nagIntervalMinutes).toBeNull()
+  })
+
+  // ── PATCH: standalone-nag coupling guard (D-04) ──────────────────────────────
+
+  it('PATCH standalone { nagIntervalMinutes: 0 } on ack-required reminder → 400 mentions "nag"', async () => {
+    // Create an ack-required reminder
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 60,
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    // PATCH with only nagIntervalMinutes=0 (requiresAck ABSENT from body)
+    const r = await patch(id, { nagIntervalMinutes: 0 })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('nag')
+  })
+
+  it('PATCH standalone { nagIntervalMinutes: 120 } on ack-required reminder → 200', async () => {
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 60,
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    const r = await patch(id, { nagIntervalMinutes: 120 })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { nagIntervalMinutes: number } }).schedule
+    expect(schedule.nagIntervalMinutes).toBe(120)
+  })
+
+  it('PATCH standalone { nagIntervalMinutes: 0 } on NON-ack reminder → 200 (no coupling to violate)', async () => {
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'default',
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    // Non-ack reminder with nag=0 bare patch → should succeed (no coupling violated)
+    // Note: nagIntervalMinutes: 0 on a non-ack reminder — the coupling check only fires
+    // if the stored row has requiresAck===true
+    const r = await patch(id, { nagIntervalMinutes: 0 })
+    expect(r.status).toBe(200)
+  })
+})

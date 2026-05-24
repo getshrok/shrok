@@ -1384,13 +1384,15 @@ describe('buildReminderTools', () => {
     expect(parsed.message).toMatch(/requiresAck/i)
   })
 
-  // ── Phase 37 D-03 floor: nag sum < 5 min → reject ──────────────────────────
-  it('create_reminder with requiresAck:true and nagMinutes:3 (sum<5) returns error JSON (D-03 floor)', async () => {
-    const { createReminder } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 3 }, ctx)
+  // ── Phase 39 D-03 floor correction: floor is now 1 minute (not 5) ──────────
+  // Under floor=1, nagMinutes:3 is VALID. Old test replaced: nagMinutes:1 → success (boundary).
+  it('create_reminder with requiresAck:true and nagMinutes:1 → success (D-03 floor=1 boundary)', async () => {
+    const { createReminder, scheduleStore } = await getReminderTools()
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 1 }, ctx)
     const parsed = JSON.parse(result as string)
-    expect(parsed.error).toBe(true)
-    expect(parsed.message).toMatch(/at least 5/i)
+    expect(parsed.ok).toBe(true)
+    const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
+    expect(rows[0]!.nagIntervalMinutes).toBe(1)
   })
 
   // ── Phase 37 D-03 ceiling: nag sum > 43200 min → reject ────────────────────
