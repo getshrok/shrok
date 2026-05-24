@@ -277,7 +277,7 @@ Plans:
 
 - [x] **Phase 37: Schema & Tool Params** — Add `requiresAck` + `nagInterval` fields to the reminder schedule schema with lazy JSON migration; wire both params into `create_reminder`; verify and correct `create_reminder` tool description for `triggerAt` + `cron` start-then-repeat behavior (completed 2026-05-23)
 - [x] **Phase 38: Nag Mechanism & Ack Semantics** — System-native nag re-arm in scheduler/activation before delivery; ack semantics by type (one-time delete vs recurring resume); ack cancels in-flight nag; injected fire event carries reminder ID + ack instructions; narrowly-scoped ack tool/agent wired through the head (completed 2026-05-23)
-- [ ] **Phase 39: Dashboard Reminder UI** — `requiresAck` toggle + `nagInterval` input on dashboard create/edit reminder form; visual marker on ack-required reminder rows; start-date/time control for recurring schedules, reminders, and tasks mapping to `triggerAt` + `cron`
+- [x] **Phase 39: Dashboard Reminder UI** — `requiresAck` toggle + `nagInterval` input on dashboard create/edit reminder form; visual marker on ack-required reminder rows; start-date/time control for recurring schedules, reminders, and tasks mapping to `triggerAt` + `cron` (completed 2026-05-24)
 
 ## Phase Details
 
@@ -339,7 +339,7 @@ Plans:
   2. Reminders that require acknowledgment are visually distinguished from ordinary reminders in the dashboard list (e.g., a badge or icon)
   3. The dashboard recurring schedule/reminder/task create form includes a start-date/time picker; submitting it sets `triggerAt` on the created item so the first fire occurs at the chosen date and subsequent fires follow the cron
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 **UI hint**: yes
 
 Plans:
@@ -353,7 +353,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 — shares SchedulesPage.tsx)*
 
-- [ ] 39-03-PLAN.md — Frontend create forms: AddReminderForm ack toggle + reveal-when-on nag slots (D-01/D-02/D-04), optional start-date on both create forms (D-07/D-08/D-09/D-10) + manual verify (SCHED-01, SCHED-03)
+- [x] 39-03-PLAN.md — Frontend create forms: AddReminderForm ack toggle + reveal-when-on nag slots (D-01/D-02/D-04), optional start-date on both create forms (D-07/D-08/D-09/D-10) + manual verify (SCHED-01, SCHED-03)
 
 ## Progress
 
@@ -361,4 +361,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 37. Schema & Tool Params | 2/2 | Complete    | 2026-05-23 |
 | 38. Nag Mechanism & Ack Semantics | 4/4 | Complete    | 2026-05-23 |
-| 39. Dashboard Reminder UI | 2/3 | In Progress|  |
+| 39. Dashboard Reminder UI | 3/3 | Complete   | 2026-05-24 |
