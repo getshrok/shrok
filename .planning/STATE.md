@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Multi-Head Task Delivery
-status: executing
-last_updated: "2026-05-24T18:10:57.678Z"
+status: verifying
+last_updated: "2026-05-24T18:28:57.971Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 0
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -19,7 +19,7 @@ progress:
 
 Phase: 44 (multi-head-task-delivery) — EXECUTING
 Plan: 5 of 5 (COMPLETE)
-Status: All plans executed — ready for /gsd:verify-work
+Status: Phase complete — ready for verification
 Last activity: 2026-05-24
 
 ## Project Reference
@@ -186,6 +186,8 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-44-03-EMPTY-ARRAY-PATCH (Plan 44-03): empty array on PATCH passes through to patch.deliverToHeadIds = [] so store.update delete-on-empty reverts to owner-only; returned schedule body has key absent
 - D-WAIT-ALL (Plan 44-05): waitForAllQueueEvents helper inlined in test file for multi-row fan-out assertions — polls until minCount rows appear; waitForQueueEvent(LIMIT 1) is insufficient for fan-out/dedup tests
 - D-TEST-TRIGGER-SCHEDULED (Plan 44-05): fan-out, dedup, and regression tests use trigger:'scheduled' to exercise the production handleScheduleTrigger spawn path through activation.ts
+- D-DASHBOARD-OWNER-EXCLUDED (Plan 44-04): owner head filtered from "deliver to" multi-select options; owner is always implicitly included via chip-render dedup — offering owner as selectable would be redundant and confusing
+- D-DASHBOARD-EMPTY-PATCH (Plan 44-04): clearing the multi-select sends `deliverToHeadIds: []` on PATCH; `store.update` delete-on-empty (Plan 44-01) reverts to owner-only — no special UI affordance needed
 
 ## Performance Metrics
 
@@ -216,6 +218,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 40 P01 | 4min | 2 tasks | 3 files |
 | Phase 40 P02 | 3min | 3 tasks | 3 files |
 | Phase 44 P05 | 3min | 2 tasks | 1 files |
+| Phase 44 P04 | 20min | 3 tasks | 3 files |
 
 ## Operator Next Steps
 
