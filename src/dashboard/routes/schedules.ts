@@ -44,6 +44,32 @@ export function createSchedulesRouter(
       taskName?: unknown; cron?: unknown; runAt?: unknown; conditions?: unknown; agentContext?: unknown
     }
 
+    // D-04: validate ack↔nag coupling, floor, and ceiling before any other logic
+    const { requiresAck, nagIntervalMinutes } = req.body as { requiresAck?: unknown; nagIntervalMinutes?: unknown }
+    const ackBool = requiresAck === true
+    const nagNum = typeof nagIntervalMinutes === 'number' ? nagIntervalMinutes : 0
+
+    // Coupling: requiresAck requires a nag interval
+    if (ackBool && nagNum === 0) {
+      res.status(400).json({ error: 'requiresAck requires a nag interval (minimum 1 minute)' })
+      return
+    }
+    // Coupling: nag without ack
+    if (!ackBool && nagNum > 0) {
+      res.status(400).json({ error: 'nagIntervalMinutes only applies when requiresAck is true' })
+      return
+    }
+    // Floor: 1 minute (D-03) — catches fractional non-integer values (e.g. 0.5)
+    if (ackBool && nagNum > 0 && nagNum < 1) {
+      res.status(400).json({ error: 'nag interval must be at least 1 minute' })
+      return
+    }
+    // Ceiling: 30 days = 43200 minutes
+    if (nagNum > 43200) {
+      res.status(400).json({ error: 'nag interval must be at most 30 days (43200 minutes)' })
+      return
+    }
+
     const rawKind = (req.body as { kind?: unknown }).kind
     if (rawKind !== undefined && rawKind !== 'task' && rawKind !== 'reminder') {
       res.status(400).json({ error: "kind must be 'task' or 'reminder'" })
@@ -90,6 +116,21 @@ export function createSchedulesRouter(
       nextRun = new Date(runAt).toISOString()
     }
 
+    // D-10: startAt override — when cron + startAt provided, set nextRun=startAt (keep cron)
+    const startAt = (req.body as { startAt?: unknown }).startAt
+    if (typeof startAt === 'string' && startAt && typeof cron === 'string' && cron) {
+      const d = new Date(startAt)
+      if (isNaN(d.getTime())) {
+        res.status(400).json({ error: 'Invalid startAt date' })
+        return
+      }
+      if (d <= new Date()) {
+        res.status(400).json({ error: 'startAt must be in the future' })
+        return
+      }
+      nextRun = d.toISOString()  // D-10: override cron-computed nextRun with start date
+    }
+
     try {
       // Plan 35-03 D-11: headId comes from the validated req body — schedule
       // belongs to the head the client picked.
@@ -100,6 +141,9 @@ export function createSchedulesRouter(
       if (nextRun !== undefined) createOpts.nextRun = nextRun
       if (typeof conditions === 'string' && conditions) createOpts.conditions = conditions
       if (typeof agentContext === 'string' && agentContext) createOpts.agentContext = agentContext
+      // D-04: apply validated ack/nag fields
+      if (ackBool) createOpts.requiresAck = true
+      if (ackBool && nagNum > 0) createOpts.nagIntervalMinutes = nagNum
       const schedule = scheduleStore.create(createOpts)
       res.json({ schedule })
     } catch (err) {
@@ -157,6 +201,57 @@ export function createSchedulesRouter(
         res.status(400).json({ error: 'Invalid cron expression' })
         return
       }
+    }
+
+    // D-11: requiresAck/nagIntervalMinutes editable via PATCH with same coupling/floor/ceiling validation
+    const { requiresAck: patchRequiresAck, nagIntervalMinutes: patchNagInterval } = bodyObj as {
+      requiresAck?: unknown; nagIntervalMinutes?: unknown
+    }
+
+    if (typeof patchRequiresAck === 'boolean') {
+      const patchNag = typeof patchNagInterval === 'number' ? patchNagInterval : 0
+      if (patchRequiresAck && patchNag === 0) {
+        res.status(400).json({ error: 'requiresAck requires a nag interval (minimum 1 minute)' })
+        return
+      }
+      if (patchRequiresAck && patchNag > 0 && patchNag < 1) {
+        res.status(400).json({ error: 'nag interval must be at least 1 minute' })
+        return
+      }
+      if (patchNag > 43200) {
+        res.status(400).json({ error: 'nag interval must be at most 30 days (43200 minutes)' })
+        return
+      }
+      patch.requiresAck = patchRequiresAck
+      if (patchRequiresAck) {
+        patch.nagIntervalMinutes = patchNag > 0 ? patchNag : null
+      } else {
+        // D-12: turning ack off — clear nag, and if ackPending clear that + recompute nextRun
+        patch.nagIntervalMinutes = null
+        const existing = scheduleStore.get(id)
+        if (existing?.ackPending) {
+          patch.ackPending = false
+          if (existing.cron) {
+            patch.nextRun = nextRunAfter(existing.cron, new Date(), timezone).toISOString()
+          } else if (existing.runAt !== null) {
+            patch.nextRun = existing.runAt
+          }
+        }
+      }
+    } else if (typeof patchNagInterval === 'number') {
+      // D-04 standalone-nag coupling guard (direct-API path where requiresAck is ABSENT from body):
+      // read the existing row to check stored requiresAck before applying a bare nag patch
+      const existing = scheduleStore.get(id)
+      const patchNag = patchNagInterval
+      if (patchNag > 43200) {
+        res.status(400).json({ error: 'nag interval must be at most 30 days (43200 minutes)' })
+        return
+      }
+      if (existing?.requiresAck === true && patchNag < 1) {
+        res.status(400).json({ error: 'requiresAck requires a nag interval (minimum 1 minute)' })
+        return
+      }
+      patch.nagIntervalMinutes = patchNag
     }
 
     const schedule = scheduleStore.update(id, patch)
