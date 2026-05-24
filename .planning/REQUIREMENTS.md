@@ -11,12 +11,12 @@ Make Shrok a Home Assistant conversation agent (converse-only) so the Home Assis
 
 Shrok answers when Home Assistant's conversation agent calls it.
 
-- [ ] **HACV-01**: Shrok exposes an OpenAI-compatible `POST /v1/chat/completions` endpoint that returns a non-streaming Chat Completions response (`choices[0].message.content`, `finish_reason: "stop"`, zeroed `usage`) that Home Assistant's Extended OpenAI Conversation component accepts and speaks
-- [ ] **HACV-02**: The endpoint authenticates Home Assistant via a bearer token / API key that is independent of the dashboard cookie session
-- [ ] **HACV-03**: An inbound HA turn enqueues a `user_message` on the `home-assistant` channel, extracting only the latest user message — HA-sent conversation history is NOT persisted to Shrok's message store (Shrok's own context assembler owns history)
-- [ ] **HACV-04**: The endpoint returns its in-turn reply within the device timeout budget (target <3s, hard limit ~5s) so the live voice turn never times out, regardless of how long the head's real work takes (the head's full answer is delivered asynchronously via the announce mechanism)
-- [ ] **HACV-05**: The response echoes the HA `conversation_id` so Home Assistant can stitch multi-turn sessions, and Shrok keys its own conversation thread/context to that HA conversation
-- [ ] **HACV-06**: Pointing Home Assistant at Shrok works behind the existing Apache vhost — the `/v1/*` path bypasses the vhost's basic-auth so HA's bearer token reaches Shrok (and CSRF/same-origin protection excludes `/v1/*`)
+- [x] **HACV-01**: Shrok exposes an OpenAI-compatible `POST /v1/chat/completions` endpoint that returns a non-streaming Chat Completions response (`choices[0].message.content`, `finish_reason: "stop"`, zeroed `usage`) that Home Assistant's Extended OpenAI Conversation component accepts and speaks
+- [x] **HACV-02**: The endpoint authenticates Home Assistant via a bearer token / API key that is independent of the dashboard cookie session
+- [x] **HACV-03**: An inbound HA turn enqueues a `user_message` on the `home-assistant` channel, extracting only the latest user message — HA-sent conversation history is NOT persisted to Shrok's message store (Shrok's own context assembler owns history)
+- [x] **HACV-04**: The endpoint returns its in-turn reply within the device timeout budget (target <3s, hard limit ~5s) so the live voice turn never times out, regardless of how long the head's real work takes (the head's full answer is delivered asynchronously via the announce mechanism)
+- [x] **HACV-05**: The response echoes the HA `conversation_id` so Home Assistant can stitch multi-turn sessions, and Shrok keys its own conversation thread/context to that HA conversation
+- [x] **HACV-06**: Pointing Home Assistant at Shrok works behind the existing Apache vhost — the `/v1/*` path bypasses the vhost's basic-auth so HA's bearer token reaches Shrok (and CSRF/same-origin protection excludes `/v1/*`)
 
 ### Unprompted Spoken Replies (HAAN)
 
@@ -69,12 +69,12 @@ Which phases cover which requirements. Filled during roadmap creation.
 |-------------|-------|--------|
 | HACF-01 | Phase 40 | Complete |
 | HACF-02 | Phase 40 | Complete |
-| HACV-01 | Phase 41 | Pending |
-| HACV-02 | Phase 41 | Pending |
-| HACV-03 | Phase 41 | Pending |
-| HACV-04 | Phase 41 | Pending |
-| HACV-05 | Phase 41 | Pending |
-| HACV-06 | Phase 41 | Pending |
+| HACV-01 | Phase 41 | Complete |
+| HACV-02 | Phase 41 | Complete |
+| HACV-03 | Phase 41 | Complete |
+| HACV-04 | Phase 41 | Complete |
+| HACV-05 | Phase 41 | Complete |
+| HACV-06 | Phase 41 | Complete |
 | HAAN-01 | Phase 42 | Pending |
 | HAAN-02 | Phase 42 | Pending |
 | HAAN-03 | Phase 42 | Pending |
