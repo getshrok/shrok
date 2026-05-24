@@ -239,8 +239,15 @@ export function createSchedulesRouter(
             // default — a per-schedule cronTimezone override must be honored or the
             // first post-ack fire shifts by the UTC offset.
             patch.nextRun = nextRunAfter(existing.cron, new Date(), existing.cronTimezone ?? timezone).toISOString()
-          } else if (existing.runAt !== null) {
+          } else if (existing.runAt !== null && existing.runAt > new Date().toISOString()) {
+            // One-time reminder whose runAt is still in the future: re-arm it.
             patch.nextRun = existing.runAt
+          } else {
+            // WR-04: a one-time reminder that already fired and is nagging has a
+            // past runAt. Restoring it as nextRun would make getDue() match
+            // (nextRun <= now) and re-fire on the next poll instead of going
+            // quiet. Clear nextRun so the delivered reminder stops firing.
+            patch.nextRun = null
           }
         }
       }

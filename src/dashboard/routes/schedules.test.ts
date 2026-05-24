@@ -634,4 +634,48 @@ describe('ack/nag validation, startAt, and D-12 (Plan 39-01)', () => {
     const r = await patch(id, { nagIntervalMinutes: 0 })
     expect(r.status).toBe(200)
   })
+
+  // ── WR-04: one-time ack-off does not re-fire an already-delivered reminder ────
+
+  it('PATCH requiresAck:false on an already-fired, nagging one-time reminder → nextRun cleared (no re-fire)', async () => {
+    // Create a one-time ack-required reminder.
+    const future = new Date(Date.now() + 3600_000).toISOString()
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', runAt: future,
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 30,
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    // Simulate "already delivered and nagging": runAt is now in the past and an
+    // ack is outstanding (this is the state the activation loop leaves after the
+    // first fire of an ack-required one-time reminder).
+    const past = new Date(Date.now() - 3600_000).toISOString()
+    store.update(id, { runAt: past, nextRun: past, ackPending: true })
+
+    const r = await patch(id, { requiresAck: false })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { nextRun: string | null; ackPending: boolean; requiresAck: boolean } }).schedule
+    expect(schedule.requiresAck).toBe(false)
+    expect(schedule.ackPending).toBe(false)
+    // The past runAt must NOT be written back as nextRun — that would make
+    // getDue() (nextRun <= now) re-fire the reminder.
+    expect(schedule.nextRun).toBeNull()
+    expect(store.getDue(new Date().toISOString()).some(s => s.id === id)).toBe(false)
+  })
+
+  it('PATCH requiresAck:false on a not-yet-fired, nagging one-time reminder → future runAt re-armed', async () => {
+    // Edge case: ackPending true but runAt still in the future — keep the future fire.
+    const future = new Date(Date.now() + 3600_000).toISOString()
+    const created = await post({
+      kind: 'reminder', agentContext: 'Test', runAt: future,
+      headId: 'default', requiresAck: true, nagIntervalMinutes: 30,
+    })
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+    store.update(id, { ackPending: true })
+
+    const r = await patch(id, { requiresAck: false })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { nextRun: string | null } }).schedule
+    expect(schedule.nextRun).toBe(future)
+  })
 })
