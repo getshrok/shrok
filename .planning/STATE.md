@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
-status: ready_to_plan
-last_updated: 2026-05-24T10:53:14.384Z
+status: planning
+last_updated: "2026-05-24T11:12:55.863Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 4
@@ -11,7 +11,6 @@ progress:
   total_plans: 2
   completed_plans: 2
   percent: 25
-stopped_at: Phase 40 complete (2/2) — ready to discuss Phase 41
 ---
 
 # Project State
