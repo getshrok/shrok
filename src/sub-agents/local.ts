@@ -398,6 +398,7 @@ export class LocalAgentRunner implements AgentRunner {
       model: state.model,
       trigger: state.trigger,
       headId: state.headId,                   // Phase 34 D-RUNNER-HEADID: preserve head identity across resume
+      ...(state.deliverToHeadIds.length ? { deliverToHeadIds: state.deliverToHeadIds } : {}),
       ...(state.skillName ? { skillName: state.skillName } : {}),
       ...(state.parentAgentId ? { parentAgentId: state.parentAgentId } : {}),
       ...(savedVerbose ? { onVerbose: savedVerbose } : {}),
@@ -980,19 +981,27 @@ export class LocalAgentRunner implements AgentRunner {
         JSON.stringify({ subWorkerId: agentId, output }))
       this.emitters.get(options.parentAgentId)?.emit('inbox')
     } else {
-      this.queueStore.enqueue({
-        type: 'agent_completed',
-        id: generateId('qe'),
-        agentId: agentId,
-        output,
-        createdAt: now(),
-      }, PRIORITY.AGENT_COMPLETED, this.headId)
+      const deliverySet = [...new Set([this.headId, ...(options.deliverToHeadIds ?? [])])]
+      for (const targetHeadId of deliverySet) {
+        this.queueStore.enqueue({
+          type: 'agent_completed',
+          id: generateId('qe'),
+          agentId,
+          output,
+          createdAt: now(),
+        }, PRIORITY.AGENT_COMPLETED, targetHeadId)
+      }
     }
   }
 
   private suspendAsQuestion(
     agentId: string, question: string, options: SpawnOptions, history: Message[],
   ): void {
+    // D-06: scheduled agents have no human attached — force completion instead of suspension.
+    if (options.trigger === 'scheduled') {
+      this.completeAgent(agentId, question, options, history)
+      return
+    }
     this.agentStore.suspend(agentId, question)
     if (options.parentAgentId) {
       this.inboxStore.write(options.parentAgentId, 'sub_agent_question',
@@ -1024,13 +1033,16 @@ export class LocalAgentRunner implements AgentRunner {
       suspend: () => { state.suspended = true },
       complete: (output: string) => {
         this.agentStore.complete(agentId, output)
-        this.queueStore.enqueue({
-          type: 'agent_completed',
-          id: generateId('qe'),
-          agentId: agentId,
-          output,
-          createdAt: now(),
-        }, PRIORITY.AGENT_COMPLETED, this.headId)
+        const deliverySet = [...new Set([this.headId, ...(options.deliverToHeadIds ?? [])])]
+        for (const targetHeadId of deliverySet) {
+          this.queueStore.enqueue({
+            type: 'agent_completed',
+            id: generateId('qe'),
+            agentId,
+            output,
+            createdAt: now(),
+          }, PRIORITY.AGENT_COMPLETED, targetHeadId)
+        }
         state.completed = true
       },
       fail: (error: string) => { throw new Error(error) },
