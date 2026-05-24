@@ -125,3 +125,4 @@ The fix is to add a `<Location "/v1/">` block with `AuthType None` and `Require 
 
 - [architecture.md](./architecture.md) — how adapters sit in the full message flow
 - [mcp.md](./mcp.md) — MCP tool integration
+- [home-assistant.md](../user-guide/home-assistant.md) — operator setup guide for the HA voice integration (HACS, base URL, entity ID, Apache bypass)
