@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, type Config } from './config.js'
+import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, extractSecretValues, type Config } from './config.js'
 
 describe('loadConfig', () => {
   const originalEnv = process.env
@@ -623,5 +623,91 @@ describe('Phase 40 home-assistant channel vendor', () => {
     expect(() => loadConfig()).not.toThrow()
     const cfg = loadConfig()
     expect(cfg.heads).toBeUndefined()
+  })
+})
+
+// ─── Phase 42: extractSecretValues — home-assistant HA_ACCESS_TOKEN (D-05) ───
+
+describe('extractSecretValues — home-assistant HA_ACCESS_TOKEN (D-05)', () => {
+  const HA_TOKEN = 'test-ha-access-token-secret-abc123'
+
+  const haConfig: Config = {
+    llmProvider: 'anthropic',
+    anthropicModelStandard: 'claude-haiku-4-5-20251001',
+    anthropicModelCapable: 'claude-sonnet-4-6',
+    anthropicModelExpert: 'claude-opus-4-6',
+    dbPath: '/tmp/test.db',
+    workspacePath: '/tmp/test-workspace',
+    identityDir: '/tmp/test-workspace/identity',
+    migrationsDir: './sql',
+    webhookPort: 8766,
+    webhookRateLimitPerMinute: 60,
+    contextWindowTokens: 100_000,
+    archivalThresholdFraction: 0.80,
+    mcpConfigPath: './mcp.json',
+    logLevel: 'info',
+    heads: [
+      {
+        id: 'home',
+        channels: [{
+          id: 'ha',
+          vendor: 'home-assistant' as const,
+          haBaseUrl: 'http://homeassistant.local:8123',
+          haVoiceSatelliteEntityId: 'assist_satellite.home_assistant_voice_pe',
+        }],
+      },
+    ],
+  }
+
+  const nonHaConfig: Config = {
+    ...haConfig,
+    heads: [
+      {
+        id: 'main',
+        channels: [{
+          id: 'tg',
+          vendor: 'telegram' as const,
+          botToken: 'bot123456789:AAABBBCCCDDDEEEFFFGGG',
+          chatId: '-100123456789',
+        }],
+      },
+    ],
+  }
+
+  beforeEach(() => {
+    delete process.env['HA_ACCESS_TOKEN']
+  })
+
+  afterEach(() => {
+    delete process.env['HA_ACCESS_TOKEN']
+  })
+
+  it('includes HA_ACCESS_TOKEN when a home-assistant channel is present and env token is set', () => {
+    process.env['HA_ACCESS_TOKEN'] = HA_TOKEN
+    const secrets = extractSecretValues(haConfig)
+    expect(secrets).toContain(HA_TOKEN)
+  })
+
+  it('does NOT include HA_ACCESS_TOKEN when env token is unset', () => {
+    // HA_ACCESS_TOKEN deleted in beforeEach
+    const secrets = extractSecretValues(haConfig)
+    expect(secrets).not.toContain(HA_TOKEN)
+  })
+
+  it('does NOT include HA_ACCESS_TOKEN when no home-assistant channel is present (backward-compat)', () => {
+    process.env['HA_ACCESS_TOKEN'] = HA_TOKEN
+    const secrets = extractSecretValues(nonHaConfig)
+    expect(secrets).not.toContain(HA_TOKEN)
+  })
+
+  it('does NOT throw when HA_ACCESS_TOKEN is unset and home-assistant channel is present', () => {
+    // HA_ACCESS_TOKEN deleted in beforeEach
+    expect(() => extractSecretValues(haConfig)).not.toThrow()
+  })
+
+  it('does NOT include undefined in the result when HA_ACCESS_TOKEN is unset', () => {
+    // HA_ACCESS_TOKEN deleted in beforeEach
+    const secrets = extractSecretValues(haConfig)
+    expect(secrets.every(s => typeof s === 'string')).toBe(true)
   })
 })
