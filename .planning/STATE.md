@@ -2,30 +2,25 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Home Assistant Voice
-status: milestone_complete
-last_updated: 2026-05-24T16:37:33.571Z
-last_activity: 2026-05-24
+status: Awaiting next milestone
+last_updated: "2026-05-24T16:52:41.361Z"
+last_activity: 2026-05-24 — Milestone v1.5 completed and archived
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
   completed_plans: 11
-  percent: 75
-stopped_at: Milestone complete (Phase 43 was final phase)
+  percent: 100
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 43
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-05-24
-
-```
-[##        ] 25% — 1/4 phases complete
-```
+Phase: Milestone v1.5 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-24 — Milestone v1.5 completed and archived
 
 ## Project Reference
 
@@ -200,3 +195,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 39 P01 | 6min | 3 tasks | 7 files |
 | Phase 40 P01 | 4min | 2 tasks | 3 files |
 | Phase 40 P02 | 3min | 3 tasks | 3 files |
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
