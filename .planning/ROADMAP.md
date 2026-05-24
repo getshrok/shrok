@@ -8,6 +8,7 @@
 - ✅ **v1.3 Multi-Head Support** — Phases 29–36 (shipped 2026-05-14)
 - ✅ **v1.4 Unmissable Reminders** — Phases 37–39 (shipped 2026-05-24)
 - ✅ **v1.5 Home Assistant Voice** — Phases 40–43 (shipped 2026-05-24)
+- 📋 **v1.6 Multi-Head Task Delivery** — Phase 44 (in progress)
 
 Full per-phase detail for shipped milestones lives in `.planning/milestones/` and `.planning/MILESTONES.md`.
 
@@ -121,6 +122,37 @@ A `home-assistant` channel adapter bridging Shrok's async, delegating head to Ho
 
 </details>
 
+### Phase 44: Multi-head task delivery
+
+**Milestone:** v1.6 Multi-Head Task Delivery (in progress)
+
+**Depends on:** Phase 34 (Multi-Head Agent Lifecycle), Phase 35 (Per-Head Scheduling)
+
+**Goal:** A scheduled **task** runs once but delivers its result to every head in an opt-in delivery set. Add optional `Schedule.deliverToHeadIds`; thread the delivery set through spawn → agent record → completion so `completeAgent` fans out `agent_completed` to each head in `[headId, ...deliverToHeadIds]` (deduped) — the work is done once, the report reaches N heads. Also stop scheduled agents from ever suspending-as-question (no human in the loop). Tasks only — **reminders are unchanged** (no multi-select, no schema change). Dashboard task form gains a "deliver to" multi-select; reminder form untouched.
+
+**Plans:** 5 plans (5 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 44-01-PLAN.md — Data model: deliver_to_head_ids migration + agents-row persistence + Schedule/SpawnOptions/AgentState fields (tsc GREEN)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 44-02-PLAN.md — Spawn/complete path: agent_completed fan-out at both top-level sites + scheduled question-suppression + resume/spawn pass-through
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 44-03-PLAN.md — API: POST/PATCH deliverToHeadIds validation (task-only, known-head 404, dedupe, editable) + route tests
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 44-04-PLAN.md — Dashboard: task-form 'deliver to' multi-select + N-chip task rows + type/api plumbing (reminder form untouched)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 44-05-PLAN.md — Integration regression: fan-out (x2 sites) + dedup + no-set regression + question-suppression + agent_failed owner-only; phase gate
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -143,3 +175,4 @@ A `home-assistant` channel adapter bridging Shrok's async, delegating head to Ho
 | 41. Inbound Synchronous Reply Endpoint | v1.5 | 4/4 | Complete | 2026-05-24 |
 | 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete | 2026-05-24 |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
+| 44. Multi-head task delivery | v1.6 | 0/5 | Planning | — |
