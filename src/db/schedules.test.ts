@@ -575,6 +575,98 @@ describe('ScheduleStore — headId', () => {
     expect(s!.nagIntervalMinutes).toBe(90)
   })
 
+  // ── Phase 44-01: deliverToHeadIds on Schedule / CreateScheduleOptions / SchedulePatch ──
+
+  it("create task with deliverToHeadIds persists array to disk and round-trips through get()", () => {
+    store.create({
+      id: 'task-deliver',
+      headId: 'default',
+      kind: 'task',
+      taskName: 'multi-deliver',
+      runAt: '2099-01-01T00:00:00Z',
+      nextRun: '2099-01-01T00:00:00Z',
+      deliverToHeadIds: ['b', 'c'],
+    })
+    const s = store.get('task-deliver')
+    expect(s).not.toBeNull()
+    expect(s!.deliverToHeadIds).toEqual(['b', 'c'])
+
+    // Verify on-disk JSON contains the key
+    const raw = JSON.parse(fs.readFileSync(path.join(tmpDir, 'task-deliver.json'), 'utf8')) as Schedule
+    expect(raw.deliverToHeadIds).toEqual(['b', 'c'])
+  })
+
+  it("legacy/reminder row read through get() has no deliverToHeadIds key (absent, not [])", () => {
+    // Reminder row — deliverToHeadIds should not be stamped by migrateLegacySchedule
+    store.create({
+      id: 'rem-no-deliver',
+      headId: 'default',
+      kind: 'reminder',
+      agentContext: 'Take meds',
+      runAt: '2099-01-01T09:00:00Z',
+      nextRun: '2099-01-01T09:00:00Z',
+    })
+    const s = store.get('rem-no-deliver')
+    expect(s).not.toBeNull()
+    expect('deliverToHeadIds' in s!).toBe(false)
+
+    // Also verify a legacy task row (no deliverToHeadIds in JSON) stays absent
+    const id = 'legacy-no-deliver'
+    const legacy = {
+      id,
+      headId: 'default',
+      taskName: 'old-task',
+      kind: 'task',
+      cron: null,
+      runAt: '2099-01-01T00:00:00Z',
+      enabled: true,
+      lastRun: null,
+      nextRun: '2099-01-01T00:00:00Z',
+      lastSkipped: null,
+      lastSkipReason: null,
+      conditions: null,
+      agentContext: null,
+      cronTimezone: null,
+      requiresAck: false,
+      nagIntervalMinutes: null,
+      ackPending: false,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      // deliverToHeadIds intentionally absent
+    }
+    fs.writeFileSync(path.join(tmpDir, `${id}.json`), JSON.stringify(legacy, null, 2) + '\n', 'utf8')
+    const legacyRead = store.get(id)
+    expect(legacyRead).not.toBeNull()
+    expect('deliverToHeadIds' in legacyRead!).toBe(false)
+  })
+
+  it("PATCH { deliverToHeadIds: ['b'] } adds delivery set; PATCH { deliverToHeadIds: [] } clears it (key absent, not [])", () => {
+    store.create({
+      id: 'task-patch-deliver',
+      headId: 'default',
+      kind: 'task',
+      taskName: 'patch-test',
+      runAt: '2099-01-01T00:00:00Z',
+      nextRun: '2099-01-01T00:00:00Z',
+    })
+
+    // Add delivery set
+    store.update('task-patch-deliver', { deliverToHeadIds: ['b'] })
+    const s1 = store.get('task-patch-deliver')
+    expect(s1).not.toBeNull()
+    expect(s1!.deliverToHeadIds).toEqual(['b'])
+
+    // Clear delivery set with empty array — key must be absent (not [])
+    store.update('task-patch-deliver', { deliverToHeadIds: [] })
+    const s2 = store.get('task-patch-deliver')
+    expect(s2).not.toBeNull()
+    expect('deliverToHeadIds' in s2!).toBe(false)
+
+    // Verify on-disk JSON key is absent after clear
+    const raw = JSON.parse(fs.readFileSync(path.join(tmpDir, 'task-patch-deliver.json'), 'utf8'))
+    expect('deliverToHeadIds' in raw).toBe(false)
+  })
+
   // ── Plan 39-01 D-12: update() applies full D-12 transition patch ────────────
   //
   // The route computes nextRun and passes it via patch.nextRun. This test pins

@@ -21,6 +21,10 @@ export interface Schedule {
   nagIntervalMinutes: number | null
   /** Whether an ack-required reminder currently has an outstanding (un-acknowledged) nag in flight. Inert (false) for non-ack reminders and tasks. Set true at activation delivery (D-05), cleared on ack (D-07). */
   ackPending: boolean
+  /** Additional heads to deliver task completion to (Phase 44). Only meaningful for kind:'task'.
+   *  Absent on reminders and legacy rows (absent = owner-only; do NOT migrate to []).
+   *  Effective delivery set is dedupe([headId, ...deliverToHeadIds]). */
+  deliverToHeadIds?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -39,11 +43,13 @@ export interface CreateScheduleOptions {
   requiresAck?: boolean
   nagIntervalMinutes?: number | null
   ackPending?: boolean
+  deliverToHeadIds?: string[]
 }
 
 export type SchedulePatch = Partial<Pick<Schedule,
   'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' |
-  'agentContext' | 'cronTimezone' | 'ackPending' | 'requiresAck' | 'nagIntervalMinutes'
+  'agentContext' | 'cronTimezone' | 'ackPending' | 'requiresAck' | 'nagIntervalMinutes' |
+  'deliverToHeadIds'
 >>
 
 // ─── Lazy schedule migration (Phase 35 D-03, Phase 37 D-08) ──────────────────
@@ -96,6 +102,7 @@ export class ScheduleStore {
       requiresAck: options.requiresAck ?? false,
       nagIntervalMinutes: options.nagIntervalMinutes ?? null,
       ackPending: options.ackPending ?? false,
+      ...(options.deliverToHeadIds?.length ? { deliverToHeadIds: options.deliverToHeadIds } : {}),
       createdAt: now,
       updatedAt: now,
     }
@@ -145,6 +152,13 @@ export class ScheduleStore {
     if (patch.ackPending !== undefined) existing.ackPending = patch.ackPending
     if (patch.requiresAck !== undefined) existing.requiresAck = patch.requiresAck
     if (patch.nagIntervalMinutes !== undefined) existing.nagIntervalMinutes = patch.nagIntervalMinutes
+    if (patch.deliverToHeadIds !== undefined) {
+      if (patch.deliverToHeadIds.length > 0) {
+        existing.deliverToHeadIds = patch.deliverToHeadIds
+      } else {
+        delete existing.deliverToHeadIds
+      }
+    }
 
     existing.updatedAt = new Date().toISOString()
     this.store.save(existing)
