@@ -734,21 +734,24 @@ mockFetch
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three were resolved at planning time and adopted by the plans.
 
 1. **RingRunner singleton vs per-head instance**
    - What we know: `haAdapters` in index.ts is a flat array; each HA adapter belongs to one head. One ring-state per channel.
-   - What's unclear: Should `RingRunner` be one singleton shared across all heads (simpler wiring) or one instance per HA adapter?
-   - Recommendation: One global singleton with the adapter passed into `start(adapter, source)`. The runner's state is keyed by `mediaPlayerEntityId` (or `channelId`) internally. This matches the one-ring-per-channel constraint without requiring per-head runner instances.
+   - Recommendation: One global singleton with the adapter passed into `start(adapter, source)`; state keyed internally.
+   - → **RESOLVED:** one global singleton; adapter passed into `start(...)`; state keyed `${headId}:${channelId}`. **Adopted by Plan 45-02** (RingRunner), wired in Plan 45-05.
 
 2. **Volume configurability**
    - What we know: CONTEXT.md says "volume_set, configurable default"; the hardware spike used 0.5.
-   - What's unclear: Where does the config live? Top-level `ringVolume: 0.5` in ConfigSchema, or per HA channel?
-   - Recommendation: Top-level `ringVolume` in ConfigSchema (same tier as `dashboardPort`) — most users have one HA device. Per-channel override can be added later if needed.
+   - Recommendation: Top-level `ringVolume` in ConfigSchema (same tier as `dashboardPort`).
+   - → **RESOLVED:** top-level `ringVolume` (default 0.5). **Adopted by Plan 45-01.**
 
 3. **publicBaseUrl in ConfigSchema: top-level or per-HA-channel?**
    - What we know: CONTEXT.md says "optional publicBaseUrl override." Config is merged base+user JSON.
-   - Recommendation: Top-level optional field `publicBaseUrl?: string` in ConfigSchema (analogous to `dashboardHost`). Per-channel override is RING-F territory.
+   - Recommendation: Top-level optional field `publicBaseUrl?: string` in ConfigSchema (analogous to `dashboardHost`).
+   - → **RESOLVED:** top-level optional `publicBaseUrl?` (+ `ringCapHours` default 24); per-channel `haMediaPlayerEntityId?`/`haLedEntityId?` overrides on the HA union. **Adopted by Plan 45-01.**
 
 ---
 
