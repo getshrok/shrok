@@ -85,6 +85,7 @@ import { transcribeInboundAudio } from './head/transcribe-attachments.js'
 import { setProactiveWorkspaceDir } from './scheduler/proactive.js'
 import { setMemoryPromptsWorkspaceDir } from './memory/prompts.js'
 import { readAssistantName } from './config-file.js'
+import { applyTimezoneEnv } from './timezone-env.js'
 
 async function main() {
   // Set SHROK_ROOT so agents can find the install directory (e.g. to run npm scripts)
@@ -93,6 +94,7 @@ async function main() {
   }
 
   const config = loadConfig()
+  applyTimezoneEnv(config)
   registerSecrets(extractSecretValues(config))
   setLogLevel(config.logLevel)
 
