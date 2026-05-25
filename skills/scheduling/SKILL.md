@@ -51,3 +51,5 @@ Tasks that process feeds (email, messages, tickets) use a watermark in their `ME
 ```
 last_checked: 2026-04-21T07:00:00-04:00
 ```
+
+The offset in the timestamp reflects **config.timezone** — the IANA timezone set in the Shrok dashboard. At startup, Shrok propagates this setting to all spawned processes via the `TZ` environment variable, so `date -Iseconds`, `new Date()`, and similar calls inside a running task automatically honor the dashboard timezone with no per-task code required.

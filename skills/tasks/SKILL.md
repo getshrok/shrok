@@ -73,6 +73,6 @@ Time windows and skip conditions belong on the schedule's `conditions` field, no
 
 Same conventions as skills:
 
-- **Watermarks** — For tasks that process a feed, store a last-checked timestamp instead of item ID lists. See the `scheduling` skill for the correct format. Prevents unbounded growth.
+- **Watermarks** — For tasks that process a feed, store a last-checked timestamp instead of item ID lists. See the `scheduling` skill for the correct format. Prevents unbounded growth. Timestamps follow **config.timezone** (the dashboard setting) via the `TZ` env var propagated at startup — do not hardcode or assume the host OS zone.
 - **Thresholds and state** — Store the current threshold and last known value.
 - **Credentials** — API keys, resolved user IDs. Though for tasks using `skill-deps`, credentials usually live in the dep skill's MEMORY.md, not the task's.
