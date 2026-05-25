@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Multi-Head Task Delivery
 status: Awaiting next milestone
-last_updated: "2026-05-24T20:20:00.000Z"
-last_activity: 2026-05-24 — Completed quick task 260524-me4: pre-transcribe inbound voice/audio at ingestion (issue #9)
+last_updated: "2026-05-25T07:45:00.000Z"
+last_activity: 2026-05-25 — Completed quick task 260525-4zu: export config.timezone as TZ to spawned processes (issue #13)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -20,13 +20,14 @@ progress:
 Phase: Milestone v1.6 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-05-24 — Completed quick task 260524-me4: pre-transcribe inbound voice/audio at ingestion (issue #9)
+Last activity: 2026-05-25 — Completed quick task 260525-4zu: export config.timezone as TZ to spawned processes (issue #13)
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260524-me4 | Pre-transcribe inbound voice/audio messages from chat channels at the ingestion boundary (issue #9) | 2026-05-24 | ddacc75 | [260524-me4-pre-transcribe-inbound-voice-audio-messa](./quick/260524-me4-pre-transcribe-inbound-voice-audio-messa/) |
+| 260525-4zu | Export config.timezone as TZ to spawned processes (workers, tasks, tool calls) (issue #13) | 2026-05-25 | 5f648aa | [260525-4zu-export-config-timezone-as-tz-to-spawned-](./quick/260525-4zu-export-config-timezone-as-tz-to-spawned-/) |
 
 ## Project Reference
 
