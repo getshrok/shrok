@@ -45,6 +45,12 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newId }),
       }),
+    setCustomPrompt: (id: string, customPrompt: string) =>
+      request<{ ok: boolean; head: HeadDTO }>(`/api/heads/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customPrompt }),
+      }),
     delete: (id: string, confirmId?: string) =>
       request<{ ok: boolean }>(`/api/heads/${encodeURIComponent(id)}`, {
         method: 'DELETE',

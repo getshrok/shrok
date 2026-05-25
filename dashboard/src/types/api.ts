@@ -393,6 +393,7 @@ export type ChannelConfigSubmit =
 export interface HeadDTO {
   id: string
   channels: ChannelConfigMasked[]
+  customPrompt?: string
 }
 
 export type DashboardEvent =

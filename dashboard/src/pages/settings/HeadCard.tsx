@@ -50,6 +50,7 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [adding, setAdding] = useState<Vendor | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [promptDraft, setPromptDraft] = useState(head.customPrompt ?? '')
 
   // New-channel form pending state. Initial id is suggested when the vendor
   // is picked; secrets all start blank.
@@ -66,6 +67,11 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   const renameMutation = useMutation({
     mutationFn: (newId: string) => api.heads.rename(head.id, newId),
     onSuccess: () => { setRenaming(false); onSaved() },
+  })
+
+  const customPromptMutation = useMutation({
+    mutationFn: (cp: string) => api.heads.setCustomPrompt(head.id, cp),
+    onSuccess: () => onSaved(),
   })
 
   const addChannelMutation = useMutation({
@@ -203,6 +209,29 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
         ))}
         {head.channels.length === 0 && (
           <div className="text-xs text-zinc-500 italic px-1">No channels yet — add one below.</div>
+        )}
+      </div>
+
+      {/* Custom prompt editor — appended to this head's system prompt */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-zinc-400">Custom prompt</label>
+        <p className="text-xs text-zinc-500">Appended to this head's system prompt.</p>
+        <textarea
+          value={promptDraft}
+          onChange={e => setPromptDraft(e.target.value)}
+          rows={3}
+          className={`${inputClass} resize-y`}
+          placeholder="Optional per-head instructions…"
+        />
+        <button
+          onClick={() => customPromptMutation.mutate(promptDraft)}
+          disabled={customPromptMutation.isPending}
+          className="px-3 py-1.5 text-xs font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-md border border-[var(--accent)]/50 disabled:opacity-40"
+        >
+          {customPromptMutation.isPending ? 'Saving…' : 'Save'}
+        </button>
+        {customPromptMutation.isError && (
+          <div className="text-xs text-red-400">Save failed: {(customPromptMutation.error as Error).message}</div>
         )}
       </div>
 
