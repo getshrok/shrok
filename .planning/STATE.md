@@ -4,7 +4,7 @@ milestone: v1.6
 milestone_name: Multi-Head Task Delivery
 status: Awaiting next milestone
 last_updated: "2026-05-25T09:05:00.000Z"
-last_activity: 2026-05-25 — Completed quick task 260525-6d5: cascade task/skill rename across all references (resumed after OOM crash)
+last_activity: 2026-05-25 — Completed quick task 260525-fgc: fix dashboard convo-view voice mode (per-turn MSE, head-aware WS, upgrade guard, multi-router)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -30,6 +30,7 @@ Last activity: 2026-05-25 — Completed quick task 260525-6d5: cascade task/skil
 | 260525-4zu | Export config.timezone as TZ to spawned processes (workers, tasks, tool calls) (issue #13) | 2026-05-25 | 5f648aa |  | [260525-4zu-export-config-timezone-as-tz-to-spawned-](./quick/260525-4zu-export-config-timezone-as-tz-to-spawned-/) |
 | 260525-5m2 | Per-head custom prompt addition + head-aware context assembler (issue #12) | 2026-05-25 | eb7cb0d | Verified | [260525-5m2-per-head-custom-prompt-addition-make-con](./quick/260525-5m2-per-head-custom-prompt-addition-make-con/) |
 | 260525-6d5 | Cascade task/skill rename across all references (frontmatter, schedules, cross-kind skill-deps, usage) | 2026-05-25 | 9059548 | Verified (targeted tests; full suite deferred to CI) | [260525-6d5-cascade-task-skill-rename-across-all-ref](./quick/260525-6d5-cascade-task-skill-rename-across-all-ref/) |
+| 260525-fgc | Fix dashboard convo-view voice mode: per-turn live MSE, head-aware WS URL, query-tolerant upgrade guard, per-connection head routing + multi-router registration | 2026-05-25 | 29c50de | Verified (tsc + dashboard 73/73 + root 1707/1708 green) | [260525-fgc-fix-dashboard-convo-view-voice-mode-turn](./quick/260525-fgc-fix-dashboard-convo-view-voice-mode-turn/) |
 
 ## Project Reference
 
