@@ -9,6 +9,7 @@
 - ✅ **v1.4 Unmissable Reminders** — Phases 37–39 (shipped 2026-05-24)
 - ✅ **v1.5 Home Assistant Voice** — Phases 40–43 (shipped 2026-05-24)
 - ✅ **v1.6 Multi-Head Task Delivery** — Phase 44 (shipped 2026-05-24)
+- 🔄 **v1.7 Voice Alarms & Timers** — Phase 45 (in progress)
 
 Full per-phase detail for shipped milestones lives in `.planning/milestones/` and `.planning/MILESTONES.md`.
 
@@ -133,6 +134,25 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 
 </details>
 
+## v1.7 Voice Alarms & Timers
+
+- [ ] **Phase 45: Ring Delivery Layer + Timer Ring + Alarm** — Sustained, dismiss-until-stopped audible alerts on Home Assistant voice channels for both timers and alarms, via a shared headless ring runner, `ring_device(start|stop)` tool, auto-derived entities, shrok-served beep, and a new `set-alarm` skill
+
+## Phase Details
+
+### Phase 45: Ring Delivery Layer + Timer Ring + Alarm
+**Goal**: Users on Home Assistant voice channels hear a sustained, repeating alert when a timer elapses or alarm fires, and can dismiss it by voice — the alert runs headless (no per-beep LLM activation), the beep is served from shrok itself, entities are auto-derived from the existing satellite config, and the alarm is a persisted non-ack reminder that survives restart
+**Depends on**: Phase 44 (v1.6 shipped — existing HA channel adapter, `assist_satellite` announce, reminder system, timer skill)
+**Requirements**: RING-01, RING-02, RING-03, RING-04, RING-05, RING-06, RING-07, RING-08, RING-09, RING-10, RING-11, TIMER-01, TIMER-02, ALARM-01, ALARM-02, ALARM-03
+**Success Criteria** (what must be TRUE):
+  1. A voice-set timer that elapses keeps beeping on the Voice PE until the user says "stop" — the sound cuts promptly and does not resume
+  2. A voice-set alarm set for a specific time rings at that time and keeps beeping until the user says "stop", and the alarm persists across a shrok restart (fires at the correct time after restart)
+  3. A "stop" or "turn it off" voice command — spoken while the beep is playing — reaches shrok as a normal turn, calls `ring_device(stop)`, and silences the device within one polling cycle; the LED ring clears at the same time
+  4. The ring loop generates no LLM API calls between start and dismiss; only the start turn and the dismiss turn touch the model
+  5. Calling `ring_device` on a non-HA channel (Telegram, Discord, etc.) silently no-ops — timers and alarms work on all channels with no error
+**Plans**: TBD
+**UI hint**: no
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -156,3 +176,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete | 2026-05-24 |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
+| 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 0/? | Not started | — |

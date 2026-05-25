@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-05-25T16:30:06.189Z"
 last_activity: 2026-05-25
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,10 +17,14 @@ progress:
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 45 — Ring Delivery Layer + Timer Ring + Alarm
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-25 — Milestone v1.7 started
+Status: Planning (roadmap written; awaiting plan-phase)
+Last activity: 2026-05-25 — v1.7 roadmap created (Phase 45)
+
+```
+v1.7 progress: [                    ] 0% — Phase 45 not started
+```
 
 ### Quick Tasks Completed
 
@@ -37,16 +41,13 @@ Last activity: 2026-05-25 — Milestone v1.7 started
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Planning next milestone — v1.6 Multi-Head Task Delivery shipped 2026-05-24 (`/gsd:new-milestone` to start the next)
+**Current focus:** v1.7 Voice Alarms & Timers — Phase 45 (single phase; implements GitHub issue #14)
 
-## v1.5 Phase Map
+## v1.7 Phase Map
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 40. Config & Adapter Skeleton | `vendor: 'home-assistant'` Zod config, adapter stub registered, token in `.env`, lastActiveChannel routing live | HACF-01, HACF-02 | Complete |
-| 41. Inbound Synchronous Reply Endpoint | `/v1/chat/completions` on Express, bearer auth, CSRF exclusion, pendingReply slot, <3s ACK, Apache auth bypass | HACV-01–06 | Not started |
-| 42. Outbound HA REST Announce | `assist_satellite.announce`/`start_conversation` via Node fetch, fire-and-forget 30s timeout, from `adapter.send()` when no live turn | HAAN-01–03 | Not started |
-| 43. End-to-End Smoke Test & Setup Docs | Live VPE validation, open research questions resolved, HADOC-01 setup guide | HADOC-01 | Not started |
+| 45. Ring Delivery Layer + Timer Ring + Alarm | Sustained dismiss-until-stopped voice alerts: headless ring runner, `ring_device(start\|stop)` tool, auto-derived media_player/LED entities, shrok-served beep, timer skill integration, `set-alarm` skill, non-ack alarm reminders, 24h cap, persisted ring state | RING-01..11, TIMER-01/02, ALARM-01..03 | Not started |
 
 ## Accumulated Context
 
@@ -61,6 +62,21 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - Phase 36 added: Inbound sender attribution — InboundMessage.senderName field, normalizeSenderName + buildPrefixedText helpers, central prefix construction at headRouteMessage choke point, generalized D-11 stripper, 5 adapters populate senderName
 - Phases 37–39 added: v1.4 Unmissable Reminders — schema + tool params (Phase 37), nag mechanism + ack semantics (Phase 38), dashboard UI (Phase 39). Backlog 999.1 promoted into Phase 39 (SCHED-03).
 - Phases 40–43 added: v1.5 Home Assistant Voice — config + adapter skeleton (Phase 40), inbound sync reply endpoint (Phase 41), outbound HA REST announce (Phase 42), e2e smoke test + setup docs (Phase 43).
+- Phase 44 added: v1.6 Multi-Head Task Delivery — single phase; fan-out of agent_completed to multiple heads, force-complete for scheduled agents, dashboard task delivery multi-select.
+- Phase 45 added: v1.7 Voice Alarms & Timers — single phase covering the entire milestone; shared ring delivery layer (ring runner, ring_device tool, auto-derived entities, shrok-served beep, LED control, persisted ring state, 24h cap) + timer skill integration (ring on elapse) + set-alarm skill (non-ack reminder fires ring).
+
+### Key Architecture Decisions (v1.7 — locked in design session)
+
+- Hard constraint: no LLM activation per beep. The ring runner loops headless; only start (one activation) and dismiss (one activation) touch the model.
+- Dismiss-by-voice is proven on the real Voice PE: "stop" reaches shrok as a normal turn over the playing beep; `media_stop` cuts it instantly (hardware echo-cancel + HA media ducking handle the barge-in).
+- `media_player` and LED `light` entities are auto-derived from `haVoiceSatelliteEntityId` via the HA template API (`device_entities(device_id(...))`) — cached per channel, with an optional explicit config override.
+- The beep is a bundled static mp3 served at `GET /media/ring.mp3` on shrok's existing server (same host/port as `/v1/chat/completions`). Device-reachable URL is auto-derived from the inbound HA request's `Host` header (cached; scheme from `X-Forwarded-Proto`). `publicBaseUrl` is an optional override only for the loopback/authenticated-proxy edge cases. The route is unauthenticated.
+- `ring_device` is a no-op on non-HA channels — safe to call from timers/alarms running on any channel.
+- Alarm reminders are non-ack (no nag/escalation). The continuous ring is the entire alert. Silent failure if the device is offline at fire time — accepted trade-off.
+- Active ring state is persisted per channel. On restart: stale state is cleared and only players that were actively ringing are stopped — no blind stop-all of unrelated playback.
+- 24h auto-dismiss cap is the safety backstop for an undismissed ring.
+- The existing `timer` skill is additive-only: step 3 appends `ring_device(start)`; the rest of the skill is unchanged.
+- Out of scope (v1.7): physical button-press dismiss (`event.*_button_press` entity requires HA event subscription), concurrent multiple rings on one device, per-alarm custom sounds.
 
 ### Key Architecture Decisions (v1.5)
 
@@ -232,4 +248,4 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run `/gsd:plan-phase 45` to decompose Phase 45 into executable plans
