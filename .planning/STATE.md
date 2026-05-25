@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Multi-Head Task Delivery
 status: Awaiting next milestone
-last_updated: "2026-05-25T08:30:00.000Z"
-last_activity: 2026-05-25 — Completed quick task 260525-5m2: per-head custom prompt + head-aware assembler (issue #12)
+last_updated: "2026-05-25T09:05:00.000Z"
+last_activity: 2026-05-25 — Completed quick task 260525-6d5: cascade task/skill rename across all references (resumed after OOM crash)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -20,7 +20,7 @@ progress:
 Phase: Milestone v1.6 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-05-25 — Completed quick task 260525-5m2: per-head custom prompt + head-aware assembler (issue #12)
+Last activity: 2026-05-25 — Completed quick task 260525-6d5: cascade task/skill rename across all references (resumed after OOM crash)
 
 ### Quick Tasks Completed
 
@@ -29,6 +29,7 @@ Last activity: 2026-05-25 — Completed quick task 260525-5m2: per-head custom p
 | 260524-me4 | Pre-transcribe inbound voice/audio messages from chat channels at the ingestion boundary (issue #9) | 2026-05-24 | ddacc75 |  | [260524-me4-pre-transcribe-inbound-voice-audio-messa](./quick/260524-me4-pre-transcribe-inbound-voice-audio-messa/) |
 | 260525-4zu | Export config.timezone as TZ to spawned processes (workers, tasks, tool calls) (issue #13) | 2026-05-25 | 5f648aa |  | [260525-4zu-export-config-timezone-as-tz-to-spawned-](./quick/260525-4zu-export-config-timezone-as-tz-to-spawned-/) |
 | 260525-5m2 | Per-head custom prompt addition + head-aware context assembler (issue #12) | 2026-05-25 | eb7cb0d | Verified | [260525-5m2-per-head-custom-prompt-addition-make-con](./quick/260525-5m2-per-head-custom-prompt-addition-make-con/) |
+| 260525-6d5 | Cascade task/skill rename across all references (frontmatter, schedules, cross-kind skill-deps, usage) | 2026-05-25 | 9059548 | Verified (targeted tests; full suite deferred to CI) | [260525-6d5-cascade-task-skill-rename-across-all-ref](./quick/260525-6d5-cascade-task-skill-rename-across-all-ref/) |
 
 ## Project Reference
 
