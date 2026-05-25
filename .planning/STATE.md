@@ -1,26 +1,26 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Multi-Head Task Delivery
-status: Awaiting next milestone
-last_updated: "2026-05-25T09:05:00.000Z"
-last_activity: 2026-05-25 — Completed quick task 260525-fgc: fix dashboard convo-view voice mode (per-turn MSE, head-aware WS, upgrade guard, multi-router)
+milestone: v1.7
+milestone_name: Voice Alarms & Timers
+status: planning
+last_updated: "2026-05-25T16:30:06.189Z"
+last_activity: 2026-05-25
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: Milestone v1.6 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-25 — Completed quick task 260525-6d5: cascade task/skill rename across all references (resumed after OOM crash)
+Status: Defining requirements
+Last activity: 2026-05-25 — Milestone v1.7 started
 
 ### Quick Tasks Completed
 
