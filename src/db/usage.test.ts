@@ -207,3 +207,41 @@ describe('UsageStore.getCacheSummary', () => {
     expect(recent.totalInputTokens).toBe(300)
   })
 })
+
+// ── UsageStore.renameTarget ───────────────────────────────────────────────────
+
+describe('UsageStore.renameTarget', () => {
+  let db: DatabaseSync
+  let usage: UsageStore
+
+  beforeEach(() => {
+    db = freshDb()
+    usage = new UsageStore(db, 'UTC')
+  })
+
+  it('renames matching target_name rows and returns the count', () => {
+    usage.record({ sourceType: 'agent', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01, targetName: 'old-task' })
+    usage.record({ sourceType: 'agent', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01, targetName: 'old-task' })
+    usage.record({ sourceType: 'agent', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01, targetName: 'other-task' })
+    const count = usage.renameTarget('old-task', 'new-task')
+    expect(count).toBe(2)
+    const rows = db.prepare(`SELECT target_name FROM usage ORDER BY created_at`).all() as { target_name: string | null }[]
+    expect(rows[0]!.target_name).toBe('new-task')
+    expect(rows[1]!.target_name).toBe('new-task')
+    expect(rows[2]!.target_name).toBe('other-task')
+  })
+
+  it('rows with NULL target_name are untouched', () => {
+    usage.record({ sourceType: 'head', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01 })
+    const count = usage.renameTarget('old-task', 'new-task')
+    expect(count).toBe(0)
+    const rows = db.prepare(`SELECT target_name FROM usage`).all() as { target_name: string | null }[]
+    expect(rows[0]!.target_name).toBeNull()
+  })
+
+  it('returns 0 when no rows match the old name', () => {
+    usage.record({ sourceType: 'agent', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01, targetName: 'something-else' })
+    const count = usage.renameTarget('nonexistent', 'new-name')
+    expect(count).toBe(0)
+  })
+})

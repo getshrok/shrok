@@ -705,4 +705,34 @@ describe('ScheduleStore — headId', () => {
     expect(s!.ackPending).toBe(false)
     expect(s!.nextRun).toBe(recomputedNextRun)
   })
+
+  // ── renameTask — cascade taskName across matching schedule rows ──────────
+
+  describe('ScheduleStore.renameTask', () => {
+    it('renames matching task rows and returns the count', () => {
+      store.create({ id: 'rt-1', headId: 'default', kind: 'task', taskName: 'old', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+      store.create({ id: 'rt-2', headId: 'work', kind: 'task', taskName: 'old', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+      store.create({ id: 'rt-3', headId: 'default', kind: 'task', taskName: 'other', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+      const count = store.renameTask('old', 'new')
+      expect(count).toBe(2)
+      expect(store.get('rt-1')!.taskName).toBe('new')
+      expect(store.get('rt-2')!.taskName).toBe('new')
+      expect(store.get('rt-3')!.taskName).toBe('other')
+    })
+
+    it('returns 0 and changes nothing when no rows match', () => {
+      store.create({ id: 'rt-x', headId: 'default', kind: 'task', taskName: 'something', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+      const count = store.renameTask('nonexistent', 'new')
+      expect(count).toBe(0)
+      expect(store.get('rt-x')!.taskName).toBe('something')
+    })
+
+    it('reminder rows (taskName null) are naturally skipped', () => {
+      store.create({ id: 'rt-rem', headId: 'default', kind: 'reminder', agentContext: 'hello', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+      const count = store.renameTask('anything', 'new')
+      expect(count).toBe(0)
+      const s = store.get('rt-rem')
+      expect(s!.taskName).toBeNull()
+    })
+  })
 })

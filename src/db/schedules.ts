@@ -224,6 +224,28 @@ export class ScheduleStore {
    * (lazy migration funnel per D-03), making the helper safe to call on a
    * directory that may contain pre-Phase-35 files.
    */
+  /**
+   * Rename all schedule rows whose taskName === oldName to newName.
+   * Returns the count of updated rows.
+   *
+   * Note: only kind:'task' rows ever carry a non-null taskName;
+   * reminder rows have taskName=null and are naturally skipped (null !== oldName).
+   * Mutates rows directly like markFired/advanceNextRun — does NOT route through
+   * update()/SchedulePatch because taskName is intentionally absent from the
+   * SchedulePatch Pick<> per Phase 35 D-13.
+   */
+  renameTask(oldName: string, newName: string): number {
+    let count = 0
+    for (const s of this.list()) {
+      if (s.taskName !== oldName) continue
+      s.taskName = newName
+      s.updatedAt = new Date().toISOString()
+      this.store.save(s)
+      count++
+    }
+    return count
+  }
+
   deleteAllForHead(headId: string): { schedules: number; reminders: number } {
     const all = this.list()
     let schedules = 0

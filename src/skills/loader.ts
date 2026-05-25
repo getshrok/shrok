@@ -292,22 +292,28 @@ export class FileSystemKindLoader implements SkillLoader {
     await fs.promises.rename(oldPath, newPath)
   }
 
-  /** Rename an entry (moves its directory). Updates skill-deps references in other entries. */
-  async renameSkill(oldName: string, newName: string): Promise<{ updatedDeps: string[] }> {
-    const oldDir = this.resolveSkillDir(oldName)
-    if (!safeSkillName(newName)) throw new Error(`Invalid new skill name: ${JSON.stringify(newName)}`)
-    const newDir = path.resolve(path.join(this.root, newName))
-    const base = path.resolve(this.root)
-    if (!newDir.startsWith(base + path.sep)) {
-      throw new Error('New skill path escapes skills directory')
-    }
+  /**
+   * Rewrite the `name:` line in the frontmatter block of a marker file's raw content.
+   * Performs a targeted regex replace within the leading `---`…`---` fence only,
+   * so the rest of the file body is not affected.
+   */
+  private rewriteOwnFrontmatterName(content: string, newName: string): string {
+    // Match the leading frontmatter fence (non-greedy, multiline) and replace
+    // the `name:` line within it. The /m flag lets ^ match start-of-line inside
+    // the fence capture group.
+    return content.replace(
+      /^(---\n[\s\S]*?)^(name:[ \t]*.*)$/m,
+      (_match, before, _nameLine) => `${before}name: ${newName}`
+    )
+  }
 
-    if (!fs.existsSync(oldDir)) throw new Error(`Skill not found: ${JSON.stringify(oldName)}`)
-    if (fs.existsSync(newDir)) throw new Error(`Skill already exists: ${JSON.stringify(newName)}`)
-
-    await fs.promises.mkdir(path.dirname(newDir), { recursive: true })
-    await fs.promises.rename(oldDir, newDir)
-
+  /**
+   * Update skill-deps references in all entries of this loader's kind:
+   * for each entry whose frontmatter skill-deps includes oldName, rewrite
+   * `- oldName` → `- newName` and persist atomically via writeFile.
+   * Returns the list of entry names that were updated.
+   */
+  async updateDepReferences(oldName: string, newName: string): Promise<string[]> {
     const updatedDeps: string[] = []
     for (const skill of this.listAll()) {
       const deps = skill.frontmatter['skill-deps']
@@ -326,6 +332,36 @@ export class FileSystemKindLoader implements SkillLoader {
         log.warn(`[skills] Failed to update skill-deps in ${skill.name}:`, (err as Error).message)
       }
     }
+    return updatedDeps
+  }
+
+  /** Rename an entry (moves its directory). Updates skill-deps references in other entries. */
+  async renameSkill(oldName: string, newName: string): Promise<{ updatedDeps: string[] }> {
+    const oldDir = this.resolveSkillDir(oldName)
+    if (!safeSkillName(newName)) throw new Error(`Invalid new skill name: ${JSON.stringify(newName)}`)
+    const newDir = path.resolve(path.join(this.root, newName))
+    const base = path.resolve(this.root)
+    if (!newDir.startsWith(base + path.sep)) {
+      throw new Error('New skill path escapes skills directory')
+    }
+
+    if (!fs.existsSync(oldDir)) throw new Error(`Skill not found: ${JSON.stringify(oldName)}`)
+    if (fs.existsSync(newDir)) throw new Error(`Skill already exists: ${JSON.stringify(newName)}`)
+
+    await fs.promises.mkdir(path.dirname(newDir), { recursive: true })
+    await fs.promises.rename(oldDir, newDir)
+
+    // D1: rewrite the own frontmatter name: line in the moved marker file
+    try {
+      const movedMarker = path.join(newDir, this.filename)
+      const raw = fs.readFileSync(movedMarker, 'utf8')
+      const updated = this.rewriteOwnFrontmatterName(raw, newName)
+      await this.writeFile(newName, this.filename, updated)
+    } catch (err) {
+      log.warn(`[skills] Failed to rewrite own frontmatter name for ${newName}:`, (err as Error).message)
+    }
+
+    const updatedDeps = await this.updateDepReferences(oldName, newName)
     return { updatedDeps }
   }
 }

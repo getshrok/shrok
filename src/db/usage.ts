@@ -102,6 +102,7 @@ export class UsageStore {
   private stmtCacheStats: StatementSync
   private stmtCacheStatsSince: StatementSync
   private stmtTaskMonthlySpend: StatementSync
+  private stmtRenameTarget: StatementSync
 
   constructor(db: DatabaseSync, private timezone: string) {
     this.stmtRecord = db.prepare(`
@@ -193,6 +194,10 @@ export class UsageStore {
 
     this.stmtTaskMonthlySpend = db.prepare(
       'SELECT COALESCE(SUM(cost_usd), 0) AS total FROM usage WHERE target_name = ? AND created_at >= ?'
+    )
+
+    this.stmtRenameTarget = db.prepare(
+      'UPDATE usage SET target_name = ? WHERE target_name = ?'
     )
   }
 
@@ -410,6 +415,16 @@ export class UsageStore {
     const sinceStr = monthStart.toISOString().replace('T', ' ').slice(0, 19)
     const row = this.stmtTaskMonthlySpend.get(targetName, sinceStr) as unknown as { total: number }
     return row.total ?? 0
+  }
+
+  /**
+   * Update all usage rows whose target_name === oldName to newName.
+   * Returns the count of updated rows.
+   * Uses a parameterized prepared statement (T-6d5-02 mitigation — no SQL injection).
+   */
+  renameTarget(oldName: string, newName: string): number {
+    const info = this.stmtRenameTarget.run(newName, oldName) as { changes: number }
+    return info.changes
   }
 
   getCacheSummary(since?: string): { cacheReadTokens: number; cacheWriteTokens: number; totalInputTokens: number } {

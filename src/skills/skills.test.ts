@@ -567,5 +567,25 @@ describe('FileSystemSkillLoader file operations', () => {
     await expect(loader.write('rename', skillContent)).rejects.toThrow('Invalid')
   })
 
+  it('renameSkill rewrites own frontmatter name: to the new name', async () => {
+    writeSkill('old-name/SKILL.md', `---\nname: old-name\ndescription: A skill\n---\nBody.`)
+    await loader.renameSkill('old-name', 'new-name')
+    const content = fs.readFileSync(path.join(tmpDir, 'new-name', 'SKILL.md'), 'utf8')
+    const { frontmatter } = parseSkillFile(content)
+    expect(frontmatter.name).toBe('new-name')
+  })
+
+  it('updateDepReferences rewrites skill-deps and returns updated entry names', async () => {
+    writeSkill('dep-a/SKILL.md', `---\nname: dep-a\ndescription: Dep A\n---\nDep A body.`)
+    writeSkill('with-dep/SKILL.md', `---\nname: with-dep\ndescription: With Dep\nskill-deps:\n  - dep-a\n---\nWith dep body.`)
+    writeSkill('no-dep/SKILL.md', `---\nname: no-dep\ndescription: No Dep\n---\nNo dep body.`)
+    const updated = await loader.updateDepReferences('dep-a', 'dep-b')
+    expect(updated).toContain('with-dep')
+    expect(updated).not.toContain('no-dep')
+    const content = fs.readFileSync(path.join(tmpDir, 'with-dep', 'SKILL.md'), 'utf8')
+    expect(content).toContain('- dep-b')
+    expect(content).not.toContain('- dep-a')
+  })
+
 })
 
