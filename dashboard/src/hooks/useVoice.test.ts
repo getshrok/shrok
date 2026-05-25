@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createErrorTimer, type VoiceErrorMessage } from './voice-error-timer'
+import { needsFreshMSE } from './useVoice'
 
 describe('voice-error-timer — auto-dismiss after 4000ms', () => {
   beforeEach(() => { vi.useFakeTimers() })
@@ -47,6 +48,33 @@ describe('voice-error-timer — auto-dismiss after 4000ms', () => {
     expect(onClear).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(10_000)
     expect(onClear).toHaveBeenCalledTimes(1) // no second call from the cancelled timer
+  })
+})
+
+describe('needsFreshMSE — live MSE per turn (D2)', () => {
+  it('returns true for null (no MSE created yet)', () => {
+    // turn 1, first start: no MSE exists yet → must create one
+    expect(needsFreshMSE(null)).toBe(true)
+  })
+
+  it('returns true for undefined (no MSE created yet)', () => {
+    expect(needsFreshMSE(undefined)).toBe(true)
+  })
+
+  it('returns false for readyState "open" (turn 1: still usable, no recreate)', () => {
+    // turn 1: MSE is open → appendBuffer works fine, no recreate needed
+    expect(needsFreshMSE({ readyState: 'open' })).toBe(false)
+  })
+
+  it('returns true for readyState "ended" (post-tts_done: turn 2 MUST recreate)', () => {
+    // after tts_done calls ms.endOfStream(), MS readyState becomes 'ended'
+    // → turn 2's tts_start must teardown + recreate a fresh 'open' MS before appending
+    expect(needsFreshMSE({ readyState: 'ended' })).toBe(true)
+  })
+
+  it('returns true for readyState "closed"', () => {
+    // closed MS cannot accept appendBuffer calls either
+    expect(needsFreshMSE({ readyState: 'closed' })).toBe(true)
   })
 })
 

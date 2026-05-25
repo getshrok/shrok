@@ -18,6 +18,16 @@ export interface UseVoiceReturn {
   errorMessage: string | null    // D-04: distinct message per failure class, 4s auto-dismiss
 }
 
+/** Pure predicate (DOM-free): returns true when the MediaSource needs to be recreated.
+ *  - null/undefined → no MSE exists yet → must create
+ *  - readyState 'ended' → tts_done called endOfStream(); turn 2 must recreate
+ *  - readyState 'closed' → unusable
+ *  - readyState 'open' → still usable, no recreate needed */
+export function needsFreshMSE(ms: { readyState: string } | null | undefined): boolean {
+  if (ms == null) return true
+  return ms.readyState !== 'open'
+}
+
 function buildWsUrl(): string {
   // /api/voice/ws is proxied in dev by vite.config.ts (ws: true) to localhost:8888
   const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -120,6 +130,17 @@ export function useVoice(): UseVoiceReturn {
 
   // --- Teardown (shared by explicit toggle-off, ERROR, and unmount) ---------
 
+  // Ensures the MediaSource is in 'open' state before a new TTS turn begins.
+  // If the MS is 'ended' (from the prior tts_done endOfStream) or missing, tears down
+  // and recreates a fresh one. No-op when the MS is already 'open' (turn 1 path).
+  const ensureLiveMSE = useCallback((): void => {
+    if (needsFreshMSE(mediaSourceRef.current)) {
+      teardownMSE()
+      const audioEl = setupMSE()
+      audioEl.play().catch(() => { /* autoplay policy may reject */ })
+    }
+  }, [teardownMSE, setupMSE])
+
   const teardownAll = useCallback(async () => {
     if (vadRef.current) {
       try { await vadRef.current.destroy() } catch { /* noop */ }
@@ -169,7 +190,10 @@ export function useVoice(): UseVoiceReturn {
         if (typeof evt.data === 'string') {
           try {
             const msg = JSON.parse(evt.data) as { type?: string }
-            if (msg.type === 'tts_start') dispatch({ type: 'TTS_START' })
+            if (msg.type === 'tts_start') {
+              ensureLiveMSE()
+              dispatch({ type: 'TTS_START' })
+            }
             else if (msg.type === 'tts_done') {
               const ms = mediaSourceRef.current
               if (ms && ms.readyState === 'open') { try { ms.endOfStream() } catch { /* noop */ } }
@@ -247,7 +271,7 @@ export function useVoice(): UseVoiceReturn {
       await teardownAll()
       setVoiceActive(false)
     }
-  }, [flushChunkQueue, setupMSE, signalError, teardownAll, teardownMSE])
+  }, [ensureLiveMSE, flushChunkQueue, setupMSE, signalError, teardownAll, teardownMSE])
 
   // Cleanup on unmount.
   useEffect(() => {
