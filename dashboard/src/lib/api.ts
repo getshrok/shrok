@@ -170,7 +170,7 @@ export const api = {
         body: JSON.stringify({ newName }),
       }),
     rename: (name: string, newName: string) =>
-      request<{ ok: boolean; updatedDeps: string[] }>(encSkillPath(name, '/rename'), {
+      request<{ ok: boolean; updatedDeps: string[]; updatedSchedules?: number; updatedUsageRows?: number; warnings?: string[] }>(encSkillPath(name, '/rename'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newName }),
@@ -208,7 +208,7 @@ export const api = {
         body: JSON.stringify({ newName }),
       }),
     rename: (name: string, newName: string) =>
-      request<{ ok: boolean; updatedDeps: string[] }>(encTaskPath(name, '/rename'), {
+      request<{ ok: boolean; updatedDeps: string[]; updatedSchedules?: number; updatedUsageRows?: number; warnings?: string[] }>(encTaskPath(name, '/rename'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newName }),

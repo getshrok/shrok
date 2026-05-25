@@ -10,6 +10,13 @@ export interface CreateKindRouterOptions {
   notFoundLabel: string
   /** System-owned entry names (skills-only; tasks pass undefined). */
   systemNames?: Set<string>
+  /** When present, rename calls unifiedLoader.rename instead of bare renameSkill,
+   *  enabling the full cross-kind cascade (D2), schedule cascade (D3), usage cascade (D4). */
+  unifiedLoader?: import('../../skills/unified.js').UnifiedLoader
+  /** Required for schedule taskName cascade on task renames (D3). */
+  scheduleStore?: import('../../db/schedules.js').ScheduleStore
+  /** Required for usage.target_name cascade on both kinds (D4). */
+  usageStore?: import('../../db/usage.js').UsageStore
 }
 
 // Wire shape must stay stable for the dashboard editor.
@@ -139,6 +146,33 @@ export function createKindRouter(skillLoader: SkillLoader, opts: CreateKindRoute
     if (typeof newName !== 'string' || !safeSkillName(newName)) {
       res.status(400).json({ error: `Invalid new ${entityLabel} name` }); return
     }
+
+    if (opts.unifiedLoader) {
+      // Full cascade path: cross-kind deps (D2), schedule (D3), usage (D4), warnings (D5)
+      try {
+        const depsDynamic: {
+          scheduleStore?: import('../../db/schedules.js').ScheduleStore
+          usageStore?: import('../../db/usage.js').UsageStore
+        } = {}
+        if (opts.scheduleStore) depsDynamic.scheduleStore = opts.scheduleStore
+        if (opts.usageStore) depsDynamic.usageStore = opts.usageStore
+        const result = await opts.unifiedLoader.rename(name, newName, depsDynamic)
+        res.json({
+          ok: true,
+          updatedDeps: result.updatedDeps,
+          updatedSchedules: result.updatedSchedules,
+          updatedUsageRows: result.updatedUsageRows,
+          warnings: result.warnings,
+        })
+      } catch (err) {
+        const msg = (err as Error).message
+        const status = /not found/i.test(msg) ? 404 : 400
+        res.status(status).json({ error: msg })
+      }
+      return
+    }
+
+    // Back-compat path: bare renameSkill (same-kind deps only, lean response)
     const skill = resolveSkill(skillLoader, name)
     if (!skill) { res.status(404).json({ error: notFound }); return }
     try {

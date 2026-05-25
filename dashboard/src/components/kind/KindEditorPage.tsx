@@ -51,7 +51,7 @@ export interface KindApiClient {
   writeFile: (name: string, filename: string, content: string) => Promise<{ ok: boolean }>
   deleteFile: (name: string, filename: string) => Promise<{ ok: boolean }>
   renameFile: (name: string, oldFilename: string, newName: string) => Promise<{ ok: boolean }>
-  rename: (name: string, newName: string) => Promise<{ ok: boolean; updatedDeps: string[] }>
+  rename: (name: string, newName: string) => Promise<{ ok: boolean; updatedDeps: string[]; updatedSchedules?: number; updatedUsageRows?: number; warnings?: string[] }>
 }
 
 export interface KindEditorPageProps {
@@ -452,7 +452,7 @@ function FileTabMenu({ anchorRect, onRename, onDelete, onClose }: {
 function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, detailQueryKey, deleteConfirm, kind }: {
   name: string
   onDeleted: () => void
-  onRenamed: (newName: string) => void
+  onRenamed: (newName: string, warnings?: string[]) => void
   apiClient: KindApiClient
   listQueryKey: string
   detailQueryKey: string
@@ -617,9 +617,13 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
 
   const renameSkillMutation = useMutation({
     mutationFn: (newName: string) => apiClient.rename(name, newName),
-    onSuccess: (_data, newName) => {
+    onSuccess: (data, newName) => {
       void qc.invalidateQueries({ queryKey: [listQueryKey] })
-      onRenamed(newName)
+      if (data.warnings && data.warnings.length > 0) {
+        onRenamed(newName, data.warnings)
+      } else {
+        onRenamed(newName)
+      }
     },
   })
 
@@ -1174,6 +1178,7 @@ export function KindEditorPage(props: KindEditorPageProps) {
 
   const [selectedName, setSelectedName] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [renameNotice, setRenameNotice] = useState<string[] | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: [listQueryKey],
@@ -1197,8 +1202,9 @@ export function KindEditorPage(props: KindEditorPageProps) {
     setSelectedName(null)
   }
 
-  function handleRenamed(newName: string) {
+  function handleRenamed(newName: string, warnings?: string[]) {
     setSelectedName(newName)
+    setRenameNotice(warnings && warnings.length > 0 ? warnings : null)
   }
 
   if (isLoading) {
@@ -1252,34 +1258,55 @@ export function KindEditorPage(props: KindEditorPageProps) {
       </div>
 
       {/* Right panel */}
-      {isCreating ? (
-        <NewEntryForm
-          kind={kind}
-          onCancel={() => { setIsCreating(false) }}
-          onCreate={handleCreated}
-          apiClient={apiClient}
-          listQueryKey={listQueryKey}
-          createHeading={createHeading}
-          createButtonLabel={createButtonLabel}
-          createPendingLabel={createPendingLabel}
-        />
-      ) : selectedName ? (
-        <EntryEditor
-          key={selectedName}
-          name={selectedName}
-          onDeleted={handleDeleted}
-          onRenamed={handleRenamed}
-          apiClient={apiClient}
-          listQueryKey={listQueryKey}
-          detailQueryKey={detailQueryKey}
-          deleteConfirm={deleteConfirm}
-          kind={kind}
-        />
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-sm text-zinc-500">
-          {placeholderBody}
-        </div>
-      )}
+      <div className="flex-1 flex flex-col min-w-0">
+        {renameNotice && renameNotice.length > 0 && (
+          <div className="shrink-0 mx-4 mt-3 border border-amber-500 rounded-md px-4 py-3 bg-amber-950/40 text-amber-300 text-xs">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold mb-1">Rename warnings — old name still referenced in body text:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {renameNotice.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              </div>
+              <button
+                onClick={() => setRenameNotice(null)}
+                className="shrink-0 text-amber-400 hover:text-amber-200 transition-colors"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+        {isCreating ? (
+          <NewEntryForm
+            kind={kind}
+            onCancel={() => { setIsCreating(false) }}
+            onCreate={handleCreated}
+            apiClient={apiClient}
+            listQueryKey={listQueryKey}
+            createHeading={createHeading}
+            createButtonLabel={createButtonLabel}
+            createPendingLabel={createPendingLabel}
+          />
+        ) : selectedName ? (
+          <EntryEditor
+            key={selectedName}
+            name={selectedName}
+            onDeleted={handleDeleted}
+            onRenamed={handleRenamed}
+            apiClient={apiClient}
+            listQueryKey={listQueryKey}
+            detailQueryKey={detailQueryKey}
+            deleteConfirm={deleteConfirm}
+            kind={kind}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-sm text-zinc-500">
+            {placeholderBody}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

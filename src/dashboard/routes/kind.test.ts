@@ -4,9 +4,18 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import * as net from 'node:net'
+import * as url from 'node:url'
 import type { Server } from 'node:http'
 import { FileSystemKindLoader } from '../../skills/loader.js'
+import { UnifiedLoader } from '../../skills/unified.js'
+import { ScheduleStore } from '../../db/schedules.js'
+import { UsageStore } from '../../db/usage.js'
+import { initDb } from '../../db/index.js'
+import { runMigrations } from '../../db/migrate.js'
 import { createKindRouter } from './kind.js'
+
+const __dirnameKind = url.fileURLToPath(new URL('.', import.meta.url))
+const MIGRATIONS_DIR = path.resolve(__dirnameKind, '../../../sql')
 
 async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -140,5 +149,183 @@ describe('createKindRouter', () => {
     expect(r.status).toBe(400)
     const body = await r.json() as { error: string }
     expect(body.error).toBe('Invalid task name')
+  })
+
+  it('Test 8: back-compat — bare rename path (no unifiedLoader) returns { ok, updatedDeps }', async () => {
+    const r = await fetch(`http://127.0.0.1:${skillsPort}/api/skills/foo/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'foo-renamed' }),
+    })
+    expect(r.status).toBe(200)
+    const body = await r.json() as { ok: boolean; updatedDeps: string[] }
+    expect(body.ok).toBe(true)
+    expect(Array.isArray(body.updatedDeps)).toBe(true)
+  })
+})
+
+// ─── createKindRouter WITH UnifiedLoader (cascade) ───────────────────────────
+
+describe('createKindRouter — with UnifiedLoader cascade', () => {
+  let skillsRoot: string
+  let tasksRoot: string
+  let schedulesRoot: string
+  let unifiedLoader: UnifiedLoader
+  let scheduleStore: ScheduleStore
+  let usageStore: UsageStore
+  let skillsServer: Server
+  let tasksServer: Server
+  let skillsPort: number
+  let tasksPort: number
+
+  function seedSkill(name: string, deps: string[] = [], body = `${name} body`) {
+    const dir = path.join(skillsRoot, name)
+    fs.mkdirSync(dir, { recursive: true })
+    const depsYaml = deps.length > 0 ? `\nskill-deps:\n${deps.map(d => `  - ${d}`).join('\n')}` : ''
+    fs.writeFileSync(path.join(dir, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: ${name} skill${depsYaml}\n---\n${body}`, 'utf8')
+  }
+
+  function seedTask(name: string, deps: string[] = [], body = `${name} body`) {
+    const dir = path.join(tasksRoot, name)
+    fs.mkdirSync(dir, { recursive: true })
+    const depsYaml = deps.length > 0 ? `\nskill-deps:\n${deps.map(d => `  - ${d}`).join('\n')}` : ''
+    fs.writeFileSync(path.join(dir, 'TASK.md'),
+      `---\nname: ${name}\ndescription: ${name} task${depsYaml}\n---\n${body}`, 'utf8')
+  }
+
+  beforeEach(async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'kind-cascade-'))
+    skillsRoot = path.join(base, 'skills')
+    tasksRoot = path.join(base, 'tasks')
+    schedulesRoot = path.join(base, 'schedules')
+    fs.mkdirSync(skillsRoot, { recursive: true })
+    fs.mkdirSync(tasksRoot, { recursive: true })
+    fs.mkdirSync(schedulesRoot, { recursive: true })
+
+    const db = initDb(':memory:')
+    runMigrations(db, MIGRATIONS_DIR)
+    usageStore = new UsageStore(db, 'UTC')
+    scheduleStore = new ScheduleStore(schedulesRoot)
+
+    const skillsLoader = new FileSystemKindLoader({ root: skillsRoot, kind: 'skill', filename: 'SKILL.md' })
+    const tasksLoader = new FileSystemKindLoader({ root: tasksRoot, kind: 'task', filename: 'TASK.md' })
+    unifiedLoader = new UnifiedLoader(skillsLoader, tasksLoader)
+
+    // Seed: weather skill, briefing task depending on weather, a scheduled task
+    seedSkill('weather')
+    seedTask('briefing', ['weather'])
+    seedTask('briefing-task')
+
+    // Seed usage rows
+    usageStore.record({ sourceType: 'agent', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01, targetName: 'weather' })
+    usageStore.record({ sourceType: 'agent', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01, targetName: 'briefing-task' })
+
+    // Seed a schedule for briefing-task
+    scheduleStore.create({ id: 'sched-bt', headId: 'default', kind: 'task', taskName: 'briefing-task', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+
+    const s1 = await startApp(app => {
+      app.use('/api/skills', createKindRouter(skillsLoader, {
+        kind: 'skill',
+        notFoundLabel: 'Skill',
+        unifiedLoader,
+        scheduleStore,
+        usageStore,
+      }))
+    })
+    skillsPort = s1.port
+    skillsServer = s1.server
+
+    const s2 = await startApp(app => {
+      app.use('/api/tasks', createKindRouter(tasksLoader, {
+        kind: 'task',
+        notFoundLabel: 'Task',
+        unifiedLoader,
+        scheduleStore,
+        usageStore,
+      }))
+    })
+    tasksPort = s2.port
+    tasksServer = s2.server
+  })
+
+  afterEach(async () => {
+    await new Promise<void>(r => skillsServer.close(() => r()))
+    await new Promise<void>(r => tasksServer.close(() => r()))
+    fs.rmSync(path.dirname(skillsRoot), { recursive: true, force: true })
+  })
+
+  it('POST /skills/weather/rename cascades to cross-kind deps + usage', async () => {
+    const r = await fetch(`http://127.0.0.1:${skillsPort}/api/skills/weather/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'forecast' }),
+    })
+    expect(r.status).toBe(200)
+    const body = await r.json() as {
+      ok: boolean; updatedDeps: string[]; updatedSchedules: number; updatedUsageRows: number; warnings: string[]
+    }
+    expect(body.ok).toBe(true)
+    expect(body.updatedDeps).toContain('briefing')
+    expect(body.updatedUsageRows).toBe(1)
+    // Skill rename never cascades schedules
+    expect(body.updatedSchedules).toBe(0)
+    expect(Array.isArray(body.warnings)).toBe(true)
+
+    // Disk: old dir gone, new dir has updated frontmatter
+    expect(fs.existsSync(path.join(skillsRoot, 'weather'))).toBe(false)
+    const newMd = fs.readFileSync(path.join(skillsRoot, 'forecast', 'SKILL.md'), 'utf8')
+    expect(newMd).toContain('name: forecast')
+
+    // Cross-kind: briefing/TASK.md now references forecast
+    const briefingMd = fs.readFileSync(path.join(tasksRoot, 'briefing', 'TASK.md'), 'utf8')
+    expect(briefingMd).toContain('- forecast')
+    expect(briefingMd).not.toContain('- weather')
+  })
+
+  it('POST /tasks/briefing-task/rename cascades to schedules + usage', async () => {
+    const r = await fetch(`http://127.0.0.1:${tasksPort}/api/tasks/briefing-task/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'briefing-job' }),
+    })
+    expect(r.status).toBe(200)
+    const body = await r.json() as { ok: boolean; updatedSchedules: number; updatedUsageRows: number }
+    expect(body.ok).toBe(true)
+    expect(body.updatedSchedules).toBe(1)
+    expect(body.updatedUsageRows).toBe(1)
+
+    // Schedule row now has new taskName
+    const sched = scheduleStore.get('sched-bt')
+    expect(sched?.taskName).toBe('briefing-job')
+  })
+
+  it('invalid newName returns 400', async () => {
+    const r = await fetch(`http://127.0.0.1:${skillsPort}/api/skills/weather/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'bad name!' }),
+    })
+    expect(r.status).toBe(400)
+  })
+
+  it('missing entry returns 404', async () => {
+    const r = await fetch(`http://127.0.0.1:${skillsPort}/api/skills/nonexistent/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'something' }),
+    })
+    expect(r.status).toBe(404)
+  })
+
+  it('duplicate newName returns 400', async () => {
+    // Seed a second skill so we can try renaming weather → briefing-dupe
+    seedSkill('target-exists')
+    const r = await fetch(`http://127.0.0.1:${skillsPort}/api/skills/weather/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'target-exists' }),
+    })
+    expect(r.status).toBe(400)
   })
 })

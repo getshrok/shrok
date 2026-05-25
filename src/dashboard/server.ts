@@ -25,7 +25,6 @@ import { createActivityRouter } from './routes/activity.js'
 import { createTracesRouter } from './routes/traces.js'
 import { createMemoryRouter } from './routes/memory.js'
 import { createIdentityRouter } from './routes/identity.js'
-import { createSkillsRouter } from './routes/skills.js'
 import { createKindRouter } from './routes/kind.js'
 import { readAssistantName } from '../config-file.js'
 import { createTestsRouter } from './routes/tests.js'
@@ -213,10 +212,25 @@ export class DashboardServer {
       app.use('/api/identity', createIdentityRouter(mainLoader, mainWorkspaceDir, agentLoader, agentWorkspaceDir, stewardsWorkspaceDir ?? '', proactiveWorkspaceDir ?? '', memoryPromptsWorkspaceDir ?? ''))
     }
     if (this.opts.skills) {
-      app.use('/api/skills', createSkillsRouter(this.opts.skills.loader, this.opts.skills.systemSkillNames))
+      const skillsOpts: import('./routes/kind.js').CreateKindRouterOptions = {
+        kind: 'skill',
+        notFoundLabel: 'Skill',
+        systemNames: this.opts.skills.systemSkillNames,
+        usageStore: this.opts.usage,
+        ...(this.opts.unifiedLoader ? { unifiedLoader: this.opts.unifiedLoader } : {}),
+        ...(this.opts.schedules ? { scheduleStore: this.opts.schedules } : {}),
+      }
+      app.use('/api/skills', createKindRouter(this.opts.skills.loader, skillsOpts))
     }
     if (this.opts.tasks) {
-      app.use('/api/tasks', createKindRouter(this.opts.tasks.loader, { kind: 'task', notFoundLabel: 'Task' }))
+      const tasksOpts: import('./routes/kind.js').CreateKindRouterOptions = {
+        kind: 'task',
+        notFoundLabel: 'Task',
+        usageStore: this.opts.usage,
+        ...(this.opts.unifiedLoader ? { unifiedLoader: this.opts.unifiedLoader } : {}),
+        ...(this.opts.schedules ? { scheduleStore: this.opts.schedules } : {}),
+      }
+      app.use('/api/tasks', createKindRouter(this.opts.tasks.loader, tasksOpts))
     }
     app.use('/api/tools', createToolsRouter())
     if (this.opts.mcpRegistry) {
