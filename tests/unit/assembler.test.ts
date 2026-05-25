@@ -5,6 +5,9 @@ import { AgentStore } from '../../src/db/agents.js'
 import { freshDb, makeSkillLoader, makeMcpRegistry, makeIdentityLoader } from '../integration/helpers.js'
 import type { Config } from '../../src/config.js'
 import type { QueueEvent } from '../../src/types/core.js'
+import type { IdentityLoader } from '../../src/identity/loader.js'
+import type { SkillLoader } from '../../src/types/skill.js'
+import type { McpRegistry } from '../../src/mcp/registry.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,7 +31,7 @@ function makeAssembler(getNow?: () => Date) {
   const db = freshDb()
   const messages = new MessageStore(db)
   const workers = new AgentStore(db)
-  const args: ConstructorParameters<typeof ContextAssemblerImpl> = [
+  const args: [IdentityLoader, MessageStore, AgentStore, SkillLoader, Config, McpRegistry] = [
     makeIdentityLoader('You are Shrok.'),
     messages,
     workers,

@@ -64,6 +64,7 @@ export type ChannelConfig = z.infer<typeof ChannelConfigSchema>
 export const HeadConfigSchema = z.object({
   id: z.string().min(1),
   channels: z.array(ChannelConfigSchema),
+  customPrompt: z.string().optional(),
 })
 
 export type HeadConfig = z.infer<typeof HeadConfigSchema>
@@ -72,6 +73,7 @@ export type HeadConfig = z.infer<typeof HeadConfigSchema>
 export interface ResolvedHead {
   id: string
   channels: ChannelConfig[]
+  customPrompt?: string
 }
 
 const ConfigSchema = z.object({
@@ -434,7 +436,11 @@ export function extractSecretValues(config: Config): string[] {
  */
 export function resolveHeads(config: Config): ResolvedHead[] {
   if (config.heads && config.heads.length > 0) {
-    return config.heads.map(h => ({ id: h.id, channels: h.channels }))
+    return config.heads.map(h => ({
+      id: h.id,
+      channels: h.channels,
+      ...(h.customPrompt !== undefined ? { customPrompt: h.customPrompt } : {}),
+    }))
   }
   const channels: ChannelConfig[] = []
   if (config.telegramBotToken && config.telegramChatId) {

@@ -500,6 +500,32 @@ describe('Phase 31 resolveHeads()', () => {
     const ids = heads[0]?.channels.map(c => c.id).sort()
     expect(ids).toEqual(['discord', 'telegram'])
   })
+
+  // Issue #12: customPrompt pass-through / omission tests
+  it('resolveHeads preserves customPrompt when a config head has one', () => {
+    const cfg = makeConfig({
+      heads: [{ id: 'work', channels: [], customPrompt: 'Be terse.' }],
+    })
+    const heads = resolveHeads(cfg)
+    expect(heads).toHaveLength(1)
+    expect(heads[0]?.customPrompt).toBe('Be terse.')
+  })
+
+  it('resolveHeads omits customPrompt key when a config head lacks it', () => {
+    const cfg = makeConfig({
+      heads: [{ id: 'work', channels: [] }],
+    })
+    const heads = resolveHeads(cfg)
+    expect(heads).toHaveLength(1)
+    expect('customPrompt' in (heads[0] ?? {})).toBe(false)
+  })
+
+  it('synthesized default head (zero-config) has no customPrompt key', () => {
+    const cfg = makeConfig()
+    const heads = resolveHeads(cfg)
+    expect(heads).toHaveLength(1)
+    expect('customPrompt' in (heads[0] ?? {})).toBe(false)
+  })
 })
 
 // ─── Phase 40: home-assistant channel vendor ───────────────────────────────

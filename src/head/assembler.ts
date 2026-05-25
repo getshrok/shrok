@@ -92,6 +92,8 @@ export class ContextAssemblerImpl implements ContextAssembler {
     private getNow: () => Date = () => new Date(),
     private topicMemory?: Memory,
     private router?: LLMRouter,
+    private headId: string = 'default',
+    private customPrompt?: string,
   ) {}
 
   async assemble(trigger: QueueEvent): Promise<AssembledContext> {
@@ -124,6 +126,9 @@ export class ContextAssemblerImpl implements ContextAssembler {
       systemPrompt = `${systemPrompt}\n\n${skillsBlock}`
     }
     systemPrompt += `\n\n${buildEnvironmentBlock(this.config)}`
+    if (this.customPrompt && this.customPrompt.trim()) {
+      systemPrompt += `\n\n## Head-Specific Instructions\n${this.customPrompt.trim()}`
+    }
     systemPrompt += `\n\nCurrent time: ${formatIanaTimeLine(this.getNow(), this.config.timezone)}`
     if (trigger.type === 'user_message' && trigger.channel) {
       systemPrompt += `\nChannel: ${trigger.channel}`
@@ -171,7 +176,7 @@ export class ContextAssemblerImpl implements ContextAssembler {
     }
 
     // 4. History — most recent messages that fit in the budget (FIFO)
-    const history = this.messages.getRecent('default', historyBudget)
+    const history = this.messages.getRecent(this.headId, historyBudget)
 
     return { systemPrompt: finalSystemPrompt, history, historyBudget, memoryBlock }
   }
@@ -193,7 +198,7 @@ export class ContextAssemblerImpl implements ContextAssembler {
     const contextTokenBudget = this.config.memoryQueryContextTokens
     if (!contextTokenBudget || !this.router) return failOpen
 
-    const recent = this.messages.getRecentTextByTokens('default', contextTokenBudget, estimateTokens).reverse()
+    const recent = this.messages.getRecentTextByTokens(this.headId, contextTokenBudget, estimateTokens).reverse()
     if (recent.length === 0) return failOpen
 
     const conversationContext = recent

@@ -209,3 +209,99 @@ describe('ContextAssemblerImpl + loadMemoryPromptOverrides wiring', () => {
     expect(promptsArg?.router).toBe(shippedRouter)
   })
 })
+
+// ─── Issue #12: per-head customPrompt + head-aware history ───────────────────
+
+describe('ContextAssemblerImpl — customPrompt + headId (issue #12)', () => {
+  // (a) customPrompt 'Be terse.' → systemPrompt contains header AND text, and
+  //     the header index < 'Current time:' index (inside cached prefix).
+  it('(a) injects Head-Specific Instructions header before Current time when customPrompt is set', async () => {
+    const assembler = new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      makeMessageStore(),
+      makeAgentStore(),
+      makeSkillLoader(),
+      makeMinimalConfig(),
+      makeMcpRegistry(),
+      undefined, // getNow
+      undefined, // topicMemory
+      undefined, // router
+      'default', // headId
+      'Be terse.', // customPrompt
+    )
+
+    const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
+
+    expect(systemPrompt).toContain('## Head-Specific Instructions')
+    expect(systemPrompt).toContain('Be terse.')
+
+    const headerIdx = systemPrompt.indexOf('## Head-Specific Instructions')
+    const currentTimeIdx = systemPrompt.indexOf('Current time:')
+    expect(headerIdx).toBeGreaterThanOrEqual(0)
+    expect(currentTimeIdx).toBeGreaterThanOrEqual(0)
+    expect(headerIdx).toBeLessThan(currentTimeIdx)
+  })
+
+  // (b) no customPrompt → no header injected; whitespace-only → still no header.
+  it('(b) does NOT inject header when customPrompt is undefined', async () => {
+    const assembler = new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      makeMessageStore(),
+      makeAgentStore(),
+      makeSkillLoader(),
+      makeMinimalConfig(),
+      makeMcpRegistry(),
+    )
+
+    const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
+    expect(systemPrompt).not.toContain('## Head-Specific Instructions')
+  })
+
+  it('(b) does NOT inject header when customPrompt is whitespace-only', async () => {
+    const assembler = new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      makeMessageStore(),
+      makeAgentStore(),
+      makeSkillLoader(),
+      makeMinimalConfig(),
+      makeMcpRegistry(),
+      undefined, // getNow
+      undefined, // topicMemory
+      undefined, // router
+      'default', // headId
+      '   ',     // whitespace-only customPrompt
+    )
+
+    const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
+    expect(systemPrompt).not.toContain('## Head-Specific Instructions')
+  })
+
+  // (c) headId 'work' → getRecent/getRecentTextByTokens both receive 'work', not 'default'.
+  it('(c) uses this.headId (not hardcoded "default") for getRecent', async () => {
+    const recentCalls: string[] = []
+    const messageStore: MessageStore = {
+      getRecent: (headId: string) => { recentCalls.push(headId); return [] },
+      getRecentTextByTokens: () => [],
+      append: () => {},
+      deleteByIds: () => {},
+    } as unknown as MessageStore
+
+    const assembler = new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      messageStore,
+      makeAgentStore(),
+      makeSkillLoader(),
+      makeMinimalConfig(),
+      makeMcpRegistry(),
+      undefined, // getNow
+      undefined, // topicMemory
+      undefined, // router
+      'work',    // headId — the bug fix
+    )
+
+    await assembler.assemble(makeScheduleTrigger())
+
+    expect(recentCalls.length).toBeGreaterThan(0)
+    expect(recentCalls.every(id => id === 'work')).toBe(true)
+  })
+})

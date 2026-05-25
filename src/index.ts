@@ -251,6 +251,7 @@ async function main() {
       db, config, llmRouter, channelRouter: headRouter, mcpRegistry,
       dashboardEventBus: dashboardEvents,
       headId: head.id,
+      ...(head.customPrompt !== undefined ? { customPrompt: head.customPrompt } : {}),
       // Phase 35 D-08: re-resolve heads each call so dashboard edits between scheduler ticks
       // land without a process restart (mirrors DashboardServer.resolveCurrentHeads pattern).
       resolveCurrentHeads: () => resolveHeads(loadConfig()),

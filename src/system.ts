@@ -100,6 +100,8 @@ export interface SystemDeps {
   /** Phase 31 (CONF-03): head identifier this system instance owns.
    *  When omitted, defaults to 'default' (single-head backward compat). */
   headId?: string
+  /** Issue #12: per-head custom system-prompt addition, appended in the assembler's cached prefix. */
+  customPrompt?: string
   /** Phase 35 D-08: callback that returns the current heads list at call time (no cache).
    *  Threaded into ActivationLoop for the D-07 reminder first-channel fallback. The host
    *  supplies `() => resolveHeads(loadConfig())` so dashboard edits between ticks land
@@ -310,6 +312,8 @@ export function buildSystem(deps: SystemDeps): System {
     undefined,
     topicMemory,
     llmRouter,
+    deps.headId ?? 'default',
+    deps.customPrompt,
   )
   const assembler = deps.assemblerWrapper ? deps.assemblerWrapper(baseAssembler) : baseAssembler
 
