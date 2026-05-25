@@ -188,6 +188,7 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
       heads: heads.map(h => ({
         id: h.id,
         channels: h.channels.map(maskChannel),
+        ...(h.customPrompt !== undefined ? { customPrompt: h.customPrompt } : {}),
       })),
     })
   })
@@ -333,64 +334,110 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
    */
   router.patch('/:id', requireAuth, (req: Request, res: Response): void => {
     const oldId = String(req.params['id'])
-    const body = req.body as { newId?: unknown }
-    if (typeof body.newId !== 'string') {
-      res.status(400).json({ error: 'newId is required and must be a string' })
-      return
-    }
-    const newId = body.newId
-    if (!HEAD_ID_REGEX.test(newId)) {
-      res.status(400).json({ error: 'newId must match /^[a-z0-9][a-z0-9-]{0,31}$/' })
-      return
-    }
-    if (RESERVED_HEAD_IDS.has(newId)) {
-      res.status(400).json({ error: `newId "${newId}" is reserved` })
-      return
-    }
-    if (RESERVED_HEAD_IDS.has(oldId)) {
-      res.status(400).json({ error: `head "${oldId}" cannot be renamed (reserved)` })
-      return
-    }
-    if (newId === oldId) {
-      res.status(200).json({ ok: true, head: { id: oldId } })
-      return
-    }
-    const current = deps.resolveCurrentHeads()
-    if (!current.some(h => h.id === oldId)) {
-      res.status(404).json({ error: `head "${oldId}" not found` })
-      return
-    }
-    if (current.some(h => h.id === newId)) {
-      res.status(400).json({ error: `head "${newId}" already exists` })
+    const body = req.body as { newId?: unknown; customPrompt?: unknown }
+    const hasRename = typeof body.newId === 'string'
+    const hasCustomPrompt = typeof body.customPrompt === 'string'
+
+    if (!hasRename && !hasCustomPrompt) {
+      res.status(400).json({ error: 'newId or customPrompt is required' })
       return
     }
 
-    // D-14: atomic UPDATE migration across 3 tables.
-    // substr offset: prefix `"${oldId}:"` is `oldId.length + 1` chars long,
-    // and SQLite's substr is 1-indexed, so the suffix starts at
-    // `oldId.length + 2` (e.g., oldId='work' (4) -> 'work:foo' at pos 6 = 'foo').
-    try {
-      transaction(deps.db, () => {
-        deps.db.prepare('UPDATE messages SET head_id = ? WHERE head_id = ?').run(newId, oldId)
-        deps.db.prepare('UPDATE queue_events SET head_id = ? WHERE head_id = ?').run(newId, oldId)
-        deps.db.prepare('UPDATE app_state SET key = ? || substr(key, ?) WHERE key LIKE ?')
-          .run(`${newId}:`, oldId.length + 2, `${oldId}:%`)
+    let currentId = oldId
+
+    // ── Rename branch ─────────────────────────────────────────────────────────
+    if (hasRename) {
+      const newId = body.newId as string
+      if (!HEAD_ID_REGEX.test(newId)) {
+        res.status(400).json({ error: 'newId must match /^[a-z0-9][a-z0-9-]{0,31}$/' })
+        return
+      }
+      if (RESERVED_HEAD_IDS.has(newId)) {
+        res.status(400).json({ error: `newId "${newId}" is reserved` })
+        return
+      }
+      if (RESERVED_HEAD_IDS.has(oldId)) {
+        res.status(400).json({ error: `head "${oldId}" cannot be renamed (reserved)` })
+        return
+      }
+      if (newId === oldId) {
+        // no-op rename: if there is also a customPrompt, fall through to apply it;
+        // otherwise return immediately.
+        if (!hasCustomPrompt) {
+          res.status(200).json({ ok: true, head: { id: oldId } })
+          return
+        }
+        // Fall through with currentId unchanged — customPrompt will be applied below.
+      } else {
+        const current = deps.resolveCurrentHeads()
+        if (!current.some(h => h.id === oldId)) {
+          res.status(404).json({ error: `head "${oldId}" not found` })
+          return
+        }
+        if (current.some(h => h.id === newId)) {
+          res.status(400).json({ error: `head "${newId}" already exists` })
+          return
+        }
+
+        // D-14: atomic UPDATE migration across 3 tables.
+        // substr offset: prefix `"${oldId}:"` is `oldId.length + 1` chars long,
+        // and SQLite's substr is 1-indexed, so the suffix starts at
+        // `oldId.length + 2` (e.g., oldId='work' (4) -> 'work:foo' at pos 6 = 'foo').
+        try {
+          transaction(deps.db, () => {
+            deps.db.prepare('UPDATE messages SET head_id = ? WHERE head_id = ?').run(newId, oldId)
+            deps.db.prepare('UPDATE queue_events SET head_id = ? WHERE head_id = ?').run(newId, oldId)
+            deps.db.prepare('UPDATE app_state SET key = ? || substr(key, ?) WHERE key LIKE ?')
+              .run(`${newId}:`, oldId.length + 2, `${oldId}:%`)
+          })
+        } catch (err) {
+          res.status(500).json({ error: `rename failed: ${(err as Error).message}` })
+          return
+        }
+
+        // After the DB rename succeeds, rewrite config.json.
+        materializeLazyMigrationIfNeeded(deps)
+        const configJson = loadConfigJsonInline(deps.configPath)
+        const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{ id: string; channels: ChannelConfig[]; customPrompt?: string }>
+        const next = heads.map(h => h.id === oldId ? { ...h, id: newId } : h)
+        configJson['heads'] = next
+        writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
+
+        currentId = newId
+
+        // If there is no customPrompt to apply, return now.
+        if (!hasCustomPrompt) {
+          const renamed = next.find(h => h.id === newId)
+          res.status(200).json({ ok: true, head: renamed })
+          return
+        }
+      }
+    }
+
+    // ── customPrompt branch ───────────────────────────────────────────────────
+    if (hasCustomPrompt) {
+      materializeLazyMigrationIfNeeded(deps)
+      const configJson = loadConfigJsonInline(deps.configPath)
+      const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{ id: string; channels: ChannelConfig[]; customPrompt?: string }>
+      const headIdx = heads.findIndex(h => h.id === currentId)
+      if (headIdx === -1) {
+        res.status(404).json({ error: `head "${currentId}" not found` })
+        return
+      }
+      const head = heads[headIdx]!
+      head.customPrompt = body.customPrompt as string
+      configJson['heads'] = heads
+      writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
+
+      res.status(200).json({
+        ok: true,
+        head: {
+          id: currentId,
+          ...(head.customPrompt !== '' ? { customPrompt: head.customPrompt } : { customPrompt: head.customPrompt }),
+        },
       })
-    } catch (err) {
-      res.status(500).json({ error: `rename failed: ${(err as Error).message}` })
       return
     }
-
-    // After the DB rename succeeds, rewrite config.json.
-    materializeLazyMigrationIfNeeded(deps)
-    const configJson = loadConfigJsonInline(deps.configPath)
-    const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{ id: string; channels: ChannelConfig[] }>
-    const next = heads.map(h => h.id === oldId ? { ...h, id: newId } : h)
-    configJson['heads'] = next
-    writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
-
-    const renamed = next.find(h => h.id === newId)
-    res.status(200).json({ ok: true, head: renamed })
   })
 
   /**

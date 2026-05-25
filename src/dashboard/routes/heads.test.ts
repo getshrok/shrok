@@ -169,6 +169,19 @@ describe('GET /api/heads (DASH-01)', () => {
     }
     expect(body.heads[0]!.channels).toHaveLength(5)
   })
+
+  // Issue #12: GET returns customPrompt when the head has one
+  it('GET /api/heads returns customPrompt for a head that has one', async () => {
+    await start([
+      { id: 'work', channels: [], customPrompt: 'Be concise.' },
+      { id: 'default', channels: [] },
+    ])
+    const body = await getHeads() as { heads: Array<{ id: string; channels: unknown[]; customPrompt?: string }> }
+    const workHead = body.heads.find(h => h.id === 'work')
+    expect(workHead?.customPrompt).toBe('Be concise.')
+    const defaultHead = body.heads.find(h => h.id === 'default')
+    expect('customPrompt' in (defaultHead ?? {})).toBe(false)
+  })
 })
 
 // ─── Task 2: POST + DELETE + lazy migration ─────────────────────────────────
@@ -686,6 +699,69 @@ describe('PATCH /api/heads/:id (DASH-03 rename, D-14)', () => {
     // app_state untouched too.
     expect(appStateValue('work:lastChannel')).toBe('discord')
     expect(appStateValue('work-new:lastChannel')).toBeUndefined()
+  })
+
+  // Issue #12: customPrompt independent of rename
+  it('PATCH with only { customPrompt } persists it without requiring newId', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('work', { customPrompt: 'Be brief.' })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; customPrompt?: string }>
+    const workHead = heads.find(h => h.id === 'work')
+    expect(workHead?.customPrompt).toBe('Be brief.')
+    // id must be unchanged
+    expect(workHead?.id).toBe('work')
+  })
+
+  it('PATCH with only { newId } still renames and does not require customPrompt', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('work', { newId: 'work-renamed' })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string }>
+    expect(heads.find(h => h.id === 'work-renamed')).toBeDefined()
+    expect(heads.find(h => h.id === 'work')).toBeUndefined()
+  })
+
+  it('PATCH with { customPrompt: "" } persists empty string (explicit clear)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('work', { customPrompt: '' })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; customPrompt?: string }>
+    const workHead = heads.find(h => h.id === 'work')
+    expect(workHead?.customPrompt).toBe('')
+  })
+
+  it('PATCH /api/heads/default with customPrompt-only body is allowed (renaming reserved, but customPrompt is not)', async () => {
+    await start([{ id: 'default', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('default', { customPrompt: 'Global default instructions.' })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; customPrompt?: string }>
+    const defaultHead = heads.find(h => h.id === 'default')
+    expect(defaultHead?.customPrompt).toBe('Global default instructions.')
   })
 })
 
