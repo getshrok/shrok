@@ -91,25 +91,21 @@ export async function transcribeAudio(buf: Buffer, nameOrMediaType: string, open
 }
 
 /**
- * Transcribe a WAV buffer using OpenAI Whisper.
+ * Transcribe a WAV buffer (live-mic turns) using OpenAI Whisper.
  *
- * Implements phase 19 D-04 (File-object boundary, no disk I/O) and D-05
- * (duration gate BEFORE the API call). Callers should catch TooShortError
- * and InvalidWavError separately from upstream SDK errors.
+ * WAV-specific wrapper around the single transcription implementation
+ * (`transcribeAudio`): it adds the phase-19 D-05 duration gate BEFORE the API
+ * call (reject silence/noise shorter than 0.5s so Whisper doesn't hallucinate),
+ * then delegates the actual Whisper call. `'audio/wav'` resolves to a File named
+ * `audio.wav` (type `audio/wav`) — identical to the former inline File-object
+ * boundary (D-04, no disk I/O). Callers should catch TooShortError and
+ * InvalidWavError separately from upstream SDK errors.
  */
 export async function transcribeWav(buf: Buffer, openai: OpenAI): Promise<string> {
   const duration = parseWavDuration(buf)
   if (duration === null) throw new InvalidWavError()
   if (duration < MIN_WAV_DURATION_SECONDS) throw new TooShortError(duration)
 
-  // D-04: wrap Buffer in a Web API File object. Node 22's global File satisfies
-  // openai's FileLike type. No temp file, no FormData construction.
-  const file = new File([buf], 'audio.wav', { type: 'audio/wav' })
-  const result = await openai.audio.transcriptions.create({
-    file,
-    model: 'whisper-1',
-  })
-  // Whisper's default response_format is 'json' which returns { text: string }.
-  // Trim to strip Whisper's trailing newline/space on short utterances.
-  return (result.text ?? '').trim()
+  // Single transcription implementation — delegate the Whisper call to transcribeAudio.
+  return transcribeAudio(buf, 'audio/wav', openai)
 }
