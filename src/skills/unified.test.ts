@@ -2,9 +2,17 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
+import * as url from 'node:url'
 import { FileSystemKindLoader, FileSystemSkillLoader } from './loader.js'
 import { UnifiedLoader } from './unified.js'
 import { log } from '../logger.js'
+import { initDb } from '../db/index.js'
+import { runMigrations } from '../db/migrate.js'
+import { UsageStore } from '../db/usage.js'
+import { ScheduleStore } from '../db/schedules.js'
+
+const __dirnameUnified = url.fileURLToPath(new URL('.', import.meta.url))
+const MIGRATIONS_DIR = path.resolve(__dirnameUnified, '../../sql')
 
 // ─── FileSystemKindLoader ─────────────────────────────────────────────────────
 
@@ -175,5 +183,138 @@ describe('UnifiedLoader', () => {
     const unified = makeUnified()
     expect(unified.skillsLoader.kind).toBe('skill')
     expect(unified.tasksLoader.kind).toBe('task')
+  })
+})
+
+// ─── UnifiedLoader.rename ─────────────────────────────────────────────────────
+
+describe('UnifiedLoader.rename', () => {
+  let skillsDir: string
+  let tasksDir: string
+  let schedulesDir: string
+  let scheduleStore: ScheduleStore
+  let usageStore: UsageStore
+
+  beforeEach(() => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'unified-rename-'))
+    skillsDir = path.join(base, 'skills')
+    tasksDir = path.join(base, 'tasks')
+    schedulesDir = path.join(base, 'schedules')
+    fs.mkdirSync(skillsDir, { recursive: true })
+    fs.mkdirSync(tasksDir, { recursive: true })
+    fs.mkdirSync(schedulesDir, { recursive: true })
+
+    const db = initDb(':memory:')
+    runMigrations(db, MIGRATIONS_DIR)
+    usageStore = new UsageStore(db, 'UTC')
+    scheduleStore = new ScheduleStore(schedulesDir)
+  })
+
+  function writeSkill(name: string, deps: string[] = [], body = `${name} skill body`) {
+    const dir = path.join(skillsDir, name)
+    fs.mkdirSync(dir, { recursive: true })
+    const depsYaml = deps.length > 0 ? `\nskill-deps:\n${deps.map(d => `  - ${d}`).join('\n')}` : ''
+    fs.writeFileSync(path.join(dir, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: ${name} skill${depsYaml}\n---\n${body}`, 'utf8')
+  }
+
+  function writeTask(name: string, deps: string[] = [], body = `${name} task body`) {
+    const dir = path.join(tasksDir, name)
+    fs.mkdirSync(dir, { recursive: true })
+    const depsYaml = deps.length > 0 ? `\nskill-deps:\n${deps.map(d => `  - ${d}`).join('\n')}` : ''
+    fs.writeFileSync(path.join(dir, 'TASK.md'),
+      `---\nname: ${name}\ndescription: ${name} task${depsYaml}\n---\n${body}`, 'utf8')
+  }
+
+  function makeUnified(): UnifiedLoader {
+    const skills = new FileSystemKindLoader({ root: skillsDir, kind: 'skill', filename: 'SKILL.md' })
+    const tasks = new FileSystemKindLoader({ root: tasksDir, kind: 'task', filename: 'TASK.md' })
+    return new UnifiedLoader(skills, tasks)
+  }
+
+  it('returns kind:skill when renaming a skill', async () => {
+    writeSkill('weather')
+    const result = await makeUnified().rename('weather', 'forecast', {})
+    expect(result.kind).toBe('skill')
+  })
+
+  it('returns kind:task when renaming a task', async () => {
+    writeTask('briefing')
+    const result = await makeUnified().rename('briefing', 'briefing-v2', {})
+    expect(result.kind).toBe('task')
+  })
+
+  it('cross-kind dep cascade: renaming a SKILL updates a TASK that depends on it (D2)', async () => {
+    writeSkill('weather')
+    writeTask('morning-task', ['weather'])
+    const result = await makeUnified().rename('weather', 'forecast', {})
+    expect(result.updatedDeps).toContain('morning-task')
+    const taskMd = fs.readFileSync(path.join(tasksDir, 'morning-task', 'TASK.md'), 'utf8')
+    expect(taskMd).toContain('- forecast')
+    expect(taskMd).not.toContain('- weather')
+  })
+
+  it('schedule cascade runs only for kind===task; skill rename leaves schedules untouched (D3)', async () => {
+    writeSkill('weather')
+    writeTask('briefing')
+    scheduleStore.create({ id: 'sched-1', headId: 'default', kind: 'task', taskName: 'weather', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+
+    const skillResult = await makeUnified().rename('weather', 'forecast', { scheduleStore })
+    // Skill rename must NOT cascade to schedules
+    expect(skillResult.updatedSchedules).toBe(0)
+    expect(scheduleStore.get('sched-1')!.taskName).toBe('weather')
+
+    // Task rename DOES cascade
+    scheduleStore.create({ id: 'sched-2', headId: 'default', kind: 'task', taskName: 'briefing', runAt: '2099-01-01T00:00:00Z', nextRun: '2099-01-01T00:00:00Z' })
+    const taskResult = await makeUnified().rename('briefing', 'briefing-v2', { scheduleStore })
+    expect(taskResult.updatedSchedules).toBe(1)
+    expect(scheduleStore.get('sched-2')!.taskName).toBe('briefing-v2')
+  })
+
+  it('usage.target_name is updated for both skill and task renames (D4)', async () => {
+    writeSkill('email-skill')
+    usageStore.record({ sourceType: 'agent', sourceId: null, model: 'm', inputTokens: 1, outputTokens: 1, costUsd: 0.01, targetName: 'email-skill' })
+    const result = await makeUnified().rename('email-skill', 'email-new', { usageStore })
+    expect(result.updatedUsageRows).toBe(1)
+  })
+
+  it('agents.skill_name is NOT modified after a rename', async () => {
+    const db = initDb(':memory:')
+    runMigrations(db, MIGRATIONS_DIR)
+    const agentId = 'agent-test-1'
+    db.prepare(`INSERT INTO agents (id, skill_name, status, task) VALUES (?, ?, 'completed', '')`).run(agentId, 'old-skill')
+    const localUsage = new UsageStore(db, 'UTC')
+    writeSkill('old-skill')
+    await makeUnified().rename('old-skill', 'new-skill', { usageStore: localUsage })
+    const row = db.prepare('SELECT skill_name FROM agents WHERE id = ?').get(agentId) as { skill_name: string }
+    expect(row.skill_name).toBe('old-skill')
+  })
+
+  it('warns when oldName appears in the renamed entry own body (D5)', async () => {
+    writeSkill('my-skill', [], 'This skill uses my-skill capabilities')
+    const result = await makeUnified().rename('my-skill', 'my-new-skill', {})
+    expect(result.warnings.some(w => w.includes('my-skill'))).toBe(true)
+  })
+
+  it('warns when oldName appears in an updated dependent body (D5)', async () => {
+    writeSkill('dep-skill')
+    writeTask('dep-task', ['dep-skill'], 'This task uses dep-skill logic')
+    const result = await makeUnified().rename('dep-skill', 'dep-new', {})
+    expect(result.warnings.some(w => w.includes('dep-task'))).toBe(true)
+  })
+
+  it('throws Invalid new name on bad newName', async () => {
+    writeSkill('my-skill')
+    await expect(makeUnified().rename('my-skill', 'bad name!', {})).rejects.toThrow(/Invalid new name/)
+  })
+
+  it('throws not found when oldName is not in skills or tasks', async () => {
+    await expect(makeUnified().rename('nonexistent', 'something', {})).rejects.toThrow(/not found/)
+  })
+
+  it('throws already exists when newName exists in the target kind', async () => {
+    writeSkill('alpha')
+    writeSkill('beta')
+    await expect(makeUnified().rename('alpha', 'beta', {})).rejects.toThrow(/already exists/)
   })
 })
