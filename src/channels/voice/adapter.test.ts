@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import type OpenAI from 'openai'
-import { VoiceChannelAdapter, MAX_WAV_BYTES, VOICE_WS_PATH, SESSION_BUSY_CLOSE_CODE, SESSION_BUSY_REASON } from './adapter.js'
+import { VoiceChannelAdapter, MAX_WAV_BYTES, VOICE_WS_PATH, SESSION_BUSY_CLOSE_CODE, SESSION_BUSY_REASON, resolveHeadFromUrl } from './adapter.js'
 import type { InboundMessage } from '../../types/channel.js'
 
 // ─── Mock http.Server ──────────────────────────────────────────────────────────
@@ -128,6 +128,37 @@ function triggerUpgradeNonVoice(httpServer: MockHttpServer): void {
     {} as unknown as import('node:stream').Duplex,
     Buffer.alloc(0),
   )
+}
+
+function triggerUpgradeWithHead(httpServer: MockHttpServer, headId: string): void {
+  httpServer.emit('upgrade',
+    { url: `${VOICE_WS_PATH}?head=${encodeURIComponent(headId)}` } as unknown as import('node:http').IncomingMessage,
+    {} as unknown as import('node:stream').Duplex,
+    Buffer.alloc(0),
+  )
+}
+
+// Extended setupAdapter that accepts opts for head routing tests
+async function setupAdapterWithHeads(
+  opts: {
+    knownHeadIds: ReadonlySet<string>
+    defaultHeadId: string
+    transcriptText?: string
+  }
+) {
+  const httpServer = new MockHttpServer() as unknown as import('node:http').Server
+  const { client, transcribe, speechCreate } = makeMockOpenAI(opts.transcriptText ?? 'hello world')
+  const routesByHead: Record<string, InboundMessage[]> = {}
+  const adapter = new VoiceChannelAdapter(httpServer, client, {
+    knownHeadIds: opts.knownHeadIds,
+    defaultHeadId: opts.defaultHeadId,
+    routeFor: (headId) => {
+      if (!routesByHead[headId]) routesByHead[headId] = []
+      return (msg) => { routesByHead[headId]!.push(msg) }
+    },
+  })
+  await adapter.start()
+  return { adapter, httpServer, routesByHead, transcribe, speechCreate, client }
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
@@ -296,5 +327,141 @@ describe('VoiceChannelAdapter', () => {
     expect(ac.signal.aborted).toBe(true)
     expect(ws.closedWith?.code).toBe(1001)
     expect((httpServer as unknown as MockHttpServer).listenerCount('upgrade')).toBe(0)
+  })
+})
+
+// ─── resolveHeadFromUrl — pure unit tests ─────────────────────────────────────
+
+describe('resolveHeadFromUrl', () => {
+  const known = new Set(['default', 'work', 'assistant'])
+
+  it('returns the ?head= param when it is a known head id', () => {
+    expect(resolveHeadFromUrl('/api/voice/ws?head=work', known, 'default')).toBe('work')
+  })
+
+  it('decodes URL-encoded head ids via URLSearchParams', () => {
+    expect(resolveHeadFromUrl('/api/voice/ws?head=my%20head', new Set(['my head']), 'default')).toBe('my head')
+  })
+
+  it('falls back to defaultHeadId when ?head= is absent', () => {
+    expect(resolveHeadFromUrl('/api/voice/ws', known, 'default')).toBe('default')
+  })
+
+  it('falls back to defaultHeadId when ?head= is empty string', () => {
+    expect(resolveHeadFromUrl('/api/voice/ws?head=', known, 'default')).toBe('default')
+  })
+
+  it('falls back to defaultHeadId when ?head= is unknown', () => {
+    expect(resolveHeadFromUrl('/api/voice/ws?head=unknown-head', known, 'default')).toBe('default')
+  })
+
+  it('falls back to defaultHeadId for malformed url (undefined)', () => {
+    expect(resolveHeadFromUrl(undefined, known, 'default')).toBe('default')
+  })
+
+  it('falls back to defaultHeadId for malformed url (gibberish)', () => {
+    // new URL with no base would throw; our impl wraps in try/catch
+    expect(resolveHeadFromUrl(':::not-a-url:::', known, 'default')).toBe('default')
+  })
+})
+
+// ─── Upgrade guard + head routing E2E ────────────────────────────────────────
+
+describe('VoiceChannelAdapter — query-tolerant upgrade guard + head routing (D4/D5)', () => {
+  it('UPGRADES a ?head=-carrying URL (guard blocker fix): socket connects AND activeSocket is set', async () => {
+    const knownHeadIds = new Set(['default', 'work'])
+    const { adapter, httpServer } = await setupAdapterWithHeads({
+      knownHeadIds,
+      defaultHeadId: 'default',
+    })
+
+    triggerUpgradeWithHead(httpServer as unknown as MockHttpServer, 'work')
+
+    // Assert (a): the socket actually UPGRADED/CONNECTED — activeSocket is non-null
+    // This is the assertion that catches the strict-equality guard regression
+    expect(getActiveSocket(adapter)).not.toBeNull()
+  })
+
+  it('routes transcript to the HEAD-SPECIFIC route for ?head=<known> (D4 inbound)', async () => {
+    const knownHeadIds = new Set(['default', 'work'])
+    const { adapter, httpServer, routesByHead, transcribe } = await setupAdapterWithHeads({
+      knownHeadIds,
+      defaultHeadId: 'default',
+      transcriptText: 'test transcript',
+    })
+
+    triggerUpgradeWithHead(httpServer as unknown as MockHttpServer, 'work')
+    const ws = getActiveSocket(adapter)
+    const wav = buildWav(32000, 16000)  // 0.5s — above 500ms gate
+
+    ws.emit('message', wav, true)
+    await new Promise(r => setImmediate(r))
+
+    expect(transcribe).toHaveBeenCalledTimes(1)
+    // Assert (b): transcript routed to the 'work' head route, NOT the default
+    expect(routesByHead['work']).toEqual([{ channel: 'voice', text: 'test transcript' }])
+    expect(routesByHead['default']).toBeUndefined()
+  })
+
+  it('routes to defaultHeadId when ?head= is absent (back-compat)', async () => {
+    const knownHeadIds = new Set(['default', 'work'])
+    const { adapter, httpServer, routesByHead } = await setupAdapterWithHeads({
+      knownHeadIds,
+      defaultHeadId: 'default',
+      transcriptText: 'fallback message',
+    })
+
+    triggerUpgrade(httpServer as unknown as MockHttpServer)
+    const ws = getActiveSocket(adapter)
+    ws.emit('message', buildWav(32000, 16000), true)
+    await new Promise(r => setImmediate(r))
+
+    expect(routesByHead['default']).toEqual([{ channel: 'voice', text: 'fallback message' }])
+    expect(routesByHead['work']).toBeUndefined()
+  })
+
+  it('routes to defaultHeadId when ?head= is unknown (back-compat)', async () => {
+    const knownHeadIds = new Set(['default', 'work'])
+    const { adapter, httpServer, routesByHead } = await setupAdapterWithHeads({
+      knownHeadIds,
+      defaultHeadId: 'default',
+      transcriptText: 'unknown head fallback',
+    })
+
+    triggerUpgradeWithHead(httpServer as unknown as MockHttpServer, 'nonexistent')
+    const ws = getActiveSocket(adapter)
+    ws.emit('message', buildWav(32000, 16000), true)
+    await new Promise(r => setImmediate(r))
+
+    expect(routesByHead['default']).toEqual([{ channel: 'voice', text: 'unknown head fallback' }])
+  })
+
+  it('UNRELATED-PATH STILL REJECTED: /api/other upgrade does not connect (guard does not over-match)', async () => {
+    const knownHeadIds = new Set(['default'])
+    const { adapter, httpServer } = await setupAdapterWithHeads({
+      knownHeadIds,
+      defaultHeadId: 'default',
+    })
+
+    triggerUpgradeNonVoice(httpServer as unknown as MockHttpServer)
+
+    // No connection established — activeSocket stays null
+    expect(getActiveSocket(adapter)).toBeNull()
+  })
+
+  it('UNRELATED-PATH STILL REJECTED: /api/voice/wsX is not matched (exact pathname guard)', async () => {
+    const knownHeadIds = new Set(['default'])
+    const { adapter, httpServer } = await setupAdapterWithHeads({
+      knownHeadIds,
+      defaultHeadId: 'default',
+    })
+
+    httpServer.emit('upgrade',
+      { url: '/api/voice/wsX?head=default' } as unknown as import('node:http').IncomingMessage,
+      {} as unknown as import('node:stream').Duplex,
+      Buffer.alloc(0),
+    )
+
+    expect(getActiveSocket(adapter)).toBeNull()
   })
 })

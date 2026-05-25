@@ -16,22 +16,51 @@ export const MAX_WAV_BYTES = 10 * 1024 * 1024
 /** Path at which the voice WebSocket is mounted on the dashboard http.Server. */
 export const VOICE_WS_PATH = '/api/voice/ws'
 
+/** Pure helper: extract ?head= from a req.url and validate against knownHeadIds.
+ *  Falls back to defaultHeadId when absent, empty, unknown, or malformed. */
+export function resolveHeadFromUrl(
+  url: string | undefined,
+  knownHeadIds: ReadonlySet<string>,
+  defaultHeadId: string,
+): string {
+  try {
+    const parsed = new URL(url ?? '', 'http://x')
+    const head = parsed.searchParams.get('head')
+    if (head && knownHeadIds.has(head)) return head
+  } catch {
+    // malformed url → fall back
+  }
+  return defaultHeadId
+}
+
 /** Close code sent when a second client tries to connect (D-03). */
 export const SESSION_BUSY_CLOSE_CODE = 4001
 export const SESSION_BUSY_REASON = 'voice session already active'
 
+export interface VoiceChannelAdapterOpts {
+  id?: string
+  defaultHeadId?: string
+  knownHeadIds?: ReadonlySet<string>
+  routeFor?: (headId: string) => (msg: InboundMessage) => void
+}
+
 export class VoiceChannelAdapter implements ChannelAdapter {
   readonly id: string
-  private readonly headId: string
+  private readonly defaultHeadId: string
+  private readonly knownHeadIds: ReadonlySet<string>
+  private readonly routeFor: ((headId: string) => (msg: InboundMessage) => void) | null
   private wss = new WebSocketServer({ noServer: true })
   private handler: ((msg: InboundMessage) => void) | null = null
   private activeSocket: WebSocket | null = null
+  private connectionRoute: ((msg: InboundMessage) => void) | null = null
   private ttsAbortController: AbortController | null = null
   private upgradeListener: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null
 
-  constructor(private httpServer: Server, private openai: OpenAI, id: string = 'voice', headId: string = 'default') {
-    this.id = id
-    this.headId = headId
+  constructor(private httpServer: Server, private openai: OpenAI, opts?: VoiceChannelAdapterOpts) {
+    this.id = opts?.id ?? 'voice'
+    this.defaultHeadId = opts?.defaultHeadId ?? 'default'
+    this.knownHeadIds = opts?.knownHeadIds ?? new Set()
+    this.routeFor = opts?.routeFor ?? null
   }
 
   onMessage(handler: (msg: InboundMessage) => void): void {
@@ -41,7 +70,12 @@ export class VoiceChannelAdapter implements ChannelAdapter {
   async start(): Promise<void> {
     // D-01: attach upgrade listener AFTER dashboard server is listening
     const listener = (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
-      if (req.url !== VOICE_WS_PATH) return  // leave other URLs alone — do NOT destroy
+      // Accept /api/voice/ws and /api/voice/ws?head=… (match on pathname, ignore query string)
+      // Still reject unrelated paths so the guard does not over-match.
+      const reqPath = (() => {
+        try { return new URL(req.url ?? '', 'http://x').pathname } catch { return req.url }
+      })()
+      if (reqPath !== VOICE_WS_PATH) return  // leave other URLs alone — do NOT destroy
       this.wss.handleUpgrade(req, socket, head, (ws) => {
         this.wss.emit('connection', ws, req)
       })
@@ -49,7 +83,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     this.upgradeListener = listener
     this.httpServer.on('upgrade', listener)
 
-    this.wss.on('connection', (ws) => this.handleConnection(ws))
+    this.wss.on('connection', (ws, req) => this.handleConnection(ws, req as IncomingMessage))
     log.info(`[voice] WebSocket adapter listening at ${VOICE_WS_PATH}`)
   }
 
@@ -89,20 +123,25 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     }
   }
 
-  private handleConnection(ws: WebSocket): void {
+  private handleConnection(ws: WebSocket, req?: IncomingMessage): void {
     // D-03: reject a second concurrent connection; preserve the existing one
     if (this.activeSocket !== null) {
       ws.close(SESSION_BUSY_CLOSE_CODE, SESSION_BUSY_REASON)
       return
     }
     this.activeSocket = ws
-    log.info('[voice] client connected')
+
+    // Resolve the head for this connection from ?head= and set the per-connection route
+    const headId = resolveHeadFromUrl(req?.url, this.knownHeadIds, this.defaultHeadId)
+    this.connectionRoute = this.routeFor ? this.routeFor(headId) : this.handler
+    log.info(`[voice] client connected (head: ${headId})`)
 
     ws.on('message', (data, isBinary) => {
       void this.handleMessage(ws, data as Buffer | Buffer[] | ArrayBuffer, isBinary)
     })
     ws.on('close', () => {
       if (this.activeSocket === ws) this.activeSocket = null
+      this.connectionRoute = null
       // T-19-13: client vanished mid-TTS — cancel the upstream HTTP request
       this.ttsAbortController?.abort()
       log.info('[voice] client disconnected')
@@ -153,7 +192,8 @@ export class VoiceChannelAdapter implements ChannelAdapter {
         return
       }
       // VOICE-IN-06: route as a normal user message — same path as typed input
-      this.handler?.({ channel: this.id, text: transcript })
+      // Use the per-connection route (head-specific when routeFor is set), falling back to handler
+      ;(this.connectionRoute ?? this.handler)?.({ channel: this.id, text: transcript })
     } catch (err) {
       if (err instanceof TooShortError) {
         log.debug(`[voice] clip too short (${err.durationSeconds.toFixed(3)}s) — dropped`)

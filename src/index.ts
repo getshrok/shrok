@@ -475,9 +475,14 @@ async function main() {
     const httpServer = dashboard.getHttpServer()
     if (httpServer) {
       const voiceOpenai = new OpenAI({ apiKey: config.openaiApiKey })
-      const voiceAdapter = new VoiceChannelAdapter(httpServer, voiceOpenai)
-      voiceAdapter.onMessage(primary.routeMessage)
-      primary.channelRouter.register(voiceAdapter)
+      const knownHeadIds = new Set(headSystems.map(h => h.head.id))
+      const voiceAdapter = new VoiceChannelAdapter(httpServer, voiceOpenai, {
+        defaultHeadId: primary.head.id,
+        knownHeadIds,
+        routeFor: (headId) => (headSystems.find(h => h.head.id === headId) ?? primary).routeMessage,
+      })
+      voiceAdapter.onMessage(primary.routeMessage)   // harmless fallback; routeFor takes precedence
+      for (const h of headSystems) h.channelRouter.register(voiceAdapter)
       await voiceAdapter.start()
       channelAdapters.push(voiceAdapter)
       log.info('[startup] Voice WebSocket adapter ready at /api/voice/ws')
