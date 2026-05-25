@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createErrorTimer, type VoiceErrorMessage } from './voice-error-timer'
-import { needsFreshMSE } from './useVoice'
+import { needsFreshMSE, buildWsUrl } from './useVoice'
 
 describe('voice-error-timer — auto-dismiss after 4000ms', () => {
   beforeEach(() => { vi.useFakeTimers() })
@@ -75,6 +75,21 @@ describe('needsFreshMSE — live MSE per turn (D2)', () => {
   it('returns true for readyState "closed"', () => {
     // closed MS cannot accept appendBuffer calls either
     expect(needsFreshMSE({ readyState: 'closed' })).toBe(true)
+  })
+})
+
+describe('buildWsUrl — carries the selected head (D3)', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('appends the head as an encoded query param for a simple id', () => {
+    vi.stubGlobal('window', { location: { protocol: 'https:', host: 'example.test' } })
+    expect(buildWsUrl('default')).toBe('wss://example.test/api/voice/ws?head=default')
+  })
+
+  it('URL-encodes special chars in the head id', () => {
+    vi.stubGlobal('window', { location: { protocol: 'https:', host: 'example.test' } })
+    const url = buildWsUrl('my head/x')
+    expect(url.endsWith('?head=my%20head%2Fx')).toBe(true)
   })
 })
 

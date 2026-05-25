@@ -497,7 +497,7 @@ export default function ConversationsPage() {
 
   const { isDeveloper } = useMode()
   const assistantName = useAssistantName()
-  const { state: voiceState, voiceActive, toggleVoice, errorMessage: voiceError } = useVoice()
+  const { state: voiceState, voiceActive, toggleVoice, errorMessage: voiceError } = useVoice(selectedHead)
   const { data: isTyping } = useQuery({ queryKey: ['typing'], initialData: false, staleTime: Infinity })
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.settings.get })
   const s = settings as SettingsData | undefined

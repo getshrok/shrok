@@ -28,10 +28,10 @@ export function needsFreshMSE(ms: { readyState: string } | null | undefined): bo
   return ms.readyState !== 'open'
 }
 
-function buildWsUrl(): string {
+export function buildWsUrl(head: string): string {
   // /api/voice/ws is proxied in dev by vite.config.ts (ws: true) to localhost:8888
   const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${proto}://${window.location.host}/api/voice/ws`
+  return `${proto}://${window.location.host}/api/voice/ws?head=${encodeURIComponent(head)}`
 }
 
 // iOS PWA mode (home-screen web app) exposes ManagedMediaSource instead of the
@@ -43,7 +43,7 @@ function getMediaSourceCtor(): MediaSourceCtor | null {
   return w.ManagedMediaSource ?? null
 }
 
-export function useVoice(): UseVoiceReturn {
+export function useVoice(selectedHead: string): UseVoiceReturn {
   const [state, dispatch] = useReducer(voiceFSM, INITIAL_VOICE_STATE)
   const [voiceActive, setVoiceActive] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -176,7 +176,7 @@ export function useVoice(): UseVoiceReturn {
       }
 
       // 1. Open WS first so we can send audio as soon as speech ends.
-      const ws = new WebSocket(buildWsUrl())
+      const ws = new WebSocket(buildWsUrl(selectedHead))
       ws.binaryType = 'arraybuffer' // Pitfall 6 — MUST be set before any binary frames arrive.
       wsRef.current = ws
 
@@ -271,7 +271,7 @@ export function useVoice(): UseVoiceReturn {
       await teardownAll()
       setVoiceActive(false)
     }
-  }, [ensureLiveMSE, flushChunkQueue, setupMSE, signalError, teardownAll, teardownMSE])
+  }, [ensureLiveMSE, flushChunkQueue, selectedHead, setupMSE, signalError, teardownAll, teardownMSE])
 
   // Cleanup on unmount.
   useEffect(() => {
