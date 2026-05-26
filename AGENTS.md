@@ -74,12 +74,11 @@ If that's not feasible (your dist commit is buried under other commits), `git pu
 
 ## Changelog
 
-`CHANGELOG.md` is the user-facing record of what shipped. Update it **whenever a milestone completes** (via `/gsd:complete-milestone`) or **a notable user-facing change** lands on `main` — bug fixes that close issues, new tools or skills, channel additions, behavior changes the user should know about. Internal refactors, planning-doc churn, and CI noise do not belong there.
+`CHANGELOG.md` is the user-facing record of what shipped. Update it **whenever a notable user-facing change** lands on `main` — bug fixes that close issues, new tools or skills, channel additions, behavior changes the user should know about. Internal refactors, planning-doc churn, CI noise, and internal scaffolding (phase numbers, planning-framework milestones, requirement IDs) do not belong there.
 
-- **File shape**: Keep-a-Changelog format. `## [Unreleased]` at the top, then numbered release sections in reverse chronological order (`## [0.2.0] — 2026-05-13`, `## [0.1.0] — 2026-04-22`).
-- **Entry shape**: subsections by change type — `### Added`, `### Changed`, `### Fixed`, `### Deferred`. One bullet per delivered capability, written in user language, not engineering language. Reference issues/PRs in parentheses where relevant (`closes #14`).
-- **GSD vs release axis**: GSD `v1.x` is a planning scheme used in `.planning/` — several GSD milestones typically ship within one release version. The changelog speaks in release-version terms. Cite GSD milestones in parentheses for traceability (`(GSD v1.7, Phase 45)`).
-- **On version bump** (`chore: bump version to 0.X.Y` + `git tag v0.X.Y`): promote `## [Unreleased]` to a new dated, numbered section. Leave an empty `## [Unreleased]` skeleton at the top.
+- **File shape**: Keep-a-Changelog format. The top section uses the **next planned release version** as its header (e.g. `## [0.3.0]`), no date until the version is tagged. Below that, the prior numbered release sections in reverse chronological order (`## [0.2.0] — 2026-05-13`, `## [0.1.0] — 2026-04-22`).
+- **Entry shape**: subsections by change type — `### Added`, `### Changed`, `### Fixed`, `### Deferred`. One bullet per delivered capability, written in user language, not engineering language. Reference GitHub issues/PRs in parentheses (`closes #14`) — but **never** reference internal planning artifacts (no `(GSD v1.7, Phase 45)`, no requirement IDs like `RING-F-01`, no `.planning/` paths).
+- **On version bump** (`chore: bump version to 0.X.Y` + `git tag v0.X.Y`): add the release date to the in-flight section's header (e.g. `## [0.3.0] — 2026-06-15`) and start a new `## [0.X.Y+1]` section above it for the next round of work.
 
 ## TypeScript
 

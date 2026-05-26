@@ -4,47 +4,45 @@ All notable user-facing changes to this project are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Note: the GSD `v1.x` planning scheme used in `.planning/` is a separate axis — several GSD milestones typically ship within one release version. Entries below speak in release-version terms.
-
-## [Unreleased]
+## [0.3.0]
 
 ### Added
-- **Multi-head support** — one shrok process can run several independent "heads" sharing identity, memory, and the SQLite DB, each with its own activation loop, channel adapters, schedules, and agent lifecycle. (GSD v1.3, Phases 29–36)
-- **Dashboard head selector + per-head management UI** — pick a head, create/edit/delete heads and their channel adapters from the dashboard. (GSD v1.3, Phases 32–33)
-- **`[Name]:` inbound sender attribution** — messages from group chats arrive prefixed with the sender's name so the head knows who's talking. (GSD v1.3, Phase 36)
+- **Multi-head support** — one shrok process can run several independent "heads" sharing identity, memory, and the SQLite DB, each with its own activation loop, channel adapters, schedules, and agent lifecycle.
+- **Dashboard head selector + per-head management UI** — pick a head, create/edit/delete heads and their channel adapters from the dashboard.
+- **`[Name]:` inbound sender attribution** — messages from group chats arrive prefixed with the sender's name so the head knows who's talking.
 - **Per-head custom system prompt** — each head can carry its own additional prompt segment surfaced to the assembler. (closes #12)
 - **Inbound voice/audio pre-transcribed at ingestion** — voice messages from chat channels are STT'd at the ingestion boundary so the head sees text, not raw audio. (closes #9)
 - **`config.timezone` exported as `TZ`** to spawned processes (bash tool calls, workers, scheduled task agents) so `date`/cron-style work in local time. (closes #13)
-- **Unmissable reminders** — opt-in `requiresAck` + nag-interval on reminders; the reminder re-nags on the configured interval until the user explicitly acknowledges it. Includes the head-direct `acknowledge_reminder` tool, type-scoped ack semantics (one-time → delete, recurring → stop this occurrence's nag), and a dashboard NAGS badge + start-date controls. (GSD v1.4, Phases 37–39)
-- **Home Assistant voice channel** — shrok is now a Home Assistant conversation agent. HA's Voice Preview Edition talks to it over an OpenAI-compatible `POST /v1/chat/completions` endpoint and speaks shrok's replies, with asynchronous sub-agent results delivered unprompted via `assist_satellite.announce`. Validated end-to-end on real hardware. Operator setup guide at `docs/user-guide/home-assistant.md`. (GSD v1.5, Phases 40–43)
-- **Multi-head task delivery** — a scheduled *task* runs once but fans out its `agent_completed` event to every head in an opt-in delivery set, so the work runs once and the report reaches N heads. Dashboard task forms gained a "deliver to" multi-select with colored head chips. Reminders are unchanged. (GSD v1.6, Phase 44)
-- **Voice alarms and timers** — sustained, dismiss-until-stopped audible alerts on the HA Voice PE for both timers and alarms. A headless ring runner loops a bundled beep via `media_player.play_media`, polling the player and replaying on idle, with no LLM activation in the loop. Voice dismiss ("Hey Jarvis, stop") silences the device within one poll cycle. Includes the `ring_device(start|stop)` tool on both head and sub-agent surfaces (silent no-op on non-HA channels), auto-derived `media_player` + LED entities via HA's template API, an unauthenticated `GET /media/ring.mp3` route serving the bundled asset, persisted per-channel ring state for precise restart cleanup, and a 24h auto-dismiss cap. (GSD v1.7, Phase 45 — closes #14)
+- **Unmissable reminders** — opt-in `requiresAck` + nag-interval on reminders; the reminder re-nags on the configured interval until the user explicitly acknowledges it. Includes the head-direct `acknowledge_reminder` tool, type-scoped ack semantics (one-time → delete, recurring → stop this occurrence's nag), and a dashboard NAGS badge + start-date controls.
+- **Home Assistant voice channel** — shrok is now a Home Assistant conversation agent. HA's Voice Preview Edition talks to it over an OpenAI-compatible `POST /v1/chat/completions` endpoint and speaks shrok's replies, with asynchronous sub-agent results delivered unprompted via `assist_satellite.announce`. Validated end-to-end on real hardware. Operator setup guide at `docs/user-guide/home-assistant.md`.
+- **Multi-head task delivery** — a scheduled *task* runs once but fans out its `agent_completed` event to every head in an opt-in delivery set, so the work runs once and the report reaches N heads. Dashboard task forms gained a "deliver to" multi-select with colored head chips. Reminders are unchanged.
+- **Voice alarms and timers** — sustained, dismiss-until-stopped audible alerts on the HA Voice PE for both timers and alarms. A headless ring runner loops a bundled beep via `media_player.play_media`, polling the player and replaying on idle, with no LLM activation in the loop. Voice dismiss ("Hey Jarvis, stop") silences the device within one poll cycle. Includes the `ring_device(start|stop)` tool on both head and sub-agent surfaces (silent no-op on non-HA channels), auto-derived `media_player` + LED entities via HA's template API, an unauthenticated `GET /media/ring.mp3` route serving the bundled asset, persisted per-channel ring state for precise restart cleanup, and a 24h auto-dismiss cap. (closes #14)
 - **`timer` skill** — bash-sleep countdown (second-precise, no scheduler), now ends with a `ring_device(start)` so an elapsed timer keeps beeping until dismissed on voice channels.
-- **`set-alarm` skill** — sets a persisted non-ack reminder that rings the HA voice device at the alarm time. Survives restart.
+- **`set-alarm` skill** — sets a persisted reminder that rings the HA voice device at the alarm time. Survives restart.
 
 ### Changed
 - **No UTC ever reaches the model.** Every model-facing time surface — `create_reminder.triggerAt`, `create_schedule.runAt`, `update_schedule.runAt`, `get_usage.since`, and the output of `list_reminders` / `list_schedules` / `get_file_info` — now uses workspace-local `YYYY-MM-DD HH:MM` format (24-hour, no `Z`, no offset, no IANA suffix). New `src/util/model-time.ts` helpers (`parseModelTime`, `formatModelTime`, `formatPastTimeError`) sit at every tool boundary; `parseModelTime` rejects `Z`/offset/IANA input with a clear error. `create_reminder` and `create_schedule` also enforce a 30-second past-time guard that returns a structured error in workspace-local format so the model self-corrects. Documented as a project invariant in `AGENTS.md`. (closes #18)
 - **Dashboard conversation-view voice mode** now resolves the correct head per connection — per-turn live MSE, head-aware WebSocket URL, upgrade guard, multi-router registration. (closes #16)
-- **Task/skill rename** cascades through all references (loader frontmatter, schedule store, usage store, body-text mentions surfaced as warnings). (260525-6d5)
+- **Task/skill rename** cascades through all references (loader frontmatter, schedule store, usage store, body-text mentions surfaced as warnings).
 
 ### Deferred
-- Physical button-press dismiss on HA Voice PE (entity exists; needs HA event subscription) — RING-F-01.
-- Optional ack/escalation on alarms for offline-device fallback — ALARM-F-01.
-- Configurable beep pattern / per-alarm sounds — RING-F-02.
+- Physical button-press dismiss on the HA Voice PE (the device exposes a button event; needs shrok to subscribe to HA events).
+- Optional acknowledgment/escalation on alarms — re-notify or fall back to a text channel if the ring failed because the device was offline at fire time.
+- Configurable beep pattern / per-alarm sounds.
 
 ## [0.2.0] — 2026-05-13
 
 ### Added
-- **Browser voice mode** — STT/TTS pipeline with VAD gating and barge-in, backend WebSocket session, Vite WASM/ONNX build config, React voice state machine, error handling and accessibility. (GSD v1.2, Phases 19–22)
-- **Timezone-aware scheduling** — schedule/reminder cron expressions are interpreted in the workspace timezone (or per-schedule `cronTimezone` override). (Phase 23)
-- **`message_agent` mid-loop delivery** — messages to running agents are delivered without waiting for them to suspend. (Phase 24)
-- **`SKILL.md` / `TASK.md` frontmatter validation** at write time so malformed skills are caught at the boundary. (Phase 26)
-- **Memory prompt overrides via `MEMORY-*.md`** — per-area memory files folded into the assembler's system prompt. (Phase 28)
+- **Browser voice mode** — STT/TTS pipeline with VAD gating and barge-in, backend WebSocket session, Vite WASM/ONNX build config, React voice state machine, error handling and accessibility.
+- **Timezone-aware scheduling** — schedule/reminder cron expressions are interpreted in the workspace timezone (or per-schedule `cronTimezone` override).
+- **`message_agent` mid-loop delivery** — messages to running agents are delivered without waiting for them to suspend.
+- **`SKILL.md` / `TASK.md` frontmatter validation** at write time so malformed skills are caught at the boundary.
+- **Memory prompt overrides via `MEMORY-*.md`** — per-area memory files folded into the assembler's system prompt.
 
 ### Changed
-- **Agent history storage** migrated from a JSON blob column to a per-row `agent_messages` table. (Phase 25)
-- **`$WORKSPACE_PATH` → `$SHROK_WORKSPACE_PATH`** environment variable rename. (Phase 27)
+- **Agent history storage** migrated from a JSON blob column to a per-row `agent_messages` table.
+- **`$WORKSPACE_PATH` → `$SHROK_WORKSPACE_PATH`** environment variable rename.
 
 ## [0.1.0] — 2026-04-22
 
-First public release. Core agent loop, memory system, multi-channel support (Discord, Telegram, Slack, WhatsApp, Zoho Cliq), skill system, MCP integration, web dashboard. Includes early enhancements (tool-call legibility, jobs awareness — GSD v1.0 and v1.1).
+First public release. Core agent loop, memory system, multi-channel support (Discord, Telegram, Slack, WhatsApp, Zoho Cliq), skill system, MCP integration, web dashboard. Includes early enhancements (tool-call legibility on agent tool schemas; jobs system surfaced to agents via system prompt).
