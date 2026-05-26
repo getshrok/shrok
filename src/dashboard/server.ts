@@ -245,6 +245,15 @@ export class DashboardServer {
     const docsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs')
     app.use('/api/docs', createDocsRouter(docsDir))
 
+    // Phase 45 RING-06: serve bundled beep at /media/ring.mp3 — unauthenticated,
+    // literal-match (NO :filename path param, NO traversal), mounted BEFORE
+    // express.static + SPA catch-all so neither can shadow it.
+    const ringAssetPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets/ring.mp3')
+    app.get('/media/ring.mp3', (_req, res) => {
+      res.setHeader('Content-Type', 'audio/mpeg')
+      res.sendFile(ringAssetPath)
+    })
+
     // Public (unauthenticated) theme endpoint for the login page
     app.get('/api/theme', (_req, res) => {
       let cfg: Record<string, unknown> = {}
