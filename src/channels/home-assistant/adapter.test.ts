@@ -547,3 +547,48 @@ describe('HomeAssistantChannelAdapter — Phase 42 outbound announce', () => {
     }
   })
 })
+
+// ─── Block E: Phase 45 — cacheBaseUrl / getDeviceReachableBaseUrl / getConfig / headId accessor ─
+
+describe('HomeAssistantChannelAdapter — Phase 45 base-URL cache + config getter', () => {
+  beforeEach(() => {
+    process.env['HA_INBOUND_API_KEY'] = TEST_INBOUND_KEY
+  })
+
+  afterEach(() => {
+    delete process.env['HA_INBOUND_API_KEY']
+  })
+
+  it('getDeviceReachableBaseUrl() returns null before cacheBaseUrl is called', () => {
+    const adapter = makeAdapter()
+    expect(adapter.getDeviceReachableBaseUrl()).toBeNull()
+  })
+
+  it('getDeviceReachableBaseUrl() returns the cached URL after cacheBaseUrl is called', () => {
+    const adapter = makeAdapter()
+    adapter.cacheBaseUrl('http://192.168.111.69:8888')
+    expect(adapter.getDeviceReachableBaseUrl()).toBe('http://192.168.111.69:8888')
+  })
+
+  it('cacheBaseUrl overwrites the previously cached URL', () => {
+    const adapter = makeAdapter()
+    adapter.cacheBaseUrl('http://first.example.com:8888')
+    adapter.cacheBaseUrl('http://second.example.com:8888')
+    expect(adapter.getDeviceReachableBaseUrl()).toBe('http://second.example.com:8888')
+  })
+
+  it('getConfig() returns the haBaseUrl passed at construction', () => {
+    const adapter = makeAdapter()
+    expect(adapter.getConfig().haBaseUrl).toBe(TEST_BASE_URL)
+  })
+
+  it('getConfig() returns the haVoiceSatelliteEntityId passed at construction', () => {
+    const adapter = makeAdapter()
+    expect(adapter.getConfig().haVoiceSatelliteEntityId).toBe(TEST_ENTITY_ID)
+  })
+
+  it('headId is readable and matches the value passed at construction', () => {
+    const adapter = makeAdapter('home-assistant', 'my-head')
+    expect(adapter.headId).toBe('my-head')
+  })
+})
