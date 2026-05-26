@@ -25,10 +25,11 @@ interface PendingReply {
 
 export class HomeAssistantChannelAdapter implements ChannelAdapter {
   readonly id: string
-  private readonly headId: string
+  readonly headId: string
   private readonly config: HAConfig
   private handler: ((msg: InboundMessage) => void) | null = null
   private pendingReply: PendingReply | null = null
+  private deviceReachableBaseUrl: string | null = null
 
   constructor(id: string = 'home-assistant', headId: string = 'default', config: HAConfig = { haBaseUrl: '', haVoiceSatelliteEntityId: '' }) {
     const inboundKey = process.env['HA_INBOUND_API_KEY']
@@ -72,6 +73,24 @@ export class HomeAssistantChannelAdapter implements ChannelAdapter {
       clearTimeout(this.pendingReply.timer)
       this.pendingReply = null
     }
+  }
+
+  /** Phase 45: cache the device-reachable base URL learned from an inbound turn's Host header.
+   *  Persisted in-memory only; Plan 03 populates this from the inbound HA router. */
+  cacheBaseUrl(url: string): void {
+    this.deviceReachableBaseUrl = url
+  }
+
+  /** Phase 45: return the cached device-reachable base URL, or null if never set.
+   *  Used by the ring runner to build the media_content_id for play_media. */
+  getDeviceReachableBaseUrl(): string | null {
+    return this.deviceReachableBaseUrl
+  }
+
+  /** Phase 45: expose the adapter config (haBaseUrl, haVoiceSatelliteEntityId) for the ring runner.
+   *  D-05: this method does NOT read, log, or embed HA_ACCESS_TOKEN. */
+  getConfig(): HAConfig {
+    return this.config
   }
 
   /** Upgraded send() — D-01 exactly-once in-turn delivery.
