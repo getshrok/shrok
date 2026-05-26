@@ -4,11 +4,13 @@ Shrok can be powerful once you get to know the pieces, but agent-driven stuff is
 
 ## 💬 Talking to Shrok
 
-No matter where you talk to it from, whether it's the built-in web dashboard (http://localhost:8888) or chat apps like Discord and WhatsApp, you are talking to the same Shrok.
+No matter where you talk to it from — the built-in web dashboard (http://localhost:8888), chat apps like Discord and WhatsApp, or a Home Assistant Voice Preview Edition speaker — you are talking to the same Shrok.
 
 Anytime you ask Shrok to do something that requires real work, it creates a background agent to do it. So it is always available to talk and take on more requests. It will create more agents as needed to take on multiple tasks at once.
 
 Communication is bi-directional with agents. When an agent has a question mid-task, it gets passed through to you while it waits for the answer. And when you want to check the status of an agent or give them additional instructions, just tell Shrok and it will relay the message.
+
+You can also configure multiple separate "heads" on one Shrok instance — each is its own ongoing conversation with its own channels, all sharing the same memory, identity, and skills underneath. Useful if you want a work head and a personal head, or a shared family head alongside your own.
 
 ## ⚡ Skills
 
@@ -27,6 +29,12 @@ Tasks are the main way that Shrok acts on its own. They are essentially just mes
 Shrok decides if a scheduled task should run as planned, so for the email example you could say something like "Don't bother checking on weekends" when you schedule that task. Or for the flight example, it might decide not to bother checking if you had just mentioned the day before that the trip was cancelled.
 
 Task templates can be found at [getshrok/tasks](https://github.com/getshrok/tasks).
+
+## 🔔 Reminders
+
+Reminders are simple time-based nudges — text messages that get delivered to you at a scheduled time or on a recurring cadence. They don't run an agent; they just show up at the right moment.
+
+For things you really can't miss (a meeting, medication), you can mark a reminder as acknowledgment-required. It then keeps nagging on a configurable interval until you explicitly tell Shrok you've handled it. If you have a Home Assistant Voice device configured, you can also set audible alarms and timers that ring on the device speaker until you say "stop."
 
 ## 🧠 Memory
 

@@ -12,6 +12,8 @@ Its system prompt is assembled from the identity markdown files (every `.md` in 
 
 When an agent finishes, the head doesn't see the raw tool trace. It sees a steward-written narration of how the work went, wrapped in an `<agent-result>` tag. See `src/head/injector.ts`.
 
+Shrok can be configured to run multiple independent heads in one process — each with its own channels, conversation thread, queue, and activation loop, sharing the same memory, identity, and SQLite database. The architecture below describes one head; multi-head just runs the same loop N times with `headId`-scoped state. See `src/index.ts` for the per-head startup.
+
 ### Sub-agents
 
 Sub-agents do the heavy lifting. Each one gets spawned for a specific task, runs its own tool loop, and reports back.
@@ -72,6 +74,8 @@ Reminders are unified with the schedule system (v1.2). A reminder is a schedule 
 
 Shorter than the task flow because there's no agent work. Reminders are just nudges.
 
+An opt-in `requiresAck` flag (with a `nagIntervalMinutes` cadence) makes a reminder keep re-firing on the nag interval until the head calls `acknowledge_reminder`. One-time ack reminders delete themselves on ack; recurring ones clear the in-flight nag and resume the base cron. The nag re-arm runs in the scheduler tick itself, so nagging doesn't depend on the head doing work between fires.
+
 ## Memory
 
 Memory is a separate package: [getshrok/infinite-context-window](https://github.com/getshrok/infinite-context-window), imported as `infinitecontextwindow`. `src/memory/index.ts` is a thin shim that constructs the instance and adapts Shrok's message format to what the library expects.
@@ -86,9 +90,15 @@ See [memory.md](./memory.md) for the internals.
 
 ## Channels
 
-Each supported chat platform (Discord, WhatsApp, Slack, Telegram, Zoho Cliq, web dashboard) has an adapter that translates between the platform's API and Shrok's internal message format. The adapter receives incoming messages and enqueues them, sends outgoing messages back through the platform, and handles typing indicators, debug routing, and file attachments.
+Each supported chat platform (Discord, WhatsApp, Slack, Telegram, Zoho Cliq, Home Assistant voice, web dashboard) has an adapter that translates between the platform's API and Shrok's internal message format. The adapter receives incoming messages and enqueues them, sends outgoing messages back through the platform, and handles typing indicators, debug routing, and file attachments.
 
-The head doesn't know or care which channel a message came from. Activation tracks the last-active channel and delivers outbound text there.
+The Home Assistant channel is asymmetric: inbound voice turns arrive synchronously on `POST /v1/chat/completions` (the OpenAI-compatible endpoint HA's conversation agent dials), and asynchronous results are spoken on the device via `assist_satellite.announce`. See [channel-integrations.md](./channel-integrations.md) for adapter specifics.
+
+The head doesn't know or care which channel a message came from. Activation tracks the last-active channel and delivers outbound text there. On multi-head installs each head has its own router and last-active channel, so heads don't leak each other's traffic.
+
+## Voice alerts
+
+On the Home Assistant channel, the `timer` and `set-alarm` skills can trigger a sustained audible alert that keeps sounding until dismissed. A headless `RingRunner` (`src/ring/runner.ts`) loops a bundled beep via `media_player.play_media` and polls the player to replay on idle — no model call per beep. A voice dismiss ("stop") arrives as a normal turn through the head, which calls `ring_device(stop)` to silence the device within one polling cycle. Per-channel ring state persists so a crash mid-ring doesn't leave the device beeping forever; on startup the runner stops only the players that were actually ringing.
 
 ## Data layer
 

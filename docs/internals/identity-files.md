@@ -65,6 +65,7 @@ A few things that look like they might be identity files but aren't:
 
 - **Steward prompts** are in `src/head/prompts/*.md` and `src/scheduler/prompts/*.md`, loaded directly by `steward.ts`. Not via the identity loader, not overrideable from the workspace. Placeholders are `{UPPERCASE}` and get filled in at call time.
 - **Sub-agent directives** (`SYSTEM.md`, `SKILLS.md`) live in `src/identity/sub-agents/` and are loaded by a second identity loader wired to sub-agents only.
+- **Per-head custom prompt.** On a multi-head install, each head row can carry its own `customPrompt` string (settable from the dashboard's head editor or `PATCH /api/heads/:id`). It's appended to the assembled identity block on that head's turns only — useful for giving different heads slightly different framings (a work head vs a personal head, say) without forking `SOUL.md` or `USER.md`. Empty/absent = no addition.
 
 ## How files compose into a turn
 

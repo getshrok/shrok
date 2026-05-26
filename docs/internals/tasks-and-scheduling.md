@@ -21,7 +21,7 @@ A **skill** is a directory under `<workspacePath>/skills/` with `SKILL.md`. The 
 ## Storage
 
 - **Task content** -- on disk at `<workspacePath>/tasks/<name>/TASK.md`.
-- **Schedules** -- flat JSON files in `<workspacePath>/schedules/`, via `ScheduleStore` (`src/db/schedules.ts`). Each file has an id, target task name, cron or one-shot `runAt`, last run, next run, last skipped, and last skip reason.
+- **Schedules** -- flat JSON files in `<workspacePath>/schedules/`, via `ScheduleStore` (`src/db/schedules.ts`). Each file has an id, target task name, cron or one-shot `runAt`, last run, next run, last skipped, last skip reason, and a `headId` field so that on a multi-head install each schedule is owned by exactly one head (its scheduler tick and activation loop handle it).
 
 Tasks and schedules both live in the workspace as portable flat files. Copy the workspace to a new install and everything comes with you.
 
@@ -70,6 +70,12 @@ or if I'm on vacation (see USER.md).
 ```
 
 The steward has access to: the prompt, `USER.md`, `AMBIENT.md`, recent conversation, and the current time. It does *not* have access to external systems, so conditions need to be things it can infer from those inputs.
+
+## Reminders
+
+Reminders ride the same scheduler infrastructure as tasks. A reminder is a schedule row with `kind: 'reminder'` and the message text in `agentContext`. When the tick fires, instead of spawning an agent, `handleScheduleTrigger` delivers the message through the last-active channel after a reminder-decision steward checks whether it's still worth showing.
+
+An opt-in `requiresAck` flag (with a `nagIntervalMinutes` cadence) makes a reminder keep re-firing on the nag interval until the head calls `acknowledge_reminder`. The nag re-arm runs in the scheduler tick itself — `advanceNextRun` to `now + nagInterval` on the requiresAck branch — so nagging never depends on the head doing work between fires. One-time ack reminders are deleted on ack; recurring ones clear the in-flight nag (`ackPending=false`) and resume the base cron via `nextRunAfter`. The head-direct `acknowledge_reminder` tool refuses to ack ordinary reminders (only `requiresAck` rows) — use `cancel_reminder` for those.
 
 ## Failure modes
 

@@ -141,6 +141,24 @@ journalctl --user -u shrok | grep home-assistant
 
 Look for `[home-assistant] adapter registered` at startup (the channel loaded) and `[home-assistant] announce delivered via announce` (async result spoken on the device). If a turn takes longer than the reply deadline you will also see `[home-assistant] turn lapsed or slot replaced — reply rides Phase-42 announce`, which is normal — the answer is delivered via announce.
 
+## Voice Alarms and Timers
+
+The VPE can ring a sustained audible alert that keeps sounding until you say "stop" — useful for kitchen timers ("set a 10 minute timer") and persistent alarms ("set an alarm for 7am tomorrow"). Both run through the bundled `timer` skill (one-shot countdown) and `set-alarm` skill (persisted reminder that survives restart).
+
+Under the hood, Shrok loops a bundled beep on the device's `media_player`, polls the player to replay on idle, and listens for a "stop" dismiss as a normal voice turn — the beep cuts within one polling cycle. The `media_player` and LED entities are auto-derived from your configured `haVoiceSatelliteEntityId` via HA's template API; no extra entity config is needed.
+
+### Optional: `publicBaseUrl` override
+
+The beep is served from Shrok itself at `GET /media/ring.mp3` (no auth — it's a single static file). Shrok normally learns its device-reachable URL from the inbound HA request's `Host` header. If HA dials Shrok at a loopback address (e.g. you set `Base URL: http://127.0.0.1:8888/v1` in the Extended OpenAI Conversation integration on a co-located install), Shrok can't use that URL for the device — set `publicBaseUrl` at the top level of `~/.shrok/workspace/config.json` to the address the VPE can reach:
+
+```json
+{
+  "publicBaseUrl": "http://192.168.1.100:8888"
+}
+```
+
+You can also tune `ringVolume` (0.0–1.0, default 0.5) and `ringCapHours` (auto-dismiss after this many hours if the ring is never stopped, default 24) at the same top level.
+
 ## Troubleshooting
 
 | Symptom | Likely Cause | Fix |
