@@ -1047,6 +1047,7 @@ export class LocalAgentRunner implements AgentRunner {
     const ctx: AgentContext = {
       agentId,
       headId: this.headId,
+      timezone: this.timezone,
       suspend: () => { state.suspended = true },
       complete: (output: string) => {
         this.agentStore.complete(agentId, output)

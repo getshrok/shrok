@@ -65,6 +65,25 @@ Six test jobs run in parallel after `lint`:
 - `noUncheckedIndexedAccess` is enabled — array indexing always returns `T | undefined`, null-check `arr[0]` before use
 - `exactOptionalPropertyTypes` is enabled — you cannot set an optional property to `undefined` explicitly; omit the key or use `delete`
 
+## Model-facing time invariant (no UTC ever reaches the model)
+
+No model-facing surface in shrok ever shows or accepts a UTC instant; all model-facing times are workspace-local in `YYYY-MM-DD HH:MM` format (24-hour, no `Z`, no offset, no IANA suffix in the value).
+
+**Helpers** (both in `src/util/model-time.ts`):
+- `formatModelTime(date, tz)` — converts any Date to the canonical local string for a given IANA zone. Use this on every tool output that returns a time to the model.
+- `parseModelTime(s, tz)` — parses the canonical local string back to a Date. Rejects any input containing `Z`, a UTC offset, or a trailing IANA/abbreviation token. Use this at every tool input boundary.
+- `formatPastTimeError(parsed, now, tz)` — helper for the past-time guard message.
+
+**Boundary rule:** internal storage always stays ISO UTC (`.toISOString()`). Rendering and parsing happen only at the tool boundary — never deeper in the stack.
+
+**Past-time guard:** `create_reminder` and `create_schedule` reject parsed times more than 30 seconds in the past via `formatPastTimeError` (30-second skew window accounts for clock drift / activation latency).
+
+**DST:** spring-forward gap inputs (non-existent local times) throw; fall-back ambiguous inputs (clock-repeat hour) return the first occurrence (earlier UTC instant). Both behaviors are documented in the `parseModelTime` JSDoc.
+
+**Already-correct surfaces (do NOT modify):** system-prompt `Current time:` line, reminder-fire `currentTime`, sub-agent system-prompt `Current time:`, `cronTimezone` descriptions, internal `.toISOString()` writes to DB, `nextRunAfter(...).toISOString()` in scheduler. These are operator-facing or internal storage — only model-facing *input descriptions* and *output renderers* are governed by this invariant.
+
+Closes #18.
+
 ## Architecture: queue and activation loop
 
 All inbound events flow through a priority queue. When adding a new trigger type, follow this path:

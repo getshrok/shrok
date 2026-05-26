@@ -1269,7 +1269,7 @@ describe('buildReminderTools', () => {
 
   it('create_reminder with valid input stores kind:"reminder" record with agentContext = message', async () => {
     const { createReminder, scheduleStore } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check the build', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
+    const result = await createReminder.execute({ message: 'Check the build', triggerAt: '2099-01-01 09:00' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.ok).toBe(true)
     expect(parsed.id).toMatch(/^rem/)
@@ -1281,7 +1281,7 @@ describe('buildReminderTools', () => {
 
   it('create_reminder with empty message returns error JSON (T-12-01)', async () => {
     const { createReminder } = await getReminderTools()
-    const result = await createReminder.execute({ message: '  ', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
+    const result = await createReminder.execute({ message: '  ', triggerAt: '2099-01-01 09:00' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toMatch(/non-empty/i)
@@ -1290,7 +1290,7 @@ describe('buildReminderTools', () => {
   it('create_reminder with message > 2000 chars returns error JSON (T-12-01)', async () => {
     const { createReminder } = await getReminderTools()
     const longMsg = 'x'.repeat(2001)
-    const result = await createReminder.execute({ message: longMsg, triggerAt: '2099-01-01T09:00:00Z' }, ctx)
+    const result = await createReminder.execute({ message: longMsg, triggerAt: '2099-01-01 09:00' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toMatch(/2000/i)
@@ -1300,7 +1300,7 @@ describe('buildReminderTools', () => {
     const { createReminder, listReminder, scheduleStore } = await getReminderTools()
     // Create a non-reminder schedule directly
     scheduleStore.create({ id: 's-task-x', headId: 'default', taskName: 'my-task', kind: 'task', nextRun: '2099-01-01T00:00:00Z' })
-    await createReminder.execute({ message: 'Hello', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
+    await createReminder.execute({ message: 'Hello', triggerAt: '2099-01-01 09:00' }, ctx)
     const result = await listReminder.execute({}, ctx)
     const items = JSON.parse(result as string)
     expect(items).toHaveLength(1)
@@ -1309,7 +1309,7 @@ describe('buildReminderTools', () => {
 
   it('list_reminders projection includes requiresAck and nagIntervalMinutes (Phase 37)', async () => {
     const { createReminder, listReminder } = await getReminderTools()
-    await createReminder.execute({ message: 'Take meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 60 }, ctx)
+    await createReminder.execute({ message: 'Take meds', triggerAt: '2099-01-01 09:00', requiresAck: true, nagMinutes: 60 }, ctx)
     const result = await listReminder.execute({}, ctx)
     const items = JSON.parse(result as string)
     expect(items[0]!.requiresAck).toBe(true)
@@ -1318,7 +1318,7 @@ describe('buildReminderTools', () => {
 
   it('cancel_reminder with valid id deletes schedule record', async () => {
     const { createReminder, cancelReminder, scheduleStore } = await getReminderTools()
-    const cr = await createReminder.execute({ message: 'Delete me', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
+    const cr = await createReminder.execute({ message: 'Delete me', triggerAt: '2099-01-01 09:00' }, ctx)
     const { id } = JSON.parse(cr as string)
     const cancelResult = await cancelReminder.execute({ id }, ctx)
     expect(JSON.parse(cancelResult as string).ok).toBe(true)
@@ -1336,7 +1336,7 @@ describe('buildReminderTools', () => {
   it('create_reminder stores conditions on the reminder schedule row (C-01)', async () => {
     const { createReminder, scheduleStore } = await getReminderTools()
     const result = await createReminder.execute(
-      { message: 'Check the build', triggerAt: '2099-01-01T09:00:00Z', conditions: 'Only on weekdays' },
+      { message: 'Check the build', triggerAt: '2099-01-01 09:00', conditions: 'Only on weekdays' },
       ctx,
     )
     const parsed = JSON.parse(result as string)
@@ -1350,7 +1350,7 @@ describe('buildReminderTools', () => {
   it('create_reminder without conditions leaves conditions null', async () => {
     const { createReminder, scheduleStore } = await getReminderTools()
     await createReminder.execute(
-      { message: 'Check the build', triggerAt: '2099-01-01T09:00:00Z' },
+      { message: 'Check the build', triggerAt: '2099-01-01 09:00' },
       ctx,
     )
     const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
@@ -1369,7 +1369,7 @@ describe('buildReminderTools', () => {
   // ── Phase 37 D-04: requiresAck:true with no nag slots → reject ─────────────
   it('create_reminder with requiresAck:true and no nag slots returns error JSON (D-04)', async () => {
     const { createReminder } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true }, ctx)
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01 09:00', requiresAck: true }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toMatch(/nag interval/i)
@@ -1378,7 +1378,7 @@ describe('buildReminderTools', () => {
   // ── Phase 37 D-05: nag slots without requiresAck:true → reject ─────────────
   it('create_reminder with nagMinutes but no requiresAck returns error JSON (D-05)', async () => {
     const { createReminder } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', nagMinutes: 30 }, ctx)
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01 09:00', nagMinutes: 30 }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toMatch(/requiresAck/i)
@@ -1388,7 +1388,7 @@ describe('buildReminderTools', () => {
   // Under floor=1, nagMinutes:3 is VALID. Old test replaced: nagMinutes:1 → success (boundary).
   it('create_reminder with requiresAck:true and nagMinutes:1 → success (D-03 floor=1 boundary)', async () => {
     const { createReminder, scheduleStore } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 1 }, ctx)
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01 09:00', requiresAck: true, nagMinutes: 1 }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.ok).toBe(true)
     const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
@@ -1398,7 +1398,7 @@ describe('buildReminderTools', () => {
   // ── Phase 37 D-03 ceiling: nag sum > 43200 min → reject ────────────────────
   it('create_reminder with requiresAck:true and nagDays:31 (sum>43200) returns error JSON (D-03 ceiling)', async () => {
     const { createReminder } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagDays: 31 }, ctx)
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01 09:00', requiresAck: true, nagDays: 31 }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toMatch(/30 days|43200/i)
@@ -1407,7 +1407,7 @@ describe('buildReminderTools', () => {
   // ── Phase 37 V5: non-integer nag slot → reject ──────────────────────────────
   it('create_reminder with requiresAck:true and nagMinutes:1.5 (non-integer) returns error JSON (V5)', async () => {
     const { createReminder } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: 1.5 }, ctx)
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01 09:00', requiresAck: true, nagMinutes: 1.5 }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toMatch(/integer|non-negative/i)
@@ -1415,7 +1415,7 @@ describe('buildReminderTools', () => {
 
   it('create_reminder with requiresAck:true and nagMinutes:-5 (negative) returns error JSON (V5)', async () => {
     const { createReminder } = await getReminderTools()
-    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagMinutes: -5 }, ctx)
+    const result = await createReminder.execute({ message: 'Check meds', triggerAt: '2099-01-01 09:00', requiresAck: true, nagMinutes: -5 }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toMatch(/integer|non-negative/i)
@@ -1425,7 +1425,7 @@ describe('buildReminderTools', () => {
   it('create_reminder with requiresAck:true + nagHours:1 + nagMinutes:30 stores nagIntervalMinutes:90 (D-01/D-02)', async () => {
     const { createReminder, scheduleStore } = await getReminderTools()
     const result = await createReminder.execute(
-      { message: 'Take medication', triggerAt: '2099-01-01T09:00:00Z', requiresAck: true, nagHours: 1, nagMinutes: 30 },
+      { message: 'Take medication', triggerAt: '2099-01-01 09:00', requiresAck: true, nagHours: 1, nagMinutes: 30 },
       ctx,
     )
     const parsed = JSON.parse(result as string)
@@ -1439,7 +1439,7 @@ describe('buildReminderTools', () => {
   it('create_reminder without requiresAck params stores requiresAck:false and nagIntervalMinutes:null (default path)', async () => {
     const { createReminder, scheduleStore } = await getReminderTools()
     await createReminder.execute(
-      { message: 'Stand up', triggerAt: '2099-01-01T09:00:00Z' },
+      { message: 'Stand up', triggerAt: '2099-01-01 09:00' },
       ctx,
     )
     const rows = scheduleStore.list().filter(s => s.kind === 'reminder')
@@ -1719,7 +1719,7 @@ describe('Phase 35: buildScheduleTools / buildReminderTools — factory headId i
     const { buildReminderTools } = await import('./registry.js')
     const tools = buildReminderTools(scheduleStore, 'UTC', 'personal')
     const create = tools.find(t => t.definition.name === 'create_reminder')!
-    const result = await create.execute({ message: 'go for a walk', triggerAt: '2099-01-01T09:00:00Z' }, ctx)
+    const result = await create.execute({ message: 'go for a walk', triggerAt: '2099-01-01 09:00' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.ok).toBe(true)
     expect(createSpy).toHaveBeenCalledOnce()

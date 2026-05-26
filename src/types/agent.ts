@@ -8,6 +8,9 @@ export interface AgentContext {
   agentId: string
   /** Phase 45 — required; used by ring_device to resolve HA channel */
   headId: string
+  /** IANA timezone for model-facing output rendering (e.g. get_file_info time fields).
+   *  Falls back to 'UTC' when absent. Optional so existing test fixtures remain valid. */
+  timezone?: string
   /** Suspend the agent — tool executor should return after calling this. */
   suspend(): void
   /** Terminate the agent with a result. */

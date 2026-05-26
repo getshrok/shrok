@@ -94,7 +94,7 @@ export const HEAD_TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        since: { type: 'string', description: 'ISO timestamp to filter from (e.g. "2026-04-15T00:00:00Z" for today UTC). Omit for all-time.' },
+        since: { type: 'string', description: 'Enter a start date and time in workspace-local format: `YYYY-MM-DD HH:MM` (24-hour, no Z, no offset, no timezone suffix — the time is interpreted in the workspace timezone). Example: "2026-04-15 09:00". Omit for all-time.' },
       },
     },
   },

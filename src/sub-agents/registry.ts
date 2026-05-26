@@ -14,6 +14,7 @@ import type { AppStateStore } from '../db/app_state.js'
 import type { UnifiedLoader } from '../skills/unified.js'
 import { generateId } from '../llm/util.js'
 import { isValidCadence, CADENCE_ERROR_MESSAGE } from '../scheduler/cadence.js'
+import { formatModelTime, parseModelTime, formatPastTimeError } from '../util/model-time.js'
 import { WEB_SEARCH_DEF, WEB_FETCH_DEF, executeWebSearch, executeWebFetch } from '../tools/web.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { BASELINE_ENV_KEYS } from './env.js'
@@ -622,16 +623,16 @@ function executeSearchFiles(input: Record<string, unknown>): string {
   return truncated ? `${lines}\n\n[truncated at ${maxResults} results]` : lines
 }
 
-function executeGetFileInfo(input: Record<string, unknown>): string {
+function executeGetFileInfo(input: Record<string, unknown>, timezone: string): string {
   const filePath = resolvePath(input['path'] as string)
   const stat = fs.statSync(filePath)
   return JSON.stringify({
     size:        stat.size,
     type:        stat.isDirectory() ? 'directory' : stat.isFile() ? 'file' : 'other',
     permissions: (stat.mode & 0o777).toString(8),
-    created:     stat.birthtime.toISOString(),
-    modified:    stat.mtime.toISOString(),
-    accessed:    stat.atime.toISOString(),
+    created:     formatModelTime(stat.birthtime, timezone),
+    modified:    formatModelTime(stat.mtime, timezone),
+    accessed:    formatModelTime(stat.atime, timezone),
     isFile:      stat.isFile(),
     isDirectory: stat.isDirectory(),
   }, null, 2)
@@ -703,7 +704,7 @@ const OPTIONAL_TOOLS: Map<string, AgentToolEntry> = new Map([
   }],
   ['get_file_info', {
     definition: GET_FILE_INFO_DEF,
-    execute: async (input, _ctx) => executeGetFileInfo(input),
+    execute: async (input, ctx) => executeGetFileInfo(input, ctx.timezone ?? 'UTC'),
   }],
   // Phase 45 — ring_device: start/stop HA audible alert; safe no-op on non-HA channels
   ['ring_device', {
@@ -712,25 +713,45 @@ const OPTIONAL_TOOLS: Map<string, AgentToolEntry> = new Map([
   }],
 ])
 
-const GET_USAGE_DEF: ToolDefinition = {
-  name: 'get_usage',
-  description: 'Returns estimated spend (USD) and token counts for the configured Anthropic/OpenAI/Gemini account, broken down by model and source type, over a time window. Costs are ESTIMATED from per-token pricing tracked at request time and may drift slightly from the provider\'s billed total. Use this to answer "how much have I spent" without spawning an agent or doing extra math.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      since: { type: 'string', description: 'ISO timestamp to filter from (e.g. "2026-04-15T00:00:00Z" for today UTC). Omit for all-time.' },
+function makeGetUsageDef(timezone: string): ToolDefinition {
+  return {
+    name: 'get_usage',
+    description: 'Returns estimated spend (USD) and token counts for the configured Anthropic/OpenAI/Gemini account, broken down by model and source type, over a time window. Costs are ESTIMATED from per-token pricing tracked at request time and may drift slightly from the provider\'s billed total. Use this to answer "how much have I spent" without spawning an agent or doing extra math.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        since: { type: 'string', description: `Enter a start date and time in workspace-local format: \`YYYY-MM-DD HH:MM\` (24-hour, no Z, no offset, no timezone suffix — the time is interpreted in the workspace timezone ${timezone}). Example: "2026-04-15 09:00". Omit for all-time.` },
+      },
     },
-  },
+  }
 }
 
-export function buildUsageTool(usageStore: UsageStore): AgentToolEntry {
+export function buildUsageTool(usageStore: UsageStore, timezone: string): AgentToolEntry {
   return {
-    definition: GET_USAGE_DEF,
+    definition: makeGetUsageDef(timezone),
     execute: async (input, _ctx) => {
-      const since = input['since'] as string | undefined
-      const summary = usageStore.getSummary(since)
+      const sinceRaw = input['since'] as string | undefined
+      if (sinceRaw !== undefined) {
+        let parsed: Date
+        try {
+          parsed = parseModelTime(sinceRaw, timezone)
+        } catch (e) {
+          return JSON.stringify({ error: true, message: (e as Error).message })
+        }
+        const summary = usageStore.getSummary(parsed.toISOString())
+        return JSON.stringify({
+          since: formatModelTime(parsed, timezone),
+          estimatedCostUsd: Number(summary.costUsd.toFixed(4)),
+          inputTokens: summary.inputTokens,
+          outputTokens: summary.outputTokens,
+          byModel: summary.byModel,
+          bySourceType: summary.bySourceType,
+          bySource: summary.bySource,
+        })
+      }
+      const summary = usageStore.getSummary()
       return JSON.stringify({
-        since: since ?? 'all-time',
+        since: 'all-time',
         estimatedCostUsd: Number(summary.costUsd.toFixed(4)),
         inputTokens: summary.inputTokens,
         outputTokens: summary.outputTokens,
@@ -739,6 +760,22 @@ export function buildUsageTool(usageStore: UsageStore): AgentToolEntry {
         bySource: summary.bySource,
       })
     },
+  }
+}
+
+/** Convert a Schedule row's time fields to canonical model-facing format for output. */
+function renderScheduleForModel(row: import('../db/schedules.js').Schedule, tz: string): Record<string, unknown> {
+  const convertTime = (v: string | null | undefined): string | null => {
+    if (v === null || v === undefined) return null
+    try { return formatModelTime(new Date(v), tz) } catch { return null }
+  }
+  return {
+    ...row,
+    runAt:    convertTime(row.runAt),
+    nextRun:  convertTime(row.nextRun),
+    lastRun:  convertTime(row.lastRun),
+    createdAt: formatModelTime(new Date(row.createdAt), tz),
+    updatedAt: formatModelTime(new Date(row.updatedAt), tz),
   }
 }
 
@@ -755,7 +792,7 @@ export function buildScheduleTools(
         description: 'List all schedules.',
         inputSchema: { type: 'object', properties: {} },
       },
-      execute: async (_input, _ctx) => JSON.stringify(scheduleStore.list()),
+      execute: async (_input, _ctx) => JSON.stringify(scheduleStore.list().map(s => renderScheduleForModel(s, timezone))),
     },
     {
       definition: {
@@ -770,7 +807,7 @@ export function buildScheduleTools(
               description: `Timezone the cron expression is relative to (workspace default: ${timezone}). Omit to use the workspace default. Must be a valid IANA timezone string (e.g. "America/New_York", "Europe/London", "Asia/Tokyo").`,
             },
             cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekdays Mon–Fri (M H * * 1-5), weekly (M H * * D), every N days (0 H */N * * with N ∈ {1..7}), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
-            runAt: { type: 'string', description: 'ISO datetime for one-time schedules.' },
+            runAt: { type: 'string', description: `One-time fire date and time in workspace-local format: \`YYYY-MM-DD HH:MM\` (24-hour, no Z, no offset, no timezone suffix — interpreted in the workspace timezone ${timezone}). Example: "2030-01-15 09:00". Only for one-time (non-cron) schedules.` },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
           },
@@ -806,21 +843,45 @@ export function buildScheduleTools(
         const effectiveTz = cronTimezoneArg ?? timezone
         const runAtArg = input['runAt'] as string | undefined
         let nextRun: string | undefined
+        let runAtIso: string | undefined
         if (cronArg) {
           if (!isValidCadence(cronArg)) {
             return JSON.stringify({ error: true, message: CADENCE_ERROR_MESSAGE })
           }
           const { nextRunAfter } = await import('../scheduler/cron.js')
           nextRun = nextRunAfter(cronArg, new Date(), effectiveTz).toISOString()
-        } else if (runAtArg) {
-          nextRun = runAtArg
+          if (runAtArg !== undefined) {
+            // Parse and guard runAt when provided alongside cron (start-then-repeat pattern)
+            let parsedRunAt: Date
+            try {
+              parsedRunAt = parseModelTime(runAtArg, effectiveTz)
+            } catch (e) {
+              return JSON.stringify({ error: true, message: (e as Error).message })
+            }
+            if (parsedRunAt.getTime() < Date.now() - 30_000) {
+              return JSON.stringify({ error: true, message: formatPastTimeError(parsedRunAt, new Date(), effectiveTz) })
+            }
+            runAtIso = parsedRunAt.toISOString()
+          }
+        } else if (runAtArg !== undefined) {
+          let parsedRunAt: Date
+          try {
+            parsedRunAt = parseModelTime(runAtArg, effectiveTz)
+          } catch (e) {
+            return JSON.stringify({ error: true, message: (e as Error).message })
+          }
+          if (parsedRunAt.getTime() < Date.now() - 30_000) {
+            return JSON.stringify({ error: true, message: formatPastTimeError(parsedRunAt, new Date(), effectiveTz) })
+          }
+          runAtIso = parsedRunAt.toISOString()
+          nextRun = runAtIso
         }
         const conditionsArg = input['conditions'] as string | undefined
         const agentContextArg = input['agentContext'] as string | undefined
         // Phase 35 D-09: headId comes from the factory closure (per-head tool registry).
         const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, headId, taskName, kind: 'task' }
         if (cronArg !== undefined) createOpts.cron = cronArg
-        if (runAtArg !== undefined) createOpts.runAt = runAtArg
+        if (runAtIso !== undefined) createOpts.runAt = runAtIso
         if (nextRun !== undefined) createOpts.nextRun = nextRun
         if (conditionsArg !== undefined) createOpts.conditions = conditionsArg
         if (agentContextArg !== undefined) createOpts.agentContext = agentContextArg
@@ -837,7 +898,7 @@ export function buildScheduleTools(
           properties: {
             id: { type: 'string' },
             cron: { type: 'string', description: 'Cron expression for recurring schedules. Must be one of: every N minutes (*/N * * * * with N ∈ {5,10,15,30,45,60}), hourly (M * * * *), daily (M H * * *), weekdays Mon–Fri (M H * * 1-5), weekly (M H * * D), every N days (0 H */N * * with N ∈ {1..7}), monthly (M H D * *), yearly (M H D Mo *). For custom timing logic, use the conditions argument.' },
-            runAt: { type: 'string' },
+            runAt: { type: 'string', description: `Updated one-time fire date and time in workspace-local format: \`YYYY-MM-DD HH:MM\` (24-hour, no Z, no offset, no timezone suffix — interpreted in the workspace timezone ${timezone}). Example: "2030-01-15 09:00".` },
             enabled: { type: 'boolean' },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
@@ -877,7 +938,16 @@ export function buildScheduleTools(
           patch.cron = cronArg
           patch.nextRun = next.toISOString()
         }
-        if (input['runAt'] !== undefined) patch.runAt = input['runAt'] as string
+        if (input['runAt'] !== undefined) {
+          const runAtRaw = input['runAt'] as string
+          let parsedRunAt: Date
+          try {
+            parsedRunAt = parseModelTime(runAtRaw, timezone)
+          } catch (e) {
+            return JSON.stringify({ error: true, message: (e as Error).message })
+          }
+          patch.runAt = parsedRunAt.toISOString()
+        }
         if (input['enabled'] !== undefined) patch.enabled = input['enabled'] as boolean
         if (input['conditions'] !== undefined) patch.conditions = input['conditions'] as string
         if (input['agentContext'] !== undefined) patch.agentContext = input['agentContext'] as string
@@ -921,7 +991,15 @@ export function buildReminderTools(
       execute: async (_input, _ctx) => {
         const items = scheduleStore.list()
           .filter(s => s.kind === 'reminder' && s.enabled)
-          .map(s => ({ id: s.id, message: s.agentContext ?? '', runAt: s.runAt, cron: s.cron, createdAt: s.createdAt, requiresAck: s.requiresAck, nagIntervalMinutes: s.nagIntervalMinutes }))
+          .map(s => ({
+            id: s.id,
+            message: s.agentContext ?? '',
+            runAt: s.runAt !== null ? formatModelTime(new Date(s.runAt), timezone) : null,
+            cron: s.cron,
+            createdAt: formatModelTime(new Date(s.createdAt), timezone),
+            requiresAck: s.requiresAck,
+            nagIntervalMinutes: s.nagIntervalMinutes,
+          }))
         return JSON.stringify(items)
       },
     },
@@ -947,7 +1025,7 @@ export function buildReminderTools(
             },
             triggerAt: {
               type: 'string',
-              description: 'The first (or only) fire time as an ISO 8601 datetime (e.g. "2026-04-01T09:00:00Z"). Use alone for a one-time reminder; combine with cron for start-then-repeat. Required if cron is not provided.',
+              description: `The first (or only) fire time in workspace-local format: \`YYYY-MM-DD HH:MM\` (24-hour, no Z, no offset, no timezone suffix — interpreted in the workspace timezone ${timezone}). Example: "2030-06-15 09:00". Use alone for a one-time reminder; combine with cron for start-then-repeat. Required if cron is not provided.`,
             },
             cron: {
               type: 'string',
@@ -1055,11 +1133,16 @@ export function buildReminderTools(
           try {
             const next = nextRunAfter(cronArg, new Date(), effectiveTz)
             if (triggerAtArg) {
-              const d = new Date(triggerAtArg)
-              if (isNaN(d.getTime())) {
-                return JSON.stringify({ error: true, message: `Invalid triggerAt date: ${triggerAtArg}` })
+              let parsedTrigger: Date
+              try {
+                parsedTrigger = parseModelTime(triggerAtArg, timezone)
+              } catch (e) {
+                return JSON.stringify({ error: true, message: (e as Error).message })
               }
-              triggerAt = d.toISOString()
+              if (parsedTrigger.getTime() < Date.now() - 30_000) {
+                return JSON.stringify({ error: true, message: formatPastTimeError(parsedTrigger, new Date(), timezone) })
+              }
+              triggerAt = parsedTrigger.toISOString()
             } else {
               triggerAt = next.toISOString()
             }
@@ -1071,11 +1154,16 @@ export function buildReminderTools(
           if (!triggerAtArg) {
             return JSON.stringify({ error: true, message: 'triggerAt is required when cron is not provided.' })
           }
-          const d = new Date(triggerAtArg)
-          if (isNaN(d.getTime())) {
-            return JSON.stringify({ error: true, message: `Invalid triggerAt date: ${triggerAtArg}` })
+          let parsedTrigger: Date
+          try {
+            parsedTrigger = parseModelTime(triggerAtArg, timezone)
+          } catch (e) {
+            return JSON.stringify({ error: true, message: (e as Error).message })
           }
-          triggerAt = d.toISOString()
+          if (parsedTrigger.getTime() < Date.now() - 30_000) {
+            return JSON.stringify({ error: true, message: formatPastTimeError(parsedTrigger, new Date(), timezone) })
+          }
+          triggerAt = parsedTrigger.toISOString()
         }
 
         const id = generateId('rem')

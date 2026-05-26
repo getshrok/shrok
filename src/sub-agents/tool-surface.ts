@@ -238,7 +238,7 @@ export async function assembleTools(
     }
   }
 
-  const usageTool = buildUsageTool(deps.usageStore)
+  const usageTool = buildUsageTool(deps.usageStore, deps.timezone)
   const scheduleTools = deps.scheduleStore ? buildScheduleTools(deps.scheduleStore, deps.timezone, deps.unifiedLoader ?? null, deps.headId) : []
   const reminderTools = deps.scheduleStore
     ? buildReminderTools(deps.scheduleStore, deps.timezone, deps.headId)
