@@ -25,11 +25,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Dashboard conversation-view voice mode** now resolves the correct head per connection — per-turn live MSE, head-aware WebSocket URL, upgrade guard, multi-router registration. (closes #16)
 - **Task/skill rename** cascades through all references (loader frontmatter, schedule store, usage store, body-text mentions surfaced as warnings).
 
-### Deferred
-- Physical button-press dismiss on the HA Voice PE (the device exposes a button event; needs shrok to subscribe to HA events).
-- Optional acknowledgment/escalation on alarms — re-notify or fall back to a text channel if the ring failed because the device was offline at fire time.
-- Configurable beep pattern / per-alarm sounds.
-
 ## [0.2.0] — 2026-05-13
 
 ### Added
