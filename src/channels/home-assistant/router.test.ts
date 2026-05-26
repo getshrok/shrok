@@ -543,4 +543,75 @@ describe('POST /v1/chat/completions', () => {
       expect(body['object']).toBe('chat.completion')
     })
   })
+
+  // ── RING-08: Host/X-Forwarded-Proto base-URL capture ─────────────────────
+
+  describe('RING-08 — Host header → adapter.cacheBaseUrl (non-loopback only)', () => {
+    /**
+     * POST helper that supports injecting arbitrary headers.
+     * Unlike postCompletions() this allows the test to pass a Host header.
+     */
+    async function postWithHost(
+      port: number,
+      hostHeader: string,
+      proto?: string,
+    ): Promise<{ status: number; body: unknown }> {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${TEST_API_KEY}`,
+        'Host': hostHeader,
+      }
+      if (proto !== undefined) headers['X-Forwarded-Proto'] = proto
+      const rawResponse = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'ring test' }] }),
+      })
+      const responseBody: unknown = await rawResponse.json().catch(() => null)
+      return { status: rawResponse.status, body: responseBody }
+    }
+
+    it('non-loopback Host → caches http://<host>', async () => {
+      fx = await startServer()
+      setupSend(fx.adapter, 'ok')
+      await postWithHost(fx.port, '192.168.111.69:8888')
+      expect(fx.adapter.getDeviceReachableBaseUrl()).toBe('http://192.168.111.69:8888')
+    })
+
+    it('non-loopback Host + X-Forwarded-Proto: https → caches https://<host>', async () => {
+      fx = await startServer()
+      setupSend(fx.adapter, 'ok')
+      await postWithHost(fx.port, 'jarvis.gigaashley.click', 'https')
+      expect(fx.adapter.getDeviceReachableBaseUrl()).toBe('https://jarvis.gigaashley.click')
+    })
+
+    it('loopback Host 127.0.0.1 → cacheBaseUrl NOT called (getDeviceReachableBaseUrl stays null)', async () => {
+      fx = await startServer()
+      setupSend(fx.adapter, 'ok')
+      await postWithHost(fx.port, '127.0.0.1:8888')
+      expect(fx.adapter.getDeviceReachableBaseUrl()).toBeNull()
+    })
+
+    it('loopback Host localhost → cacheBaseUrl NOT called', async () => {
+      fx = await startServer()
+      setupSend(fx.adapter, 'ok')
+      await postWithHost(fx.port, 'localhost:8888')
+      expect(fx.adapter.getDeviceReachableBaseUrl()).toBeNull()
+    })
+
+    it('unauthenticated request with non-loopback Host → cacheBaseUrl NOT called', async () => {
+      fx = await startServer()
+      // No bearer token
+      const res = await fetch(`http://127.0.0.1:${fx.port}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Host': '192.168.111.69:8888',
+        },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'pwn' }] }),
+      })
+      expect(res.status).toBe(401)
+      expect(fx.adapter.getDeviceReachableBaseUrl()).toBeNull()
+    })
+  })
 })
