@@ -14,7 +14,7 @@ A timer is a one-shot countdown: you sleep for the requested duration, then repo
    - timeout: `(S + 10) * 1000`
 
    Example — a 10-minute timer → command `sleep 600`, timeout `610000`.
-3. When the sleep returns (exit code 0), the time is up. Finish with a short, friendly completion message that will be delivered to the user, e.g. `⏰ Your 10-minute timer is up.` Include what it was for if they said one (e.g. "tea's ready").
+3. When the sleep returns (exit code 0), the time is up. Call `ring_device` with `action: "start"` and `source: "timer"` to start the audible alert on the voice device. Then finish with a short, friendly completion message, e.g. `⏰ Your 10-minute timer is up.` Include what it was for if they said one (e.g. "tea's ready"). If you are not running on a Home Assistant voice channel, ring_device is a safe no-op.
 
 ## Guidance & limits
 
