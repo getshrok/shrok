@@ -1,5 +1,6 @@
 // src/ring/tool.test.ts
 // Tests for ring_device tool definition, agent factory, and module singletons.
+// Also asserts HEAD_TOOLS + OPTIONAL_TOOLS membership (RING-03 dual-surface contract).
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import {
   RING_DEVICE_DEF,
@@ -7,6 +8,8 @@ import {
   initRingTool,
   executeRingDevice,
 } from './tool.js'
+import { HEAD_TOOLS } from '../head/index.js'
+import { OPTIONAL_TOOL_NAMES } from '../sub-agents/registry.js'
 import type { RingRunner } from './runner.js'
 import type { AgentContext } from '../types/agent.js'
 
@@ -150,6 +153,18 @@ describe('executeRingDevice — pre-init (before initRingTool)', () => {
 
     expect(parsed.ok).toBe(true)
     expect(parsed.note).toBe('ring not configured')
+  })
+})
+
+// ─── RING-03: dual-surface membership ────────────────────────────────────────
+
+describe('RING-03: ring_device on both tool surfaces', () => {
+  it('HEAD_TOOLS includes a tool named ring_device', () => {
+    expect(HEAD_TOOLS.some(t => t.name === 'ring_device')).toBe(true)
+  })
+
+  it('OPTIONAL_TOOL_NAMES includes ring_device', () => {
+    expect(OPTIONAL_TOOL_NAMES).toContain('ring_device')
   })
 })
 

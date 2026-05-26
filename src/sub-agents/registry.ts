@@ -19,6 +19,7 @@ import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { BASELINE_ENV_KEYS } from './env.js'
 import { truncateToolOutput } from './output-cap.js'
 import { parseSkillFile } from '../skills/parser.js'
+import { RING_DEVICE_DEF, executeRingDevice } from '../ring/tool.js'
 
 // ─── Built-in tool definitions ────────────────────────────────────────────────
 
@@ -703,6 +704,11 @@ const OPTIONAL_TOOLS: Map<string, AgentToolEntry> = new Map([
   ['get_file_info', {
     definition: GET_FILE_INFO_DEF,
     execute: async (input, _ctx) => executeGetFileInfo(input),
+  }],
+  // Phase 45 — ring_device: start/stop HA audible alert; safe no-op on non-HA channels
+  ['ring_device', {
+    definition: RING_DEVICE_DEF,
+    execute: async (input, ctx) => executeRingDevice(input, ctx),
   }],
 ])
 

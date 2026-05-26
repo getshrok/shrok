@@ -14,6 +14,7 @@ import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
 import { runResumeSteward, runMessageAgentSteward } from './steward.js'
 import { VIEW_IMAGE_DEF, executeViewImage } from '../sub-agents/registry.js'
+import { RING_DEVICE_DEF } from '../ring/tool.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { timingMark } from '../timing.js'
 import { nextRunAfter } from '../scheduler/cron.js'
@@ -112,6 +113,7 @@ export const HEAD_TOOLS: ToolDefinition[] = [
       required: ['reminderId'],
     },
   },
+  RING_DEVICE_DEF,
 ]
 
 // ─── HeadToolExecutor ─────────────────────────────────────────────────────────
@@ -163,6 +165,9 @@ export interface HeadToolExecutorOptions {
   /** IANA timezone string for cron-resume computation in acknowledge_reminder (D-07).
    *  Falls back to 'UTC' when absent. Optional so existing callers remain tsc-clean. */
   timezone?: string
+  /** Phase 45 — RingRunner for ring_device dispatch. Optional so existing callers
+   *  without a runner remain tsc-clean (mirrors scheduleStore? pattern). */
+  ringRunner?: import('../ring/runner.js').RingRunner
 }
 
 export class HeadToolExecutor implements ToolExecutor {
@@ -391,6 +396,17 @@ export class HeadToolExecutor implements ToolExecutor {
           this.opts.scheduleStore!.update(reminderId, { ackPending: false, nextRun: resumeAt })
         }
         return JSON.stringify({ ok: true })
+      }
+
+      // ── Ring device ────────────────────────────────────────────────────────
+      case 'ring_device': {
+        if (!this.opts.ringRunner) {
+          return JSON.stringify({ ok: true, note: 'ring runner not configured' })
+        }
+        const action = input['action'] as 'start' | 'stop'
+        const source = input['source'] as string | undefined
+        const result = await this.opts.ringRunner.dispatchForHead(this.opts.headId, action, source as 'timer' | 'alarm' | undefined)
+        return JSON.stringify(result)
       }
 
       default:
