@@ -11,17 +11,17 @@ Add sustained, dismiss-until-stopped audible alerts on voice channels (Home Assi
 
 The shared "make noise until told to stop" mechanism. Hard constraint: no model in the ring loop.
 
-- [ ] **RING-01**: When a timer or alarm fires on a Home Assistant voice channel, the device plays a **sustained, repeating** alert that keeps sounding until dismissed (not a single ding) — a headless ring runner loops a beep via `media_player.play_media`, polling player state and replaying on idle (the Voice PE has no native `REPEAT_SET`)
+- [x] **RING-01**: When a timer or alarm fires on a Home Assistant voice channel, the device plays a **sustained, repeating** alert that keeps sounding until dismissed (not a single ding) — a headless ring runner loops a beep via `media_player.play_media`, polling player state and replaying on idle (the Voice PE has no native `REPEAT_SET`)
 - [ ] **RING-02**: A user dismisses an active ring **by voice** ("stop" / "turn it off") — the dismiss arrives as a normal turn, the head calls `ring_device(stop)`, and the sound stops promptly via `media_player.media_stop` with state cleared
-- [ ] **RING-03**: Both the head and sub-agents can start and stop a device ring through a single `ring_device(start|stop)` tool that resolves the target satellite from its head's Home Assistant channel
+- [x] **RING-03**: Both the head and sub-agents can start and stop a device ring through a single `ring_device(start|stop)` tool that resolves the target satellite from its head's Home Assistant channel
 - [ ] **RING-04**: `ring_device` is safe to call on any channel — it silently no-ops when the channel has no Home Assistant satellite, so timers/alarms work everywhere with the ring as a voice-only enhancement
-- [ ] **RING-05**: The ring loop runs entirely headless — **no LLM activation per beep**; only ring *start* (one activation) and *dismiss* (one activation) touch the head
-- [ ] **RING-06**: The beep is a locally bundled static sound served by shrok — never a per-beep TTS or external API call
-- [ ] **RING-07**: shrok auto-derives the device's `media_player` (and LED `light`) entity from the configured `haVoiceSatelliteEntityId` via the Home Assistant template API (`device_entities(device_id(...))`), cached per channel, with an optional explicit config override
-- [ ] **RING-08**: shrok serves the bundled beep at `GET /media/ring.mp3` on its **existing** server (same host/port as `/v1/chat/completions` — no separate service). The device-reachable base URL is **auto-derived** from the inbound Home Assistant request's `Host` header (cached; scheme from `X-Forwarded-Proto`), so normal setups need **no extra config**. An optional `publicBaseUrl` override covers the loopback (co-located HA dials `localhost`) and authenticated-reverse-proxy edge cases. The route is unauthenticated and serves only the static beep asset
-- [ ] **RING-09**: While ringing, the device LED ring is lit steady and is cleared on dismiss
-- [ ] **RING-10**: An undismissed ring auto-dismisses after a configurable cap (default 24h) — the sound stops and state is cleared
-- [ ] **RING-11**: Active-ring state is persisted per channel so that on restart shrok clears stale ring state and stops **only** the players that were actively ringing (no ghost ring after a crash, no blind stop-all of unrelated playback)
+- [x] **RING-05**: The ring loop runs entirely headless — **no LLM activation per beep**; only ring *start* (one activation) and *dismiss* (one activation) touch the head
+- [x] **RING-06**: The beep is a locally bundled static sound served by shrok — never a per-beep TTS or external API call
+- [x] **RING-07**: shrok auto-derives the device's `media_player` (and LED `light`) entity from the configured `haVoiceSatelliteEntityId` via the Home Assistant template API (`device_entities(device_id(...))`), cached per channel, with an optional explicit config override
+- [x] **RING-08**: shrok serves the bundled beep at `GET /media/ring.mp3` on its **existing** server (same host/port as `/v1/chat/completions` — no separate service). The device-reachable base URL is **auto-derived** from the inbound Home Assistant request's `Host` header (cached; scheme from `X-Forwarded-Proto`), so normal setups need **no extra config**. An optional `publicBaseUrl` override covers the loopback (co-located HA dials `localhost`) and authenticated-reverse-proxy edge cases. The route is unauthenticated and serves only the static beep asset
+- [x] **RING-09**: While ringing, the device LED ring is lit steady and is cleared on dismiss
+- [x] **RING-10**: An undismissed ring auto-dismisses after a configurable cap (default 24h) — the sound stops and state is cleared
+- [x] **RING-11**: Active-ring state is persisted per channel so that on restart shrok clears stale ring state and stops **only** the players that were actively ringing (no ghost ring after a crash, no blind stop-all of unrelated playback)
 
 ### Timer Ring (TIMER)
 
@@ -63,17 +63,17 @@ Which phases cover which requirements. Filled/validated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RING-01 | Phase 45 | Pending |
+| RING-01 | Phase 45 | Complete |
 | RING-02 | Phase 45 | Pending |
-| RING-03 | Phase 45 | Pending |
+| RING-03 | Phase 45 | Complete |
 | RING-04 | Phase 45 | Pending |
-| RING-05 | Phase 45 | Pending |
-| RING-06 | Phase 45 | Pending |
-| RING-07 | Phase 45 | Pending |
-| RING-08 | Phase 45 | Pending |
-| RING-09 | Phase 45 | Pending |
-| RING-10 | Phase 45 | Pending |
-| RING-11 | Phase 45 | Pending |
+| RING-05 | Phase 45 | Complete |
+| RING-06 | Phase 45 | Complete |
+| RING-07 | Phase 45 | Complete |
+| RING-08 | Phase 45 | Complete |
+| RING-09 | Phase 45 | Complete |
+| RING-10 | Phase 45 | Complete |
+| RING-11 | Phase 45 | Complete |
 | TIMER-01 | Phase 45 | Pending |
 | TIMER-02 | Phase 45 | Pending |
 | ALARM-01 | Phase 45 | Pending |
