@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Voice Alarms & Timers
-status: planning
-last_updated: "2026-05-25T16:30:06.189Z"
-last_activity: 2026-05-25
+status: executing
+last_updated: "2026-05-26T16:55:41.645Z"
+last_activity: 2026-05-26
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 6
+  completed_plans: 1
   percent: 0
 ---
 
@@ -17,13 +17,13 @@ progress:
 
 ## Current Position
 
-Phase: 45 — Ring Delivery Layer + Timer Ring + Alarm
-Plan: —
-Status: Planning (roadmap written; awaiting plan-phase)
-Last activity: 2026-05-25 — v1.7 roadmap created (Phase 45)
+Phase: 45 (Ring Delivery Layer + Timer Ring + Alarm) — EXECUTING
+Plan: 2 of 6
+Status: Executing Phase 45 (Plan 01 complete)
+Last activity: 2026-05-26 -- 45-01-PLAN.md complete (ring config fields, AgentContext.headId, HA adapter getters)
 
 ```
-v1.7 progress: [                    ] 0% — Phase 45 not started
+v1.7 progress: [###                 ] 17% — Phase 45 Plan 1/6 complete
 ```
 
 ### Quick Tasks Completed
@@ -41,7 +41,7 @@ v1.7 progress: [                    ] 0% — Phase 45 not started
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** v1.7 Voice Alarms & Timers — Phase 45 (single phase; implements GitHub issue #14)
+**Current focus:** Phase 45 — Ring Delivery Layer + Timer Ring + Alarm
 
 ## v1.7 Phase Map
 
@@ -215,10 +215,19 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-DASHBOARD-OWNER-EXCLUDED (Plan 44-04): owner head filtered from "deliver to" multi-select options; owner is always implicitly included via chip-render dedup — offering owner as selectable would be redundant and confusing
 - D-DASHBOARD-EMPTY-PATCH (Plan 44-04): clearing the multi-select sends `deliverToHeadIds: []` on PATCH; `store.update` delete-on-empty (Plan 44-01) reverts to owner-only — no special UI affordance needed
 
+## Decisions (Phase 45)
+
+- D-45-01-ALLOWLIST (Plan 45-01): publicBaseUrl/ringVolume/ringCapHours NOT added to ENV_KEY_ALLOWLIST — behavioral config.json fields, not secrets; only HA_ACCESS_TOKEN and HA_INBOUND_API_KEY belong there per D-04 (T-45-01-CFG mitigated)
+- D-45-01-HEADID-REQUIRED (Plan 45-01): AgentContext.headId added as required string with no default — mirrors Phase 34 D-SPAWN-REQUIRED; compiler errors at inline ctx construction sites are the safety net
+- D-45-01-HEADID-PUBLIC (Plan 45-01): HomeAssistantChannelAdapter.headId promoted from private readonly to public readonly directly — simpler than adding a getter over a renamed backing field; no behavior change; enables ring tool startup wiring (haAdapters.find(a => a.headId === headId))
+- D-45-01-URL-CACHE-MEMORY-ONLY (Plan 45-01): deviceReachableBaseUrl cached in-memory only in Plan 01; Plan 03 gates caching to non-loopback Host headers from authenticated HA turns (T-45-01-URL mitigated)
+- D-45-01-GETCONFIG-NO-TOKEN (Plan 45-01): getConfig() returns only haBaseUrl/haVoiceSatelliteEntityId; D-05 token safety preserved; no new HA_ACCESS_TOKEN references in any of the three new adapter methods
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 45    | 01   | 4min     | 3     | 7     |
 | 44    | 03   | 2min     | 2     | 2     |
 | 44    | 02   | 5min     | 2     | 2     |
 | 44    | 01   | 3min     | 2     | 5     |
@@ -245,6 +254,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 40 P02 | 3min | 3 tasks | 3 files |
 | Phase 44 P05 | 3min | 2 tasks | 1 files |
 | Phase 44 P04 | 20min | 3 tasks | 3 files |
+| Phase 45 P01 | 4min | 3 tasks | 7 files |
 
 ## Operator Next Steps
 
