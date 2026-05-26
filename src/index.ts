@@ -86,6 +86,9 @@ import { setProactiveWorkspaceDir } from './scheduler/proactive.js'
 import { setMemoryPromptsWorkspaceDir } from './memory/prompts.js'
 import { readAssistantName } from './config-file.js'
 import { applyTimezoneEnv } from './timezone-env.js'
+import { createRingStateStore } from './ring/store.js'
+import { RingRunner, callHaMediaStop } from './ring/runner.js'
+import { initRingTool } from './ring/tool.js'
 
 async function main() {
   // Set SHROK_ROOT so agents can find the install directory (e.g. to run npm scripts)
@@ -244,6 +247,22 @@ async function main() {
   // null when OPENAI_API_KEY is not set → transcribeInboundAudio returns msg unchanged.
   const ingestionOpenAI = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null
 
+  // Phase 45 (RING-02, RING-10, RING-11): instantiate the global ring delivery layer.
+  // ringStore and ringRunner are singletons across all heads. The haAdapters resolver closure
+  // reads haAdapters lazily at call-time (haAdapters is populated in the channel loop below).
+  const ringStore = createRingStateStore(workspacePath)
+  // exactOptionalPropertyTypes: extract only RingConfig fields so the optional publicBaseUrl
+  // key is absent (not present-as-undefined) when config.publicBaseUrl is undefined.
+  const ringConfig = {
+    ringVolume: config.ringVolume,
+    ringCapHours: config.ringCapHours,
+    dashboardHost: config.dashboardHost,
+    dashboardPort: config.dashboardPort,
+    ...(config.publicBaseUrl !== undefined ? { publicBaseUrl: config.publicBaseUrl } : {}),
+  }
+  const ringRunner = new RingRunner(ringStore, ringConfig)
+  initRingTool(ringRunner, (headId) => haAdapters.find(a => a.headId === headId) ?? null)
+
   for (const head of resolvedHeads) {
     const headRouter = new ChannelRouterImpl()
 
@@ -251,6 +270,7 @@ async function main() {
       db, config, llmRouter, channelRouter: headRouter, mcpRegistry,
       dashboardEventBus: dashboardEvents,
       headId: head.id,
+      ringRunner,
       ...(head.customPrompt !== undefined ? { customPrompt: head.customPrompt } : {}),
       // Phase 35 D-08: re-resolve heads each call so dashboard edits between scheduler ticks
       // land without a process restart (mirrors DashboardServer.resolveCurrentHeads pattern).
@@ -280,6 +300,21 @@ async function main() {
         type: 'agent_failed', id: generateId('qe'), agentId: t.id,
         error: 'process restarted mid-execution', createdAt: new Date().toISOString(),
       }, 50, head.id)
+    }
+
+    // Phase 45 RING-11: restart cleanup — stop ONLY players that were actively ringing at
+    // the last shutdown. Fire-and-forget (no await) so an offline HA does not hang startup
+    // (RESEARCH Pitfall 5). Record is deleted unconditionally so a failed stop does not
+    // re-trigger on the next restart. Never stop-all: acts only on persisted ring records
+    // for this head (T-45-05-DOS mitigated).
+    for (const staleRing of ringStore.list().filter(r => r.headId === head.id)) {
+      const haBaseUrl = head.channels.find(c => c.vendor === 'home-assistant')?.haBaseUrl
+      if (haBaseUrl) {
+        callHaMediaStop(haBaseUrl, staleRing.mediaPlayerEntityId).catch((e: unknown) => {
+          log.warn(`[startup] ring cleanup: media_stop failed for ${staleRing.mediaPlayerEntityId}: ${e instanceof Error ? e.message : String(e)}`)
+        })
+      }
+      ringStore.delete(staleRing.id)
     }
 
     // Per-head routeMessage closure — captures head.id + this head's loop + queue.
