@@ -248,13 +248,16 @@ describe('RingRunner', () => {
 
     await runner.start(adapter, 'timer')
 
-    // Next poll tick: GET state → 'idle' → triggers replay
-    mockFetch.mockResolvedValueOnce(stateRes('idle'))  // GET /api/states
-    mockFetch.mockResolvedValueOnce(okRes())            // replay play_media
+    // Tick 1: justPlayed is true from the initial play → debounce skips, clears flag
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS + 100)
 
     const beforePlayCount = (mockFetch.mock.calls as unknown[][]).filter(([url]) =>
       typeof url === 'string' && (url as string).includes('play_media'),
     ).length
+
+    // Tick 2: justPlayed is now false → GET state → 'idle' → replay
+    mockFetch.mockResolvedValueOnce(stateRes('idle'))  // GET /api/states → idle
+    mockFetch.mockResolvedValueOnce(okRes())            // replay play_media succeeds
 
     await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS + 100)
 
