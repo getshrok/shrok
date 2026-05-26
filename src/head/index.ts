@@ -14,7 +14,7 @@ import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
 import { runResumeSteward, runMessageAgentSteward } from './steward.js'
 import { VIEW_IMAGE_DEF, executeViewImage } from '../sub-agents/registry.js'
-import { RING_DEVICE_DEF } from '../ring/tool.js'
+import { RING_DEVICE_DEF, executeRingDevice } from '../ring/tool.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { timingMark } from '../timing.js'
 import { nextRunAfter } from '../scheduler/cron.js'
@@ -399,14 +399,11 @@ export class HeadToolExecutor implements ToolExecutor {
       }
 
       // ── Ring device ────────────────────────────────────────────────────────
+      // Delegate to the module-singleton executeRingDevice (set by initRingTool at
+      // startup, src/index.ts) so the head and sub-agent surfaces share one resolver
+      // and one runner. Returns its own safe no-op when not initialized.
       case 'ring_device': {
-        if (!this.opts.ringRunner) {
-          return JSON.stringify({ ok: true, note: 'ring runner not configured' })
-        }
-        const action = input['action'] as 'start' | 'stop'
-        const source = input['source'] as string | undefined
-        const result = await this.opts.ringRunner.dispatchForHead(this.opts.headId, action, source as 'timer' | 'alarm' | undefined)
-        return JSON.stringify(result)
+        return await executeRingDevice(input, this.opts.headId)
       }
 
       default:

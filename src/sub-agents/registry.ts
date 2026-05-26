@@ -708,7 +708,7 @@ const OPTIONAL_TOOLS: Map<string, AgentToolEntry> = new Map([
   // Phase 45 — ring_device: start/stop HA audible alert; safe no-op on non-HA channels
   ['ring_device', {
     definition: RING_DEVICE_DEF,
-    execute: async (input, ctx) => executeRingDevice(input, ctx),
+    execute: async (input, ctx) => executeRingDevice(input, ctx.headId),
   }],
 ])
 

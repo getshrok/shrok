@@ -148,7 +148,7 @@ describe('executeRingDevice — pre-init (before initRingTool)', () => {
   it('returns ring-not-configured no-op without throwing', async () => {
     // Module-level singletons are null at import time.
     // This test suite runs BEFORE initRingTool is called in the next suite.
-    const result = await executeRingDevice({ action: 'start' }, makeCtx())
+    const result = await executeRingDevice({ action: 'start' }, makeCtx().headId)
     const parsed = JSON.parse(result as string)
 
     expect(parsed.ok).toBe(true)
@@ -176,7 +176,7 @@ describe('executeRingDevice — after initRingTool', () => {
     const getHaAdapter = vi.fn().mockReturnValue(null)
     initRingTool(runner, getHaAdapter)
 
-    const result = await executeRingDevice({ action: 'start' }, makeCtx('init-test-head'))
+    const result = await executeRingDevice({ action: 'start' }, makeCtx('init-test-head').headId)
     const parsed = JSON.parse(result as string)
 
     expect(parsed.ok).toBe(true)
@@ -189,7 +189,7 @@ describe('executeRingDevice — after initRingTool', () => {
     const getHaAdapter = vi.fn().mockReturnValue(mockAdapter)
     initRingTool(runner, getHaAdapter)
 
-    const result = await executeRingDevice({ action: 'start', source: 'alarm' }, makeCtx('init-head'))
+    const result = await executeRingDevice({ action: 'start', source: 'alarm' }, makeCtx('init-head').headId)
     const parsed = JSON.parse(result as string)
 
     expect(parsed.ok).toBe(true)
@@ -201,7 +201,7 @@ describe('executeRingDevice — after initRingTool', () => {
     const getHaAdapter = vi.fn().mockReturnValue(mockAdapter)
     initRingTool(runner, getHaAdapter)
 
-    const result = await executeRingDevice({ action: 'stop' }, makeCtx('init-head'))
+    const result = await executeRingDevice({ action: 'stop' }, makeCtx('init-head').headId)
     const parsed = JSON.parse(result as string)
 
     expect(parsed.ok).toBe(true)

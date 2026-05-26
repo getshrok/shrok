@@ -10,7 +10,7 @@
 // Never throws from execute.
 
 import type { ToolDefinition } from '../types/llm.js'
-import type { AgentToolEntry, AgentContext } from '../types/agent.js'
+import type { AgentToolEntry } from '../types/agent.js'
 import type { RingAdapterLike, RingRunner } from './runner.js'
 
 // ─── Tool definition ──────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ export function initRingTool(
  */
 export async function executeRingDevice(
   input: Record<string, unknown>,
-  ctx: AgentContext,
+  headId: string,
 ): Promise<string> {
   // Pre-init no-op (RING-04 extension: uninitialized runner is also a safe no-op)
   if (!_runner || !_getHaAdapter) {
@@ -115,7 +115,7 @@ export async function executeRingDevice(
   }
 
   const action = input['action'] as 'start' | 'stop'
-  const adapter = _getHaAdapter(ctx.headId)
+  const adapter = _getHaAdapter(headId)
 
   // RING-04: no HA channel for this head
   if (!adapter) {
