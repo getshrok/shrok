@@ -55,7 +55,31 @@ Six test jobs run in parallel after `lint`:
 
 `build` only runs after all six test shards and lint pass.
 
-**Push conflicts in `dashboard/dist/`:** Because CI rebuilds and commits `dashboard/dist/` on every passing run, pushing local commits that also touch `dashboard/dist/` will often be rejected. Always `git pull --rebase` before pushing. If a rebase conflict lands in `dashboard/dist/index.html` or `dashboard/dist/assets/`, resolve it by keeping the version from your commit (the incoming side) — it corresponds to the JS asset file your commit staged. The remote's dist will be overwritten again by the next CI run anyway.
+**Do not commit `dashboard/dist/` locally.** CI is the sole writer of dist on `origin/main` — the `build` job rebuilds and commits the dist artifacts (`chore(ci): rebuild dashboard dist [skip ci]`) on every passing push. If you need the dashboard SPA to serve from your local checkout (e.g. running shrok against your branch), build the assets on disk but leave them unstaged:
+
+```bash
+cd dashboard && npm run build
+```
+
+The Express server reads from the working tree, so the running shrok picks up your fresh assets immediately. Do not `git add dashboard/dist/`. CI will produce its own canonical commit when you push your source changes.
+
+**Recovery if you have already committed dist locally** (perhaps as a side-effect of a merge, or from an older workflow): the push will be rejected by CI's parallel commit. The fully-clean path is to drop your dist commit before pulling:
+
+```bash
+git reset --hard HEAD~1   # if your dist commit is the tip
+git pull --ff-only origin main
+```
+
+If that's not feasible (your dist commit is buried under other commits), `git pull --rebase` will conflict on `dashboard/dist/index.html` and `dashboard/dist/assets/`. Resolve by keeping the version from your replayed commit (the incoming side — it matches the JS source files your commit staged). The remote's dist will be overwritten again by the next CI run anyway.
+
+## Changelog
+
+`CHANGELOG.md` is the user-facing record of what shipped. Update it **whenever a milestone completes** (via `/gsd:complete-milestone`) or **a notable user-facing change** lands on `main` — bug fixes that close issues, new tools or skills, channel additions, behavior changes the user should know about. Internal refactors, planning-doc churn, and CI noise do not belong there.
+
+- **File shape**: Keep-a-Changelog format. `## [Unreleased]` at the top, then numbered release sections in reverse chronological order (`## [0.2.0] — 2026-05-13`, `## [0.1.0] — 2026-04-22`).
+- **Entry shape**: subsections by change type — `### Added`, `### Changed`, `### Fixed`, `### Deferred`. One bullet per delivered capability, written in user language, not engineering language. Reference issues/PRs in parentheses where relevant (`closes #14`).
+- **GSD vs release axis**: GSD `v1.x` is a planning scheme used in `.planning/` — several GSD milestones typically ship within one release version. The changelog speaks in release-version terms. Cite GSD milestones in parentheses for traceability (`(GSD v1.7, Phase 45)`).
+- **On version bump** (`chore: bump version to 0.X.Y` + `git tag v0.X.Y`): promote `## [Unreleased]` to a new dated, numbered section. Leave an empty `## [Unreleased]` skeleton at the top.
 
 ## TypeScript
 
