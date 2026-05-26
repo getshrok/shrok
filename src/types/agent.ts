@@ -6,6 +6,8 @@ import type { ToolDefinition } from './llm.js'
 /** Runtime context passed to every tool executor inside an agent. */
 export interface AgentContext {
   agentId: string
+  /** Phase 45 — required; used by ring_device to resolve HA channel */
+  headId: string
   /** Suspend the agent — tool executor should return after calling this. */
   suspend(): void
   /** Terminate the agent with a result. */

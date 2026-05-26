@@ -196,7 +196,7 @@ describe('AgentToolRegistryImpl', () => {
   it('bash executor runs a command and returns output', async () => {
     const entries = registry.resolveOptional(['bash'])
     const bash = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await bash.execute({ command: 'echo hello' }, ctx)
     expect(result).toContain('hello')
     expect(result).toContain('Exit code: 0')
@@ -205,7 +205,7 @@ describe('AgentToolRegistryImpl', () => {
   it('read_file executor reads an existing file', async () => {
     const entries = registry.resolveOptional(['read_file'])
     const readFile = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await readFile.execute({ path: '/etc/hostname' }, ctx)
     expect(typeof result).toBe('string')
     expect((result as string).length).toBeGreaterThan(0)
@@ -214,14 +214,14 @@ describe('AgentToolRegistryImpl', () => {
   it('read_file executor throws for missing file', async () => {
     const entries = registry.resolveOptional(['read_file'])
     const readFile = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     await expect(readFile.execute({ path: '/nonexistent/path/xyz.txt' }, ctx)).rejects.toThrow('read_file')
   })
 
   it('write_file executor writes and returns byte count', async () => {
     const entries = registry.resolveOptional(['write_file'])
     const writeFile = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const tmpPath = `/tmp/agent_test_${Date.now()}.txt`
     const result = await writeFile.execute({ path: tmpPath, content: 'hello world' }, ctx)
     expect(result).toContain('11 bytes')
@@ -234,7 +234,7 @@ describe('AgentToolRegistryImpl', () => {
   it('write_file executor accepts valid SKILL.md frontmatter', async () => {
     const entries = registry.resolveOptional(['write_file'])
     const writeFile = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const fs = await import('node:fs')
     const dir = `/tmp/agent_test_skill_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const tmpPath = `${dir}/SKILL.md`
@@ -251,7 +251,7 @@ describe('AgentToolRegistryImpl', () => {
   it('write_file executor rejects SKILL.md with invalid YAML frontmatter', async () => {
     const entries = registry.resolveOptional(['write_file'])
     const writeFile = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const fs = await import('node:fs')
     const dir = `/tmp/agent_test_skill_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const tmpPath = `${dir}/SKILL.md`
@@ -271,7 +271,7 @@ describe('AgentToolRegistryImpl', () => {
   it('write_file executor accepts valid TASK.md frontmatter', async () => {
     const entries = registry.resolveOptional(['write_file'])
     const writeFile = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const fs = await import('node:fs')
     const dir = `/tmp/agent_test_task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const tmpPath = `${dir}/TASK.md`
@@ -288,7 +288,7 @@ describe('AgentToolRegistryImpl', () => {
   it('edit_file executor rejects edits that break TASK.md frontmatter', async () => {
     const entries = registry.resolveOptional(['edit_file'])
     const editFile = entries[0]!
-    const ctx = { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const fs = await import('node:fs')
     const dir = `/tmp/agent_test_task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const tmpPath = `${dir}/TASK.md`
@@ -1085,7 +1085,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
   it('accepts { taskName, kind:"task" } for a real task and stores target_kind="task"', async () => {
     const unified = await makeTmpUnified()
     const { createSchedule, scheduleStore } = await getCreateScheduleTool(unified)
-    const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await createSchedule.execute({ taskName: 'a-task' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBeUndefined()
@@ -1100,7 +1100,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
   it('accepts task target with kind omitted (defaults to task)', async () => {
     const unified = await makeTmpUnified()
     const { createSchedule, scheduleStore } = await getCreateScheduleTool(unified)
-    const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await createSchedule.execute({ taskName: 'a-task' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBeUndefined()
@@ -1111,7 +1111,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
   it('rejects unknown task target with instruction-shaped error', async () => {
     const unified = await makeTmpUnified()
     const { createSchedule } = await getCreateScheduleTool(unified)
-    const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await createSchedule.execute({ taskName: 'missing' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
@@ -1121,7 +1121,7 @@ describe('create_schedule kind validation (DISPATCH-03)', () => {
   it('rejects a skill target with instruction-shaped error', async () => {
     const unified = await makeTmpUnified()
     const { createSchedule } = await getCreateScheduleTool(unified)
-    const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
     const result = await createSchedule.execute({ taskName: 'my-skill' }, ctx)
     const parsed = JSON.parse(result as string)
     expect(parsed.error).toBe(true)
@@ -1165,7 +1165,7 @@ describe('cadence validation (create_schedule + update_schedule)', () => {
     }
   }
 
-  const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+  const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
 
   // ─── create_schedule ──────────────────────────────────────────────
 
@@ -1250,7 +1250,7 @@ describe('cadence validation (create_schedule + update_schedule)', () => {
 // ─── buildReminderTools (Plan 12-01) ─────────────────────────────────────────
 
 describe('buildReminderTools', () => {
-  const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+  const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
 
   async function getReminderTools() {
     const nodeOs = await import('node:os')
@@ -1474,7 +1474,7 @@ describe('buildReminderTools', () => {
 // ─── phase 23: cronTimezone field ─────────────────────────────────────────────
 
 describe('phase 23: cronTimezone field', () => {
-  const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+  const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
 
   async function makeTmpUnified() {
     const fs = await import('node:fs')
@@ -1670,7 +1670,7 @@ describe('mid-loop update delivery (Phase 24 MSG-01)', () => {
 // ─── Phase 35 D-09 / D-10: factory headId injection + update_schedule reassignment reject ──
 
 describe('Phase 35: buildScheduleTools / buildReminderTools — factory headId injection (D-09)', () => {
-  const ctx = { agentId: 't', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+  const ctx = { agentId: 't', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
 
   async function makeTmpUnifiedWithTask() {
     const fs = await import('node:fs')

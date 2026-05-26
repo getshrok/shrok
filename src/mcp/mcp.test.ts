@@ -115,7 +115,7 @@ describe('fetchMcpTools', () => {
     const entry = entries.find(e => e.definition.name === 'email__list_unread')!
     const result = await entry.execute(
       { folder: 'inbox' },
-      { agentId: 't1', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() },
+      { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() },
     )
     expect(result).toContain('list_unread')
     expect(result).toContain('inbox')
