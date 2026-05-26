@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Voice Alarms & Timers
 status: executing
-last_updated: "2026-05-26T17:17:15.243Z"
+last_updated: "2026-05-26T17:22:42.078Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -18,12 +18,12 @@ progress:
 ## Current Position
 
 Phase: 45 (Ring Delivery Layer + Timer Ring + Alarm) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-05-26
 
 ```
-v1.7 progress: [###########         ] 67% — Phase 45 Plan 4/6 complete
+v1.7 progress: [################    ] 83% — Phase 45 Plan 5/6 complete
 ```
 
 ### Quick Tasks Completed
@@ -229,6 +229,8 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-45-01-HEADID-PUBLIC (Plan 45-01): HomeAssistantChannelAdapter.headId promoted from private readonly to public readonly directly — simpler than adding a getter over a renamed backing field; no behavior change; enables ring tool startup wiring (haAdapters.find(a => a.headId === headId))
 - D-45-01-URL-CACHE-MEMORY-ONLY (Plan 45-01): deviceReachableBaseUrl cached in-memory only in Plan 01; Plan 03 gates caching to non-loopback Host headers from authenticated HA turns (T-45-01-URL mitigated)
 - D-45-01-GETCONFIG-NO-TOKEN (Plan 45-01): getConfig() returns only haBaseUrl/haVoiceSatelliteEntityId; D-05 token safety preserved; no new HA_ACCESS_TOKEN references in any of the three new adapter methods
+- D-45-05-CTOR-2ARGS (Plan 45-05): RingRunner ctor takes 2 args (store + config); haAdapters resolver is NOT stored at construction — passed only to initRingTool and used by dispatchForHead; plan scope note was aspirational, not the real signature
+- D-45-05-RINGCONFIG-SPREAD (Plan 45-05): exactOptionalPropertyTypes fix — narrowed ringConfig object with conditional publicBaseUrl spread so key is absent (not present-as-undefined) when config.publicBaseUrl is not set; passing full Config directly fails tsc
 
 ## Performance Metrics
 
@@ -264,6 +266,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 45 P01 | 4min | 3 tasks | 7 files |
 | Phase 45 P02 | 8min | 2 tasks | 4 files |
 | Phase 45 P04 | 8min | 2 tasks | 4 files |
+| Phase 45 P05 | 8min | 2 tasks | 2 files |
 
 ## Operator Next Steps
 

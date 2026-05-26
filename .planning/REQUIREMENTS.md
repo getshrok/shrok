@@ -12,9 +12,9 @@ Add sustained, dismiss-until-stopped audible alerts on voice channels (Home Assi
 The shared "make noise until told to stop" mechanism. Hard constraint: no model in the ring loop.
 
 - [x] **RING-01**: When a timer or alarm fires on a Home Assistant voice channel, the device plays a **sustained, repeating** alert that keeps sounding until dismissed (not a single ding) — a headless ring runner loops a beep via `media_player.play_media`, polling player state and replaying on idle (the Voice PE has no native `REPEAT_SET`)
-- [ ] **RING-02**: A user dismisses an active ring **by voice** ("stop" / "turn it off") — the dismiss arrives as a normal turn, the head calls `ring_device(stop)`, and the sound stops promptly via `media_player.media_stop` with state cleared
+- [x] **RING-02**: A user dismisses an active ring **by voice** ("stop" / "turn it off") — the dismiss arrives as a normal turn, the head calls `ring_device(stop)`, and the sound stops promptly via `media_player.media_stop` with state cleared
 - [x] **RING-03**: Both the head and sub-agents can start and stop a device ring through a single `ring_device(start|stop)` tool that resolves the target satellite from its head's Home Assistant channel
-- [ ] **RING-04**: `ring_device` is safe to call on any channel — it silently no-ops when the channel has no Home Assistant satellite, so timers/alarms work everywhere with the ring as a voice-only enhancement
+- [x] **RING-04**: `ring_device` is safe to call on any channel — it silently no-ops when the channel has no Home Assistant satellite, so timers/alarms work everywhere with the ring as a voice-only enhancement
 - [x] **RING-05**: The ring loop runs entirely headless — **no LLM activation per beep**; only ring *start* (one activation) and *dismiss* (one activation) touch the head
 - [x] **RING-06**: The beep is a locally bundled static sound served by shrok — never a per-beep TTS or external API call
 - [x] **RING-07**: shrok auto-derives the device's `media_player` (and LED `light`) entity from the configured `haVoiceSatelliteEntityId` via the Home Assistant template API (`device_entities(device_id(...))`), cached per channel, with an optional explicit config override
@@ -64,9 +64,9 @@ Which phases cover which requirements. Filled/validated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | RING-01 | Phase 45 | Complete |
-| RING-02 | Phase 45 | Pending |
+| RING-02 | Phase 45 | Complete |
 | RING-03 | Phase 45 | Complete |
-| RING-04 | Phase 45 | Pending |
+| RING-04 | Phase 45 | Complete |
 | RING-05 | Phase 45 | Complete |
 | RING-06 | Phase 45 | Complete |
 | RING-07 | Phase 45 | Complete |
