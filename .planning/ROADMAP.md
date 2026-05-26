@@ -154,7 +154,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
   - [x] 45-01-PLAN.md — Shared contracts: ring config fields, AgentContext.headId, HA adapter base-URL cache + config getters (Wave 1)
   - [x] 45-02-PLAN.md — Ring-state store + headless RingRunner (poll/replay, entity derive+cache, LED, volume, 24h cap) (Wave 2)
   - [x] 45-03-PLAN.md — Bundled beep + unauthenticated /media/ring.mp3 route + Host-header base-URL capture (Wave 2)
-  - [ ] 45-04-PLAN.md — ring_device(start|stop) dual-surface tool (HEAD_TOOLS + OPTIONAL_TOOLS), no-op on non-HA (Wave 3)
+  - [x] 45-04-PLAN.md — ring_device(start|stop) dual-surface tool (HEAD_TOOLS + OPTIONAL_TOOLS), no-op on non-HA (Wave 3)
   - [ ] 45-05-PLAN.md — Startup wiring: RingRunner instantiation, initRingTool, ringRunner threading, restart cleanup (Wave 4)
   - [ ] 45-06-PLAN.md — Timer skill ring hook + new set-alarm non-ack reminder skill + content tests (Wave 4)
 **UI hint**: no
@@ -182,4 +182,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 42. Outbound HA REST Announce | v1.5 | 2/2 | Complete | 2026-05-24 |
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
-| 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 3/6 | In Progress|  |
+| 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 4/6 | In Progress|  |

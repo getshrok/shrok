@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Voice Alarms & Timers
 status: executing
-last_updated: "2026-05-26T17:10:51.443Z"
+last_updated: "2026-05-26T17:17:15.243Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -18,12 +18,12 @@ progress:
 ## Current Position
 
 Phase: 45 (Ring Delivery Layer + Timer Ring + Alarm) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-05-26
 
 ```
-v1.7 progress: [######              ] 33% — Phase 45 Plan 2/6 complete
+v1.7 progress: [###########         ] 67% — Phase 45 Plan 4/6 complete
 ```
 
 ### Quick Tasks Completed
@@ -215,6 +215,13 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-DASHBOARD-OWNER-EXCLUDED (Plan 44-04): owner head filtered from "deliver to" multi-select options; owner is always implicitly included via chip-render dedup — offering owner as selectable would be redundant and confusing
 - D-DASHBOARD-EMPTY-PATCH (Plan 44-04): clearing the multi-select sends `deliverToHeadIds: []` on PATCH; `store.update` delete-on-empty (Plan 44-01) reverts to owner-only — no special UI affordance needed
 
+## Decisions (Phase 45 Plan 04)
+
+- D-45-04-SINGLETON: executeRingDevice uses module-level singletons set by initRingTool so OPTIONAL_TOOLS Map entry can be static — matches all existing OPTIONAL_TOOLS entries, no factory needed
+- D-45-04-DISPATCH-NOOP: head dispatch case 'ring_device' returns {ok:true,note:'ring runner not configured'} when ringRunner is absent — safe degradation for heads without HA wiring
+- D-45-04-SOURCE-COERCE: source input outside 'alarm'/'timer' coerces to 'timer' as safe default; schema enum is primary guard (T-45-04-ENUM mitigated)
+- D-45-04-PREINIT-NOOP: executeRingDevice before initRingTool returns {ok:true,note:'ring not configured'} — never throws (RING-04 extension to uninitialized state)
+
 ## Decisions (Phase 45)
 
 - D-45-01-ALLOWLIST (Plan 45-01): publicBaseUrl/ringVolume/ringCapHours NOT added to ENV_KEY_ALLOWLIST — behavioral config.json fields, not secrets; only HA_ACCESS_TOKEN and HA_INBOUND_API_KEY belong there per D-04 (T-45-01-CFG mitigated)
@@ -256,6 +263,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 44 P04 | 20min | 3 tasks | 3 files |
 | Phase 45 P01 | 4min | 3 tasks | 7 files |
 | Phase 45 P02 | 8min | 2 tasks | 4 files |
+| Phase 45 P04 | 8min | 2 tasks | 4 files |
 
 ## Operator Next Steps
 

@@ -102,6 +102,9 @@ export interface SystemDeps {
   headId?: string
   /** Issue #12: per-head custom system-prompt addition, appended in the assembler's cached prefix. */
   customPrompt?: string
+  /** Phase 45: global RingRunner singleton for ring_device dispatch. Optional — when absent
+   *  the HeadToolExecutor returns a graceful no-op (mirrors scheduleStore? pattern). */
+  ringRunner?: import('./ring/runner.js').RingRunner
   /** Phase 35 D-08: callback that returns the current heads list at call time (no cache).
    *  Threaded into ActivationLoop for the D-07 reminder first-channel fallback. The host
    *  supplies `() => resolveHeads(loadConfig())` so dashboard edits between ticks land
@@ -362,6 +365,7 @@ export function buildSystem(deps: SystemDeps): System {
     scheduleStore: stores.schedules,
     timezone: config.timezone,
     ...(deps.spawnAgentNote !== undefined ? { spawnAgentNote: deps.spawnAgentNote } : {}),
+    ...(deps.ringRunner ? { ringRunner: deps.ringRunner } : {}),
   }
 
   // ── Activation Loop ─────────────────────────────────────────────────────
