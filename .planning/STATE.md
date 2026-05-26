@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Voice Alarms & Timers
 status: verifying
-last_updated: "2026-05-26T17:27:52.517Z"
+last_updated: "2026-05-26T21:23:25Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 1
@@ -35,6 +35,7 @@ v1.7 progress: [####################] 100% — Phase 45 Plan 6/6 complete
 | 260525-5m2 | Per-head custom prompt addition + head-aware context assembler (issue #12) | 2026-05-25 | eb7cb0d | Verified | [260525-5m2-per-head-custom-prompt-addition-make-con](./quick/260525-5m2-per-head-custom-prompt-addition-make-con/) |
 | 260525-6d5 | Cascade task/skill rename across all references (frontmatter, schedules, cross-kind skill-deps, usage) | 2026-05-25 | 9059548 | Verified (targeted tests; full suite deferred to CI) | [260525-6d5-cascade-task-skill-rename-across-all-ref](./quick/260525-6d5-cascade-task-skill-rename-across-all-ref/) |
 | 260525-fgc | Fix dashboard convo-view voice mode: per-turn live MSE, head-aware WS URL, query-tolerant upgrade guard, per-connection head routing + multi-router registration | 2026-05-25 | 29c50de | Verified (tsc + dashboard 73/73 + root 1707/1708 green) | [260525-fgc-fix-dashboard-convo-view-voice-mode-turn](./quick/260525-fgc-fix-dashboard-convo-view-voice-mode-turn/) |
+| 260526-mdd | Stop exposing models to UTC — enforce YYYY-MM-DD HH:MM invariant at all model↔tool time boundaries, close issue #18 | 2026-05-26 | 02c1dba |  | [260526-mdd-stop-exposing-models-to-utc-issue-18](./quick/260526-mdd-stop-exposing-models-to-utc-issue-18/) |
 
 ## Project Reference
 
