@@ -548,27 +548,43 @@ describe('POST /v1/chat/completions', () => {
 
   describe('RING-08 — Host header → adapter.cacheBaseUrl (non-loopback only)', () => {
     /**
-     * POST helper that supports injecting arbitrary headers.
-     * Unlike postCompletions() this allows the test to pass a Host header.
+     * POST helper using node:http so we can set the Host header explicitly.
+     * window.fetch / Node fetch treat Host as a forbidden header and ignore it;
+     * node:http's request() allows arbitrary Host overrides.
      */
     async function postWithHost(
       port: number,
       hostHeader: string,
-      proto?: string,
+      opts: { bearerKey?: string; proto?: string; omitAuth?: boolean } = {},
     ): Promise<{ status: number; body: unknown }> {
+      const http = await import('node:http')
+      const bodyStr = JSON.stringify({ messages: [{ role: 'user', content: 'ring test' }] })
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TEST_API_KEY}`,
         'Host': hostHeader,
+        'Content-Length': String(Buffer.byteLength(bodyStr)),
       }
-      if (proto !== undefined) headers['X-Forwarded-Proto'] = proto
-      const rawResponse = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ messages: [{ role: 'user', content: 'ring test' }] }),
+      if (!opts.omitAuth) {
+        headers['Authorization'] = `Bearer ${opts.bearerKey ?? TEST_API_KEY}`
+      }
+      if (opts.proto !== undefined) headers['X-Forwarded-Proto'] = opts.proto
+      return new Promise((resolve, reject) => {
+        const req = http.request(
+          { hostname: '127.0.0.1', port, method: 'POST', path: '/v1/chat/completions', headers },
+          (res) => {
+            const chunks: Buffer[] = []
+            res.on('data', (chunk: Buffer) => chunks.push(chunk))
+            res.on('end', () => {
+              let body: unknown = null
+              try { body = JSON.parse(Buffer.concat(chunks).toString()) } catch { /* ignore */ }
+              resolve({ status: res.statusCode ?? 0, body })
+            })
+          },
+        )
+        req.on('error', reject)
+        req.write(bodyStr)
+        req.end()
       })
-      const responseBody: unknown = await rawResponse.json().catch(() => null)
-      return { status: rawResponse.status, body: responseBody }
     }
 
     it('non-loopback Host → caches http://<host>', async () => {
@@ -581,7 +597,7 @@ describe('POST /v1/chat/completions', () => {
     it('non-loopback Host + X-Forwarded-Proto: https → caches https://<host>', async () => {
       fx = await startServer()
       setupSend(fx.adapter, 'ok')
-      await postWithHost(fx.port, 'jarvis.gigaashley.click', 'https')
+      await postWithHost(fx.port, 'jarvis.gigaashley.click', { proto: 'https' })
       expect(fx.adapter.getDeviceReachableBaseUrl()).toBe('https://jarvis.gigaashley.click')
     })
 
@@ -601,16 +617,9 @@ describe('POST /v1/chat/completions', () => {
 
     it('unauthenticated request with non-loopback Host → cacheBaseUrl NOT called', async () => {
       fx = await startServer()
-      // No bearer token
-      const res = await fetch(`http://127.0.0.1:${fx.port}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Host': '192.168.111.69:8888',
-        },
-        body: JSON.stringify({ messages: [{ role: 'user', content: 'pwn' }] }),
-      })
-      expect(res.status).toBe(401)
+      // No Authorization header — omitAuth: true
+      const result = await postWithHost(fx.port, '192.168.111.69:8888', { omitAuth: true })
+      expect(result.status).toBe(401)
       expect(fx.adapter.getDeviceReachableBaseUrl()).toBeNull()
     })
   })

@@ -40,6 +40,26 @@ export function createHomeAssistantRouter(
       return
     }
 
+    // ── (1b) RING-08: cache device-reachable base URL from Host header ───────
+    // Runs ONLY after Bearer auth passes (authenticated inbound turns only).
+    // Scheme: prefer X-Forwarded-Proto (set by Apache reverse proxy), fall back
+    // to req.secure (direct TLS) or plain http.
+    // Loopback hosts (127.*, localhost*, [::1]) are NOT cached — they are
+    // unreachable by the HA device; publicBaseUrl is the fallback in that case.
+    // T-45-03-HOST mitigated: value is only used to build a media URL for the
+    // user's own HA device; never used for auth decisions.
+    const proto = (req.headers['x-forwarded-proto'] as string | undefined) ?? (req.secure ? 'https' : 'http')
+    const host = req.headers['host'] as string | undefined
+    if (
+      host &&
+      !host.startsWith('127.') &&
+      !host.startsWith('localhost') &&
+      !host.startsWith('[::1]') &&
+      host !== '::1'
+    ) {
+      adapter.cacheBaseUrl(`${proto}://${host}`)
+    }
+
     // ── (2) Extract last user turn ────────────────────────────────────────────
     // HA sends the full messages[] on every turn; discard all but the last
     // role:'user' entry.  Shrok's ContextAssembler owns history (HACV-03).
