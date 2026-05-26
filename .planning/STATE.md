@@ -2,28 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Voice Alarms & Timers
-status: executing
-last_updated: "2026-05-26T17:22:42.078Z"
+status: verifying
+last_updated: "2026-05-26T17:27:52.517Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 0
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 45 (Ring Delivery Layer + Timer Ring + Alarm) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
+Phase: 45 (Ring Delivery Layer + Timer Ring + Alarm) — COMPLETE
+Plan: 6 of 6 — ALL DONE
+Status: All plans complete — v1.7 milestone ready for verification
 Last activity: 2026-05-26
 
 ```
-v1.7 progress: [################    ] 83% — Phase 45 Plan 5/6 complete
+v1.7 progress: [####################] 100% — Phase 45 Plan 6/6 complete
 ```
 
 ### Quick Tasks Completed
@@ -231,11 +231,16 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - D-45-01-GETCONFIG-NO-TOKEN (Plan 45-01): getConfig() returns only haBaseUrl/haVoiceSatelliteEntityId; D-05 token safety preserved; no new HA_ACCESS_TOKEN references in any of the three new adapter methods
 - D-45-05-CTOR-2ARGS (Plan 45-05): RingRunner ctor takes 2 args (store + config); haAdapters resolver is NOT stored at construction — passed only to initRingTool and used by dispatchForHead; plan scope note was aspirational, not the real signature
 - D-45-05-RINGCONFIG-SPREAD (Plan 45-05): exactOptionalPropertyTypes fix — narrowed ringConfig object with conditional publicBaseUrl spread so key is absent (not present-as-undefined) when config.publicBaseUrl is not set; passing full Config directly fails tsc
+- D-45-06-TIMER-ADDITIVE (Plan 45-06): timer step 3 ring_device call is purely additive — no competing path, no structure change (TIMER-02 locked)
+- D-45-06-ALARM-IMPERATIVE (Plan 45-06): set-alarm fire-time message uses 'MUST call ring_device' phrasing to prevent Pitfall 6 (LLM narrating instead of tool-calling)
+- D-45-06-NO-ACK (Plan 45-06): set-alarm never sets requiresAck/nag — continuous ring + 24h cap is the entire alert mechanism
+- D-45-06-TEST-SCOPE (Plan 45-06): TIMER-02 test checks numbered steps section only (not guidance text); ALARM-03 test checks code-block examples only (not constraint text) — avoids false positives from advisory references
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 45    | 06   | 4min     | 3     | 3     |
 | 45    | 01   | 4min     | 3     | 7     |
 | 44    | 03   | 2min     | 2     | 2     |
 | 44    | 02   | 5min     | 2     | 2     |

@@ -25,14 +25,14 @@ The shared "make noise until told to stop" mechanism. Hard constraint: no model 
 
 ### Timer Ring (TIMER)
 
-- [ ] **TIMER-01**: When a voice-set timer elapses, the device rings (the `timer` skill calls `ring_device(start)`) and keeps sounding until dismissed — replacing the previous single spoken "your timer is up"
-- [ ] **TIMER-02**: The existing `timer` skill is otherwise unchanged — the only addition is the ring call at completion; no second/competing timer path is introduced
+- [x] **TIMER-01**: When a voice-set timer elapses, the device rings (the `timer` skill calls `ring_device(start)`) and keeps sounding until dismissed — replacing the previous single spoken "your timer is up"
+- [x] **TIMER-02**: The existing `timer` skill is otherwise unchanged — the only addition is the ring call at completion; no second/competing timer path is introduced
 
 ### Alarm (ALARM)
 
-- [ ] **ALARM-01**: A user can set an alarm for a specific time (one-off or recurring) via a new `set-alarm` skill; the alarm is persisted as a reminder and survives a restart
-- [ ] **ALARM-02**: When an alarm fires, the device rings until dismissed — the fire-time prompt calls `ring_device(start)`, reusing the shared ring delivery layer
-- [ ] **ALARM-03**: The alarm uses a **non-ack** reminder — no nag/escalation; if the device is offline at fire time the ring silently fails (accepted trade-off)
+- [x] **ALARM-01**: A user can set an alarm for a specific time (one-off or recurring) via a new `set-alarm` skill; the alarm is persisted as a reminder and survives a restart
+- [x] **ALARM-02**: When an alarm fires, the device rings until dismissed — the fire-time prompt calls `ring_device(start)`, reusing the shared ring delivery layer
+- [x] **ALARM-03**: The alarm uses a **non-ack** reminder — no nag/escalation; if the device is offline at fire time the ring silently fails (accepted trade-off)
 
 ## Future Requirements
 
@@ -74,11 +74,11 @@ Which phases cover which requirements. Filled/validated during roadmap creation.
 | RING-09 | Phase 45 | Complete |
 | RING-10 | Phase 45 | Complete |
 | RING-11 | Phase 45 | Complete |
-| TIMER-01 | Phase 45 | Pending |
-| TIMER-02 | Phase 45 | Pending |
-| ALARM-01 | Phase 45 | Pending |
-| ALARM-02 | Phase 45 | Pending |
-| ALARM-03 | Phase 45 | Pending |
+| TIMER-01 | Phase 45 | Complete |
+| TIMER-02 | Phase 45 | Complete |
+| ALARM-01 | Phase 45 | Complete |
+| ALARM-02 | Phase 45 | Complete |
+| ALARM-03 | Phase 45 | Complete |
 
 **Coverage:**
 - v1.7 requirements: 16 total
