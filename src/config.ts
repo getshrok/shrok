@@ -56,6 +56,8 @@ export const ChannelConfigSchema = z.discriminatedUnion('vendor', [
       /^assist_satellite\.[a-z0-9_]+$/,
       'haVoiceSatelliteEntityId must match assist_satellite.<object_id>',
     ),
+    haMediaPlayerEntityId: z.string().optional(),  // explicit override; derived if absent (Phase 45 RING-07)
+    haLedEntityId: z.string().optional(),          // explicit override; derived if absent (Phase 45 RING-07)
   }),
 ])
 
@@ -255,6 +257,11 @@ const ConfigSchema = z.object({
   // Proactive scheduling — Phase 1: shadow mode (log decisions only), Phase 2: live gating
   proactiveShadow: z.coerce.boolean().default(false),
   proactiveEnabled: z.coerce.boolean().default(true),
+
+  // Ring delivery layer (Phase 45)
+  publicBaseUrl: z.string().url().optional(),                          // device-reachable base URL override (RING-08)
+  ringVolume: z.coerce.number().min(0).max(1).default(0.5),           // HA media_player volume (0.0–1.0; RING-09)
+  ringCapHours: z.coerce.number().min(1).max(72).default(24),         // auto-dismiss cap in hours (RING-10)
 
   // Dashboard
   dashboardPort: z.coerce.number().default(8888),
