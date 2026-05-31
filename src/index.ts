@@ -794,10 +794,14 @@ async function main() {
   }, 10_000)
 
   // ── Start all per-head activation loops ───────────────────────────────────────
-  for (const { system: s, head: h } of headSystems) {
+  // Every head starts its loop so all channels stay responsive to inbound
+  // messages, but only the FIRST head announces online — otherwise every
+  // restart spams each head's channel with a greeting (voice device speaks,
+  // secondary heads' chats get pinged unsolicited).
+  for (const [i, { system: s, head: h }] of headSystems.entries()) {
     s.activationLoop.start()
-    s.activationLoop.announceOnline()
-    log.info(`[startup] head=${h.id} activation loop running`)
+    if (i === 0) s.activationLoop.announceOnline()
+    log.info(`[startup] head=${h.id} activation loop running${i === 0 ? ' (announced online)' : ' (silent)'}`)
   }
 
   // ── Graceful shutdown ─────────────────────────────────────────────────────────

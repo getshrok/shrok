@@ -24,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **No UTC ever reaches the model.** Every model-facing time surface — `create_reminder.triggerAt`, `create_schedule.runAt`, `update_schedule.runAt`, `get_usage.since`, and the output of `list_reminders` / `list_schedules` / `get_file_info` — now uses workspace-local `YYYY-MM-DD HH:MM` format (24-hour, no `Z`, no offset, no IANA suffix). New `src/util/model-time.ts` helpers (`parseModelTime`, `formatModelTime`, `formatPastTimeError`) sit at every tool boundary; `parseModelTime` rejects `Z`/offset/IANA input with a clear error. `create_reminder` and `create_schedule` also enforce a 30-second past-time guard that returns a structured error in workspace-local format so the model self-corrects. Documented as a project invariant in `AGENTS.md`. (closes #18)
 - **Dashboard conversation-view voice mode** now resolves the correct head per connection — per-turn live MSE, head-aware WebSocket URL, upgrade guard, multi-router registration. (closes #16)
 - **Task/skill rename** cascades through all references (loader frontmatter, schedule store, usage store, body-text mentions surfaced as warnings).
+- **Only the first head greets on startup** — with multiple heads configured, a restart no longer fires an "online" greeting from every head (which spoke on voice devices and pinged secondary chats unsolicited). Secondary heads still start their activation loops and remain fully responsive to inbound messages.
+
+### Fixed
+- **Usage costs no longer go negative for prompt-cache-heavy calls** — the cost estimator incorrectly subtracted Anthropic cache-read and cache-creation tokens from the input-token count, but Anthropic already reports `input_tokens` exclusive of cached tokens. Cache-heavy calls (notably scheduled tasks reusing a large cached prompt) were priced as negative dollars in the usage dashboard. The three token buckets are now priced additively, so estimated cost can never be negative.
 
 ## [0.2.0] — 2026-05-13
 

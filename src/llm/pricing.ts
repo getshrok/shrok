@@ -34,11 +34,16 @@ const FALLBACK: ModelPricing = { input: 5.00, output: 25.00 }
 /** Returns estimated cost in USD for a single LLM call.
  *
  * Cache token counts are optional (default 0 for backward compatibility).
- * Anthropic's `input_tokens` is the TOTAL including cached tokens, so we
- * price each bucket separately:
+ * Anthropic's `input_tokens` already EXCLUDES cached tokens — `cache_read`
+ * and `cache_creation` are reported separately and are additive, not a
+ * subset. So `inputTokens` is the uncached count and is priced at full rate
+ * directly (no subtraction). Each bucket is priced separately:
  *   - uncached input at full rate (1x)
  *   - cache reads at 0.1x (10% of full input rate)
  *   - cache creation at 1.25x (25% more than full input rate)
+ *
+ * (Providers whose `input_tokens` is inclusive of cache, e.g. OpenAI, don't
+ * pass cache args here — they default to 0 — so this stays correct for them.)
  */
 export function estimateCost(
   model: string,
@@ -48,8 +53,7 @@ export function estimateCost(
   cacheCreationTokens = 0,
 ): number {
   const pricing = PRICING[model] ?? FALLBACK
-  const uncachedInput = inputTokens - cacheReadTokens - cacheCreationTokens
-  const inputCost = uncachedInput * pricing.input
+  const inputCost = inputTokens * pricing.input
     + cacheReadTokens * pricing.input * 0.1
     + cacheCreationTokens * pricing.input * 1.25
   return (inputCost + outputTokens * pricing.output) / 1_000_000
