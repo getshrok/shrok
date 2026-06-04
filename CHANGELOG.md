@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 - **Usage costs no longer go negative for prompt-cache-heavy calls** — the cost estimator incorrectly subtracted Anthropic cache-read and cache-creation tokens from the input-token count, but Anthropic already reports `input_tokens` exclusive of cached tokens. Cache-heavy calls (notably scheduled tasks reusing a large cached prompt) were priced as negative dollars in the usage dashboard. The three token buckets are now priced additively, so estimated cost can never be negative.
+- **Dashboard voice mode now plays replies on iOS Safari** — on iPhone the assistant's spoken reply was silent (the text bubble appeared but no audio). iOS Safari exposes `ManagedMediaSource` instead of the standard `MediaSource`, so the MP3 streaming-playback path silently failed there; it now falls back to buffered `<audio>` playback on those browsers. The mic is also paused while a reply plays on that path, so the phone speaker isn't picked up as speech and used to cut the reply short. Desktop streaming playback and barge-in are unchanged.
 
 ## [0.2.0] — 2026-05-13
 

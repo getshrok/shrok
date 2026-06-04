@@ -1,6 +1,8 @@
 // dashboard/src/hooks/useVoice.ts
 //
-// Single owner of voice-mode side effects: FSM, VAD, WebSocket, MSE playback, barge-in.
+// Single owner of voice-mode side effects: FSM, VAD, WebSocket, playback, barge-in.
+// Playback has two paths chosen by capability: streaming MSE where MP3-in-MSE is
+// supported (Chrome), and buffered Web Audio on Safari/iOS where it isn't.
 // VoiceButton is purely presentational — it renders the state this hook exposes.
 //
 // Implements locked decisions D-01, D-03, D-07, D-09, D-10 from 21-CONTEXT.md
@@ -43,6 +45,42 @@ function getMediaSourceCtor(): MediaSourceCtor | null {
   return w.ManagedMediaSource ?? null
 }
 
+// Streaming MSE playback only works where MP3 is a supported MSE codec — Chrome
+// and friends. Safari/iOS has NEVER supported 'audio/mpeg' in (Managed)MediaSource,
+// so feeding it the server's raw MP3 chunks silently fails. We detect that by
+// capability (not UA) and fall back to buffered <audio>-element playback there.
+function canStreamMp3(): boolean {
+  // Only the STANDARD MediaSource (Chrome, Android, most desktop) streams MP3
+  // reliably. iOS Safari exposes ManagedMediaSource instead — it reports
+  // isTypeSupported('audio/mpeg') === true, but its streaming contract
+  // (disableRemotePlayback + startstreaming/endstreaming gating) means our
+  // eagerly-appended MP3 chunks never actually play. So ManagedMediaSource is
+  // deliberately NOT treated as stream-capable here — it routes to buffered
+  // <audio> playback, which plays plain MP3 on iOS without ceremony.
+  if (typeof MediaSource === 'undefined') return false
+  return typeof MediaSource.isTypeSupported === 'function' && MediaSource.isTypeSupported('audio/mpeg')
+}
+
+// A 1-sample silent WAV as a data URL. Played once inside the user gesture to
+// "unlock" an <audio> element on iOS so later programmatic .play() calls work.
+// Built lazily (uses btoa) so importing this module stays browser-API-free for
+// the node/unit-test environment.
+function silentClipDataUrl(): string {
+  const sampleRate = 8000
+  const dataSize = 2 // one 16-bit sample
+  const buffer = new ArrayBuffer(44 + dataSize)
+  const view = new DataView(buffer)
+  const writeStr = (off: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)) }
+  writeStr(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); writeStr(8, 'WAVE')
+  writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true)
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true)
+  writeStr(36, 'data'); view.setUint32(40, dataSize, true)
+  let bin = ''
+  new Uint8Array(buffer).forEach(b => { bin += String.fromCharCode(b) })
+  return 'data:audio/wav;base64,' + btoa(bin)
+}
+
 export function useVoice(selectedHead: string): UseVoiceReturn {
   const [state, dispatch] = useReducer(voiceFSM, INITIAL_VOICE_STATE)
   const [voiceActive, setVoiceActive] = useState(false)
@@ -56,6 +94,10 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
   const mediaSourceRef = useRef<MediaSource | null>(null)
   const sourceBufferRef = useRef<SourceBuffer | null>(null)
   const chunkQueueRef = useRef<ArrayBuffer[]>([])
+  // Buffered (Safari/iOS) playback handles — unused on the streaming MSE path.
+  const bufAudioRef = useRef<HTMLAudioElement | null>(null)
+  const bufUrlRef = useRef<string | null>(null)   // current blob object URL (revoked per turn)
+  const streamMp3Ref = useRef(false)   // playback mode for this voice session
   const stateRef = useRef<VoiceState>(INITIAL_VOICE_STATE)
   const voiceActiveRef = useRef(false)
   const errorTimerRef = useRef<ErrorTimerHandle | null>(null)
@@ -141,6 +183,59 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
     }
   }, [teardownMSE, setupMSE])
 
+  // --- Buffered playback (Safari/iOS — MP3-in-MSE unsupported) --------------
+  // Collect a turn's MP3 chunks and play the whole clip through a single
+  // <audio> element. Chosen over Web Audio deliberately: HTMLMediaElement audio
+  // plays through the iPhone's hardware mute switch, whereas the Web Audio API
+  // is silenced by it. The element is unlocked once inside the user gesture
+  // (see toggleVoice) so later programmatic .play() calls are allowed on iOS.
+  // Tradeoff vs MSE: playback starts after the full reply arrives (no streaming).
+
+  const stopBufferedPlayback = useCallback((): void => {
+    const el = bufAudioRef.current
+    if (el) {
+      el.onended = null   // null first so pause() can't fire our TTS_DONE
+      try { el.pause() } catch { /* noop */ }
+    }
+  }, [])
+
+  // Assemble the accumulated chunks into one MP3 blob and play it. Dispatches
+  // TTS_DONE when the clip ends (or immediately on an empty/failed turn) so the
+  // FSM leaves 'speaking' — which keeps barge-in live for the whole reply.
+  const playBufferedTurn = useCallback((): void => {
+    const el = bufAudioRef.current
+    const chunks = chunkQueueRef.current
+    chunkQueueRef.current = []
+    if (!el || chunks.length === 0) { dispatch({ type: 'TTS_DONE' }); return }
+    const blob = new Blob(chunks, { type: 'audio/mpeg' })
+    if (bufUrlRef.current) { try { URL.revokeObjectURL(bufUrlRef.current) } catch { /* noop */ } }
+    const url = URL.createObjectURL(blob)
+    bufUrlRef.current = url
+    el.onended = () => {
+      try { void vadRef.current?.start() } catch { /* noop */ }   // resume mic after the reply
+      dispatch({ type: 'TTS_DONE' })
+    }
+    el.src = url
+    // Half-duplex on the buffered (phone) path: pause the mic while the reply
+    // plays so the speaker output isn't picked up as "speech" and used to
+    // barge-in — which was truncating the reply after a few words. The mic
+    // resumes in onended (and in the catch below if playback never starts).
+    try { void vadRef.current?.pause() } catch { /* noop */ }
+    el.play().catch(() => {
+      try { void vadRef.current?.start() } catch { /* noop */ }
+      dispatch({ type: 'TTS_DONE' })
+    })
+  }, [])
+
+  const teardownBuffered = useCallback((): void => {
+    stopBufferedPlayback()
+    const el = bufAudioRef.current
+    bufAudioRef.current = null
+    if (bufUrlRef.current) { try { URL.revokeObjectURL(bufUrlRef.current) } catch { /* noop */ }; bufUrlRef.current = null }
+    if (el) { try { el.removeAttribute('src'); el.load() } catch { /* noop */ } }
+    chunkQueueRef.current = []
+  }, [stopBufferedPlayback])
+
   const teardownAll = useCallback(async () => {
     if (vadRef.current) {
       try { await vadRef.current.destroy() } catch { /* noop */ }
@@ -152,7 +247,8 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
       try { ws.close() } catch { /* noop */ }
     }
     teardownMSE()
-  }, [teardownMSE])
+    teardownBuffered()
+  }, [teardownMSE, teardownBuffered])
 
   // --- Toggle ---------------------------------------------------------------
 
@@ -168,12 +264,16 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
     // --- ENTER voice mode (user-gesture context — D-09, Pattern 2) ---
     // MicVAD.new must be called from a user gesture; we do so synchronously here.
     try {
-      // Pre-flight: MediaSource (or ManagedMediaSource on iOS PWA) required for TTS playback.
-      if (!getMediaSourceCtor()) {
+      // Pre-flight: need either streaming MSE (MP3-capable) or an <audio> element.
+      if (!canStreamMp3() && typeof Audio === 'undefined') {
         signalError('Voice requires iOS 17.1+ or Chrome on Android')
         dispatch({ type: 'ERROR' })
         return
       }
+      // Pick the playback path once per session. Chrome → streaming MSE;
+      // Safari/iOS (no MP3-in-MSE) → buffered <audio>-element playback.
+      const streamMp3 = canStreamMp3()
+      streamMp3Ref.current = streamMp3
 
       // 1. Open WS first so we can send audio as soon as speech ends.
       const ws = new WebSocket(buildWsUrl(selectedHead))
@@ -182,22 +282,30 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
 
       ws.addEventListener('message', (evt: MessageEvent) => {
         if (evt.data instanceof ArrayBuffer) {
-          // Binary = MP3 chunk; queue and flush.
+          // Binary = MP3 chunk. Always accumulate; streaming mode also flushes to MSE.
           chunkQueueRef.current.push(evt.data)
-          flushChunkQueue()
+          if (streamMp3Ref.current) flushChunkQueue()
           return
         }
         if (typeof evt.data === 'string') {
           try {
             const msg = JSON.parse(evt.data) as { type?: string }
             if (msg.type === 'tts_start') {
-              ensureLiveMSE()
+              if (streamMp3Ref.current) ensureLiveMSE()
+              else chunkQueueRef.current = []   // start fresh capture for this turn
               dispatch({ type: 'TTS_START' })
             }
             else if (msg.type === 'tts_done') {
-              const ms = mediaSourceRef.current
-              if (ms && ms.readyState === 'open') { try { ms.endOfStream() } catch { /* noop */ } }
-              dispatch({ type: 'TTS_DONE' })
+              if (streamMp3Ref.current) {
+                const ms = mediaSourceRef.current
+                if (ms && ms.readyState === 'open') { try { ms.endOfStream() } catch { /* noop */ } }
+                dispatch({ type: 'TTS_DONE' })
+              } else {
+                // Buffered: decode + play the whole clip now. TTS_DONE is
+                // dispatched by playBufferedTurn when the clip actually ends,
+                // keeping the FSM in 'speaking' (and barge-in live) during playback.
+                void playBufferedTurn()
+              }
             }
           } catch { /* malformed JSON — ignore */ }
         }
@@ -222,11 +330,22 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
         setVoiceActive(false)
       })
 
-      // 2. Set up MSE audio element (does nothing until tts_start arrives).
-      const audioEl = setupMSE()
-      // Pitfall 3: tie play() to the user gesture. Start a silent play() that
-      // resolves once MSE source is ready; rejection is fine here.
-      audioEl.play().catch(() => { /* autoplay policy may reject; retry on tts_start */ })
+      // 2. Set up playback, primed inside this user gesture (autoplay policy).
+      if (streamMp3) {
+        // Streaming MSE (Chrome): element does nothing until tts_start arrives.
+        const audioEl = setupMSE()
+        // Pitfall 3: tie play() to the user gesture so later chunks play.
+        audioEl.play().catch(() => { /* autoplay policy may reject; retry on tts_start */ })
+      } else {
+        // Buffered <audio> (Safari/iOS): create the element and unlock it NOW,
+        // inside the gesture, by playing a silent clip — so later programmatic
+        // .play() calls (one per reply) are allowed by iOS autoplay policy.
+        const el = new Audio()
+        el.preload = 'auto'
+        bufAudioRef.current = el
+        el.src = silentClipDataUrl()
+        el.play().catch(() => { /* best-effort unlock; per-turn play retries */ })
+      }
 
       // 3. Initialise MicVAD with callbacks that use refs (Pitfall 5).
       const vad = await MicVAD.new({
@@ -236,11 +355,18 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
         onSpeechStart: () => {
           if (stateRef.current === 'speaking') {
             // Barge-in (Pitfall 4): stop local playback + tell server to cancel TTS.
-            teardownMSE()
-            try { wsRef.current?.send(JSON.stringify({ type: 'cancel_tts' })) } catch { /* noop */ }
-            // Recreate MSE for the next turn; capture new element and start play.
-            const newAudioEl = setupMSE()
-            newAudioEl.play().catch(() => { /* autoplay policy may reject; retry on tts_start */ })
+            if (streamMp3Ref.current) {
+              teardownMSE()
+              try { wsRef.current?.send(JSON.stringify({ type: 'cancel_tts' })) } catch { /* noop */ }
+              // Recreate MSE for the next turn; capture new element and start play.
+              const newAudioEl = setupMSE()
+              newAudioEl.play().catch(() => { /* autoplay policy may reject; retry on tts_start */ })
+            } else {
+              // Buffered: stop the current clip and drop any partial capture.
+              stopBufferedPlayback()
+              chunkQueueRef.current = []
+              try { wsRef.current?.send(JSON.stringify({ type: 'cancel_tts' })) } catch { /* noop */ }
+            }
           }
           dispatch({ type: 'SPEECH_START' })
         },
@@ -271,7 +397,7 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
       await teardownAll()
       setVoiceActive(false)
     }
-  }, [ensureLiveMSE, flushChunkQueue, selectedHead, setupMSE, signalError, teardownAll, teardownMSE])
+  }, [ensureLiveMSE, flushChunkQueue, playBufferedTurn, selectedHead, setupMSE, signalError, stopBufferedPlayback, teardownAll, teardownMSE])
 
   // Cleanup on unmount.
   useEffect(() => {
