@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { sync as writeFileAtomic } from 'write-file-atomic'
+import { HEAD_TOOL_NAMES } from './head/index.js'
 
 const WorkerDefaultsSchema = z.object({
   // Env vars available to bash subprocesses in ad hoc workers. null = unrestricted (full process.env).
@@ -283,10 +284,14 @@ const ConfigSchema = z.object({
   // Worker defaults — apply to ad hoc workers (no skill). Skills override via frontmatter.
   // workerDefaults.allowedTools is the GLOBAL AGENT layer (TOOLCFG-02) — do not duplicate.
   workerDefaults: WorkerDefaultsSchema,
-  // Global head-tools default (TOOLCFG-01). Mirrors WorkerDefaultsSchema's allowedTools semantics:
-  // null/absent = all head tools, [array] = only those tools. Per-head headToolsOverride takes precedence.
+  // Global head-tools default (TOOLCFG-01/07). Two-state:
+  //   absent in config.json  → defaults to HEAD_TOOL_NAMES (the 10 head-compatible tools)
+  //   [array]                → only those tools
+  // Per-head headToolsOverride takes precedence. Legacy null is tolerated at parse time
+  // but normalized to fall-through in resolveAllowlist (never means "all tools" in the
+  // feature path; D-05).
   headToolDefaults: z.object({
-    allowedTools: z.array(z.string()).nullable().default(null),
+    allowedTools: z.array(z.string()).nullable().default(HEAD_TOOL_NAMES),
   }).default({}),
 
   // Phase 31 (CONF-01): optional multi-head adapter registry. When present,
