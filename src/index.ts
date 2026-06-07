@@ -272,6 +272,9 @@ async function main() {
       headId: head.id,
       ringRunner,
       ...(head.customPrompt !== undefined ? { customPrompt: head.customPrompt } : {}),
+      // Phase 46 (TOOLCFG-05, TOOLCFG-06): per-head tool allowlist overrides.
+      ...(head.headToolsOverride !== undefined ? { headToolsOverride: head.headToolsOverride } : {}),
+      ...(head.agentToolsOverride !== undefined ? { agentToolsOverride: head.agentToolsOverride } : {}),
       // Phase 35 D-08: re-resolve heads each call so dashboard edits between scheduler ticks
       // land without a process restart (mirrors DashboardServer.resolveCurrentHeads pattern).
       resolveCurrentHeads: () => resolveHeads(loadConfig()),

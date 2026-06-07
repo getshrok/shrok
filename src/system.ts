@@ -32,6 +32,7 @@ import { InjectorImpl } from './head/injector.js'
 import { ContextAssemblerImpl } from './head/assembler.js'
 import { HEAD_TOOLS } from './head/index.js'
 import { ActivationLoop } from './head/activation.js'
+import { resolveAllowlist } from './sub-agents/tool-access.js'
 import type { DatabaseSync } from './db/index.js'
 import type { Config } from './config.js'
 import type { LLMRouter, ToolDefinition } from './types/llm.js'
@@ -102,6 +103,12 @@ export interface SystemDeps {
   headId?: string
   /** Issue #12: per-head custom system-prompt addition, appended in the assembler's cached prefix. */
   customPrompt?: string
+  /** Phase 46 (TOOLCFG-05): per-head head-tool allowlist override.
+   *  key-absent = inherit global headToolDefaults.allowedTools, null = all tools, array = only those tools. */
+  headToolsOverride?: string[] | null
+  /** Phase 46 (TOOLCFG-06): per-head agent-tool allowlist override.
+   *  key-absent = inherit global workerDefaults.allowedTools, null = all tools, array = only those tools. */
+  agentToolsOverride?: string[] | null
   /** Phase 45: global RingRunner singleton for ring_device dispatch. Optional — when absent
    *  the HeadToolExecutor returns a graceful no-op (mirrors scheduleStore? pattern). */
   ringRunner?: import('./ring/runner.js').RingRunner
@@ -244,6 +251,16 @@ export function buildSystem(deps: SystemDeps): System {
     AGENT_IDENTITY_DEFAULTS_DIR,
   )
 
+  // ── Per-head tool resolution (TOOLCFG-05, TOOLCFG-06) ───────────────────
+  // resolveAllowlist encodes the tri-state: undefined=inherit, null=all, array=subset.
+  const resolvedAgentTools = resolveAllowlist(deps.agentToolsOverride, config.workerDefaults.allowedTools)
+  const resolvedHeadTools = resolveAllowlist(deps.headToolsOverride, config.headToolDefaults.allowedTools)
+  // Compute the effective HEAD_TOOLS to pass to ActivationLoop (TOOLCFG-05).
+  // deps.headTools (test override) wins if explicitly provided; otherwise use resolved filtering.
+  const effectiveHeadTools = deps.headTools !== undefined
+    ? deps.headTools
+    : (resolvedHeadTools === null ? HEAD_TOOLS : HEAD_TOOLS.filter(t => resolvedHeadTools.includes(t.name)))
+
   // ── Agent Runner ────────────────────────────────────────────────────────
   const agentContextComposer = deps.agentContextComposer ?? config.agentContextComposer
   const agentRunner: AgentRunner = deps.stubAgentRunner
@@ -272,7 +289,7 @@ export function buildSystem(deps: SystemDeps): System {
         identityLoader,
         agentIdentityLoader,
         llmRouter,
-        agentDefaults: config.workerDefaults,
+        agentDefaults: { env: config.workerDefaults.env, allowedTools: resolvedAgentTools },
         envOverrides: {
           SHROK_WORKSPACE_PATH: workspacePath,
           SHROK_SKILLS_DIR: skillsPath,
@@ -394,7 +411,7 @@ export function buildSystem(deps: SystemDeps): System {
     ...(deps.dashboardEventBus ? { events: deps.dashboardEventBus } : {}),
     transaction: tx,
     ...(deps.pollIntervalMs !== undefined ? { pollIntervalMs: deps.pollIntervalMs } : {}),
-    ...(deps.headTools !== undefined ? { headTools: deps.headTools } : {}),
+    headTools: effectiveHeadTools,
     ...(deps.terminalToolNames !== undefined ? { terminalToolNames: deps.terminalToolNames } : {}),
     ...(deps.stewards !== undefined ? { stewards: deps.stewards } : {}),
   })
