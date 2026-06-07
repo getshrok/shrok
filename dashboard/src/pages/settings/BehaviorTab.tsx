@@ -17,11 +17,11 @@ export default function BehaviorTab({ d, set, isDeveloper, inputClass, selectCla
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-4">
         <div className="text-sm font-semibold text-zinc-300">Tool access</div>
         <p className="text-xs text-zinc-500">
-          Control which tools are available by default. "All tools" means no restriction.
-          Per-head overrides on each head card can further restrict (or expand to all) for that head only.
+          Choose which tools each layer may use by default. Checking every box enables everything that layer can run.
+          Per-head overrides on each head card let you set a different subset (or inherit this default) for individual heads.
         </p>
 
-        <Field label="Global head-tool default" tooltip="Which tools the head itself may use by default. Applies to every head that does not have a per-head override. All tools = unrestricted.">
+        <Field label="Global head-tool default" tooltip="Which tools the head itself may use by default. Applies to every head that does not have a per-head override. Checking all boxes enables every head-compatible tool.">
           <GlobalToolControl
             value={d.headToolDefault}
             onChange={v => set('headToolDefault', v)}
@@ -29,7 +29,7 @@ export default function BehaviorTab({ d, set, isDeveloper, inputClass, selectCla
           />
         </Field>
 
-        <Field label="Global agent-tool default" tooltip="Which tools sub-agents spawned by any head may use by default. Applies to every head that does not have a per-head agent-tool override. All tools = unrestricted.">
+        <Field label="Global agent-tool default" tooltip="Which tools sub-agents spawned by any head may use by default. Applies to every head that does not have a per-head agent-tool override. Checking all boxes enables every agent-compatible tool.">
           <GlobalToolControl
             value={d.agentToolDefault}
             onChange={v => set('agentToolDefault', v)}
