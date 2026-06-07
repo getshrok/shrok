@@ -361,6 +361,10 @@ export interface SettingsData {
   loopStewardToolResultChars: number
   loopStewardSystemPromptChars: number
   loopStewardMaxTokens: number
+  /** Global agent tool allowlist default: null = all tools; string[] = subset (TOOLCFG-02) */
+  agentToolDefault: string[] | null
+  /** Global head tool allowlist default: null = all tools; string[] = subset (TOOLCFG-01) */
+  headToolDefault: string[] | null
 }
 
 export type ThresholdAction = 'alert' | 'block'
@@ -401,6 +405,10 @@ export interface HeadDTO {
   id: string
   channels: ChannelConfigMasked[]
   customPrompt?: string
+  /** Tri-state: key absent = inherit global; null = all tools; string[] = subset */
+  headToolsOverride?: string[] | null
+  /** Tri-state: key absent = inherit global; null = all tools; string[] = subset */
+  agentToolsOverride?: string[] | null
 }
 
 export type DashboardEvent =

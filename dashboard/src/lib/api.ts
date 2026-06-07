@@ -51,6 +51,23 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customPrompt }),
       }),
+    /**
+     * Set per-head tool allowlist overrides (TOOLCFG-03/04/09).
+     * Tri-state per field:
+     *   - omit key  → no change for that field
+     *   - null       → all tools allowed
+     *   - string[]   → only those tools
+     *   - '__inherit__' → delete key (reset to inherit global default)
+     */
+    setToolOverrides: (id: string, patch: {
+      headToolsOverride?: string[] | null | '__inherit__'
+      agentToolsOverride?: string[] | null | '__inherit__'
+    }) =>
+      request<{ ok: boolean; head: HeadDTO }>(`/api/heads/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      }),
     delete: (id: string, confirmId?: string) =>
       request<{ ok: boolean }>(`/api/heads/${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -235,7 +252,7 @@ export const api = {
       }),
   },
   tools: {
-    list: () => request<{ tools: string[] }>('/api/tools'),
+    list: () => request<{ tools: string[]; headTools: string[] }>('/api/tools'),
   },
   docs: {
     list: () =>
