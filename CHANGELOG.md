@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - **Config-driven tool access control** — operators can assign exactly which tools each head may use and which tools that head's sub-agents may use, via two independent allowlists (head tools, agent tools). Settings → Behavior sets a global default for each layer; each head card can inherit that default or pin its own subset. Defaults reproduce prior behavior — nothing changes until you edit it. (closes #7)
+- **Optional per-head direct tools** — you can now grant a head direct access to the file, web, bash, notes, reminders, and schedule tools (off by default; assigned per head, or globally, in Settings just like the existing tool access controls). Heads still delegate everything to sub-agents until you opt one in.
 - **Multi-head support** — one shrok process can run several independent "heads" sharing identity, memory, and the SQLite DB, each with its own activation loop, channel adapters, schedules, and agent lifecycle.
 - **Dashboard head selector + per-head management UI** — pick a head, create/edit/delete heads and their channel adapters from the dashboard.
 - **`[Name]:` inbound sender attribution** — messages from group chats arrive prefixed with the sender's name so the head knows who's talking.
