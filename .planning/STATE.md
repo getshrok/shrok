@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Tool Access Control
-status: executing
-last_updated: "2026-06-07T05:05:00.000Z"
+status: paused
+last_updated: "2026-06-07T06:30:00.000Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 2
@@ -17,9 +17,9 @@ progress:
 
 ## Current Position
 
-Phase: 46 (tool-access-control) — EXECUTING
-Plan: 4 of 4
-Status: Executing (plan 03 complete)
+Phase: 46 (tool-access-control) — PAUSED (re-plan needed)
+Plan: 4 of 4 (46-01/02/03 complete; 46-04 paused at human-verify checkpoint)
+Status: Paused — UAT revealed a design change. Build assumed two separate tool universes (head vs agent); user wants ONE unified, cross-assignable tool pool with pre-feature defaults. Phase NOT verified/completed. See 46-tool-access-control/46-UAT-FINDINGS.md.
 Last activity: 2026-06-07
 
 ### Quick Tasks Completed
@@ -40,7 +40,7 @@ Last activity: 2026-06-07
 See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 46 — tool-access-control
+**Current focus:** Phase 46 — tool-access-control (PAUSED, re-plan: unified cross-assignable tool pool)
 
 ## v1.8 Phase Map
 
