@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, extractSecretValues, HeadConfigSchema, type Config } from './config.js'
+import { HEAD_TOOLS, HEAD_TOOL_NAMES } from './head/index.js'
 
 describe('loadConfig', () => {
   const originalEnv = process.env
@@ -813,9 +814,43 @@ describe('Phase 46 ConfigSchema headToolDefaults', () => {
     expect(cfg.headToolDefaults.allowedTools).toEqual(['spawn_agent'])
   })
 
-  it('headToolDefaults defaults to { allowedTools: null } when absent from config.json', () => {
+  it('headToolDefaults defaults to the 10 HEAD_TOOL_NAMES when absent from config.json (TOOLCFG-01/07)', () => {
     fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
     const cfg = loadConfig()
-    expect(cfg.headToolDefaults.allowedTools).toBeNull()
+    // The default must be the concrete 10 head-tool names — not null (TOOLCFG-07 / D-06)
+    expect(Array.isArray(cfg.headToolDefaults.allowedTools)).toBe(true)
+    expect(cfg.headToolDefaults.allowedTools).toHaveLength(HEAD_TOOLS.length)
+    expect(cfg.headToolDefaults.allowedTools).toHaveLength(10)
+    // Spot-check two well-known head tools
+    expect(cfg.headToolDefaults.allowedTools).toContain('spawn_agent')
+    expect(cfg.headToolDefaults.allowedTools).toContain('ring_device')
+  })
+
+  it('headToolDefaults default is derived from HEAD_TOOL_NAMES — matches the source of truth', () => {
+    // Asserts that the default is not a hand-maintained literal that can drift from HEAD_TOOLS.
+    // This test enforces TOOLCFG-07: "head default = 10 HEAD_TOOLS names derived from source".
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    const defaults = cfg.headToolDefaults.allowedTools
+    // Every name in the default must be a real HEAD_TOOLS name
+    const headToolNamesSet = new Set(HEAD_TOOL_NAMES)
+    for (const name of (defaults ?? [])) {
+      expect(headToolNamesSet.has(name)).toBe(true)
+    }
+    // And the default covers exactly the full head set (count matches)
+    expect(defaults?.length).toBe(HEAD_TOOL_NAMES.length)
+  })
+
+  it('inherit-state regression lock: omitted headToolsOverride key is absent in ResolvedHead (D-05)', () => {
+    // The "inherit" state is key-absent, not undefined-valued — per exactOptionalPropertyTypes.
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      heads: [{ id: 'work', channels: [] }],
+    }))
+    const cfg = loadConfig()
+    const heads = resolveHeads(cfg)
+    const head = heads[0] ?? {}
+    // headToolsOverride was not supplied — key must be absent (not present-as-undefined)
+    expect('headToolsOverride' in head).toBe(false)
+    expect('agentToolsOverride' in head).toBe(false)
   })
 })

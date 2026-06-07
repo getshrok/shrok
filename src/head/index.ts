@@ -116,6 +116,15 @@ export const HEAD_TOOLS: ToolDefinition[] = [
   RING_DEVICE_DEF,
 ]
 
+/**
+ * The names of the 10 head-executable tools — derived from HEAD_TOOLS so they
+ * cannot drift. Used as the pre-feature default for the global head-tool layer
+ * (TOOLCFG-01/07): a no-config install resolves the head to exactly these names.
+ * Consumed by src/config.ts as `headToolDefaults.allowedTools` default and by
+ * src/dashboard/routes/tools.ts for the per-layer tag registry.
+ */
+export const HEAD_TOOL_NAMES: string[] = HEAD_TOOLS.map(t => t.name)
+
 // ─── HeadToolExecutor ─────────────────────────────────────────────────────────
 
 export interface HeadToolExecutorOptions {

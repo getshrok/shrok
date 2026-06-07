@@ -1,63 +1,74 @@
 import { describe, it, expect } from 'vitest'
 import { resolveAllowlist } from './tool-access.js'
 
-describe('resolveAllowlist — tri-state resolution (all 9 + 1 edge cases)', () => {
+describe('resolveAllowlist — two-state resolution (D-04, D-05)', () => {
   // ──────────────────────────────────────────────────────────────────────────
-  // override = undefined (inherit): result determined by globalDefault
-  // ──────────────────────────────────────────────────────────────────────────
-
-  it('override=undefined, default=undefined → null (all tools, both absent)', () => {
-    expect(resolveAllowlist(undefined, undefined)).toBeNull()
-  })
-
-  it('override=undefined, default=null → null (global says all tools)', () => {
-    expect(resolveAllowlist(undefined, null)).toBeNull()
-  })
-
-  it('override=undefined, default=["x"] → ["x"] (inherits global subset)', () => {
-    expect(resolveAllowlist(undefined, ['x'])).toEqual(['x'])
-  })
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // override = null (explicit "all tools"): always wins over globalDefault
+  // override = array → wins (per-head subset takes precedence)
   // ──────────────────────────────────────────────────────────────────────────
 
-  it('override=null, default=undefined → null (per-head says all, beats absent global)', () => {
-    expect(resolveAllowlist(null, undefined)).toBeNull()
-  })
-
-  it('override=null, default=null → null (per-head says all, global also says all)', () => {
-    expect(resolveAllowlist(null, null)).toBeNull()
-  })
-
-  it('override=null, default=["x"] → null (per-head "all" beats global subset)', () => {
-    expect(resolveAllowlist(null, ['x'])).toBeNull()
-  })
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // override = string[] (explicit subset): always wins over globalDefault
-  // ──────────────────────────────────────────────────────────────────────────
-
-  it('override=["a","b"], default=undefined → ["a","b"] (per-head subset, no global)', () => {
+  it('override=["a","b"], global=undefined → ["a","b"] (per-head subset, no global)', () => {
     expect(resolveAllowlist(['a', 'b'], undefined)).toEqual(['a', 'b'])
   })
 
-  it('override=["a","b"], default=null → ["a","b"] (per-head subset beats global "all")', () => {
+  it('override=["a","b"], global=["x"] → ["a","b"] (per-head subset beats global subset)', () => {
+    expect(resolveAllowlist(['a', 'b'], ['x'])).toEqual(['a', 'b'])
+  })
+
+  it('override=["a","b"], global=null → ["a","b"] (per-head subset; legacy null global falls through)', () => {
     expect(resolveAllowlist(['a', 'b'], null)).toEqual(['a', 'b'])
   })
 
-  it('override=["a","b"], default=["x"] → ["a","b"] (per-head subset beats global subset)', () => {
-    expect(resolveAllowlist(['a', 'b'], ['x'])).toEqual(['a', 'b'])
+  // ──────────────────────────────────────────────────────────────────────────
+  // override = undefined (key absent) → fall through to global
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it('override=undefined, global=["x"] → ["x"] (inherits global subset)', () => {
+    expect(resolveAllowlist(undefined, ['x'])).toEqual(['x'])
+  })
+
+  it('override=undefined, global=undefined → [] (both absent, no default supplied → empty)', () => {
+    expect(resolveAllowlist(undefined, undefined)).toEqual([])
+  })
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // override = null (legacy tolerance, D-05) → normalized to fall-through
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it('override=null (legacy), global=["x"] → ["x"] (null normalized to fall-through, inherits global)', () => {
+    expect(resolveAllowlist(null, ['x'])).toEqual(['x'])
+  })
+
+  it('override=null (legacy), global=undefined → [] (null normalized to fall-through, both absent)', () => {
+    expect(resolveAllowlist(null, undefined)).toEqual([])
+  })
+
+  it('override=null (legacy), global=null (legacy) → [] (both legacy-null normalized to absent)', () => {
+    expect(resolveAllowlist(null, null)).toEqual([])
   })
 
   // ──────────────────────────────────────────────────────────────────────────
   // Edge case: empty array override — "everything off" is representable and
-  // must be DISTINCT from null (inherit/all) and from absent (inherit).
+  // must be DISTINCT from absent (inherit).
   // ──────────────────────────────────────────────────────────────────────────
 
-  it('override=[], default=["x"] → [] (empty subset, NOT null — "everything off")', () => {
+  it('override=[], global=["x"] → [] (empty subset = no tools, NOT inherit)', () => {
     const result = resolveAllowlist([], ['x'])
-    expect(result).not.toBeNull()
     expect(result).toEqual([])
+    // Confirm it is not the global — override=[] is a concrete "no tools" choice
+    expect(result).not.toContain('x')
+  })
+
+  it('override=[], global=undefined → [] (empty subset wins; not affected by absent global)', () => {
+    expect(resolveAllowlist([], undefined)).toEqual([])
+  })
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Return type: always string[], never null (D-04)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it('return type is always string[], never null — even when both args are absent', () => {
+    const result = resolveAllowlist(undefined, undefined)
+    expect(Array.isArray(result)).toBe(true)
+    expect(result).not.toBeNull()
   })
 })
