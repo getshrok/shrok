@@ -316,6 +316,98 @@ describe('GET /api/settings — config-derived defaults', () => {
     // (No config.json file written — workspace dir is fresh from mkdtemp.)
     const b = await getBody()
     expect(b['agentToolDefault']).toEqual(effectiveSubset)
-    expect(b['headToolDefault']).toBeNull()
+    // null head config is coalesced to HEAD_TOOL_NAMES (two-state: never returns null)
+    expect(Array.isArray(b['headToolDefault'])).toBe(true)
+    expect((b['headToolDefault'] as string[]).length).toBe(10)
+  })
+
+  it('GET with empty config returns concrete 10-element head default (not null)', async () => {
+    // Fresh install: headToolDefaults.allowedTools defaults to HEAD_TOOL_NAMES (46-05)
+    // The GET surface must return the concrete array, never null.
+    await startWithConfig(makeTestConfig({
+      headToolDefaults: { allowedTools: null },
+    }))
+    const b = await getBody()
+    expect(b['headToolDefault']).not.toBeNull()
+    expect(Array.isArray(b['headToolDefault'])).toBe(true)
+    expect((b['headToolDefault'] as string[]).length).toBe(10)
+  })
+})
+
+describe('PUT /api/settings — tool defaults two-state validation (TOOLCFG-08, T-46-06-E)', () => {
+  let workspace: string
+  let envFile: string
+  let server: Server
+  let port: number
+
+  beforeEach(async () => {
+    workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'settings-tool-ws-'))
+    envFile = path.join(workspace, '.env')
+    fs.writeFileSync(envFile, '', 'utf8')
+
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    app.use('/api/settings', createSettingsRouter(workspace, envFile, makeTestConfig({
+      workerDefaults: { allowedTools: ['bash', 'read_file'], env: null },
+      headToolDefaults: { allowedTools: null },
+    })))
+    port = await getFreePort()
+    await new Promise<void>((resolve, reject) => {
+      server = app.listen(port, '127.0.0.1', () => resolve())
+      server.once('error', reject)
+    })
+  })
+
+  afterEach(async () => {
+    if (server) await new Promise<void>(r => server.close(() => r()))
+    if (workspace) fs.rmSync(workspace, { recursive: true, force: true })
+  })
+
+  async function put(body: Record<string, unknown>): Promise<{ status: number; json: unknown }> {
+    const r = await fetch(`http://127.0.0.1:${port}/api/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return { status: r.status, json: await r.json() }
+  }
+
+  it('PUT headToolDefault: null → 400 (null is not a valid two-state value)', async () => {
+    const res = await put({ headToolDefault: null })
+    expect(res.status).toBe(400)
+  })
+
+  it('PUT agentToolDefault: null → 400 (null is not a valid two-state value)', async () => {
+    const res = await put({ agentToolDefault: null })
+    expect(res.status).toBe(400)
+  })
+
+  it('PUT agentToolDefault: [string] persists into workerDefaults.allowedTools', async () => {
+    const res = await put({ agentToolDefault: ['bash', 'read_file'] })
+    expect(res.status).toBe(200)
+    const cfg = JSON.parse(fs.readFileSync(path.join(workspace, 'config.json'), 'utf8')) as Record<string, unknown>
+    const wd = cfg['workerDefaults'] as Record<string, unknown>
+    expect(wd['allowedTools']).toEqual(['bash', 'read_file'])
+  })
+
+  it('PUT agentToolDefault with spawn_agent (head-only tool) → 400 (cross-layer membership check)', async () => {
+    const res = await put({ agentToolDefault: ['spawn_agent'] })
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toContain('spawn_agent')
+  })
+
+  it('PUT headToolDefault with bash (agent-only tool) → 400 (cross-layer membership check)', async () => {
+    const res = await put({ headToolDefault: ['bash'] })
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toContain('bash')
+  })
+
+  it('PUT headToolDefault with spawn_agent (valid head tool) → persisted', async () => {
+    const res = await put({ headToolDefault: ['spawn_agent'] })
+    expect(res.status).toBe(200)
+    const cfg = JSON.parse(fs.readFileSync(path.join(workspace, 'config.json'), 'utf8')) as Record<string, unknown>
+    const htd = cfg['headToolDefaults'] as Record<string, unknown>
+    expect(htd['allowedTools']).toEqual(['spawn_agent'])
   })
 })
