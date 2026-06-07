@@ -77,8 +77,8 @@ export function createKindRouter(skillLoader: SkillLoader, opts: CreateKindRoute
     const skill = resolveSkill(skillLoader, name)
     if (!skill) { res.status(404).json({ error: notFound }); return }
     try {
-      const content = skillLoader.readFile(name, filename)
-      res.json({ content })
+      const result = skillLoader.readFile(name, filename)
+      res.json(result)
     } catch (err) {
       res.status(404).json({ error: (err as Error).message })
     }

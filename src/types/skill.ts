@@ -27,6 +27,15 @@ export interface SkillFile {
   isProtected: boolean  // true for SKILL.md — cannot be deleted or renamed
 }
 
+// ─── Read-file result ─────────────────────────────────────────────────────────
+
+export interface ReadFileResult {
+  content?: string
+  binary?: boolean
+  tooLarge?: boolean
+  size: number
+}
+
 // ─── Loader interface ─────────────────────────────────────────────────────────
 
 export interface SkillLoader {
@@ -45,11 +54,11 @@ export interface SkillLoader {
   /** Watch the skills directory for changes. */
   watch(onChange: (name: string) => void): void
 
-  /** List all files in a skill directory (non-recursive, text files only). */
+  /** List all files in a skill directory (non-recursive). */
   listFiles(name: string): SkillFile[]
 
-  /** Read a file from a skill directory. */
-  readFile(name: string, filename: string): string
+  /** Read a file from a skill directory. Returns a gated result object. */
+  readFile(name: string, filename: string): ReadFileResult
 
   /** Write a file to a skill directory (atomic). */
   writeFile(name: string, filename: string, content: string): Promise<void>

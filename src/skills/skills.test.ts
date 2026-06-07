@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import { parseSkillFile } from './parser.js'
-import { FileSystemSkillLoader, safeFilename, safeSkillName } from './loader.js'
+import { FileSystemSkillLoader, safeFilename, safeSkillName, MAX_VIEW_BYTES } from './loader.js'
 
 // ─── parseSkillFile ───────────────────────────────────────────────────────────
 
@@ -359,7 +359,7 @@ Partial instructions.`)
 // ─── safeFilename / safeSkillName ─────────────────────────────────────────────
 
 describe('safeFilename', () => {
-  it('accepts valid filenames', () => {
+  it('accepts valid filenames (any extension)', () => {
     expect(safeFilename('MEMORY.md')).toBe(true)
     expect(safeFilename('helper.mjs')).toBe(true)
     expect(safeFilename('config.json')).toBe(true)
@@ -367,17 +367,17 @@ describe('safeFilename', () => {
     expect(safeFilename('notes.txt')).toBe(true)
     expect(safeFilename('data.yaml')).toBe(true)
     expect(safeFilename('data.yml')).toBe(true)
+    // Previously rejected — now accepted (extension no longer gated at listing/safety)
+    expect(safeFilename('binary.exe')).toBe(true)
+    expect(safeFilename('image.png')).toBe(true)
+    expect(safeFilename('noext')).toBe(true)
+    // Dotfiles
+    expect(safeFilename('.tip-state.json')).toBe(true)
   })
 
   it('rejects path traversal', () => {
     expect(safeFilename('../etc/passwd')).toBe(false)
     expect(safeFilename('..hidden')).toBe(false)
-  })
-
-  it('rejects disallowed extensions', () => {
-    expect(safeFilename('binary.exe')).toBe(false)
-    expect(safeFilename('image.png')).toBe(false)
-    expect(safeFilename('noext')).toBe(false)
   })
 
   it('rejects filenames with path separators', () => {
@@ -451,11 +451,17 @@ describe('FileSystemSkillLoader file operations', () => {
     expect(files.map(f => f.name)).toEqual(['SKILL.md'])
   })
 
-  it('listFiles excludes disallowed extensions', () => {
+  it('listFiles includes dotfiles and non-text extensions', () => {
     writeSkill('test-skill/SKILL.md', skillContent)
-    fs.writeFileSync(path.join(tmpDir, 'test-skill', 'binary.exe'), 'nope')
+    fs.writeFileSync(path.join(tmpDir, 'test-skill', '.token-cache'), 'token')
+    fs.writeFileSync(path.join(tmpDir, 'test-skill', 'data.exe'), 'binary')
     const files = loader.listFiles('test-skill')
-    expect(files.map(f => f.name)).toEqual(['SKILL.md'])
+    const names = files.map(f => f.name)
+    expect(names).toContain('SKILL.md')
+    expect(names).toContain('.token-cache')
+    expect(names).toContain('data.exe')
+    // SKILL.md must be first
+    expect(names[0]).toBe('SKILL.md')
   })
 
   it('listFiles includes correct file sizes', () => {
@@ -466,10 +472,14 @@ describe('FileSystemSkillLoader file operations', () => {
 
   // ── readFile ───────────────────────────────────────────────────────────────
 
-  it('readFile returns file content', () => {
+  it('readFile returns file content as ReadFileResult object', () => {
     writeSkill('test-skill/SKILL.md', skillContent)
     writeSkill('test-skill/MEMORY.md', '# Memory data')
-    expect(loader.readFile('test-skill', 'MEMORY.md')).toBe('# Memory data')
+    const result = loader.readFile('test-skill', 'MEMORY.md')
+    expect(result.content).toBe('# Memory data')
+    expect(result.binary).toBe(false)
+    expect(result.tooLarge).toBe(false)
+    expect(result.size).toBe(Buffer.byteLength('# Memory data'))
   })
 
   it('readFile rejects path traversal', () => {
@@ -477,9 +487,27 @@ describe('FileSystemSkillLoader file operations', () => {
     expect(() => loader.readFile('test-skill', '../other-skill/SKILL.md')).toThrow()
   })
 
-  it('readFile rejects invalid extensions', () => {
+  it('readFile returns binary flag for files containing NUL byte', () => {
     writeSkill('test-skill/SKILL.md', skillContent)
-    expect(() => loader.readFile('test-skill', 'binary.exe')).toThrow()
+    const buf = Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x00, 0x57, 0x6f, 0x72, 0x6c, 0x64]) // "Hello\0World"
+    fs.writeFileSync(path.join(tmpDir, 'test-skill', 'image.png'), buf)
+    const result = loader.readFile('test-skill', 'image.png')
+    expect(result.binary).toBe(true)
+    expect(result.content).toBeUndefined()
+    expect(result.size).toBeGreaterThan(0)
+  })
+
+  it('readFile returns tooLarge flag for files > MAX_VIEW_BYTES', () => {
+    writeSkill('test-skill/SKILL.md', skillContent)
+    // Write a file larger than MAX_VIEW_BYTES
+    const bigPath = path.join(tmpDir, 'test-skill', 'big.bin')
+    const fd = fs.openSync(bigPath, 'w')
+    fs.ftruncateSync(fd, MAX_VIEW_BYTES + 1)
+    fs.closeSync(fd)
+    const result = loader.readFile('test-skill', 'big.bin')
+    expect(result.tooLarge).toBe(true)
+    expect(result.content).toBeUndefined()
+    expect(result.size).toBeGreaterThan(MAX_VIEW_BYTES)
   })
 
   // ── writeFile ──────────────────────────────────────────────────────────────
@@ -497,9 +525,10 @@ describe('FileSystemSkillLoader file operations', () => {
     expect(fs.readFileSync(path.join(tmpDir, 'test-skill', 'MEMORY.md'), 'utf8')).toBe('# Updated')
   })
 
-  it('writeFile rejects invalid extensions', async () => {
+  it('writeFile accepts any safely-named file including non-text extensions', async () => {
     writeSkill('test-skill/SKILL.md', skillContent)
-    await expect(loader.writeFile('test-skill', 'binary.exe', 'nope')).rejects.toThrow('Invalid filename')
+    await loader.writeFile('test-skill', 'binary.exe', 'some content')
+    expect(fs.readFileSync(path.join(tmpDir, 'test-skill', 'binary.exe'), 'utf8')).toBe('some content')
   })
 
   // ── deleteFile ─────────────────────────────────────────────────────────────

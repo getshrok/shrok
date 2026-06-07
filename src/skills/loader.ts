@@ -2,12 +2,12 @@ import * as fs from 'node:fs'
 import { log } from '../logger.js'
 import * as path from 'node:path'
 import * as os from 'node:os'
-import type { Skill, SkillFile, SkillLoader } from '../types/skill.js'
+import type { Skill, SkillFile, SkillLoader, ReadFileResult } from '../types/skill.js'
+export type { ReadFileResult }
 import { parseSkillFile } from './parser.js'
 
 // ─── Validation helpers ──────────────────────────────────────────────────────
 
-const ALLOWED_EXTENSIONS = new Set(['.md', '.mjs', '.js', '.ts', '.sh', '.json', '.txt', '.yaml', '.yml'])
 const SAFE_FILENAME_RE = /^[a-zA-Z0-9_.-]+$/
 const SAFE_SKILL_NAME_RE = /^[a-zA-Z0-9_-]+$/
 const RESERVED_SKILL_SEGMENTS = new Set(['files', 'rename'])
@@ -15,8 +15,11 @@ const RESERVED_SKILL_SEGMENTS = new Set(['files', 'rename'])
 export function safeFilename(filename: string): boolean {
   return SAFE_FILENAME_RE.test(filename)
     && !filename.includes('..')
-    && ALLOWED_EXTENSIONS.has(path.extname(filename).toLowerCase())
 }
+
+// ─── View-time gating ─────────────────────────────────────────────────────────
+
+export const MAX_VIEW_BYTES = 2 * 1024 * 1024
 
 export function safeSkillName(name: string): boolean {
   if (!SAFE_SKILL_NAME_RE.test(name) || name.includes('..')) return false
@@ -233,8 +236,6 @@ export class FileSystemKindLoader implements SkillLoader {
     const files: SkillFile[] = []
     for (const entry of entries) {
       if (!entry.isFile()) continue
-      const ext = path.extname(entry.name).toLowerCase()
-      if (!ALLOWED_EXTENSIONS.has(ext)) continue
       try {
         const stat = fs.statSync(path.join(skillDir, entry.name))
         files.push({
@@ -255,11 +256,22 @@ export class FileSystemKindLoader implements SkillLoader {
     return files
   }
 
-  /** Read a file from an entry directory. */
-  readFile(name: string, filename: string): string {
+  /** Read a file from an entry directory. Returns a gated result object. */
+  readFile(name: string, filename: string): ReadFileResult {
     const skillDir = this.resolveSkillDir(name)
     const filePath = this.resolveFilePath(skillDir, filename)
-    return fs.readFileSync(filePath, 'utf8')
+    const size = fs.statSync(filePath).size
+    if (size > MAX_VIEW_BYTES) {
+      return { tooLarge: true, size }
+    }
+    const fd = fs.openSync(filePath, 'r')
+    const sniffBuf = Buffer.allocUnsafe(8192)
+    const bytesRead = fs.readSync(fd, sniffBuf, 0, sniffBuf.length, 0)
+    fs.closeSync(fd)
+    if (sniffBuf.subarray(0, bytesRead).includes(0)) {
+      return { binary: true, size }
+    }
+    return { content: fs.readFileSync(filePath, 'utf8'), binary: false, tooLarge: false, size }
   }
 
   /** Write a file to an entry directory (atomic). */
