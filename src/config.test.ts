@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, extractSecretValues, type Config } from './config.js'
+import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, extractSecretValues, HeadConfigSchema, type Config } from './config.js'
 
 describe('loadConfig', () => {
   const originalEnv = process.env
@@ -735,5 +735,87 @@ describe('extractSecretValues — home-assistant HA_ACCESS_TOKEN (D-05)', () => 
     const cfg = loadConfig()
     const secrets = extractSecretValues(cfg)
     expect(secrets.every(s => typeof s === 'string')).toBe(true)
+  })
+})
+
+// ─── Phase 46: tool allowlist tri-state schema + resolveHeads threading ───────
+
+describe('Phase 46 HeadConfigSchema tool override tri-state parse', () => {
+  // Parse directly against HeadConfigSchema (no loadConfig needed for schema tests)
+
+  it('(a) parses headToolsOverride: null and carries it through resolveHeads (key present, value null)', () => {
+    const raw = {
+      id: 'work',
+      channels: [],
+      headToolsOverride: null,
+    }
+    const parsed = HeadConfigSchema.parse(raw)
+    expect('headToolsOverride' in parsed).toBe(true)
+    expect(parsed.headToolsOverride).toBeNull()
+
+    // Thread through resolveHeads
+    const heads = resolveHeads({ heads: [parsed] } as Config)
+    expect('headToolsOverride' in (heads[0] ?? {})).toBe(true)
+    expect(heads[0]?.headToolsOverride).toBeNull()
+  })
+
+  it('(b) parses agentToolsOverride: ["bash","get_usage"] and carries it verbatim through resolveHeads', () => {
+    const raw = {
+      id: 'work',
+      channels: [],
+      agentToolsOverride: ['bash', 'get_usage'],
+    }
+    const parsed = HeadConfigSchema.parse(raw)
+    expect('agentToolsOverride' in parsed).toBe(true)
+    expect(parsed.agentToolsOverride).toEqual(['bash', 'get_usage'])
+
+    // Thread through resolveHeads
+    const heads = resolveHeads({ heads: [parsed] } as Config)
+    expect('agentToolsOverride' in (heads[0] ?? {})).toBe(true)
+    expect(heads[0]?.agentToolsOverride).toEqual(['bash', 'get_usage'])
+  })
+
+  it('(c) inherit-state regression lock: omitting both override keys → key absent (NOT undefined-valued) in ResolvedHead', () => {
+    // This is the critical regression test: the "inherit" state must be key-absent,
+    // not present-as-undefined. If this fails, resolveAllowlist would see override=undefined
+    // and would NOT treat it as inherit — it would try to read the key value.
+    const raw = { id: 'work', channels: [] }
+    const parsed = HeadConfigSchema.parse(raw)
+    expect('headToolsOverride' in parsed).toBe(false)
+    expect('agentToolsOverride' in parsed).toBe(false)
+
+    // Thread through resolveHeads — both keys must remain absent
+    const heads = resolveHeads({ heads: [parsed] } as Config)
+    const head = heads[0] ?? {}
+    expect('headToolsOverride' in head).toBe(false)
+    expect('agentToolsOverride' in head).toBe(false)
+  })
+})
+
+describe('Phase 46 ConfigSchema headToolDefaults', () => {
+  let tmpConfigPath: string
+
+  beforeEach(() => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'shrok-config-test-p46-'))
+    tmpConfigPath = path.join(tmp, 'config.json')
+    process.env['USER_CONFIG_PATH'] = tmpConfigPath
+  })
+
+  afterEach(() => {
+    delete process.env['USER_CONFIG_PATH']
+  })
+
+  it('(d) parses headToolDefaults: { allowedTools: ["spawn_agent"] } from config.json', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({
+      headToolDefaults: { allowedTools: ['spawn_agent'] },
+    }))
+    const cfg = loadConfig()
+    expect(cfg.headToolDefaults.allowedTools).toEqual(['spawn_agent'])
+  })
+
+  it('headToolDefaults defaults to { allowedTools: null } when absent from config.json', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    expect(cfg.headToolDefaults.allowedTools).toBeNull()
   })
 })
