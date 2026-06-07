@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Only the first head greets on startup** — with multiple heads configured, a restart no longer fires an "online" greeting from every head (which spoke on voice devices and pinged secondary chats unsolicited). Secondary heads still start their activation loops and remain fully responsive to inbound messages.
 
 ### Fixed
+- **The reminder message box is now a multi-line textarea when creating a reminder** (it already was when editing), so long reminder text fits and wraps. (closes #15)
 - **Dashboard conversation view now shows only the selected head's sub-agent pills**; switching heads no longer leaves stale pills from other heads. (closes #10)
 - **Editing a one-time reminder or schedule now correctly pre-fills the date/time field**, and all reminder/schedule date pickers use your configured workspace timezone. (closes #5)
 - **Usage costs no longer go negative for prompt-cache-heavy calls** — the cost estimator incorrectly subtracted Anthropic cache-read and cache-creation tokens from the input-token count, but Anthropic already reports `input_tokens` exclusive of cached tokens. Cache-heavy calls (notably scheduled tasks reusing a large cached prompt) were priced as negative dollars in the usage dashboard. The three token buckets are now priced additively, so estimated cost can never be negative.

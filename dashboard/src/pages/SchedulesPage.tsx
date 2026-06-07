@@ -889,12 +889,13 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
 
       <div>
         <label className="text-xs text-zinc-500 mb-1 block">Message</label>
-        <input
+        <textarea
           autoFocus
+          rows={2}
           value={message}
           onChange={e => setMessage(e.target.value)}
           placeholder="e.g. Review weekly goals"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
         />
       </div>
 
