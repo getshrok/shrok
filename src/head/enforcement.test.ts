@@ -1,12 +1,20 @@
 /**
- * Phase 46 Plan 02 — Enforcement tests.
+ * Phase 46 Plan 05 — Enforcement tests (reshaped for two-state model).
  *
  * Two layers proven:
- *  1. HEAD filtering (TOOLCFG-05/07): the filter expression computed in buildSystem
- *     correctly gates the HEAD_TOOLS surface offered to the activation loop.
+ *  1. HEAD filtering (TOOLCFG-05/07): resolveAllowlist + HEAD_TOOLS.filter correctly
+ *     gates the head tool surface (no null/all branch in the feature path).
  *  2. AGENT threading (TOOLCFG-06/07): the resolved per-head agent allowlist,
  *     threaded into agentDefaults.allowedTools, reaches assembleTools and gates
  *     the assembled tool surface.
+ *
+ * Key contract changes from Plan 02 (two-state D-04):
+ *  - resolveAllowlist always returns string[] (never null).
+ *  - The head "everything-on" default is the 10 HEAD_TOOL_NAMES passed as globalDefault.
+ *  - Legacy null normalized to fall-through (D-05); no test asserts null = all tools.
+ *  - assembleTools' if (allowedTools) gate: an array (even the 25-tool set) restricts
+ *    to the named tools; null disables restriction. The production path always supplies
+ *    a concrete array (from base config.json or HEAD_TOOL_NAMES), never null.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -14,7 +22,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import { resolveAllowlist } from '../sub-agents/tool-access.js'
-import { HEAD_TOOLS } from './index.js'
+import { HEAD_TOOLS, HEAD_TOOL_NAMES } from './index.js'
 import { assembleTools, type ToolSurfaceDeps } from '../sub-agents/tool-surface.js'
 import { AgentToolRegistryImpl } from '../sub-agents/registry.js'
 import { FileSystemKindLoader } from '../skills/loader.js'
@@ -29,44 +37,48 @@ import type { IdentityLoader } from '../identity/loader.js'
 const MIGRATIONS_DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../sql')
 
 // ─── HEAD filtering tests (TOOLCFG-05 / TOOLCFG-07) ─────────────────────────
-// Assert the filter expression: resolvedHeadTools === null ? HEAD_TOOLS : HEAD_TOOLS.filter(...)
+// Assert the two-state filter: HEAD_TOOLS.filter(t => resolvedHeadTools.includes(t.name))
+// (no null/all branch — resolveAllowlist always returns string[])
 
-describe('HEAD tool filtering (TOOLCFG-05/07)', () => {
-  it('override absent + global default absent → resolveAllowlist returns null → full HEAD_TOOLS offered', () => {
-    // No per-head override, no global default → everything-on default (TOOLCFG-07)
-    const resolved = resolveAllowlist(undefined, undefined)
-    expect(resolved).toBeNull()
-    const effective = resolved === null ? HEAD_TOOLS : HEAD_TOOLS.filter(t => resolved.includes(t.name))
-    // Full HEAD_TOOLS offered
-    expect(effective).toBe(HEAD_TOOLS)
-    // Core orchestration tools are present — no guardrail (TOOLCFG-07)
+describe('HEAD tool filtering (TOOLCFG-05/07) — two-state', () => {
+  it('no-config head: resolveAllowlist(undefined, HEAD_TOOL_NAMES) → all 10 HEAD_TOOLS offered', () => {
+    // The pre-feature default is HEAD_TOOL_NAMES (10 names). No per-head override.
+    // This is what buildSystem computes for a no-config head (TOOLCFG-07).
+    const resolved = resolveAllowlist(undefined, HEAD_TOOL_NAMES)
+    expect(resolved).toEqual(HEAD_TOOL_NAMES)
+    expect(resolved.length).toBe(10)
+    const effective = HEAD_TOOLS.filter(t => resolved.includes(t.name))
+    // All 10 HEAD_TOOLS offered (same as the pre-feature default)
+    expect(effective.length).toBe(10)
     const names = effective.map(t => t.name)
+    // Core orchestration tools fully present — no guardrail (TOOLCFG-07)
     expect(names).toContain('spawn_agent')
     expect(names).toContain('message_agent')
     expect(names).toContain('cancel_agent')
+    // Edge tool also present
+    expect(names).toContain('ring_device')
   })
 
-  it('override = [write_identity, get_usage] → only those two HEAD_TOOLS offered; spawn_agent absent', () => {
+  it('per-head override = [write_identity, get_usage] → only those 2 offered; spawn_agent absent', () => {
+    // Per-head override wins over global default. Core tools genuinely removable (TOOLCFG-07).
     const override = ['write_identity', 'get_usage']
-    const globalDefault = null // all tools
-    const resolved = resolveAllowlist(override, globalDefault)
-    // Per-head override wins — returns the override array
+    const resolved = resolveAllowlist(override, HEAD_TOOL_NAMES)
     expect(resolved).toEqual(['write_identity', 'get_usage'])
-    const effective = resolved === null ? HEAD_TOOLS : HEAD_TOOLS.filter(t => resolved.includes(t.name))
+    const effective = HEAD_TOOLS.filter(t => resolved.includes(t.name))
     const names = effective.map(t => t.name)
     expect(names).toContain('write_identity')
     expect(names).toContain('get_usage')
-    expect(names).not.toContain('spawn_agent')  // core tool genuinely removable (TOOLCFG-07)
+    expect(names).not.toContain('spawn_agent')  // core tool genuinely removable
     expect(names).not.toContain('message_agent')
     expect(names).not.toContain('cancel_agent')
     expect(effective.length).toBe(2)
   })
 
-  it('override absent + global default = [spawn_agent] → only spawn_agent offered', () => {
-    // No per-head override, but global head default restricts to spawn_agent
+  it('per-head override absent + global head default = [spawn_agent] → only spawn_agent offered', () => {
+    // No per-head override; global head default restricts to spawn_agent only.
     const resolved = resolveAllowlist(undefined, ['spawn_agent'])
     expect(resolved).toEqual(['spawn_agent'])
-    const effective = resolved === null ? HEAD_TOOLS : HEAD_TOOLS.filter(t => resolved.includes(t.name))
+    const effective = HEAD_TOOLS.filter(t => resolved.includes(t.name))
     const names = effective.map(t => t.name)
     expect(names).toContain('spawn_agent')
     expect(names).not.toContain('write_identity')
@@ -74,27 +86,35 @@ describe('HEAD tool filtering (TOOLCFG-05/07)', () => {
     expect(effective.length).toBe(1)
   })
 
-  it('per-head override = null (all tools) overrides a restrictive global default', () => {
-    // null means "all tools" — overrides even a restrictive global
+  it('legacy null override (D-05) normalized to fall-through → global default used, NOT all tools', () => {
+    // null is tolerated but normalized to fall-through — does NOT mean "all tools".
+    // Legacy null on per-head override → inherits global (HEAD_TOOL_NAMES = 10 tools).
     const resolved = resolveAllowlist(null, ['spawn_agent'])
-    expect(resolved).toBeNull()
-    const effective = resolved === null ? HEAD_TOOLS : HEAD_TOOLS.filter(t => resolved.includes(t.name))
-    // All HEAD_TOOLS offered
-    expect(effective).toBe(HEAD_TOOLS)
-    const names = effective.map(t => t.name)
-    expect(names).toContain('spawn_agent')
-    expect(names).toContain('write_identity')
+    // null override falls through → global default wins (not a null-means-all state)
+    expect(resolved).toEqual(['spawn_agent'])
+    const effective = HEAD_TOOLS.filter(t => resolved.includes(t.name))
+    expect(effective.length).toBe(1)
+    expect(effective[0]?.name).toBe('spawn_agent')
   })
 })
 
 // ─── AGENT threading tests (TOOLCFG-06 / TOOLCFG-07) ────────────────────────
 // Drive assembleTools with agentDefaults set to the output of resolveAllowlist.
 
-describe('AGENT tool threading (TOOLCFG-06/07)', () => {
+describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
   let tmp: string
   let skillsDir: string
   let skillsLoader: FileSystemKindLoader
   let unifiedLoader: UnifiedLoader
+
+  // The 25-tool base set from base config.json (TOOLCFG-07)
+  const BASE_25_TOOLS = [
+    'bash', 'read_file', 'read_multiple_files', 'view_image', 'write_file', 'edit_file',
+    'create_directory', 'list_directory', 'directory_tree', 'move_file', 'search_files',
+    'get_file_info', 'web_fetch', 'web_search', 'write_note', 'read_note', 'list_notes',
+    'search_notes', 'delete_note', 'create_reminder', 'list_reminders', 'cancel_reminder',
+    'create_schedule', 'list_schedules', 'delete_schedule',
+  ]
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'enforcement-test-'))
@@ -156,9 +176,9 @@ describe('AGENT tool threading (TOOLCFG-06/07)', () => {
     }
   }
 
-  it('per-head override = [bash] against global = null → bash present, web_search absent', async () => {
-    // resolveAllowlist([bash], null) = [bash] — per-head override wins
-    const resolvedAllowlist = resolveAllowlist(['bash'], null)
+  it('per-head agent override = [bash] → bash present, web_search absent', async () => {
+    // resolveAllowlist(['bash'], BASE_25_TOOLS) = ['bash'] — per-head override wins
+    const resolvedAllowlist = resolveAllowlist(['bash'], BASE_25_TOOLS)
     expect(resolvedAllowlist).toEqual(['bash'])
     const deps = makeDeps({
       agentDefaults: { env: null, allowedTools: resolvedAllowlist },
@@ -173,8 +193,8 @@ describe('AGENT tool threading (TOOLCFG-06/07)', () => {
     expect(names).not.toContain('web_search')
   })
 
-  it('per-head override absent + global = [get_usage] → get_usage present, bash absent', async () => {
-    // resolveAllowlist(undefined, [get_usage]) = [get_usage] — global default applies
+  it('per-head agent override absent + global = [get_usage] → get_usage present, bash absent', async () => {
+    // resolveAllowlist(undefined, ['get_usage']) = ['get_usage'] — global default applies
     const resolvedAllowlist = resolveAllowlist(undefined, ['get_usage'])
     expect(resolvedAllowlist).toEqual(['get_usage'])
     const deps = makeDeps({
@@ -191,10 +211,15 @@ describe('AGENT tool threading (TOOLCFG-06/07)', () => {
     expect(names).not.toContain('web_search')
   })
 
-  it('both absent (null result) → unrestricted — representative optional tool present (TOOLCFG-07)', async () => {
-    // resolveAllowlist(undefined, undefined) = null — all tools
-    const resolvedAllowlist = resolveAllowlist(undefined, undefined)
-    expect(resolvedAllowlist).toBeNull()
+  it('no-config agent layer: global = BASE_25_TOOLS → resolves to that array; bash and read_file present', async () => {
+    // Production flow: resolveAllowlist(undefined, workerDefaults.allowedTools) where
+    // workerDefaults.allowedTools is the 25-tool array from base config.json (TOOLCFG-07).
+    // Note: in the test, noteStore=null and scheduleStore=null, so note/reminder/schedule
+    // tools are not assembled even if in the allowlist. This test asserts the registry tools
+    // that ARE available (bash, read_file, web_search) to confirm the allowlist threads correctly.
+    const resolvedAllowlist = resolveAllowlist(undefined, BASE_25_TOOLS)
+    expect(resolvedAllowlist).toEqual(BASE_25_TOOLS)
+    expect(resolvedAllowlist.length).toBe(25)
     const deps = makeDeps({
       agentDefaults: { env: null, allowedTools: resolvedAllowlist },
     })
@@ -204,9 +229,13 @@ describe('AGENT tool threading (TOOLCFG-06/07)', () => {
       skill: null,
     })
     const names = toolEntries.map(e => e.definition.name)
-    // With no restrictions, optional tools should be present
-    expect(names).toContain('web_search')
+    // Core registry tools from BASE_25_TOOLS that assembleTools can fulfill without stores
     expect(names).toContain('bash')
     expect(names).toContain('read_file')
+    expect(names).toContain('web_search')
+    expect(names).toContain('web_fetch')
+    // The resolved allowlist drives restriction — tools not in BASE_25_TOOLS are absent
+    // (get_usage is NOT in the 25-tool agent set — it is a head tool, TOOLCFG-07)
+    expect(names).not.toContain('get_usage')
   })
 })

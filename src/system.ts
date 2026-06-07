@@ -30,7 +30,7 @@ import { LocalAgentRunner } from './sub-agents/local.js'
 import { FileSystemIdentityLoader } from './identity/loader.js'
 import { InjectorImpl } from './head/injector.js'
 import { ContextAssemblerImpl } from './head/assembler.js'
-import { HEAD_TOOLS } from './head/index.js'
+import { HEAD_TOOLS, HEAD_TOOL_NAMES } from './head/index.js'
 import { ActivationLoop } from './head/activation.js'
 import { resolveAllowlist } from './sub-agents/tool-access.js'
 import type { DatabaseSync } from './db/index.js'
@@ -104,10 +104,12 @@ export interface SystemDeps {
   /** Issue #12: per-head custom system-prompt addition, appended in the assembler's cached prefix. */
   customPrompt?: string
   /** Phase 46 (TOOLCFG-05): per-head head-tool allowlist override.
-   *  key-absent = inherit global headToolDefaults.allowedTools, null = all tools, array = only those tools. */
+   *  key-absent = inherit global headToolDefaults.allowedTools (defaults to HEAD_TOOL_NAMES);
+   *  array = only those tools (empty array = no tools). Legacy null tolerated (falls through). */
   headToolsOverride?: string[] | null
   /** Phase 46 (TOOLCFG-06): per-head agent-tool allowlist override.
-   *  key-absent = inherit global workerDefaults.allowedTools, null = all tools, array = only those tools. */
+   *  key-absent = inherit global workerDefaults.allowedTools (base config.json 25-tool set);
+   *  array = only those tools (empty array = no tools). Legacy null tolerated (falls through). */
   agentToolsOverride?: string[] | null
   /** Phase 45: global RingRunner singleton for ring_device dispatch. Optional — when absent
    *  the HeadToolExecutor returns a graceful no-op (mirrors scheduleStore? pattern). */
@@ -252,14 +254,23 @@ export function buildSystem(deps: SystemDeps): System {
   )
 
   // ── Per-head tool resolution (TOOLCFG-05, TOOLCFG-06) ───────────────────
-  // resolveAllowlist encodes the tri-state: undefined=inherit, null=all, array=subset.
+  // resolveAllowlist encodes two states: key-absent (undefined) = inherit, array = subset.
+  // Legacy null is tolerated and normalized to fall-through (D-05); never means "all tools".
+  //
+  // Head layer: use headToolDefaults.allowedTools (defaults to HEAD_TOOL_NAMES) as the
+  // pre-feature default so a no-config install gets exactly the 10 head tools (TOOLCFG-07).
+  // If the config field is null/absent (legacy), fall back to HEAD_TOOL_NAMES explicitly.
+  const headDefaultPool = Array.isArray(config.headToolDefaults.allowedTools)
+    ? config.headToolDefaults.allowedTools
+    : HEAD_TOOL_NAMES
   const resolvedAgentTools = resolveAllowlist(deps.agentToolsOverride, config.workerDefaults.allowedTools)
-  const resolvedHeadTools = resolveAllowlist(deps.headToolsOverride, config.headToolDefaults.allowedTools)
+  const resolvedHeadTools = resolveAllowlist(deps.headToolsOverride, headDefaultPool)
   // Compute the effective HEAD_TOOLS to pass to ActivationLoop (TOOLCFG-05).
-  // deps.headTools (test override) wins if explicitly provided; otherwise use resolved filtering.
+  // deps.headTools (test override) wins if explicitly provided; otherwise filter HEAD_TOOLS
+  // to the resolved subset — always an array now (no null/all branch in the feature path).
   const effectiveHeadTools = deps.headTools !== undefined
     ? deps.headTools
-    : (resolvedHeadTools === null ? HEAD_TOOLS : HEAD_TOOLS.filter(t => resolvedHeadTools.includes(t.name)))
+    : HEAD_TOOLS.filter(t => resolvedHeadTools.includes(t.name))
 
   // ── Agent Runner ────────────────────────────────────────────────────────
   const agentContextComposer = deps.agentContextComposer ?? config.agentContextComposer
