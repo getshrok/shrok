@@ -146,14 +146,16 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
   let skillsLoader: FileSystemKindLoader
   let unifiedLoader: UnifiedLoader
 
-  // The 25-tool base set from base config.json (TOOLCFG-07)
-  const BASE_25_TOOLS = [
-    'bash', 'read_file', 'read_multiple_files', 'view_image', 'write_file', 'edit_file',
-    'create_directory', 'list_directory', 'directory_tree', 'move_file', 'search_files',
-    'get_file_info', 'web_fetch', 'web_search', 'write_note', 'read_note', 'list_notes',
-    'search_notes', 'delete_note', 'create_reminder', 'list_reminders', 'cancel_reminder',
-    'create_schedule', 'list_schedules', 'delete_schedule',
-  ]
+  // The base agent tool set, loaded dynamically from the shipped config.json
+  // (TOOLCFG-07). Loaded at runtime — not hardcoded — so this constant can never
+  // silently drift from config.json's workerDefaults.allowedTools (mirrors the
+  // pattern in src/dashboard/routes/tools.test.ts). IN-01.
+  const configRaw = fs.readFileSync(
+    path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../config.json'),
+    'utf8'
+  )
+  const BASE_25_TOOLS = (JSON.parse(configRaw) as { workerDefaults?: { allowedTools?: string[] } })
+    .workerDefaults?.allowedTools ?? []
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'enforcement-test-'))
