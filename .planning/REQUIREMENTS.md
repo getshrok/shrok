@@ -13,21 +13,21 @@
 
 ### Configuration
 
-- [ ] **TOOLCFG-01**: Operator can set a **global head-tool** allowlist in config, selected from the head-executable tool set. Absent = the pre-feature head default (above).
-- [ ] **TOOLCFG-02**: Operator can set a **global agent-tool** allowlist in config (the canonical `worker_defaults.allowedTools`), selected from the agent-executable registry. Absent = the pre-feature agent default (the prior 25-tool set).
-- [ ] **TOOLCFG-03**: Operator can set a **per-head override** for head tools (two-state: inherit global / custom subset), over the head-executable tool set.
-- [ ] **TOOLCFG-04**: Operator can set a **per-head override** for agent tools (two-state, same semantics as TOOLCFG-03), over the agent-executable registry.
+- [x] **TOOLCFG-01**: Operator can set a **global head-tool** allowlist in config, selected from the head-executable tool set. Absent = the pre-feature head default (above).
+- [x] **TOOLCFG-02**: Operator can set a **global agent-tool** allowlist in config (the canonical `worker_defaults.allowedTools`), selected from the agent-executable registry. Absent = the pre-feature agent default (the prior 25-tool set).
+- [x] **TOOLCFG-03**: Operator can set a **per-head override** for head tools (two-state: inherit global / custom subset), over the head-executable tool set.
+- [x] **TOOLCFG-04**: Operator can set a **per-head override** for agent tools (two-state, same semantics as TOOLCFG-03), over the agent-executable registry.
 
 ### Enforcement
 
-- [ ] **TOOLCFG-05**: At runtime, the head's available tool surface is the head-executable pool filtered to its resolved head-tool allowlist.
-- [ ] **TOOLCFG-06**: Sub-agents spawned by a head receive the agent-executable pool filtered to that head's resolved agent-tool allowlist (the per-head override threads from the spawning head into the agent tool-assembly path).
-- [ ] **TOOLCFG-07**: A fresh install (no tool configuration) reproduces the **pre-feature** behavior exactly — head gets its delegating set, agents get the prior `worker_defaults` set — with no tool added or removed. There are no mandatory-tool guardrails: the operator may disable any tool that layer can execute (including core orchestration tools) within that layer's compatible set.
+- [x] **TOOLCFG-05**: At runtime, the head's available tool surface is the head-executable pool filtered to its resolved head-tool allowlist.
+- [x] **TOOLCFG-06**: Sub-agents spawned by a head receive the agent-executable pool filtered to that head's resolved agent-tool allowlist (the per-head override threads from the spawning head into the agent tool-assembly path).
+- [x] **TOOLCFG-07**: A fresh install (no tool configuration) reproduces the **pre-feature** behavior exactly — head gets its delegating set, agents get the prior `worker_defaults` set — with no tool added or removed. There are no mandatory-tool guardrails: the operator may disable any tool that layer can execute (including core orchestration tools) within that layer's compatible set.
 
 ### Dashboard UI
 
-- [ ] **TOOLCFG-08**: Operator can view and edit the **global** head-tool and agent-tool allowlists from the dashboard Settings page, with each picker populated from the single tagged tool registry (`/api/tools`) filtered to its layer. The displayed value reflects the **effective** config (not just the workspace-override layer), and saving never silently widens or narrows the effective set.
-- [ ] **TOOLCFG-09**: Operator can view and edit each head's **per-head** head-tool and agent-tool overrides — with an explicit "inherit global" state distinct from a chosen subset — in the per-head management UI.
+- [x] **TOOLCFG-08**: Operator can view and edit the **global** head-tool and agent-tool allowlists from the dashboard Settings page, with each picker populated from the single tagged tool registry (`/api/tools`) filtered to its layer. The displayed value reflects the **effective** config (not just the workspace-override layer), and saving never silently widens or narrows the effective set.
+- [x] **TOOLCFG-09**: Operator can view and edit each head's **per-head** head-tool and agent-tool overrides — with an explicit "inherit global" state distinct from a chosen subset — in the per-head management UI.
 
 ## Future Requirements (deferred)
 

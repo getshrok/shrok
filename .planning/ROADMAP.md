@@ -209,4 +209,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
-| 46. Tool Access Control | v1.8 | 6/3 | Complete   | 2026-06-07 |
+| 46. Tool Access Control | v1.8 | 6/3 | Complete    | 2026-06-07 |
