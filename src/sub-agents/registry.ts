@@ -1403,17 +1403,25 @@ export const AGENT_TOOL_NAMES: readonly string[] = [
  *  - spawn_agent / message_agent / cancel_agent — head-native delegation tools
  *  - write_identity / list_identity_files / send_file / acknowledge_reminder — head-native
  *  - bash_no_net — excluded in favor of bash; operator can still assign bash
+ *  - update_schedule — excluded to keep this set aligned with the shipped base
+ *    agent allowlist (config.json workerDefaults.allowedTools ships
+ *    create_schedule/list_schedules/delete_schedule but NOT update_schedule).
+ *    Making it head-runnable without it being in the base agent set would be a
+ *    surprising asymmetry; if update_schedule is later added to the base config,
+ *    remove it from HEAD_RUNNABLE_SCHEDULE_EXCLUDES below.
  *
  * Defaults unchanged: an unconfigured head still resolves to exactly the 10 HEAD_TOOL_NAMES.
  * These tools are opt-in via the Phase 46 assignment UI (D-02).
  */
+const HEAD_RUNNABLE_SCHEDULE_EXCLUDES = new Set<string>(['update_schedule'])
 export const HEAD_RUNNABLE_TOOL_NAMES: readonly string[] = [
   // OPTIONAL_TOOL_NAMES minus the three already-dual head tools and bash_no_net
   ...OPTIONAL_TOOL_NAMES.filter(n => n !== 'view_image' && n !== 'ring_device' && n !== 'bash_no_net'),
-  // note/reminder/schedule tools (dynamic builders)
+  // note/reminder/schedule tools (dynamic builders); update_schedule excluded —
+  // see HEAD_RUNNABLE_SCHEDULE_EXCLUDES rationale above.
   ...NOTE_TOOL_NAMES,
   ...REMINDER_TOOL_NAMES,
-  ...SCHEDULE_TOOL_NAMES,
+  ...SCHEDULE_TOOL_NAMES.filter(n => !HEAD_RUNNABLE_SCHEDULE_EXCLUDES.has(n)),
   // get_usage is NOT included here — it is a native head case (D-05 — never reaches default)
 ].sort()
 

@@ -123,6 +123,25 @@ describe('GET /api/tools — tagged registry (D-08, TOOLCFG-08)', () => {
     expect(bashNoNet!.layers).toEqual(['agent'])
   })
 
+  it('update_schedule is agent-only — intentionally absent from HEAD_RUNNABLE_TOOL_NAMES (WR-02)', async () => {
+    // update_schedule is excluded from HEAD_RUNNABLE_TOOL_NAMES so the
+    // head-runnable schedule set stays aligned with the shipped base agent
+    // allowlist (config.json ships create/list/delete_schedule but not
+    // update_schedule). Other schedule tools are head-runnable; this one is not.
+    await start()
+    const body = await getTools()
+    const updateSchedule = body.tools.find(t => t.name === 'update_schedule')
+    expect(updateSchedule).toBeDefined()
+    expect(updateSchedule!.layers).toEqual(['agent'])
+  })
+
+  it('HEAD_RUNNABLE_TOOL_NAMES excludes update_schedule but includes the other schedule tools (WR-02)', async () => {
+    expect(HEAD_RUNNABLE_TOOL_NAMES).not.toContain('update_schedule')
+    expect(HEAD_RUNNABLE_TOOL_NAMES).toContain('create_schedule')
+    expect(HEAD_RUNNABLE_TOOL_NAMES).toContain('list_schedules')
+    expect(HEAD_RUNNABLE_TOOL_NAMES).toContain('delete_schedule')
+  })
+
   it('all NOTE tool names appear with the agent layer', async () => {
     await start()
     const body = await getTools()
