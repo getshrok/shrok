@@ -397,10 +397,14 @@ describe('PUT /api/settings — tool defaults two-state validation (TOOLCFG-08, 
     expect(JSON.stringify(res.json)).toContain('spawn_agent')
   })
 
-  it('PUT headToolDefault with bash (agent-only tool) → 400 (cross-layer membership check)', async () => {
+  it('PUT headToolDefault with bash (now head-runnable) → 200 + persists (Phase 47 T-47-11)', async () => {
+    // Phase 47: 'bash' is now head-runnable — must be assignable as global headToolDefault (200)
+    // and persist in config (confirms the membership gate is widened for the head direction)
     const res = await put({ headToolDefault: ['bash'] })
-    expect(res.status).toBe(400)
-    expect(JSON.stringify(res.json)).toContain('bash')
+    expect(res.status).toBe(200)
+    const cfg = JSON.parse(fs.readFileSync(path.join(workspace, 'config.json'), 'utf8')) as Record<string, unknown>
+    const htd = cfg['headToolDefaults'] as Record<string, unknown>
+    expect(htd['allowedTools']).toEqual(['bash'])
   })
 
   it('PUT headToolDefault with spawn_agent (valid head tool) → persisted', async () => {

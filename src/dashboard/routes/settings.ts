@@ -11,7 +11,7 @@ import { LLMApiError } from '../../llm/util.js'
 import { AnthropicProvider } from '../../llm/anthropic.js'
 import { GeminiProvider } from '../../llm/gemini.js'
 import { OpenAIProvider } from '../../llm/openai.js'
-import { AGENT_TOOL_NAMES } from '../../sub-agents/registry.js'
+import { AGENT_TOOL_NAMES, HEAD_RUNNABLE_TOOL_NAMES } from '../../sub-agents/registry.js'
 import { HEAD_TOOL_NAMES } from '../../head/index.js'
 
 // Hardcoded mapping: body field → ENV key. No dynamic key construction.
@@ -385,7 +385,10 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
         res.status(400).json({ error: 'headToolDefault must be an array of strings' })
         return
       }
-      const headSet = new Set<string>(HEAD_TOOL_NAMES)
+      // Phase 47 T-47-11: head direction widened to HEAD_TOOL_NAMES ∪ HEAD_RUNNABLE_TOOL_NAMES.
+      // The runtime control (resolved-allowlist filter in system.ts) keeps tools off an
+      // unconfigured head; this gate is an INPUT VALIDATOR only.
+      const headSet = new Set<string>([...HEAD_TOOL_NAMES, ...HEAD_RUNNABLE_TOOL_NAMES])
       const badHead = (val as string[]).find(n => !headSet.has(n))
       if (badHead !== undefined) {
         res.status(400).json({ error: `headToolDefault: '${badHead}' is not in the head-compatible tool set` })
