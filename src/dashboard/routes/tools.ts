@@ -1,7 +1,7 @@
 import express from 'express'
 import type { Request, Response } from 'express'
 import { requireAuth } from '../auth.js'
-import { AGENT_TOOL_NAMES } from '../../sub-agents/registry.js'
+import { AGENT_TOOL_NAMES, HEAD_RUNNABLE_TOOL_NAMES } from '../../sub-agents/registry.js'
 import { HEAD_TOOL_NAMES } from '../../head/index.js'
 
 /**
@@ -30,14 +30,17 @@ export interface ToolRegistryEntry {
  * Build the unified tool registry: one list, each tool tagged with the
  * layer(s) it can execute in today.
  *
- * - head-only: tools in HEAD_TOOL_NAMES but not in AGENT_TOOL_NAMES
- * - agent-only: tools in AGENT_TOOL_NAMES but not in HEAD_TOOL_NAMES
- * - both: tools in both sets (currently only view_image)
+ * - head-only: tools in HEAD_TOOL_NAMES but not in AGENT_TOOL_NAMES or HEAD_RUNNABLE_TOOL_NAMES
+ * - agent-only: tools in AGENT_TOOL_NAMES but not in HEAD_TOOL_NAMES or HEAD_RUNNABLE_TOOL_NAMES
+ * - both: tools in both sets — includes view_image (native dual) and the ported
+ *   agent-registry tools (HEAD_RUNNABLE_TOOL_NAMES, Phase 47 D-12). Most agent
+ *   tools are now dual; out-of-box behaviour is unchanged because they are opt-in
+ *   via the Phase 46 assignment UI (D-02).
  */
 function buildTaggedRegistry(): ToolRegistryEntry[] {
-  const headSet = new Set<string>(HEAD_TOOL_NAMES)
+  const headSet = new Set<string>([...HEAD_TOOL_NAMES, ...HEAD_RUNNABLE_TOOL_NAMES])
   const agentSet = new Set<string>(AGENT_TOOL_NAMES)
-  const allNames = new Set<string>([...HEAD_TOOL_NAMES, ...AGENT_TOOL_NAMES])
+  const allNames = new Set<string>([...HEAD_TOOL_NAMES, ...HEAD_RUNNABLE_TOOL_NAMES, ...AGENT_TOOL_NAMES])
 
   return [...allNames]
     .sort()
