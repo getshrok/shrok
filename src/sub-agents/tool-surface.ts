@@ -183,6 +183,22 @@ export async function assembleTools(
   const PARENT_ONLY_TOOLS = new Set(['message_agent', 'cancel_agent'])
   const isSubAgent = !!options.parentAgentId
   const canSpawn = deps.nestedAgentSpawningEnabled && !isSubAgent
+  // Phase 46 CR-01 (contract decision: option (b) — builtins are intentionally
+  // OUTSIDE the agent allowlist). The orchestration builtins
+  // (spawn_agent / message_agent / cancel_agent) are NOT gated by
+  // agentDefaults.allowedTools. They are governed solely by:
+  //   - nestedAgentSpawningEnabled + the depth-1 top-level cap (spawn_agent), and
+  //   - the PARENT_ONLY_TOOLS sub-agent forbid (message_agent / cancel_agent).
+  // This is the deferred cross-context work (PROJECT/CONTEXT D-02, "Deferred
+  // Ideas → Cross-context tool execution" / TOOLCFG-10,11): per-head AGENT tool
+  // overrides confine the agent-executable registry (filesystem/bash/web/notes/
+  // reminders/schedules), NOT the delegation primitives. They are correspondingly
+  // omitted from AGENT_TOOL_NAMES (registry.ts) so the dashboard agent-tool picker
+  // never offers them — they are head tools (tagged ['head'] in /api/tools) and are
+  // removable per-head only via the HEAD tool override, not the AGENT override.
+  // The enforcement.test.ts "builtins survive an empty agent override" test pins
+  // this contract. Do NOT re-filter the builtins through allowedTools without also
+  // moving them into AGENT_TOOL_NAMES + the picker; the current shape is deliberate.
   const builtins = deps.toolRegistry.builtins().filter(t => {
     if (t.definition.name === 'spawn_agent') return canSpawn
     if (isSubAgent && PARENT_ONLY_TOOLS.has(t.definition.name)) return false

@@ -272,7 +272,7 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
           />
         </Field>
 
-        <Field label="Agent tools" tooltip="Which tools sub-agents spawned by this head may use. Inherit global = use the global default. Custom subset = only the tools you pick.">
+        <Field label="Agent tools" tooltip="Which tools sub-agents spawned by this head may use (filesystem, bash, web, notes, reminders, schedules). Inherit global = use the global default. Custom subset = only the tools you pick. Note: this does NOT affect the orchestration tools spawn_agent / message_agent / cancel_agent — those are controlled by nested-agent spawning, not this list.">
           <HeadToolOverrideControl
             value={agentToolsOverride}
             onChange={v => setAgentToolsOverride(v)}

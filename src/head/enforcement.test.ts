@@ -211,6 +211,35 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     expect(names).not.toContain('web_search')
   })
 
+  it('CR-01 contract (option b): orchestration builtins survive an EMPTY agent override', async () => {
+    // The per-head AGENT tool override governs the agent-executable registry only.
+    // spawn_agent / message_agent / cancel_agent are orchestration builtins,
+    // gated by nestedAgentSpawningEnabled + the depth cap — NOT by allowedTools.
+    // Even an empty override ([] = "every agent-registry tool off") must NOT strip
+    // them. (They are removable per-head via the HEAD override, not the AGENT one.)
+    const resolvedAllowlist = resolveAllowlist([], BASE_25_TOOLS)
+    expect(resolvedAllowlist).toEqual([])
+    const deps = makeDeps({
+      agentDefaults: { env: null, allowedTools: resolvedAllowlist },
+      nestedAgentSpawningEnabled: true,
+    })
+    const { toolEntries } = await assembleTools(deps, {
+      // top-level agent (no parentAgentId) so spawn_agent is eligible
+      agentId: 'test-agent',
+      options: { prompt: 'test', trigger: 'ad_hoc', headId: 'default' },
+      skill: null,
+    })
+    const names = toolEntries.map(e => e.definition.name)
+    // builtins present despite the empty agent allowlist
+    expect(names).toContain('spawn_agent')
+    expect(names).toContain('message_agent')
+    expect(names).toContain('cancel_agent')
+    // agent-registry tools correctly stripped by the empty override
+    expect(names).not.toContain('bash')
+    expect(names).not.toContain('read_file')
+    expect(names).not.toContain('web_search')
+  })
+
   it('no-config agent layer: global = BASE_25_TOOLS → resolves to that array; bash and read_file present', async () => {
     // Production flow: resolveAllowlist(undefined, workerDefaults.allowedTools) where
     // workerDefaults.allowedTools is the 25-tool array from base config.json (TOOLCFG-07).
