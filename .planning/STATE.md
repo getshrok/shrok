@@ -1,30 +1,26 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7
-milestone_name: Voice Alarms & Timers
-status: verifying
-last_updated: "2026-05-26T21:23:25Z"
-last_activity: 2026-05-26
+milestone: v1.8
+milestone_name: Tool Access Control
+status: executing
+last_updated: "2026-06-07T04:37:54.136Z"
+last_activity: 2026-06-07
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_phases: 2
+  completed_phases: 0
+  total_plans: 4
+  completed_plans: 1
+  percent: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 45 (Ring Delivery Layer + Timer Ring + Alarm) — COMPLETE
-Plan: 6 of 6 — ALL DONE
-Status: All plans complete — v1.7 milestone ready for verification
-Last activity: 2026-05-26
-
-```
-v1.7 progress: [####################] 100% — Phase 45 Plan 6/6 complete
-```
+Phase: 46 (tool-access-control) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-07
 
 ### Quick Tasks Completed
 
@@ -36,19 +32,27 @@ v1.7 progress: [####################] 100% — Phase 45 Plan 6/6 complete
 | 260525-6d5 | Cascade task/skill rename across all references (frontmatter, schedules, cross-kind skill-deps, usage) | 2026-05-25 | 9059548 | Verified (targeted tests; full suite deferred to CI) | [260525-6d5-cascade-task-skill-rename-across-all-ref](./quick/260525-6d5-cascade-task-skill-rename-across-all-ref/) |
 | 260525-fgc | Fix dashboard convo-view voice mode: per-turn live MSE, head-aware WS URL, query-tolerant upgrade guard, per-connection head routing + multi-router registration | 2026-05-25 | 29c50de | Verified (tsc + dashboard 73/73 + root 1707/1708 green) | [260525-fgc-fix-dashboard-convo-view-voice-mode-turn](./quick/260525-fgc-fix-dashboard-convo-view-voice-mode-turn/) |
 | 260526-mdd | Stop exposing models to UTC — enforce YYYY-MM-DD HH:MM invariant at all model↔tool time boundaries, close issue #18 | 2026-05-26 | 02c1dba |  | [260526-mdd-stop-exposing-models-to-utc-issue-18](./quick/260526-mdd-stop-exposing-models-to-utc-issue-18/) |
+| 260606-vof | Dashboard skill/task file listing shows all files; gate binary/large at view time (issue #4) | 2026-06-07 | 3067758 |  | [260606-vof-fix-issue-4-dashboard-skill-task-file-li](./quick/260606-vof-fix-issue-4-dashboard-skill-task-file-li/) |
+| 260606-wh1 | Reminder/schedule edit modal datetime pre-fills; all datetime fields use workspace tz (issue #5) | 2026-06-07 | f04ed5d |  | [260606-wh1-fix-issue-5-reminder-schedule-edit-modal](./quick/260606-wh1-fix-issue-5-reminder-schedule-edit-modal/) |
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-24)
+See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 45 — Ring Delivery Layer + Timer Ring + Alarm
+**Current focus:** Phase 46 — tool-access-control
 
-## v1.7 Phase Map
+## v1.8 Phase Map
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 45. Ring Delivery Layer + Timer Ring + Alarm | Sustained dismiss-until-stopped voice alerts: headless ring runner, `ring_device(start\|stop)` tool, auto-derived media_player/LED entities, shrok-served beep, timer skill integration, `set-alarm` skill, non-ack alarm reminders, 24h cap, persisted ring state | RING-01..11, TIMER-01/02, ALARM-01..03 | Not started |
+| 46. Tool Access Control | Operator has config-driven, dashboard-editable control over which tools each head may use and which tools each head's sub-agents may use — globally and per-head — enforced at runtime with everything-on defaults | TOOLCFG-01, TOOLCFG-02, TOOLCFG-03, TOOLCFG-04, TOOLCFG-05, TOOLCFG-06, TOOLCFG-07, TOOLCFG-08, TOOLCFG-09 | Not started |
+
+## v1.7 Phase Map (archived)
+
+| Phase | Goal | Requirements | Status |
+|-------|------|--------------|--------|
+| 45. Ring Delivery Layer + Timer Ring + Alarm | Sustained dismiss-until-stopped voice alerts: headless ring runner, `ring_device(start\|stop)` tool, auto-derived media_player/LED entities, shrok-served beep, timer skill integration, `set-alarm` skill, non-ack alarm reminders, 24h cap, persisted ring state | RING-01..11, TIMER-01/02, ALARM-01..03 | Shipped 2026-06-07 (closed without verification) |
 
 ## Accumulated Context
 
@@ -65,6 +69,19 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 - Phases 40–43 added: v1.5 Home Assistant Voice — config + adapter skeleton (Phase 40), inbound sync reply endpoint (Phase 41), outbound HA REST announce (Phase 42), e2e smoke test + setup docs (Phase 43).
 - Phase 44 added: v1.6 Multi-Head Task Delivery — single phase; fan-out of agent_completed to multiple heads, force-complete for scheduled agents, dashboard task delivery multi-select.
 - Phase 45 added: v1.7 Voice Alarms & Timers — single phase covering the entire milestone; shared ring delivery layer (ring runner, ring_device tool, auto-derived entities, shrok-served beep, LED control, persisted ring state, 24h cap) + timer skill integration (ring on elapse) + set-alarm skill (non-ack reminder fires ring).
+- Phase 46 added: v1.8 Tool Access Control — single phase covering the entire milestone; config schema extensions (global + per-head tool allowlists, tri-state), head-tool enforcement at activation.ts:844, agent-tool threading from spawning head into assembleTools(), dashboard Settings UI (global allowlists) + per-head management UI (per-head overrides with explicit inherit-global state).
+
+### Key Architecture Decisions (v1.8 — locked in design session)
+
+- Tri-state semantics: `undefined` = inherit global, `null` = all tools, `[array]` = only those tools. Resolution: per-head override (if set) → global default → all tools.
+- Everything-on defaults: absent/null means all tools. No existing or newly-created head is ever silently broken. Must be explicitly narrowed.
+- No guardrails on core head tools: `spawn_agent`/`message_agent`/`cancel_agent` are fully toggleable — disabling them breaks delegation, but that is the operator's choice.
+- Head-tool enforcement point: `src/head/activation.ts:844` (where `HEAD_TOOLS` is currently assigned with no filtering) — add filtering here against the resolved head-tool allowlist.
+- Agent-tool enforcement path: reuse existing `worker_defaults.allowedTools` + `assembleTools()` in `src/sub-agents/tool-surface.ts`. Per-head agent allowlist threads from the spawning head's resolved config into `assembleTools()` as the effective `allowedTools`.
+- Config schema: `HeadConfigSchema` (`src/config.ts:66-72`) gains two optional per-head tool fields; global allowlists live in `worker_defaults` (head tools as a new sibling to `worker_defaults.allowedTools`).
+- Tool picker population: `/api/tools` → `OPTIONAL_TOOL_NAMES` from `src/sub-agents/registry.ts:1362` (already exists, consumed by the dashboard).
+- Settings write path: `src/dashboard/routes/settings.ts` PUT + `CONFIG_JSON_FIELDS` (existing mechanism for global settings); per-head overrides go through the head management PATCH route.
+- Old per-task `trigger-tools` filtering was deliberately dropped — agent gating flows solely through `agentDefaults`. Do not reintroduce.
 
 ### Key Architecture Decisions (v1.7 — locked in design session)
 
@@ -273,7 +290,8 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | Phase 45 P02 | 8min | 2 tasks | 4 files |
 | Phase 45 P04 | 8min | 2 tasks | 4 files |
 | Phase 45 P05 | 8min | 2 tasks | 2 files |
+| Phase 46 P01 | 2min | 3 tasks | 4 files |
 
 ## Operator Next Steps
 
-- Run `/gsd:plan-phase 45` to decompose Phase 45 into executable plans
+- Plan Phase 46 with /gsd:plan-phase 46

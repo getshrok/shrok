@@ -9,7 +9,8 @@
 - ✅ **v1.4 Unmissable Reminders** — Phases 37–39 (shipped 2026-05-24)
 - ✅ **v1.5 Home Assistant Voice** — Phases 40–43 (shipped 2026-05-24)
 - ✅ **v1.6 Multi-Head Task Delivery** — Phase 44 (shipped 2026-05-24)
-- 🔄 **v1.7 Voice Alarms & Timers** — Phase 45 (in progress)
+- ✅ **v1.7 Voice Alarms & Timers** — Phase 45 (shipped 2026-06-07)
+- [ ] **v1.8 Tool Access Control** — Phase 46 (in progress)
 
 Full per-phase detail for shipped milestones lives in `.planning/milestones/` and `.planning/MILESTONES.md`.
 
@@ -134,9 +135,16 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 
 </details>
 
-## v1.7 Voice Alarms & Timers
+<details>
+<summary>✅ v1.7 Voice Alarms & Timers (Phase 45) — SHIPPED 2026-06-07</summary>
 
 - [x] **Phase 45: Ring Delivery Layer + Timer Ring + Alarm** — Sustained, dismiss-until-stopped audible alerts on Home Assistant voice channels for both timers and alarms, via a shared headless ring runner, `ring_device(start|stop)` tool, auto-derived entities, shrok-served beep, and a new `set-alarm` skill (completed 2026-05-26)
+
+</details>
+
+## v1.8 Tool Access Control
+
+- [ ] **Phase 46: Tool Access Control** — Config-driven tool allowlists (global + per-head, tri-state) enforced at runtime for both the head's own tool surface and the tools given to the agents it spawns, with dashboard UI for editing both layers
 
 ## Phase Details
 
@@ -158,6 +166,24 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
   - [x] 45-05-PLAN.md — Startup wiring: RingRunner instantiation, initRingTool, ringRunner threading, restart cleanup (Wave 4)
   - [x] 45-06-PLAN.md — Timer skill ring hook + new set-alarm non-ack reminder skill + content tests (Wave 4)
 **UI hint**: no
+
+### Phase 46: Tool Access Control
+**Goal**: Operator has config-driven, dashboard-editable control over which tools each head may use and which tools each head's sub-agents may use — globally as a default and overridable per-head — enforced at runtime with everything-on defaults so no existing deployment is silently broken
+**Depends on**: Phase 45 (v1.7 shipped — existing HEAD_TOOLS surface at activation.ts:844, OPTIONAL_TOOL_NAMES registry, worker_defaults.allowedTools + assembleTools() enforcement path, /api/tools endpoint, head management UI)
+**Requirements**: TOOLCFG-01, TOOLCFG-02, TOOLCFG-03, TOOLCFG-04, TOOLCFG-05, TOOLCFG-06, TOOLCFG-07, TOOLCFG-08, TOOLCFG-09
+**Success Criteria** (what must be TRUE):
+  1. A head with an explicit head-tool allowlist is offered only those tools at runtime — tools not in the allowlist do not appear in the model's tool surface for that head, including core orchestration tools if deliberately omitted
+  2. Sub-agents spawned by a head with an agent-tool allowlist receive only the tools from that head's resolved agent allowlist — the restriction threads from the spawning head through into assembleTools()
+  3. A head with no tool configuration retains every tool including spawn_agent, message_agent, and cancel_agent — no existing or newly-created head is silently broken on upgrade
+  4. The Settings page shows pickers for the global head-tool and global agent-tool allowlists (surfacing the existing worker_defaults.allowedTools), populated from the live /api/tools registry, and changes persist to config
+  5. The per-head management UI shows each head's head-tool and agent-tool overrides with an explicit "inherit global" state that is visually distinct from "all tools enabled" and a specific tool subset — the operator can choose any of the three states independently for head tools and agent tools
+  6. Resolution correctly honors the tri-state two-layer rule: per-head override (if set) wins over global default, which wins over the everything-on fallback — verified for both head tools and agent tools with all three override states
+**Plans**: 4 plans
+- [x] 46-01-PLAN.md — Config schema (global head-tools default + tri-state per-head overrides) + the pure resolveAllowlist helper with exhaustive unit tests
+- [ ] 46-02-PLAN.md — Runtime enforcement: head tool surface filtered at activation + spawning head's agent allowlist threaded into assembleTools, with enforcement tests
+- [ ] 46-03-PLAN.md — Backend API + DTOs: /api/tools head+agent lists, settings GET/PUT for global defaults, heads PATCH for tri-state per-head overrides
+- [ ] 46-04-PLAN.md — Dashboard UI: shared TagSelect, Inherit/All/Subset override controls, Settings global editors, per-head card controls, CHANGELOG (closes #7)
+**UI hint**: yes
 
 ## Progress
 
@@ -183,3 +209,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
+| 46. Tool Access Control | v1.8 | 1/4 | In Progress|  |

@@ -1,90 +1,50 @@
-# Requirements — v1.7 Voice Alarms & Timers
+# Requirements: v1.8 Tool Access Control
 
-**Defined:** 2026-05-25
-**Core Value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
+**Milestone goal:** Give the operator config-driven control over which tools the head and its sub-agents may use — globally and per-head — surfaced in the dashboard. Implements GitHub issue #7.
 
-Add sustained, dismiss-until-stopped audible alerts on voice channels (Home Assistant Voice PE) for timers and alarms — the gap one-shot TTS (`assist_satellite.announce`) can't cover. Implements GitHub issue #14. The delivery layer is shared between timers and alarms; only scheduling differs. Feasibility — including the load-bearing **dismiss-by-voice** path — was validated live on the real Voice PE this session (the "stop" turn reaches shrok over the playing beep; `media_stop` cuts it instantly; `media_player`/LED entities derive from the satellite via the HA template API).
+**Core semantics (apply to every TOOLCFG requirement):** tool allowlists are **tri-state** and resolved in two layers. A per-head override is `undefined` = inherit the global default, `null` = all tools, `[array]` = only those tools. Resolution order: per-head override (if set) → global default → all tools. Defaults are **everything-on**, so no existing or newly-created head is ever silently broken.
 
-## v1.7 Requirements
+## v1 Requirements
 
-### Ring Delivery Layer (RING)
+### Configuration
 
-The shared "make noise until told to stop" mechanism. Hard constraint: no model in the ring loop.
+- [x] **TOOLCFG-01**: Operator can set a global default allowlist of **head** tools in config (which tools the head itself may use). Absent/null = all head tools.
+- [x] **TOOLCFG-02**: Operator can set a global default allowlist of **agent** tools in config — surfacing the existing `worker_defaults.allowedTools` field as the canonical global agent allowlist. Absent/null = all agent tools.
+- [x] **TOOLCFG-03**: Operator can set a **per-head override** for head tools (tri-state: inherit global / all / specific subset).
+- [x] **TOOLCFG-04**: Operator can set a **per-head override** for agent tools (tri-state, same semantics as TOOLCFG-03).
 
-- [x] **RING-01**: When a timer or alarm fires on a Home Assistant voice channel, the device plays a **sustained, repeating** alert that keeps sounding until dismissed (not a single ding) — a headless ring runner loops a beep via `media_player.play_media`, polling player state and replaying on idle (the Voice PE has no native `REPEAT_SET`)
-- [x] **RING-02**: A user dismisses an active ring **by voice** ("stop" / "turn it off") — the dismiss arrives as a normal turn, the head calls `ring_device(stop)`, and the sound stops promptly via `media_player.media_stop` with state cleared
-- [x] **RING-03**: Both the head and sub-agents can start and stop a device ring through a single `ring_device(start|stop)` tool that resolves the target satellite from its head's Home Assistant channel
-- [x] **RING-04**: `ring_device` is safe to call on any channel — it silently no-ops when the channel has no Home Assistant satellite, so timers/alarms work everywhere with the ring as a voice-only enhancement
-- [x] **RING-05**: The ring loop runs entirely headless — **no LLM activation per beep**; only ring *start* (one activation) and *dismiss* (one activation) touch the head
-- [x] **RING-06**: The beep is a locally bundled static sound served by shrok — never a per-beep TTS or external API call
-- [x] **RING-07**: shrok auto-derives the device's `media_player` (and LED `light`) entity from the configured `haVoiceSatelliteEntityId` via the Home Assistant template API (`device_entities(device_id(...))`), cached per channel, with an optional explicit config override
-- [x] **RING-08**: shrok serves the bundled beep at `GET /media/ring.mp3` on its **existing** server (same host/port as `/v1/chat/completions` — no separate service). The device-reachable base URL is **auto-derived** from the inbound Home Assistant request's `Host` header (cached; scheme from `X-Forwarded-Proto`), so normal setups need **no extra config**. An optional `publicBaseUrl` override covers the loopback (co-located HA dials `localhost`) and authenticated-reverse-proxy edge cases. The route is unauthenticated and serves only the static beep asset
-- [x] **RING-09**: While ringing, the device LED ring is lit steady and is cleared on dismiss
-- [x] **RING-10**: An undismissed ring auto-dismisses after a configurable cap (default 24h) — the sound stops and state is cleared
-- [x] **RING-11**: Active-ring state is persisted per channel so that on restart shrok clears stale ring state and stops **only** the players that were actively ringing (no ghost ring after a crash, no blind stop-all of unrelated playback)
+### Enforcement
 
-### Timer Ring (TIMER)
+- [ ] **TOOLCFG-05**: At runtime, the head's available tool surface is filtered to its resolved head-tool allowlist (the head is offered only the tools its allowlist permits).
+- [ ] **TOOLCFG-06**: Sub-agents spawned by a head receive only that head's resolved agent-tool allowlist (the per-head override threads from the spawning head into the agent tool-assembly path).
+- [x] **TOOLCFG-07**: Resolution honors the tri-state/two-layer rule with everything-on defaults, so a head with no configuration retains all tools — including core orchestration tools (`spawn_agent`/`message_agent`/`cancel_agent`), which remain available unless an operator deliberately removes them (no guardrails).
 
-- [x] **TIMER-01**: When a voice-set timer elapses, the device rings (the `timer` skill calls `ring_device(start)`) and keeps sounding until dismissed — replacing the previous single spoken "your timer is up"
-- [x] **TIMER-02**: The existing `timer` skill is otherwise unchanged — the only addition is the ring call at completion; no second/competing timer path is introduced
+### Dashboard UI
 
-### Alarm (ALARM)
+- [ ] **TOOLCFG-08**: Operator can view and edit the **global** head-tool and agent-tool allowlists from the dashboard Settings page, with the tool choices populated from the live tool registry (`/api/tools`).
+- [ ] **TOOLCFG-09**: Operator can view and edit each head's **per-head** head-tool and agent-tool overrides — with an explicit "inherit global" state distinct from "all" and "none" — in the per-head management UI.
 
-- [x] **ALARM-01**: A user can set an alarm for a specific time (one-off or recurring) via a new `set-alarm` skill; the alarm is persisted as a reminder and survives a restart
-- [x] **ALARM-02**: When an alarm fires, the device rings until dismissed — the fire-time prompt calls `ring_device(start)`, reusing the shared ring delivery layer
-- [x] **ALARM-03**: The alarm uses a **non-ack** reminder — no nag/escalation; if the device is offline at fire time the ring silently fails (accepted trade-off)
+## Future Requirements (deferred)
 
-## Future Requirements
+- Per-task / per-skill tool overrides — the `trigger-tools` surface was deliberately removed earlier; re-introducing task-scoped gating is a separate effort.
+- Runtime / per-conversation tool toggling (this milestone is config-driven only).
 
-Acknowledged but deferred past v1.7.
+## Out of Scope (this milestone)
 
-### Dismiss ergonomics
-- **RING-F-01**: Physical button-press dismiss via the `event.*_button_press` entity — bedside-friendly dismiss without speaking; requires shrok subscribing to Home Assistant events
-
-### Escalation
-- **ALARM-F-01**: Optional ack/escalation for alarms — re-notify or fall back to a text channel if the ring fails because the device was offline at fire time
-
-### Sound design
-- **RING-F-02**: Configurable beep pattern and/or per-alarm sounds
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| Multiple concurrent rings on one device | One ring-state per channel; minor edge not worth the complexity for v1.7 |
-| Per-beep TTS or dynamic spoken alerts during the ring | Violates the no-model-in-loop + local-sound hard constraints |
-| Sustained audio on non-voice channels (Telegram, etc.) | Those already get the agent's completion message; sustained audio is a voice-device capability |
-| HA built-in voice timers | shrok is the conversation agent and owns the alert by design; HA's native `timer.*` entities are bypassed |
-| Louder-volume AEC re-test | Barge-in already proven on hardware at 0.5 volume; the Voice PE echo-canceller is built for full-volume media |
+- **MCP-server-level tool gating** beyond the existing optional-tool registry (`OPTIONAL_TOOL_NAMES`) — MCP capability scoping is governed elsewhere.
+- **Removing the everything-on default** or adding mandatory-tool guardrails — explicitly rejected; the operator may disable any tool including core ones.
+- **Public release versioning** — this is the internal GSD `v1.8` planning milestone; the repo's public `v0.x` release/tag scheme is separate and untouched.
 
 ## Traceability
 
-Which phases cover which requirements. Filled/validated during roadmap creation. All v1.7 requirements target the single phase (Phase 45).
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RING-01 | Phase 45 | Complete |
-| RING-02 | Phase 45 | Complete |
-| RING-03 | Phase 45 | Complete |
-| RING-04 | Phase 45 | Complete |
-| RING-05 | Phase 45 | Complete |
-| RING-06 | Phase 45 | Complete |
-| RING-07 | Phase 45 | Complete |
-| RING-08 | Phase 45 | Complete |
-| RING-09 | Phase 45 | Complete |
-| RING-10 | Phase 45 | Complete |
-| RING-11 | Phase 45 | Complete |
-| TIMER-01 | Phase 45 | Complete |
-| TIMER-02 | Phase 45 | Complete |
-| ALARM-01 | Phase 45 | Complete |
-| ALARM-02 | Phase 45 | Complete |
-| ALARM-03 | Phase 45 | Complete |
-
-**Coverage:**
-- v1.7 requirements: 16 total
-- Mapped to phases: 16
-- Unmapped: 0 ✓
-
----
-*Requirements defined: 2026-05-25*
-*Last updated: 2026-05-25 after initial definition*
+| TOOLCFG-01 | Phase 46 | Complete |
+| TOOLCFG-02 | Phase 46 | Complete |
+| TOOLCFG-03 | Phase 46 | Complete |
+| TOOLCFG-04 | Phase 46 | Complete |
+| TOOLCFG-05 | Phase 46 | Pending |
+| TOOLCFG-06 | Phase 46 | Pending |
+| TOOLCFG-07 | Phase 46 | Complete |
+| TOOLCFG-08 | Phase 46 | Pending |
+| TOOLCFG-09 | Phase 46 | Pending |
