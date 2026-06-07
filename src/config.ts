@@ -8,7 +8,16 @@ import { HEAD_TOOL_NAMES } from './head/index.js'
 const WorkerDefaultsSchema = z.object({
   // Env vars available to bash subprocesses in ad hoc workers. null = unrestricted (full process.env).
   env: z.array(z.string()).nullable().default(null),
-  // Tool allowlist for ad hoc workers. null = unrestricted (all tools).
+  // Tool allowlist for ad hoc workers (the global AGENT layer default).
+  // Phase 46 two-state model (D-04/D-05): an explicit string[] is the allowed
+  // subset; check every box in the agent picker to "allow everything that layer
+  // can run". `null` is ONLY tolerated for backward-compat with pre-Phase-46
+  // config.json — it is normalized to fall-through by resolveAllowlist (NOT
+  // "all tools" anymore). Because resolveAllowlist falls through legacy-null and
+  // there is no further default below the global layer, a legacy `null` here
+  // resolves to NO agent tools. The base config.json ships the concrete 25-tool
+  // array, so fresh/normal installs never hit the null path. To allow tools, set
+  // an explicit array — do not rely on `null = all` (that meaning is gone).
   allowedTools: z.array(z.string()).nullable().default(null),
 }).default({})
 
