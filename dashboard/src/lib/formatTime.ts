@@ -70,6 +70,65 @@ export function formatInTz(
   }
 }
 
+/**
+ * Convert a UTC instant to a `YYYY-MM-DDTHH:MM` wall-clock string in the given
+ * IANA timezone, suitable for binding to `<input type="datetime-local">`.
+ *
+ * Returns `''` when the input is not a valid date, or when `tz` is not a valid
+ * IANA timezone.  (This differs from `formatInTz`, which returns `String(iso)`
+ * on invalid input — `datetime-local` inputs require a syntactically valid
+ * value or an empty string; an arbitrary error message would cause a visible
+ * glitch.)
+ */
+export function toDatetimeLocalInTz(iso: string | Date, tz: string): string {
+  const d = typeof iso === 'string' ? new Date(iso) : iso
+  if (Number.isNaN(d.getTime())) return ''
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(d)
+    const get = (t: string) => parts.find(p => p.type === t)?.value ?? '00'
+    const h = get('hour') === '24' ? '00' : get('hour')
+    return `${get('year')}-${get('month')}-${get('day')}T${h}:${get('minute')}`
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Convert a `YYYY-MM-DDTHH:MM` wall-clock string in the given IANA timezone
+ * back to a UTC ISO string (as produced by `Date.prototype.toISOString()`).
+ *
+ * Returns `''` when `local` is empty, does not match the expected format, or
+ * produces an invalid result.
+ *
+ * **DST caveat:** a wall-clock that lands inside the spring-forward gap or the
+ * fall-back overlap can be off by up to one hour.  This is acceptable for this
+ * UI — the error window is ~1 hr/year and always in the correct direction.
+ */
+export function datetimeLocalToUtc(local: string, tz: string): string {
+  if (!local || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local)) return ''
+  try {
+    // Interpret the wall-clock as if it were UTC to get a reference instant.
+    const asUTC = new Date(local + ':00Z')
+    // Determine how far the tz is offset from UTC at that instant via locale strings.
+    const tzMs = new Date(asUTC.toLocaleString('en-US', { timeZone: tz })).getTime()
+    const utcMs = new Date(asUTC.toLocaleString('en-US', { timeZone: 'UTC' })).getTime()
+    const offset = tzMs - utcMs
+    const result = new Date(asUTC.getTime() - offset)
+    if (Number.isNaN(result.getTime())) return ''
+    return result.toISOString()
+  } catch {
+    return ''
+  }
+}
+
 /** Relative time — tz-independent; kept here so pages import one module. */
 export function formatRelTime(iso: string | null): string {
   if (!iso) return 'Never'
