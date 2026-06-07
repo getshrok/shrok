@@ -67,6 +67,10 @@ export const HeadConfigSchema = z.object({
   id: z.string().min(1),
   channels: z.array(ChannelConfigSchema),
   customPrompt: z.string().optional(),
+  // Per-head tool override fields (TOOLCFG-03, TOOLCFG-04).
+  // key-absent = inherit global default, null = all tools, array = only those tools.
+  headToolsOverride: z.array(z.string()).nullable().optional(),
+  agentToolsOverride: z.array(z.string()).nullable().optional(),
 })
 
 export type HeadConfig = z.infer<typeof HeadConfigSchema>
@@ -76,6 +80,10 @@ export interface ResolvedHead {
   id: string
   channels: ChannelConfig[]
   customPrompt?: string
+  // Per-head tool allowlist overrides (TOOLCFG-03, TOOLCFG-04).
+  // key-absent = inherit global default, null = all tools, array = only those tools.
+  headToolsOverride?: string[] | null
+  agentToolsOverride?: string[] | null
 }
 
 const ConfigSchema = z.object({
@@ -273,7 +281,13 @@ const ConfigSchema = z.object({
   webhookHost: z.string().default('127.0.0.1'),
 
   // Worker defaults — apply to ad hoc workers (no skill). Skills override via frontmatter.
+  // workerDefaults.allowedTools is the GLOBAL AGENT layer (TOOLCFG-02) — do not duplicate.
   workerDefaults: WorkerDefaultsSchema,
+  // Global head-tools default (TOOLCFG-01). Mirrors WorkerDefaultsSchema's allowedTools semantics:
+  // null/absent = all head tools, [array] = only those tools. Per-head headToolsOverride takes precedence.
+  headToolDefaults: z.object({
+    allowedTools: z.array(z.string()).nullable().default(null),
+  }).default({}),
 
   // Phase 31 (CONF-01): optional multi-head adapter registry. When present,
   // flat adapter keys above are ignored entirely (D-04). When absent, startup
@@ -447,6 +461,11 @@ export function resolveHeads(config: Config): ResolvedHead[] {
       id: h.id,
       channels: h.channels,
       ...(h.customPrompt !== undefined ? { customPrompt: h.customPrompt } : {}),
+      // Carry per-head tool overrides forward only when the key is present.
+      // Absent key = inherit global — must NOT become present-as-undefined
+      // (exactOptionalPropertyTypes: the three states must stay distinct).
+      ...(h.headToolsOverride !== undefined ? { headToolsOverride: h.headToolsOverride } : {}),
+      ...(h.agentToolsOverride !== undefined ? { agentToolsOverride: h.agentToolsOverride } : {}),
     }))
   }
   const channels: ChannelConfig[] = []
