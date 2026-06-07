@@ -111,6 +111,18 @@ describe('GET /api/tools — tagged registry (D-08, TOOLCFG-08)', () => {
     expect(bash!.layers).toContain('head')
   })
 
+  it('bash_no_net is agent-only — intentionally absent from HEAD_RUNNABLE_TOOL_NAMES (WR-01)', async () => {
+    // bash_no_net uses `unshare -n`, blocked in many environments; it is
+    // deliberately excluded from HEAD_RUNNABLE_TOOL_NAMES (operators assign
+    // plain `bash` to a head instead). If a future change makes it
+    // head-assignable this guard fails loudly.
+    await start()
+    const body = await getTools()
+    const bashNoNet = body.tools.find(t => t.name === 'bash_no_net')
+    expect(bashNoNet).toBeDefined()
+    expect(bashNoNet!.layers).toEqual(['agent'])
+  })
+
   it('all NOTE tool names appear with the agent layer', async () => {
     await start()
     const body = await getTools()

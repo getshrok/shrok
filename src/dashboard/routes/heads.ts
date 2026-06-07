@@ -514,6 +514,9 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
 
       // Per-layer membership check (both directions, before any write).
       // HEAD direction: widened to HEAD_TOOL_NAMES ∪ HEAD_RUNNABLE_TOOL_NAMES (Phase 47 T-47-11).
+      // NOTE: bash_no_net is intentionally absent from HEAD_RUNNABLE_TOOL_NAMES
+      // (it uses `unshare -n`, blocked in many environments) — assigning it to a
+      // head is rejected here by design; operators assign plain `bash` instead.
       if (hasHeadToolsOverride && Array.isArray(body.headToolsOverride)) {
         const headSet = new Set<string>([...HEAD_TOOL_NAMES, ...HEAD_RUNNABLE_TOOL_NAMES])
         const bad = (body.headToolsOverride as string[]).find(n => !headSet.has(n))

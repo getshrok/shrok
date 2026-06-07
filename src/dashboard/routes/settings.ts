@@ -388,6 +388,9 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       // Phase 47 T-47-11: head direction widened to HEAD_TOOL_NAMES ∪ HEAD_RUNNABLE_TOOL_NAMES.
       // The runtime control (resolved-allowlist filter in system.ts) keeps tools off an
       // unconfigured head; this gate is an INPUT VALIDATOR only.
+      // NOTE: bash_no_net is intentionally absent from HEAD_RUNNABLE_TOOL_NAMES
+      // (it uses `unshare -n`, blocked in many environments) — it is not
+      // head-assignable by design; operators assign plain `bash` instead.
       const headSet = new Set<string>([...HEAD_TOOL_NAMES, ...HEAD_RUNNABLE_TOOL_NAMES])
       const badHead = (val as string[]).find(n => !headSet.has(n))
       if (badHead !== undefined) {
