@@ -78,6 +78,20 @@ export function HeadToolOverrideControl({
     Array.isArray(value) ? value : []
   )
 
+  // WR-05: re-sync the local buffer whenever the controlled `value` prop changes
+  // to a new array (e.g. after a save/refetch hands down the persisted DTO, or a
+  // concurrent edit). Without this the TagSelect renders stale tags because the
+  // buffer was only seeded once at mount, and a subsequent save would push that
+  // stale buffer back to the server. We compare contents (not identity) so a
+  // re-render with an equal-but-new array does not clobber an in-flight edit.
+  React.useEffect(() => {
+    if (Array.isArray(value)) {
+      setSubset(prev =>
+        prev.length === value.length && prev.every((t, i) => t === value[i]) ? prev : value
+      )
+    }
+  }, [value])
+
   function setMode(next: 'inherit' | 'subset') {
     if (next === 'inherit') {
       onChange('__inherit__')

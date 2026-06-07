@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import type { HeadDTO, ChannelConfigSubmit } from '../../types/api'
@@ -60,6 +60,23 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   const [agentToolsOverride, setAgentToolsOverride] = useState<string[] | '__inherit__'>(
     head.agentToolsOverride !== undefined ? head.agentToolsOverride : '__inherit__'
   )
+
+  // WR-05: re-sync the local override state when the DTO changes (after a
+  // save/refetch via onSaved, or another field's mutation). The card is keyed by
+  // h.id (HeadsTab), so it does NOT remount on a same-id refetch — without this
+  // resync the controls keep their first-mount state and a later Save could push
+  // a stale value back to the server. Keying on JSON-stringified overrides means
+  // the effect only fires when the persisted override actually changes.
+  const headOverrideKey = JSON.stringify(head.headToolsOverride ?? null)
+  const agentOverrideKey = JSON.stringify(head.agentToolsOverride ?? null)
+  useEffect(() => {
+    setHeadToolsOverride(head.headToolsOverride !== undefined ? head.headToolsOverride : '__inherit__')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headOverrideKey])
+  useEffect(() => {
+    setAgentToolsOverride(head.agentToolsOverride !== undefined ? head.agentToolsOverride : '__inherit__')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentOverrideKey])
 
   // New-channel form pending state. Initial id is suggested when the vendor
   // is picked; secrets all start blank.
