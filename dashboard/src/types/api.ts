@@ -361,10 +361,10 @@ export interface SettingsData {
   loopStewardToolResultChars: number
   loopStewardSystemPromptChars: number
   loopStewardMaxTokens: number
-  /** Global agent tool allowlist default: null = all tools; string[] = subset (TOOLCFG-02) */
-  agentToolDefault: string[] | null
-  /** Global head tool allowlist default: null = all tools; string[] = subset (TOOLCFG-01) */
-  headToolDefault: string[] | null
+  /** Global agent tool allowlist default: string[] = subset (TOOLCFG-02). Two-state: always a concrete array. */
+  agentToolDefault: string[]
+  /** Global head tool allowlist default: string[] = subset (TOOLCFG-01). Two-state: always a concrete array. */
+  headToolDefault: string[]
 }
 
 export type ThresholdAction = 'alert' | 'block'
@@ -401,14 +401,25 @@ export type ChannelConfigSubmit =
   | { id: string; vendor: 'whatsapp'; allowedJid: string }
   | { id: string; vendor: 'zoho-cliq'; clientId: string; clientSecret: string; refreshToken: string; chatId: string }
 
+/**
+ * Tagged registry entry from GET /api/tools (D-08, TOOLCFG-08).
+ * Each tool carries the layer(s) it can execute in today.
+ * Pickers filter by: tools.filter(t => t.layers.includes('head'|'agent')).
+ */
+export type ToolLayer = 'head' | 'agent'
+export interface ToolRegistryEntry {
+  name: string
+  layers: ToolLayer[]
+}
+
 export interface HeadDTO {
   id: string
   channels: ChannelConfigMasked[]
   customPrompt?: string
-  /** Tri-state: key absent = inherit global; null = all tools; string[] = subset */
-  headToolsOverride?: string[] | null
-  /** Tri-state: key absent = inherit global; null = all tools; string[] = subset */
-  agentToolsOverride?: string[] | null
+  /** Two-state: key absent = inherit global; string[] = subset (null rejected) */
+  headToolsOverride?: string[]
+  /** Two-state: key absent = inherit global; string[] = subset (null rejected) */
+  agentToolsOverride?: string[]
 }
 
 export type DashboardEvent =

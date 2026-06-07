@@ -7,8 +7,9 @@ import { GlobalToolControl } from './ToolOverrideControl'
 
 export default function BehaviorTab({ d, set, isDeveloper, inputClass, selectClass }: SettingsTabProps) {
   const toolsQuery = useQuery({ queryKey: ['tools'], queryFn: api.tools.list, staleTime: Infinity })
-  const headToolOptions = toolsQuery.data?.headTools ?? []
-  const agentToolOptions = toolsQuery.data?.tools ?? []
+  // Filter tagged registry by layer at assignment time (D-03, D-08)
+  const headToolOptions = (toolsQuery.data?.tools ?? []).filter(t => t.layers.includes('head')).map(t => t.name)
+  const agentToolOptions = (toolsQuery.data?.tools ?? []).filter(t => t.layers.includes('agent')).map(t => t.name)
 
   return (
     <>

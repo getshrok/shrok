@@ -6,7 +6,7 @@ import { Field, SecretInput } from './components'
 import ChannelRow from './ChannelRow'
 import DeleteHeadModal from './DeleteHeadModal'
 import { vendorTheme, VENDORS, VENDOR_LABELS, type Vendor } from './vendor-theme'
-import { HeadToolOverrideControl, modeForValue } from './ToolOverrideControl'
+import { HeadToolOverrideControl } from './ToolOverrideControl'
 
 // Phase 33 Plan 06 (D-01, D-02, D-08, D-13, D-15) — a single head card. Holds
 // the head id (with non-default rename), the list of ChannelRow components,
@@ -53,12 +53,12 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [promptDraft, setPromptDraft] = useState(head.customPrompt ?? '')
 
-  // Tool override state — default to '__inherit__' when key is absent on the DTO
-  const [headToolsOverride, setHeadToolsOverride] = useState<string[] | null | '__inherit__'>(
-    modeForValue(head.headToolsOverride) === 'inherit' ? '__inherit__' : head.headToolsOverride ?? '__inherit__'
+  // Tool override state — default to '__inherit__' when key is absent on the DTO (two-state: subset | inherit)
+  const [headToolsOverride, setHeadToolsOverride] = useState<string[] | '__inherit__'>(
+    head.headToolsOverride !== undefined ? head.headToolsOverride : '__inherit__'
   )
-  const [agentToolsOverride, setAgentToolsOverride] = useState<string[] | null | '__inherit__'>(
-    modeForValue(head.agentToolsOverride) === 'inherit' ? '__inherit__' : head.agentToolsOverride ?? '__inherit__'
+  const [agentToolsOverride, setAgentToolsOverride] = useState<string[] | '__inherit__'>(
+    head.agentToolsOverride !== undefined ? head.agentToolsOverride : '__inherit__'
   )
 
   // New-channel form pending state. Initial id is suggested when the vendor
@@ -84,8 +84,9 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   })
 
   const toolsQuery = useQuery({ queryKey: ['tools'], queryFn: api.tools.list, staleTime: Infinity })
-  const headToolOptions = toolsQuery.data?.headTools ?? []
-  const agentToolOptions = toolsQuery.data?.tools ?? []
+  // Filter tagged registry by layer at assignment time (D-03, D-08)
+  const headToolOptions = (toolsQuery.data?.tools ?? []).filter(t => t.layers.includes('head')).map(t => t.name)
+  const agentToolOptions = (toolsQuery.data?.tools ?? []).filter(t => t.layers.includes('agent')).map(t => t.name)
 
   const toolOverrideMutation = useMutation({
     mutationFn: () => api.heads.setToolOverrides(head.id, { headToolsOverride, agentToolsOverride }),
@@ -262,18 +263,18 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
           Changes require a restart to take effect.
         </p>
 
-        <Field label="Head tools" tooltip="Which tools this head may use. Inherit = use the global default. All = unrestricted. Choose subset = only those tools.">
+        <Field label="Head tools" tooltip="Which tools this head may use. Inherit = use the global default. Choose subset = only those tools.">
           <HeadToolOverrideControl
             value={headToolsOverride}
-            onChange={setHeadToolsOverride}
+            onChange={v => { if (v !== null) setHeadToolsOverride(v) }}
             options={headToolOptions}
           />
         </Field>
 
-        <Field label="Agent tools" tooltip="Which tools sub-agents spawned by this head may use. Inherit = use the global default. All = unrestricted. Choose subset = only those tools.">
+        <Field label="Agent tools" tooltip="Which tools sub-agents spawned by this head may use. Inherit = use the global default. Choose subset = only those tools.">
           <HeadToolOverrideControl
             value={agentToolsOverride}
-            onChange={setAgentToolsOverride}
+            onChange={v => { if (v !== null) setAgentToolsOverride(v) }}
             options={agentToolOptions}
           />
         </Field>
