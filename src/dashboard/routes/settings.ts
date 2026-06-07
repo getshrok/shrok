@@ -254,6 +254,23 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       accentColor: str('accentColor', '#8C51CD'),
       logoPath: str('logoPath', ''),
       timezone: str('timezone', config.timezone),
+      // TOOLCFG-08: global tool defaults (null = all tools, string[] = subset)
+      agentToolDefault: ((): string[] | null => {
+        const wd = cfg['workerDefaults']
+        if (wd && typeof wd === 'object' && !Array.isArray(wd)) {
+          const at = (wd as Record<string, unknown>)['allowedTools']
+          if (Array.isArray(at)) return at as string[]
+        }
+        return null
+      })(),
+      headToolDefault: ((): string[] | null => {
+        const htd = cfg['headToolDefaults']
+        if (htd && typeof htd === 'object' && !Array.isArray(htd)) {
+          const at = (htd as Record<string, unknown>)['allowedTools']
+          if (Array.isArray(at)) return at as string[]
+        }
+        return null
+      })(),
     })
   })
 
@@ -337,6 +354,35 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
         configJson[field] = body[field]
         configChanged = true
       }
+    }
+
+    // --- Global tool defaults (TOOLCFG-01/02) ---
+    // These are nested fields in config.json (not flat CONFIG_JSON_FIELDS entries)
+    // so they need explicit deep-merge handling. null = all tools; string[] = subset.
+    // Key must be present in body to trigger write (omit = no change).
+    if ('agentToolDefault' in body) {
+      const val = body['agentToolDefault']
+      if (val !== null && (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string'))) {
+        res.status(400).json({ error: 'agentToolDefault must be null or an array of strings' })
+        return
+      }
+      const wd = (typeof configJson['workerDefaults'] === 'object' && configJson['workerDefaults'] !== null && !Array.isArray(configJson['workerDefaults']))
+        ? (configJson['workerDefaults'] as Record<string, unknown>)
+        : {}
+      configJson['workerDefaults'] = { ...wd, allowedTools: val }
+      configChanged = true
+    }
+    if ('headToolDefault' in body) {
+      const val = body['headToolDefault']
+      if (val !== null && (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string'))) {
+        res.status(400).json({ error: 'headToolDefault must be null or an array of strings' })
+        return
+      }
+      const htd = (typeof configJson['headToolDefaults'] === 'object' && configJson['headToolDefaults'] !== null && !Array.isArray(configJson['headToolDefaults']))
+        ? (configJson['headToolDefaults'] as Record<string, unknown>)
+        : {}
+      configJson['headToolDefaults'] = { ...htd, allowedTools: val }
+      configChanged = true
     }
 
     // --- Logo upload (base64 data URL) ---
