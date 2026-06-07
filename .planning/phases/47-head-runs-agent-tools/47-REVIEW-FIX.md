@@ -3,8 +3,8 @@ phase: 47-head-runs-agent-tools
 fixed_at: 2026-06-07T23:49:02Z
 review_path: .planning/phases/47-head-runs-agent-tools/47-REVIEW.md
 iteration: 1
-findings_in_scope: 4
-fixed: 4
+findings_in_scope: 5
+fixed: 5
 skipped: 0
 status: all_fixed
 ---
@@ -16,8 +16,8 @@ status: all_fixed
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 4 (1 Critical + 3 Warning; Info finding IN-01 out of scope for critical_warning)
-- Fixed: 4
+- Findings in scope: 5 (1 Critical + 3 Warning + 1 Info — IN-01 added on a follow-up `fix IN-01` request)
+- Fixed: 5
 - Skipped: 0
 
 ## Fixed Issues
@@ -46,9 +46,15 @@ status: all_fixed
 **Commit:** 9c1d25d
 **Applied fix:** Added an explicit `else` to the `default` branch's `if (entry !== undefined)` block so the unknown-tool error return is structurally unambiguous and self-documenting for future readers. No behavior change — purely a clarity improvement as requested. Verified via `tsc --noEmit` (clean) and head test suites (all pass).
 
+### IN-01: `enforcement.test.ts` — `BASE_25_TOOLS` constant is hardcoded and will drift from `config.json`
+
+**Files modified:** `src/head/enforcement.test.ts`
+**Commit:** d6c7740
+**Applied fix:** Replaced the hardcoded 25-element `BASE_25_TOOLS` array with a runtime load of the shipped `config.json` `workerDefaults.allowedTools`, mirroring the pattern in `tools.test.ts`. Used the correct relative depth for this file (`../../config.json` — `enforcement.test.ts` lives at `src/head/`, two levels deep, not the three levels of `tools.test.ts`; the review's suggested snippet used `../../../` which would have resolved outside the repo). The constant can no longer silently diverge from the base config. Verified via `tsc --noEmit` (clean) and `enforcement.test.ts` (all 11 tests pass). Fixed on a follow-up `fix IN-01` request after the initial critical_warning pass.
+
 ## Skipped Issues
 
-None — all in-scope findings were fixed.
+None — all findings were fixed.
 
 ---
 
