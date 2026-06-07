@@ -21,8 +21,8 @@
 
 ### Dashboard UI
 
-- [ ] **TOOLCFG-08**: Operator can view and edit the **global** head-tool and agent-tool allowlists from the dashboard Settings page, with the tool choices populated from the live tool registry (`/api/tools`).
-- [ ] **TOOLCFG-09**: Operator can view and edit each head's **per-head** head-tool and agent-tool overrides — with an explicit "inherit global" state distinct from "all" and "none" — in the per-head management UI.
+- [x] **TOOLCFG-08**: Operator can view and edit the **global** head-tool and agent-tool allowlists from the dashboard Settings page, with the tool choices populated from the live tool registry (`/api/tools`).
+- [x] **TOOLCFG-09**: Operator can view and edit each head's **per-head** head-tool and agent-tool overrides — with an explicit "inherit global" state distinct from "all" and "none" — in the per-head management UI.
 
 ## Future Requirements (deferred)
 
@@ -46,5 +46,5 @@
 | TOOLCFG-05 | Phase 46 | Complete |
 | TOOLCFG-06 | Phase 46 | Complete |
 | TOOLCFG-07 | Phase 46 | Complete |
-| TOOLCFG-08 | Phase 46 | Pending |
-| TOOLCFG-09 | Phase 46 | Pending |
+| TOOLCFG-08 | Phase 46 | Complete |
+| TOOLCFG-09 | Phase 46 | Complete |

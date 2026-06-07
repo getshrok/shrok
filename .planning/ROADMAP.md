@@ -181,7 +181,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 **Plans**: 4 plans
 - [x] 46-01-PLAN.md — Config schema (global head-tools default + tri-state per-head overrides) + the pure resolveAllowlist helper with exhaustive unit tests
 - [x] 46-02-PLAN.md — Runtime enforcement: head tool surface filtered at activation + spawning head's agent allowlist threaded into assembleTools, with enforcement tests
-- [ ] 46-03-PLAN.md — Backend API + DTOs: /api/tools head+agent lists, settings GET/PUT for global defaults, heads PATCH for tri-state per-head overrides
+- [x] 46-03-PLAN.md — Backend API + DTOs: /api/tools head+agent lists, settings GET/PUT for global defaults, heads PATCH for tri-state per-head overrides
 - [ ] 46-04-PLAN.md — Dashboard UI: shared TagSelect, Inherit/All/Subset override controls, Settings global editors, per-head card controls, CHANGELOG (closes #7)
 **UI hint**: yes
 
@@ -209,4 +209,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
-| 46. Tool Access Control | v1.8 | 2/4 | In Progress|  |
+| 46. Tool Access Control | v1.8 | 3/4 | In Progress|  |
