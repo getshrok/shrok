@@ -10,7 +10,8 @@
 - ✅ **v1.5 Home Assistant Voice** — Phases 40–43 (shipped 2026-05-24)
 - ✅ **v1.6 Multi-Head Task Delivery** — Phase 44 (shipped 2026-05-24)
 - ✅ **v1.7 Voice Alarms & Timers** — Phase 45 (shipped 2026-06-07)
-- [ ] **v1.8 Tool Access Control** — Phase 46 (in progress)
+- ✅ **v1.8 Tool Access Control** — Phase 46 (shipped 2026-06-07)
+- [ ] **v1.9 Head Runs Agent Tools** — Phase 47 (in progress)
 
 Full per-phase detail for shipped milestones lives in `.planning/milestones/` and `.planning/MILESTONES.md`.
 
@@ -146,7 +147,28 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 
 - [x] **Phase 46: Tool Access Control** — Config-driven tool allowlists (global + per-head, two-state inherit/subset) enforced at runtime for both the head's own tool surface and the tools given to the agents it spawns, each restricted to that layer's currently-executable tools, with dashboard UI for editing both layers (completed 2026-06-07)
 
+## v1.9 Head Runs Agent Tools
+
+- [x] **Phase 47: Head Runs Agent Tools** — Make every agent-executable tool (fs, bash, web, notes, reminders, schedules) runnable in the head loop via a dispatch fallthrough into the existing registry executors, so an operator can assign these tools to a head through the Phase 46 UI (off by default; defaults stay the 10 head-native tools). Direction A only — agents running head/delegation tools stays deferred. (completed 2026-06-07)
+
 ## Phase Details
+
+### Phase 47: Head Runs Agent Tools
+**Goal**: An operator can optionally grant a head direct access to agent-executable tools (file read/write, bash, web, notes, reminders, schedules) — assigned through the existing Phase 46 per-head/global UI and actually executed in the head loop — while a head with no such configuration still resolves to exactly the 10 pre-feature head-native tools (zero behavior change out of the box)
+**Depends on**: Phase 46 (v1.8 shipped — tagged `/api/tools` registry, two-state head/agent allowlist resolver + enforcement at `activation.ts:844`, two-state Settings/HeadCard UI); reuses the agent registry executors (`getOptionalTool`, note/reminder/schedule/usage builders)
+**Requirements**: TOOLCFG-10, TOOLCFG-11
+**Scope**: Direction A only (head runs agent tools). Direction B (agents run head/delegation/identity tools) remains deferred (TOOLCFG-12).
+**Success Criteria** (what must be TRUE):
+  1. A head assigned an agent tool (e.g. `read_file`, `create_reminder`, `bash`) through the Settings/HeadCard UI actually executes that tool in the head loop and returns a real result — not a "tool not available" error
+  2. A head with no tool configuration is offered exactly the 10 head-native tools at runtime — no agent tool is silently added (defaults unchanged; the Phase 46 allowlist still filters the now-wider candidate set back to the 10)
+  3. A head-created reminder/schedule is owned by that head's own `headId` (correct delivery target); head-run notes read/write the same global note pool as agents; head-run bash runs in the daemon cwd with the default timeout
+  4. Every agent-executable tool appears in the head picker (retagged with the `'head'` layer in `/api/tools`) with no dashboard component changes — the two-state Inherit/Custom-subset controls work unchanged
+  5. AGENTS.md reframes "the head never works directly" as the default/recommended posture that operator configurability supersedes — the delegation model remains the documented default
+**Plans**: 3 plans
+  - [x] 47-01-PLAN.md — Core mechanic: noteStore? option + head-ctx dispatch fallthrough into agent-registry executors + candidate-def widening at system.ts + backend tests (Wave 1)
+  - [x] 47-02-PLAN.md — `/api/tools` retag (ported tools carry the `'head'` layer) + head-picker surfacing + verify zero dashboard component changes (Wave 2)
+  - [x] 47-03-PLAN.md — AGENTS.md delegation-principle reframe (D-14) + CHANGELOG `[0.3.0]` Added bullet (Wave 1)
+**UI hint**: no (surfacing rides entirely on the existing Phase 46 UI; verify-only)
 
 ### Phase 45: Ring Delivery Layer + Timer Ring + Alarm
 **Goal**: Users on Home Assistant voice channels hear a sustained, repeating alert when a timer elapses or alarm fires, and can dismiss it by voice — the alert runs headless (no per-beep LLM activation), the beep is served from shrok itself, entities are auto-derived from the existing satellite config, and the alarm is a persisted non-ack reminder that survives restart

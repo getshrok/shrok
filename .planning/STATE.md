@@ -1,27 +1,26 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8
-milestone_name: Tool Access Control
-status: milestone_complete
-last_updated: 2026-06-07T08:47:48.376Z
-last_activity: 2026-06-07 -- Phase 46 execution started
+milestone: v1.9
+milestone_name: Head Runs Agent Tools
+status: executing
+last_updated: "2026-06-07T23:11:26.556Z"
+last_activity: 2026-06-07 -- Phase 47 execution started
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 1
-  total_plans: 3
+  total_plans: 6
   completed_plans: 6
-  percent: 50
-stopped_at: Milestone complete (Phase 46 was final phase)
+  percent: 33
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 46
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-07
+Phase: 47 (head-runs-agent-tools) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 47
+Last activity: 2026-06-07 -- Phase 47 execution started
 
 ### Quick Tasks Completed
 
@@ -35,13 +34,18 @@ Last activity: 2026-06-07
 | 260526-mdd | Stop exposing models to UTC — enforce YYYY-MM-DD HH:MM invariant at all model↔tool time boundaries, close issue #18 | 2026-05-26 | 02c1dba |  | [260526-mdd-stop-exposing-models-to-utc-issue-18](./quick/260526-mdd-stop-exposing-models-to-utc-issue-18/) |
 | 260606-vof | Dashboard skill/task file listing shows all files; gate binary/large at view time (issue #4) | 2026-06-07 | 3067758 |  | [260606-vof-fix-issue-4-dashboard-skill-task-file-li](./quick/260606-vof-fix-issue-4-dashboard-skill-task-file-li/) |
 | 260606-wh1 | Reminder/schedule edit modal datetime pre-fills; all datetime fields use workspace tz (issue #5) | 2026-06-07 | f04ed5d |  | [260606-wh1-fix-issue-5-reminder-schedule-edit-modal](./quick/260606-wh1-fix-issue-5-reminder-schedule-edit-modal/) |
+| 260607-lwy | Head-scope dashboard convo-view sub-agent pills (backend getRecent head filter + head-keyed query + reset accumulator) (issue #10) | 2026-06-07 | 352b9dd |  | [260607-lwy-fix-issue-10-head-scope-the-dashboard-co](./quick/260607-lwy-fix-issue-10-head-scope-the-dashboard-co/) |
+| fast | Create-reminder Message field → multi-line textarea (issue #15) | 2026-06-07 | 096741d |  | (gsd-fast, no dir) |
+| fast | Louder ring default (0.5→1.0) + stronger triple-beep alarm tone (issue #19) | 2026-06-07 | 022fcda |  | (gsd-fast, no dir) |
+| 260607-mp4 | Chunk long Telegram messages under the 4096-char limit (source-split, per-chunk HTML, sequential send) (issue #20) | 2026-06-07 | db4da23 |  | [260607-mp4-fix-issue-20-chunk-long-telegram-message](./quick/260607-mp4-fix-issue-20-chunk-long-telegram-message/) |
+| 260607-mz8 | Fix long-message silent-drop in Slack (block-aware: 3000/2000/10-field/50-block) + WhatsApp (chunker @65k) adapters — audit sibling of #20 | 2026-06-07 | 616d04e | Verified (plan-check + 255 channel tests + tsc; commits clean) | [260607-mz8-fix-long-message-silent-drop-in-slack-bl](./quick/260607-mz8-fix-long-message-silent-drop-in-slack-bl/) |
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Milestone complete
+**Current focus:** Phase 47 — head-runs-agent-tools
 
 ## v1.8 Phase Map
 
