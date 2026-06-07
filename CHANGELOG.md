@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [0.3.0]
 
 ### Added
+- **Config-driven tool access control** — operators can now restrict which tools each head may use, and which tools each head's sub-agents may use, via two independent allowlists (head tools, agent tools). Each layer has a global default and a per-head override with explicit tri-state semantics: key-absent = inherit global, `null` = all tools, `[array]` = only those tools. Everything-on by default — existing heads are never silently broken. Core orchestration tools (`spawn_agent`, `message_agent`, `cancel_agent`) are fully togglable with no guardrails. (closes #7)
 - **Multi-head support** — one shrok process can run several independent "heads" sharing identity, memory, and the SQLite DB, each with its own activation loop, channel adapters, schedules, and agent lifecycle.
 - **Dashboard head selector + per-head management UI** — pick a head, create/edit/delete heads and their channel adapters from the dashboard.
 - **`[Name]:` inbound sender attribution** — messages from group chats arrive prefixed with the sender's name so the head knows who's talking.
