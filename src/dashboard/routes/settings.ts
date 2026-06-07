@@ -254,23 +254,11 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       accentColor: str('accentColor', '#8C51CD'),
       logoPath: str('logoPath', ''),
       timezone: str('timezone', config.timezone),
-      // TOOLCFG-08: global tool defaults (null = all tools, string[] = subset)
-      agentToolDefault: ((): string[] | null => {
-        const wd = cfg['workerDefaults']
-        if (wd && typeof wd === 'object' && !Array.isArray(wd)) {
-          const at = (wd as Record<string, unknown>)['allowedTools']
-          if (Array.isArray(at)) return at as string[]
-        }
-        return null
-      })(),
-      headToolDefault: ((): string[] | null => {
-        const htd = cfg['headToolDefaults']
-        if (htd && typeof htd === 'object' && !Array.isArray(htd)) {
-          const at = (htd as Record<string, unknown>)['allowedTools']
-          if (Array.isArray(at)) return at as string[]
-        }
-        return null
-      })(),
+      // TOOLCFG-08: global tool defaults (null = all tools, string[] = subset).
+      // Read from the EFFECTIVE merged config (not the workspace-only cfg layer) so the
+      // UI reflects the actual enforced value (e.g. the 25-tool curated base-config list).
+      agentToolDefault: config.workerDefaults.allowedTools,
+      headToolDefault: config.headToolDefaults.allowedTools,
     })
   })
 

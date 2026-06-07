@@ -82,6 +82,9 @@ function makeTestConfig(overrides: Partial<Config> = {}): Config {
     visAgentPills: false,
     visMemoryRetrievals: false,
     usageFootersEnabled: false,
+    // Tool defaults (TOOLCFG-08) — required by the GET handler; null = all tools.
+    workerDefaults: { allowedTools: null, env: null },
+    headToolDefaults: { allowedTools: null },
     ...overrides,
   } as Config
 }
@@ -296,5 +299,23 @@ describe('GET /api/settings — config-derived defaults', () => {
     expect(b['visAgentWork']).toBe(true)
     expect(b['usageFootersEnabled']).toBe(true)
     expect(b['visHeadTools']).toBe(false)  // others still default
+  })
+
+  it('GET reflects effective merged tool defaults, not workspace-only layer (TOOLCFG-08)', async () => {
+    // Simulate a typical install: base config ships a 25-tool curated subset as the
+    // effective workerDefaults.allowedTools, but the workspace config.json is empty
+    // (no workerDefaults key). Without the fix, the GET handler would read the
+    // workspace-only layer (empty → null → UI shows "All tools"), misrepresenting
+    // the actual enforced value and causing a Save to silently expand agents to all tools.
+    const effectiveSubset = ['bash', 'read_file']
+    await startWithConfig(makeTestConfig({
+      workerDefaults: { allowedTools: effectiveSubset, env: null },
+      headToolDefaults: { allowedTools: null },
+    }))
+    // Workspace config.json has no workerDefaults — empty workspace layer.
+    // (No config.json file written — workspace dir is fresh from mkdtemp.)
+    const b = await getBody()
+    expect(b['agentToolDefault']).toEqual(effectiveSubset)
+    expect(b['headToolDefault']).toBeNull()
   })
 })
