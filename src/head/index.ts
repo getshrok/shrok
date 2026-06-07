@@ -511,8 +511,9 @@ export class HeadToolExecutor implements ToolExecutor {
             fail: () => {},
           }
           return await entry.execute(input, ctx)
+        } else {
+          return JSON.stringify({ error: true, message: `Unknown tool: ${name}` })
         }
-        return JSON.stringify({ error: true, message: `Unknown tool: ${name}` })
       }
     }
   }
