@@ -126,8 +126,8 @@ export const api = {
       request<{ ok: boolean; cancelledAgents: number }>('/api/controls/emergency-stop', { method: 'POST' }),
   },
   agents: {
-    list: () =>
-      request<{ agents: Array<{ id: string; task: string; status: string; skillName: string | null; trigger: string; model: string; parentAgentId: string | null; pendingQuestion: string | null; createdAt: string; updatedAt: string; completedAt: string | null; colorSlot: number | null }> }>('/api/agents'),
+    list: (headId?: string) =>
+      request<{ agents: Array<{ id: string; task: string; status: string; skillName: string | null; trigger: string; model: string; parentAgentId: string | null; pendingQuestion: string | null; createdAt: string; updatedAt: string; completedAt: string | null; colorSlot: number | null }> }>(headId ? `/api/agents?head=${encodeURIComponent(headId)}` : '/api/agents'),
     history: (id: string) =>
       request<{ history: Message[]; status: string; task: string; pendingQuestion: string | null }>(`/api/agents/${encodeURIComponent(id)}/history`),
     cancel: (id: string) =>

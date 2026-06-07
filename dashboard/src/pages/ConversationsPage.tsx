@@ -553,8 +553,8 @@ export default function ConversationsPage() {
   // Agents query drives the pill bar data — enable if either developer mode OR the agent pills category is on
   const agentsEnabled = isDeveloper || visibility.agentPills || visibility.agentWork
   const agentsQuery = useQuery({
-    queryKey: ['agents'],
-    queryFn: api.agents.list,
+    queryKey: ['agents', selectedHead],
+    queryFn: () => api.agents.list(selectedHead),
     enabled: agentsEnabled,
     refetchInterval: agentsEnabled ? 5_000 : false,
   })
@@ -572,6 +572,12 @@ export default function ConversationsPage() {
   // ── Pill state ──────────────────────────────────────────────────────────────
   const [selectedStream, setSelectedStream] = useState<'head' | string>('head')
   const [knownAgents, setKnownAgents] = useState<Map<string, AgentPill>>(new Map())
+
+  // Clear stale pills when switching heads (closes #10: head-scope the pills).
+  // The accumulator below re-populates from the now head-scoped agentsQuery.
+  useEffect(() => {
+    setKnownAgents(new Map())
+  }, [selectedHead])
 
   // Accumulate agents as they appear (keeps completed ones as greyed pills)
   useEffect(() => {
