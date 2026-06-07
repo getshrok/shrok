@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { modeForValue, valueForMode } from './ToolOverrideControl'
 
-// ─── modeForValue ─────────────────────────────────────────────────────────────
+// ─── modeForValue (two-state: inherit | subset) ───────────────────────────────
 
 describe('modeForValue', () => {
   it('returns inherit for undefined', () => {
@@ -12,8 +12,10 @@ describe('modeForValue', () => {
     expect(modeForValue('__inherit__')).toBe('inherit')
   })
 
-  it('returns all for null', () => {
-    expect(modeForValue(null)).toBe('all')
+  it('returns inherit for legacy null (maps to inherit, not all)', () => {
+    // Legacy null is treated as "inherit global" — the safe non-action — since
+    // the two-state model has no "all tools" mode.
+    expect(modeForValue(null)).toBe('inherit')
   })
 
   it('returns subset for a non-empty array', () => {
@@ -21,20 +23,16 @@ describe('modeForValue', () => {
   })
 
   it('returns subset for an empty array', () => {
-    // An explicitly set empty subset is still subset mode (not "all")
+    // An explicitly set empty subset is still subset mode
     expect(modeForValue([])).toBe('subset')
   })
 })
 
-// ─── valueForMode ─────────────────────────────────────────────────────────────
+// ─── valueForMode (two-state: inherit | subset) ───────────────────────────────
 
 describe('valueForMode', () => {
   it('returns __inherit__ for inherit mode', () => {
     expect(valueForMode('inherit', ['ignored'])).toBe('__inherit__')
-  })
-
-  it('returns null for all mode', () => {
-    expect(valueForMode('all', ['ignored'])).toBeNull()
   })
 
   it('returns the subset array for subset mode', () => {

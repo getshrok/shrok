@@ -3,92 +3,66 @@ import { TagSelect } from '../../components/TagSelect'
 
 // ─── Mode helpers (exported for unit testing) ─────────────────────────────────
 
-/** Map a raw tri-state override value to a UI mode. */
+/** Map a raw two-state override value to a UI mode.
+ *
+ *  '__inherit__' / undefined  → 'inherit'
+ *  string[] (including empty) → 'subset'
+ *
+ *  Legacy-null: a null arriving from old config is treated as 'inherit' (the
+ *  safe non-action — the head reads the global default) rather than a broken
+ *  "all-tools" state that no longer exists in the two-state model.
+ */
 export function modeForValue(
   value: string[] | null | '__inherit__' | undefined
-): 'inherit' | 'all' | 'subset' {
+): 'inherit' | 'subset' {
   if (value === undefined || value === '__inherit__') return 'inherit'
-  if (value === null) return 'all'
+  if (value === null) return 'inherit' // legacy null → inherit (see note above)
   return 'subset'
 }
 
 /** Map a UI mode back to the wire value sent to the API. */
 export function valueForMode(
-  mode: 'inherit' | 'all' | 'subset',
+  mode: 'inherit' | 'subset',
   subset: string[]
-): string[] | null | '__inherit__' {
+): string[] | '__inherit__' {
   if (mode === 'inherit') return '__inherit__'
-  if (mode === 'all') return null
   return subset
 }
 
-// ─── GlobalToolControl (2-mode: All / Subset) ─────────────────────────────────
+// ─── GlobalToolControl (subset-only) ──────────────────────────────────────────
 // Used for the global head-tool and agent-tool defaults in the Settings Behavior
-// tab. The global layer has no "inherit" state — it IS the base. Only two modes:
-// "All tools" (value === null) and "Choose subset" (value is string[]).
+// tab. The global layer has no "inherit" state — it IS the base. The value is
+// always a concrete subset (string[]); checking every available option is
+// equivalent to enabling everything that layer can run.
 
 interface GlobalToolControlProps {
-  value: string[] | null
-  onChange: (v: string[] | null) => void
+  value: string[]
+  onChange: (v: string[]) => void
   options: string[]
 }
 
 export function GlobalToolControl({ value, onChange, options }: GlobalToolControlProps) {
-  const mode: 'all' | 'subset' = value === null ? 'all' : 'subset'
-
-  function setMode(next: 'all' | 'subset') {
-    if (next === 'all') onChange(null)
-    else onChange([])
-  }
-
   return (
     <div className="space-y-2">
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          onClick={() => setMode('all')}
-          className={`px-3 py-1 text-xs rounded-md border transition-colors ${
-            mode === 'all'
-              ? 'bg-[var(--accent)] border-[var(--accent)]/50 text-white'
-              : 'border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500'
-          }`}
-        >
-          All tools
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('subset')}
-          className={`px-3 py-1 text-xs rounded-md border transition-colors ${
-            mode === 'subset'
-              ? 'bg-[var(--accent)] border-[var(--accent)]/50 text-white'
-              : 'border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500'
-          }`}
-        >
-          Choose subset
-        </button>
-      </div>
-      {mode === 'subset' && (
-        <TagSelect
-          values={value ?? []}
-          onChange={onChange}
-          options={options}
-          placeholder="Pick tools…"
-        />
-      )}
+      <TagSelect
+        values={value}
+        onChange={onChange}
+        options={options}
+        placeholder="Pick tools…"
+      />
     </div>
   )
 }
 
-// ─── HeadToolOverrideControl (3-mode: Inherit / All / Subset) ─────────────────
-// Used on each head card to configure per-head tool overrides. Three explicit,
-// visually-distinct modes per TOOLCFG-09:
+// ─── HeadToolOverrideControl (2-mode: Inherit global / Custom subset) ─────────
+// Used on each head card to configure per-head tool overrides. Two explicit,
+// visually-distinct modes per TOOLCFG-09 (D-04):
 //   Inherit global — key absent → use the global default (the safe non-action)
-//   All tools     — null → all tools regardless of the global default
-//   Choose subset — string[] → only those tools
+//   Custom subset  — string[]  → only those tools
 
 interface HeadToolOverrideControlProps {
-  value: string[] | null | '__inherit__' | undefined
-  onChange: (v: string[] | null | '__inherit__') => void
+  value: string[] | '__inherit__' | undefined
+  onChange: (v: string[] | '__inherit__') => void
   options: string[]
 }
 
@@ -104,11 +78,9 @@ export function HeadToolOverrideControl({
     Array.isArray(value) ? value : []
   )
 
-  function setMode(next: 'inherit' | 'all' | 'subset') {
+  function setMode(next: 'inherit' | 'subset') {
     if (next === 'inherit') {
       onChange('__inherit__')
-    } else if (next === 'all') {
-      onChange(null)
     } else {
       // Switching to subset: emit current subset buffer
       onChange(subset)
@@ -140,17 +112,10 @@ export function HeadToolOverrideControl({
         </button>
         <button
           type="button"
-          onClick={() => setMode('all')}
-          className={modeButtonClass(mode === 'all')}
-        >
-          All tools
-        </button>
-        <button
-          type="button"
           onClick={() => setMode('subset')}
           className={modeButtonClass(mode === 'subset')}
         >
-          Choose subset
+          Custom subset
         </button>
       </div>
       {mode === 'inherit' && (
