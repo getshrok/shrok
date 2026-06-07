@@ -15,8 +15,8 @@
 
 ### Enforcement
 
-- [ ] **TOOLCFG-05**: At runtime, the head's available tool surface is filtered to its resolved head-tool allowlist (the head is offered only the tools its allowlist permits).
-- [ ] **TOOLCFG-06**: Sub-agents spawned by a head receive only that head's resolved agent-tool allowlist (the per-head override threads from the spawning head into the agent tool-assembly path).
+- [x] **TOOLCFG-05**: At runtime, the head's available tool surface is filtered to its resolved head-tool allowlist (the head is offered only the tools its allowlist permits).
+- [x] **TOOLCFG-06**: Sub-agents spawned by a head receive only that head's resolved agent-tool allowlist (the per-head override threads from the spawning head into the agent tool-assembly path).
 - [x] **TOOLCFG-07**: Resolution honors the tri-state/two-layer rule with everything-on defaults, so a head with no configuration retains all tools — including core orchestration tools (`spawn_agent`/`message_agent`/`cancel_agent`), which remain available unless an operator deliberately removes them (no guardrails).
 
 ### Dashboard UI
@@ -43,8 +43,8 @@
 | TOOLCFG-02 | Phase 46 | Complete |
 | TOOLCFG-03 | Phase 46 | Complete |
 | TOOLCFG-04 | Phase 46 | Complete |
-| TOOLCFG-05 | Phase 46 | Pending |
-| TOOLCFG-06 | Phase 46 | Pending |
+| TOOLCFG-05 | Phase 46 | Complete |
+| TOOLCFG-06 | Phase 46 | Complete |
 | TOOLCFG-07 | Phase 46 | Complete |
 | TOOLCFG-08 | Phase 46 | Pending |
 | TOOLCFG-09 | Phase 46 | Pending |
