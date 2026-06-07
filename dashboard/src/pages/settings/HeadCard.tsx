@@ -259,22 +259,23 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
         <label className="text-xs font-medium text-zinc-400">Tool access</label>
         <p className="text-xs text-zinc-500">
           Override the global tool defaults for this head.
-          "Inherit global" uses the defaults from Settings → Behavior.
+          "Inherit global" uses the subset configured in Settings → Behavior.
+          "Custom subset" lets you pick exactly which tools this head (or its agents) may use.
           Changes require a restart to take effect.
         </p>
 
-        <Field label="Head tools" tooltip="Which tools this head may use. Inherit = use the global default. Choose subset = only those tools.">
+        <Field label="Head tools" tooltip="Which tools this head may use. Inherit global = use the global default. Custom subset = only the tools you pick.">
           <HeadToolOverrideControl
             value={headToolsOverride}
-            onChange={v => { if (v !== null) setHeadToolsOverride(v) }}
+            onChange={v => setHeadToolsOverride(v)}
             options={headToolOptions}
           />
         </Field>
 
-        <Field label="Agent tools" tooltip="Which tools sub-agents spawned by this head may use. Inherit = use the global default. Choose subset = only those tools.">
+        <Field label="Agent tools" tooltip="Which tools sub-agents spawned by this head may use. Inherit global = use the global default. Custom subset = only the tools you pick.">
           <HeadToolOverrideControl
             value={agentToolsOverride}
-            onChange={v => { if (v !== null) setAgentToolsOverride(v) }}
+            onChange={v => setAgentToolsOverride(v)}
             options={agentToolOptions}
           />
         </Field>

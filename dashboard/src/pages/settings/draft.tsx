@@ -72,9 +72,9 @@ export interface DraftState {
   usageFootersEnabled: boolean
   traceHistoryTokens: number
   timezone: string
-  // Tool access control (global defaults)
-  headToolDefault: string[] | null
-  agentToolDefault: string[] | null
+  // Tool access control (global defaults) — two-state: always a concrete array
+  headToolDefault: string[]
+  agentToolDefault: string[]
   // Advanced
   llmMaxTokens: number
   snapshotTokenBudget: number
