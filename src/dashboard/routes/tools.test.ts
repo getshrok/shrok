@@ -6,7 +6,7 @@ import * as net from 'node:net'
 import * as url from 'node:url'
 import type { Server } from 'node:http'
 import { createToolsRouter, type ToolRegistryEntry } from './tools.js'
-import { NOTE_TOOL_NAMES, REMINDER_TOOL_NAMES, SCHEDULE_TOOL_NAMES } from '../../sub-agents/registry.js'
+import { NOTE_TOOL_NAMES, REMINDER_TOOL_NAMES, SCHEDULE_TOOL_NAMES, HEAD_RUNNABLE_TOOL_NAMES } from '../../sub-agents/registry.js'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /** Path to the repo's base config.json — the authoritative shipped default. */
@@ -159,5 +159,63 @@ describe('GET /api/tools — tagged registry (D-08, TOOLCFG-08)', () => {
 
     const missingTools = defaultAllowedTools.filter(t => !byName.has(t))
     expect(missingTools, `Tools in config.json missing from registry: ${missingTools.join(', ')}`).toEqual([])
+  })
+
+  // Phase 47 D-12: ported agent tools are now dual (head + agent) — positive coverage
+  it('read_file is dual — carries both head and agent layers (Phase 47 retag)', async () => {
+    await start()
+    const body = await getTools()
+    const readFile = body.tools.find(t => t.name === 'read_file')
+    expect(readFile).toBeDefined()
+    expect(readFile!.layers).toContain('head')
+    expect(readFile!.layers).toContain('agent')
+  })
+
+  it('write_note is dual — carries both head and agent layers (Phase 47 retag)', async () => {
+    await start()
+    const body = await getTools()
+    const writNote = body.tools.find(t => t.name === 'write_note')
+    expect(writNote).toBeDefined()
+    expect(writNote!.layers).toContain('head')
+    expect(writNote!.layers).toContain('agent')
+  })
+
+  it('create_reminder is dual — carries both head and agent layers (Phase 47 retag)', async () => {
+    await start()
+    const body = await getTools()
+    const createReminder = body.tools.find(t => t.name === 'create_reminder')
+    expect(createReminder).toBeDefined()
+    expect(createReminder!.layers).toContain('head')
+    expect(createReminder!.layers).toContain('agent')
+  })
+
+  it('create_schedule is dual — carries both head and agent layers (Phase 47 retag)', async () => {
+    await start()
+    const body = await getTools()
+    const createSchedule = body.tools.find(t => t.name === 'create_schedule')
+    expect(createSchedule).toBeDefined()
+    expect(createSchedule!.layers).toContain('head')
+    expect(createSchedule!.layers).toContain('agent')
+  })
+
+  it('all HEAD_RUNNABLE_TOOL_NAMES appear in registry with both head and agent layers', async () => {
+    await start()
+    const body = await getTools()
+    const byName = new Map(body.tools.map(t => [t.name, t]))
+    for (const name of HEAD_RUNNABLE_TOOL_NAMES) {
+      const entry = byName.get(name)
+      expect(entry, `${name} missing from registry`).toBeDefined()
+      expect(entry!.layers, `${name} not tagged as head`).toContain('head')
+      expect(entry!.layers, `${name} not tagged as agent`).toContain('agent')
+    }
+  })
+
+  it('every entry has exactly the { name, layers } shape — no extra keys (T-47-08)', async () => {
+    await start()
+    const body = await getTools()
+    for (const entry of body.tools) {
+      const keys = Object.keys(entry).sort()
+      expect(keys).toEqual(['layers', 'name'])
+    }
   })
 })
