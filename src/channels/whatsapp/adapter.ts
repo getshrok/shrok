@@ -4,6 +4,7 @@ import type { ChannelAdapter, InboundMessage } from '../../types/channel.js'
 import type { Attachment } from '../../types/core.js'
 import { log } from '../../logger.js'
 import { formatTablesForWhatsApp } from '../table-formatter.js'
+import { splitMessage } from '../chunker.js'
 import {
   parseVerboseMessage,
   collapseToolCall,
@@ -112,7 +113,9 @@ export class WhatsAppAdapter implements ChannelAdapter {
   async send(text: string, attachments?: Attachment[]): Promise<void> {
     if (!this.sock) throw new Error('WhatsApp not connected')
     const formatted = formatTablesForWhatsApp(text)
-    await this.sock.sendMessage(this.allowedJid, { text: formatted })
+    for (const chunk of splitMessage(formatted, 65000)) {
+      await this.sock.sendMessage(this.allowedJid, { text: chunk })
+    }
     if (attachments?.length) {
       for (const att of attachments) {
         if (!att.path) continue

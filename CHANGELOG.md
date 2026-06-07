@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 - **Long Telegram replies that exceeded Telegram's 4096-character limit are now split into multiple messages** instead of being silently dropped — long agent replies with code blocks, tables, or multi-section text now reach the user in full. (closes #20)
+- **Long Slack and WhatsApp replies are now split into multiple messages** instead of being silently dropped — the same fix as Telegram (#20). Slack replies are normalized against all three of Slack's block limits (section text ≤3000 chars, fields ≤10, ≤50 blocks per message) and delivered across sequential posts. WhatsApp replies exceeding the platform limit are split at message boundaries and sent sequentially. Normal short replies are unchanged — still exactly one API call.
 - **Timer and alarm rings are now loud and use a stronger alert tone** — the default ring volume was raised from 50% to 100% (it's an alarm; lower it via `ringVolume` in config if you want it softer), and the bundled beep was replaced with a more attention-grabbing triple-beep alarm tone. (closes #19)
 - **The reminder message box is now a multi-line textarea when creating a reminder** (it already was when editing), so long reminder text fits and wraps. (closes #15)
 - **Dashboard conversation view now shows only the selected head's sub-agent pills**; switching heads no longer leaves stale pills from other heads. (closes #10)
