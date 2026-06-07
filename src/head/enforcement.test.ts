@@ -24,17 +24,56 @@ import * as os from 'node:os'
 import { resolveAllowlist } from '../sub-agents/tool-access.js'
 import { HEAD_TOOLS, HEAD_TOOL_NAMES } from './index.js'
 import { assembleTools, type ToolSurfaceDeps } from '../sub-agents/tool-surface.js'
-import { AgentToolRegistryImpl } from '../sub-agents/registry.js'
+import {
+  AgentToolRegistryImpl,
+  HEAD_RUNNABLE_TOOL_NAMES,
+  getOptionalTool,
+  buildNoteTools,
+  buildReminderTools,
+  buildScheduleTools,
+} from '../sub-agents/registry.js'
 import { FileSystemKindLoader } from '../skills/loader.js'
 import { UnifiedLoader } from '../skills/unified.js'
 import { initDb } from '../db/index.js'
 import { runMigrations } from '../db/migrate.js'
+import { NoteStore } from '../db/notes.js'
+import { ScheduleStore } from '../db/schedules.js'
 import { UsageStore } from '../db/usage.js'
 import type { SkillLoader } from '../types/skill.js'
 import type { McpRegistry } from '../mcp/registry.js'
 import type { IdentityLoader } from '../identity/loader.js'
+import type { ToolDefinition } from '../types/llm.js'
 
 const MIGRATIONS_DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../sql')
+
+// ─── Helper: materialize the widened candidate pool (mirrors system.ts D-13) ──
+//
+// In production, buildSystem() does this before the Phase 46 filter. Here we reproduce
+// it inline to test the guarantees independently of the full system wiring.
+function materializeWidenedPool(opts?: { tmpDir?: string }): ToolDefinition[] {
+  const headToolNameSet = new Set<string>(HEAD_TOOL_NAMES)
+  const tmpDir = opts?.tmpDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'enforce-pool-'))
+  const db = initDb(':memory:')
+  runMigrations(db, MIGRATIONS_DIR)
+  const noteStore = new NoteStore(db)
+  const schedulesDir = path.join(tmpDir, 'schedules')
+  const scheduleStore = new ScheduleStore(schedulesDir)
+
+  const headRunnableDefs: ToolDefinition[] = [
+    // Note tools
+    ...buildNoteTools(noteStore).map(e => e.definition),
+    // Reminder tools
+    ...buildReminderTools(scheduleStore, 'UTC', 'default').map(e => e.definition),
+    // Schedule tools
+    ...buildScheduleTools(scheduleStore, 'UTC', null, 'default').map(e => e.definition),
+    // Optional tools — filter undefined (note/reminder/schedule names return undefined)
+    ...HEAD_RUNNABLE_TOOL_NAMES
+      .map(n => getOptionalTool(n)?.definition)
+      .filter((d): d is ToolDefinition => d !== undefined),
+  ].filter(d => !headToolNameSet.has(d.name))  // dedup against HEAD_TOOLS
+
+  return [...HEAD_TOOLS, ...headRunnableDefs]
+}
 
 // ─── HEAD filtering tests (TOOLCFG-05 / TOOLCFG-07) ─────────────────────────
 // Assert the two-state filter: HEAD_TOOLS.filter(t => resolvedHeadTools.includes(t.name))
@@ -266,5 +305,85 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     // The resolved allowlist drives restriction — tools not in BASE_25_TOOLS are absent
     // (get_usage is NOT in the 25-tool agent set — it is a head tool, TOOLCFG-07)
     expect(names).not.toContain('get_usage')
+  })
+})
+
+// ─── Phase 47: Widened-pool guarantees (TOOLCFG-10) ─────────────────────────
+//
+// Three contracts pinned:
+//  (a) defaults-unchanged: unconfigured head + widened pool still yields exactly 10 (D-02)
+//  (b) pool-contains-defs: widened pool has create_reminder/write_note/create_schedule (D-13)
+//  (c) allowlist-still-filters: Phase 46 filter narrows the wider pool to the override subset
+
+describe('Phase 47 widened-pool guarantees (TOOLCFG-10)', () => {
+  let tmpDir: string
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'phase47-enforce-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  it('(a) defaults-unchanged: widened pool + resolveAllowlist(undefined, HEAD_TOOL_NAMES) → still exactly 10', () => {
+    // An unconfigured head has resolvedHeadTools = HEAD_TOOL_NAMES (10 names).
+    // After D-13 widening, the pool is larger but the Phase 46 filter narrows it back.
+    // This is the core D-02 guarantee: no agent tool is silently added.
+    const widenedPool = materializeWidenedPool({ tmpDir })
+    // The widened pool is larger than 10
+    expect(widenedPool.length).toBeGreaterThan(10)
+
+    // Apply the Phase 46 filter as system.ts does
+    const resolved = resolveAllowlist(undefined, HEAD_TOOL_NAMES)
+    const effective = widenedPool.filter(t => resolved.includes(t.name))
+
+    // Result must be exactly the 10 HEAD_TOOL_NAMES — nothing extra added
+    expect(effective.length).toBe(10)
+    const names = effective.map(t => t.name)
+    expect(names).toContain('spawn_agent')
+    expect(names).toContain('message_agent')
+    expect(names).toContain('ring_device')
+    // Agent-runnable tools are NOT in the result for an unconfigured head
+    expect(names).not.toContain('bash')
+    expect(names).not.toContain('read_file')
+    expect(names).not.toContain('create_reminder')
+  })
+
+  it('(b) pool-contains-defs: widened pool materializes create_reminder, write_note, create_schedule', () => {
+    // Proves WARNING-1 materialization worked — the dynamic builders were called and
+    // their defs were included in the widened pool (not filtered out before they landed).
+    const widenedPool = materializeWidenedPool({ tmpDir })
+    const poolNames = widenedPool.map(t => t.name)
+
+    // Must contain the three builder-derived defs that validate D-13 materialization
+    expect(poolNames).toContain('create_reminder')
+    expect(poolNames).toContain('write_note')
+    expect(poolNames).toContain('create_schedule')
+    // Also spot-check an OPTIONAL tool
+    expect(poolNames).toContain('bash')
+    expect(poolNames).toContain('read_file')
+  })
+
+  it('(c) allowlist-still-filters: per-head override of head-runnable tools narrows widened pool', () => {
+    // An operator assigns ['read_file', 'bash'] to a head via the Phase 46 UI.
+    // After D-13 widening, the Phase 46 filter must still narrow the result to
+    // exactly those two tools — proving the allowlist is still the runtime control.
+    const widenedPool = materializeWidenedPool({ tmpDir })
+    const override = ['read_file', 'bash']
+
+    const resolved = resolveAllowlist(override, HEAD_TOOL_NAMES)
+    expect(resolved).toEqual(override)  // per-head override wins
+
+    const effective = widenedPool.filter(t => resolved.includes(t.name))
+    const names = effective.map(t => t.name)
+
+    expect(names).toContain('read_file')
+    expect(names).toContain('bash')
+    // Everything else is absent
+    expect(names).not.toContain('spawn_agent')
+    expect(names).not.toContain('write_note')
+    expect(names).not.toContain('create_reminder')
+    expect(effective.length).toBe(2)
   })
 })
