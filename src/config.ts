@@ -320,6 +320,29 @@ function loadJsonFile(filePath: string): Record<string, unknown> {
   }
 }
 
+/**
+ * The curated global AGENT-tool default (Phase 46, D-06/D-07): the concrete
+ * agent-tool subset shipped in the base repo `config.json`
+ * (`workerDefaults.allowedTools` — the ~25-tool pre-feature set).
+ *
+ * Phase 46 WR-04: the Settings GET coalesces a legacy-null effective agent
+ * default to THIS list (mirroring the head side's coalesce to HEAD_TOOL_NAMES)
+ * so the dashboard never presents the agent default as an empty (lock-out)
+ * subset on a pre-feature install. Read once from the base config.json so it
+ * stays the single source of truth — no hand-duplicated tool list to drift.
+ */
+export const AGENT_TOOL_DEFAULT: readonly string[] = (() => {
+  const base = loadJsonFile('./config.json')
+  const wd = base['workerDefaults']
+  if (wd && typeof wd === 'object' && !Array.isArray(wd)) {
+    const at = (wd as Record<string, unknown>)['allowedTools']
+    if (Array.isArray(at) && at.every(v => typeof v === 'string')) {
+      return at as string[]
+    }
+  }
+  return []
+})()
+
 export function loadConfig(): Config {
   const baseJsonPath = './config.json'
   const baseJson = loadJsonFile(baseJsonPath)

@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { sync as writeFileAtomic } from 'write-file-atomic'
 import { requireAuth } from '../auth.js'
-import { ENV_KEY_ALLOWLIST } from '../../config.js'
+import { ENV_KEY_ALLOWLIST, AGENT_TOOL_DEFAULT } from '../../config.js'
 import { setLogLevel } from '../../logger.js'
 import type { Config } from '../../config.js'
 import { LLMApiError } from '../../llm/util.js'
@@ -261,9 +261,13 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       // UI reflects the actual enforced value (e.g. the 25-tool curated base-config list).
       // Coalesce legacy-null to a concrete pre-feature default array so the surface never
       // returns null even on installs that wrote null before the two-state model landed.
+      // WR-04: coalesce the AGENT default to the curated base 25-tool set
+      // (AGENT_TOOL_DEFAULT) — NOT [] — so a legacy-null install shows a sane default
+      // and an accidental Save does not strip every agent tool. This mirrors the head
+      // side's coalesce-to-HEAD_TOOL_NAMES below, keeping the two layers consistent.
       agentToolDefault: Array.isArray(config.workerDefaults.allowedTools)
         ? config.workerDefaults.allowedTools
-        : [] as string[],
+        : (AGENT_TOOL_DEFAULT as string[]),
       headToolDefault: Array.isArray(config.headToolDefaults.allowedTools)
         ? config.headToolDefaults.allowedTools
         : HEAD_TOOL_NAMES,
