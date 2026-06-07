@@ -13,6 +13,8 @@ import {
 } from '../collapse.js'
 import { markdownToMrkdwn } from './mrkdwn.js'
 import { formatTablesForSlack } from '../table-formatter.js'
+import { splitMessage } from '../chunker.js'
+import { splitSlackBlocks, batchSlackBlocks } from './split.js'
 
 // Cap collapse map at 500 entries (FIFO eviction) to prevent memory leaks
 const COLLAPSE_MAP_MAX = 500
@@ -233,16 +235,38 @@ export class SlackAdapter implements ChannelAdapter {
   async send(text: string, attachments?: Attachment[]): Promise<string | void> {
     const tableResult = formatTablesForSlack(text)
     const mrkdwnFallback = markdownToMrkdwn(tableResult.text)
-    const result = tableResult.blocks
-      ? await this.app.client.chat.postMessage({
+
+    let lastTs: string | undefined
+
+    if (tableResult.blocks) {
+      // Normalize blocks against Slack per-block limits, then batch to ≤50 per message
+      const normalized = splitSlackBlocks(tableResult.blocks)
+      const batches = batchSlackBlocks(normalized)
+      for (const batch of batches) {
+        // Notification fallback: slice only when over 3000 to preserve byte-identity
+        // for normal short replies (mrkdwnFallback is typically short)
+        const fallback = mrkdwnFallback.length > 3000
+          ? mrkdwnFallback.slice(0, 3000)
+          : mrkdwnFallback
+        const result = await this.app.client.chat.postMessage({
           channel: this.channelId,
-          text: mrkdwnFallback,
-          blocks: tableResult.blocks,
+          text: fallback,
+          blocks: batch,
         })
-      : await this.app.client.chat.postMessage({
+        lastTs = result.ts as string
+      }
+    } else {
+      // Plain text path: chunk via splitMessage; returns [mrkdwnFallback] under the limit
+      const chunks = splitMessage(mrkdwnFallback, 3900)
+      for (const chunk of chunks) {
+        const result = await this.app.client.chat.postMessage({
           channel: this.channelId,
-          text: mrkdwnFallback,
+          text: chunk,
         })
+        lastTs = result.ts as string
+      }
+    }
+
     if (attachments?.length) {
       for (const att of attachments) {
         if (!att.path) continue
@@ -253,7 +277,8 @@ export class SlackAdapter implements ChannelAdapter {
         })
       }
     }
-    return result.ts
+
+    return lastTs
   }
 
   async sendDebug(text: string): Promise<string | void> {
