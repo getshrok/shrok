@@ -14,6 +14,7 @@ import {
   tryParseInput,
   escapeHtml,
 } from '../collapse.js'
+import { splitMessageForTelegram } from './split.js'
 
 // Cap collapse map at 500 entries (FIFO eviction) to prevent memory leaks
 const COLLAPSE_MAP_MAX = 500
@@ -140,9 +141,11 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   async send(text: string, attachments?: Attachment[]): Promise<void> {
-    const withTables = formatTablesForChat(text)
-    const html = markdownToTelegramHtml(withTables)
-    await this.bot.api.sendMessage(this.chatId, html, { parse_mode: 'HTML' })
+    const render = (s: string): string => markdownToTelegramHtml(formatTablesForChat(s))
+    const chunks = splitMessageForTelegram(text, render)
+    for (const chunk of chunks) {
+      await this.bot.api.sendMessage(this.chatId, render(chunk), { parse_mode: 'HTML' })
+    }
     if (attachments?.length) {
       const { InputFile } = await import('grammy')
       for (const att of attachments) {
@@ -204,28 +207,38 @@ export class TelegramAdapter implements ChannelAdapter {
           }
         } catch (err) {
           log.debug(`[telegram] sendDebug result edit failed:`, (err as Error).message)
-          // Fall through — send a new standalone message
-          const newMsg = await this.bot.api.sendMessage(this.chatId, htmlText, { parse_mode: 'HTML' })
-          const newId = String(newMsg.message_id)
+          // Fall through — send a new standalone message (chunked)
+          const resultPieces = splitMessageForTelegram(htmlText, s => s)
+          let newId = ''
+          for (const piece of resultPieces) {
+            const sentMsg = await this.bot.api.sendMessage(this.chatId, piece, { parse_mode: 'HTML' })
+            newId = String(sentMsg.message_id)
+          }
           if (this.collapseMap.size >= COLLAPSE_MAP_MAX) {
             const oldest = this.collapseMap.keys().next().value
             if (oldest !== undefined) this.collapseMap.delete(oldest)
           }
+          // Store last chunk's id — that's the message a future edit would target
           this.collapseMap.set(newId, { collapsed: finalHeader, expanded: body })
           return newId
         }
         return callMsgId
       }
 
-      // No pending call found — send standalone collapsed + blockquote
+      // No pending call found — send standalone collapsed + blockquote (chunked)
       const expandedBody = expandVerboseMessage(text, 3900)
       const htmlText = `${escapeHtml(finalHeader)}\n<blockquote expandable>${escapeHtml(expandedBody)}</blockquote>`
-      const msg = await this.bot.api.sendMessage(this.chatId, htmlText, { parse_mode: 'HTML' })
-      const msgId = String(msg.message_id)
+      const standalonePieces = splitMessageForTelegram(htmlText, s => s)
+      let msgId = ''
+      for (const piece of standalonePieces) {
+        const sentMsg = await this.bot.api.sendMessage(this.chatId, piece, { parse_mode: 'HTML' })
+        msgId = String(sentMsg.message_id)
+      }
       if (this.collapseMap.size >= COLLAPSE_MAP_MAX) {
         const oldest = this.collapseMap.keys().next().value
         if (oldest !== undefined) this.collapseMap.delete(oldest)
       }
+      // Store last chunk's id — that's the message a future edit would target
       this.collapseMap.set(msgId, { collapsed: finalHeader, expanded: expandedBody })
       return msgId
     }
