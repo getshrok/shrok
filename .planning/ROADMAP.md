@@ -144,7 +144,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 
 ## v1.8 Tool Access Control
 
-- [ ] **Phase 46: Tool Access Control** — Config-driven tool allowlists (global + per-head, two-state inherit/subset) enforced at runtime for both the head's own tool surface and the tools given to the agents it spawns, each restricted to that layer's currently-executable tools, with dashboard UI for editing both layers
+- [x] **Phase 46: Tool Access Control** — Config-driven tool allowlists (global + per-head, two-state inherit/subset) enforced at runtime for both the head's own tool surface and the tools given to the agents it spawns, each restricted to that layer's currently-executable tools, with dashboard UI for editing both layers (completed 2026-06-07)
 
 ## Phase Details
 
@@ -180,7 +180,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
   5. The per-head management UI shows each head's head-tool and agent-tool overrides as a two-state control — an explicit "inherit global" state visually distinct from a chosen tool subset — chosen independently for head tools and agent tools
   6. Resolution correctly honors the two-state two-layer rule: per-head override (if set) wins over the global default, which is the pre-feature default fallback — verified for both head tools and agent tools across inherit and subset states
 **Plans**: 3 plans (re-plan; assignment-only reshape over scaffolding on main)
-  - [ ] 46-05-PLAN.md — Resolver two-state + explicit pre-feature head/agent defaults + runtime enforcement at both layers (Wave 1)
+  - [x] 46-05-PLAN.md — Resolver two-state + explicit pre-feature head/agent defaults + runtime enforcement at both layers (Wave 1)
   - [ ] 46-06-PLAN.md — Single tagged /api/tools registry + two-state settings/heads API with per-layer name validation + DTOs/client (Wave 2)
   - [ ] 46-07-PLAN.md — Two-state dashboard controls (Inherit/Custom subset) fed per-layer-filtered registry + CHANGELOG wording + human-verify (Wave 3)
 **UI hint**: yes
@@ -209,4 +209,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
-| 46. Tool Access Control | v1.8 | 0/3 | In Progress|  |
+| 46. Tool Access Control | v1.8 | 4/3 | Complete   | 2026-06-07 |
