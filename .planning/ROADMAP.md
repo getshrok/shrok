@@ -144,7 +144,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 
 ## v1.8 Tool Access Control
 
-- [ ] **Phase 46: Tool Access Control** — Config-driven tool allowlists (global + per-head, tri-state) enforced at runtime for both the head's own tool surface and the tools given to the agents it spawns, with dashboard UI for editing both layers
+- [ ] **Phase 46: Tool Access Control** — Config-driven tool allowlists (global + per-head, two-state inherit/subset) enforced at runtime for both the head's own tool surface and the tools given to the agents it spawns, each restricted to that layer's currently-executable tools, with dashboard UI for editing both layers
 
 ## Phase Details
 
@@ -168,21 +168,21 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 **UI hint**: no
 
 ### Phase 46: Tool Access Control
-**Goal**: Operator has config-driven, dashboard-editable control over which tools each head may use and which tools each head's sub-agents may use — globally as a default and overridable per-head — enforced at runtime with everything-on defaults so no existing deployment is silently broken
+**Goal**: Operator has config-driven, dashboard-editable control over which tools each head may use and which tools each head's sub-agents may use — globally as a default and overridable per-head, each layer restricted to the tools it can currently execute — enforced at runtime with pre-feature defaults so no existing deployment is silently broken
 **Depends on**: Phase 45 (v1.7 shipped — existing HEAD_TOOLS surface at activation.ts:844, OPTIONAL_TOOL_NAMES registry, worker_defaults.allowedTools + assembleTools() enforcement path, /api/tools endpoint, head management UI)
 **Requirements**: TOOLCFG-01, TOOLCFG-02, TOOLCFG-03, TOOLCFG-04, TOOLCFG-05, TOOLCFG-06, TOOLCFG-07, TOOLCFG-08, TOOLCFG-09
+**Mode**: re-plan (assignment-only; reshape scaffolding on main — TOOLCFG-10/11 cross-context executors deferred; see 46-CONTEXT.md)
 **Success Criteria** (what must be TRUE):
-  1. A head with an explicit head-tool allowlist is offered only those tools at runtime — tools not in the allowlist do not appear in the model's tool surface for that head, including core orchestration tools if deliberately omitted
+  1. A head with an explicit head-tool allowlist is offered only those tools at runtime — tools not in the allowlist do not appear in the model's tool surface for that head, including core orchestration tools if deliberately omitted (within the head-executable set)
   2. Sub-agents spawned by a head with an agent-tool allowlist receive only the tools from that head's resolved agent allowlist — the restriction threads from the spawning head through into assembleTools()
-  3. A head with no tool configuration retains every tool including spawn_agent, message_agent, and cancel_agent — no existing or newly-created head is silently broken on upgrade
-  4. The Settings page shows pickers for the global head-tool and global agent-tool allowlists (surfacing the existing worker_defaults.allowedTools), populated from the live /api/tools registry, and changes persist to config
-  5. The per-head management UI shows each head's head-tool and agent-tool overrides with an explicit "inherit global" state that is visually distinct from "all tools enabled" and a specific tool subset — the operator can choose any of the three states independently for head tools and agent tools
-  6. Resolution correctly honors the tri-state two-layer rule: per-head override (if set) wins over global default, which wins over the everything-on fallback — verified for both head tools and agent tools with all three override states
-**Plans**: 4 plans
-- [x] 46-01-PLAN.md — Config schema (global head-tools default + tri-state per-head overrides) + the pure resolveAllowlist helper with exhaustive unit tests
-- [x] 46-02-PLAN.md — Runtime enforcement: head tool surface filtered at activation + spawning head's agent allowlist threaded into assembleTools, with enforcement tests
-- [x] 46-03-PLAN.md — Backend API + DTOs: /api/tools head+agent lists, settings GET/PUT for global defaults, heads PATCH for tri-state per-head overrides
-- [ ] 46-04-PLAN.md — Dashboard UI: shared TagSelect, Inherit/All/Subset override controls, Settings global editors, per-head card controls, CHANGELOG (closes #7)
+  3. A head with no tool configuration reproduces the pre-feature head default set (the 10 head-executable tools incl. spawn_agent, message_agent, cancel_agent) — no existing or newly-created head is silently broken on upgrade
+  4. The Settings page shows pickers for the global head-tool and global agent-tool allowlists (surfacing the existing worker_defaults.allowedTools), each populated from the single tagged /api/tools registry filtered to its layer, and changes persist to config
+  5. The per-head management UI shows each head's head-tool and agent-tool overrides as a two-state control — an explicit "inherit global" state visually distinct from a chosen tool subset — chosen independently for head tools and agent tools
+  6. Resolution correctly honors the two-state two-layer rule: per-head override (if set) wins over the global default, which is the pre-feature default fallback — verified for both head tools and agent tools across inherit and subset states
+**Plans**: 3 plans (re-plan; assignment-only reshape over scaffolding on main)
+  - [ ] 46-05-PLAN.md — Resolver two-state + explicit pre-feature head/agent defaults + runtime enforcement at both layers (Wave 1)
+  - [ ] 46-06-PLAN.md — Single tagged /api/tools registry + two-state settings/heads API with per-layer name validation + DTOs/client (Wave 2)
+  - [ ] 46-07-PLAN.md — Two-state dashboard controls (Inherit/Custom subset) fed per-layer-filtered registry + CHANGELOG wording + human-verify (Wave 3)
 **UI hint**: yes
 
 ## Progress
@@ -209,4 +209,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
-| 46. Tool Access Control | v1.8 | 3/4 | In Progress|  |
+| 46. Tool Access Control | v1.8 | 0/3 | In Progress|  |
