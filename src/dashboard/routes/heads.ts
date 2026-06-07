@@ -189,6 +189,8 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
         id: h.id,
         channels: h.channels.map(maskChannel),
         ...(h.customPrompt !== undefined ? { customPrompt: h.customPrompt } : {}),
+        ...(h.headToolsOverride !== undefined ? { headToolsOverride: h.headToolsOverride } : {}),
+        ...(h.agentToolsOverride !== undefined ? { agentToolsOverride: h.agentToolsOverride } : {}),
       })),
     })
   })
@@ -334,11 +336,13 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
    */
   router.patch('/:id', requireAuth, (req: Request, res: Response): void => {
     const oldId = String(req.params['id'])
-    const body = req.body as { newId?: unknown; customPrompt?: unknown }
+    const body = req.body as { newId?: unknown; customPrompt?: unknown; headToolsOverride?: unknown; agentToolsOverride?: unknown }
     const hasRename = typeof body.newId === 'string'
     const hasCustomPrompt = typeof body.customPrompt === 'string'
+    const hasHeadToolsOverride = 'headToolsOverride' in body
+    const hasAgentToolsOverride = 'agentToolsOverride' in body
 
-    if (!hasRename && !hasCustomPrompt) {
+    if (!hasRename && !hasCustomPrompt && !hasHeadToolsOverride && !hasAgentToolsOverride) {
       res.status(400).json({ error: 'newId or customPrompt is required' })
       return
     }
@@ -434,6 +438,79 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
         head: {
           id: currentId,
           ...(head.customPrompt !== '' ? { customPrompt: head.customPrompt } : { customPrompt: head.customPrompt }),
+        },
+      })
+      return
+    }
+
+    // ── tool overrides branch (TOOLCFG-03/04) ────────────────────────────────
+    //
+    // Tri-state write rule for headToolsOverride and agentToolsOverride:
+    //   - Field absent from body  → leave config key as-is (handled by hasX guard above)
+    //   - Field === null           → set config key to null (all tools allowed)
+    //   - Field === '__inherit__'  → delete config key (inherit global default)
+    //     The sentinel string is used because JSON PATCH cannot distinguish
+    //     "key absent in body" from "key sent as undefined" through Express
+    //     body parsing when other fields are also present. '__inherit__' makes
+    //     the reset-to-inherit intent unambiguous in the HTTP body.
+    //   - Field is string[]        → set config key to that subset
+    //   - Anything else            → 400
+    if (hasHeadToolsOverride || hasAgentToolsOverride) {
+      // Validate both fields before any write.
+      const validateOverride = (val: unknown, fieldName: string): string | null => {
+        if (val === null || val === '__inherit__') return null
+        if (Array.isArray(val) && (val as unknown[]).every(v => typeof v === 'string')) return null
+        return `${fieldName} must be null, '__inherit__', or an array of strings`
+      }
+      if (hasHeadToolsOverride) {
+        const err = validateOverride(body.headToolsOverride, 'headToolsOverride')
+        if (err) { res.status(400).json({ error: err }); return }
+      }
+      if (hasAgentToolsOverride) {
+        const err = validateOverride(body.agentToolsOverride, 'agentToolsOverride')
+        if (err) { res.status(400).json({ error: err }); return }
+      }
+
+      materializeLazyMigrationIfNeeded(deps)
+      const configJson = loadConfigJsonInline(deps.configPath)
+      const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{
+        id: string
+        channels: ChannelConfig[]
+        customPrompt?: string
+        headToolsOverride?: string[] | null
+        agentToolsOverride?: string[] | null
+      }>
+      const headIdx = heads.findIndex(h => h.id === currentId)
+      if (headIdx === -1) {
+        res.status(404).json({ error: `head "${currentId}" not found` })
+        return
+      }
+      const head = heads[headIdx]!
+
+      if (hasHeadToolsOverride) {
+        if (body.headToolsOverride === '__inherit__') {
+          delete head.headToolsOverride
+        } else {
+          head.headToolsOverride = body.headToolsOverride as string[] | null
+        }
+      }
+      if (hasAgentToolsOverride) {
+        if (body.agentToolsOverride === '__inherit__') {
+          delete head.agentToolsOverride
+        } else {
+          head.agentToolsOverride = body.agentToolsOverride as string[] | null
+        }
+      }
+
+      configJson['heads'] = heads
+      writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
+
+      res.status(200).json({
+        ok: true,
+        head: {
+          id: currentId,
+          ...('headToolsOverride' in head ? { headToolsOverride: head.headToolsOverride } : {}),
+          ...('agentToolsOverride' in head ? { agentToolsOverride: head.agentToolsOverride } : {}),
         },
       })
       return
