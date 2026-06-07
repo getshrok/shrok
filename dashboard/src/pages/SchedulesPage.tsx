@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Schedule } from '../types/api'
-import { formatInTz, useConfigTimezone } from '../lib/formatTime'
+import { formatInTz, useConfigTimezone, toDatetimeLocalInTz, datetimeLocalToUtc } from '../lib/formatTime'
 import CronPicker from '../components/CronPicker'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   })
 
   function startEdit() {
-    setEditValue(schedule.cron ?? schedule.runAt ?? '')
+    setEditValue(schedule.cron !== null ? schedule.cron : (schedule.runAt ? toDatetimeLocalInTz(schedule.runAt, tz) : ''))
     setEditConditions(schedule.conditions ?? '')
     setEditAgentContext(schedule.agentContext ?? '')
     setEditDeliverToHeadIds(schedule.deliverToHeadIds ?? [])
@@ -146,11 +146,11 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
       updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
       return
     }
-    const d = new Date(trimmed)
-    if (Number.isNaN(d.getTime())) return
-    const runAtUnchanged = d.toISOString() === schedule.runAt
+    const runAtUtc = datetimeLocalToUtc(trimmed, tz)
+    if (!runAtUtc) return
+    const runAtUnchanged = runAtUtc === schedule.runAt
     if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged && deliverUnchanged) { setEditing(false); return }
-    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
+    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
   }
 
   const scheduleLabel = schedule.cron
@@ -359,10 +359,10 @@ function AddScheduleForm({
         headId,
         taskName: target,
         kind: 'task',
-        ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
+        ...(type === 'repeating' ? { cron } : { runAt: datetimeLocalToUtc(runAt, tz) }),
         ...(conditions ? { conditions } : {}),
         ...(agentContext ? { agentContext } : {}),
-        ...(type === 'repeating' && startAt ? { startAt: new Date(startAt).toISOString() } : {}),
+        ...(type === 'repeating' && startAt ? { startAt: datetimeLocalToUtc(startAt, tz) } : {}),
         ...(deliverToHeadIds.length ? { deliverToHeadIds } : {}),
       })
     },
@@ -456,7 +456,7 @@ function AddScheduleForm({
             onChange={e => setRunAt(e.target.value)}
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
           />
-          <div className="text-[11px] text-zinc-500 mt-0.5">Browser local time (workspace timezone: {tz})</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">Times are in the workspace timezone ({tz})</div>
         </div>
       )}
 
@@ -470,7 +470,7 @@ function AddScheduleForm({
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
           />
           <div className="text-[11px] text-zinc-500 mt-0.5">
-            First fire at this time, then repeating. Browser local time (workspace timezone: {tz})
+            First fire at this time, then repeating. Times are in the workspace timezone ({tz}).
           </div>
         </div>
       )}
@@ -561,7 +561,7 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
 
   function startEdit() {
     setEditMessage(schedule.agentContext ?? '')
-    setEditValue(schedule.cron ?? schedule.runAt ?? '')
+    setEditValue(schedule.cron !== null ? schedule.cron : (schedule.runAt ? toDatetimeLocalInTz(schedule.runAt, tz) : ''))
     setEditConditions(schedule.conditions ?? '')
     setEditRequiresAck(schedule.requiresAck)
     const totalMins = schedule.nagIntervalMinutes ?? 0
@@ -599,12 +599,12 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
       updateMutation.mutate({ cron: trimmedValue, conditions: editConditions, agentContext: trimmedMessage, ...ackFields })
       return
     }
-    // one-time: editValue is a datetime-local string
-    const d = new Date(trimmedValue)
-    if (Number.isNaN(d.getTime())) return
-    const runAtUnchanged = d.toISOString() === schedule.runAt
+    // one-time: editValue is a datetime-local string (workspace tz)
+    const runAtUtc = datetimeLocalToUtc(trimmedValue, tz)
+    if (!runAtUtc) return
+    const runAtUnchanged = runAtUtc === schedule.runAt
     if (runAtUnchanged && conditionsUnchanged && messageUnchanged && ackUnchanged) { setEditing(false); return }
-    updateMutation.mutate({ runAt: d.toISOString(), conditions: editConditions, agentContext: trimmedMessage, ...ackFields })
+    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions, agentContext: trimmedMessage, ...ackFields })
   }
 
   const scheduleLabel = schedule.cron
@@ -848,10 +848,10 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
         headId,
         kind: 'reminder',
         agentContext: message.trim(),
-        ...(type === 'repeating' ? { cron } : { runAt: new Date(runAt).toISOString() }),
+        ...(type === 'repeating' ? { cron } : { runAt: datetimeLocalToUtc(runAt, tz) }),
         ...(conditions ? { conditions } : {}),
         ...(requiresAck ? { requiresAck, nagIntervalMinutes: nagSum } : {}),
-        ...(type === 'repeating' && startAt ? { startAt: new Date(startAt).toISOString() } : {}),
+        ...(type === 'repeating' && startAt ? { startAt: datetimeLocalToUtc(startAt, tz) } : {}),
       })
     },
     onSuccess: () => {
@@ -925,7 +925,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
             onChange={e => setRunAt(e.target.value)}
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
           />
-          <div className="text-[11px] text-zinc-500 mt-0.5">Browser local time (workspace timezone: {tz})</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">Times are in the workspace timezone ({tz})</div>
         </div>
       ) : (
         <CronPicker value={cron} onChange={setCron} />
@@ -941,7 +941,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
           />
           <div className="text-[11px] text-zinc-500 mt-0.5">
-            First fire at this time, then repeating. Browser local time (workspace timezone: {tz})
+            First fire at this time, then repeating. Times are in the workspace timezone ({tz}).
           </div>
         </div>
       )}
