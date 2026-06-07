@@ -102,13 +102,13 @@ describe('GET /api/tools — tagged registry (D-08, TOOLCFG-08)', () => {
     expect(spawnAgent!.layers).not.toContain('agent')
   })
 
-  it('bash is agent-only (not in head layer)', async () => {
+  it('bash is dual — runnable by both head and agent (Phase 47 retag)', async () => {
     await start()
     const body = await getTools()
     const bash = body.tools.find(t => t.name === 'bash')
     expect(bash).toBeDefined()
     expect(bash!.layers).toContain('agent')
-    expect(bash!.layers).not.toContain('head')
+    expect(bash!.layers).toContain('head')
   })
 
   it('all NOTE tool names appear with the agent layer', async () => {
