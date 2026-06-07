@@ -29,13 +29,19 @@
 - [x] **TOOLCFG-08**: Operator can view and edit the **global** head-tool and agent-tool allowlists from the dashboard Settings page, with each picker populated from the single tagged tool registry (`/api/tools`) filtered to its layer. The displayed value reflects the **effective** config (not just the workspace-override layer), and saving never silently widens or narrows the effective set.
 - [x] **TOOLCFG-09**: Operator can view and edit each head's **per-head** head-tool and agent-tool overrides — with an explicit "inherit global" state distinct from a chosen subset — in the per-head management UI.
 
+## Phase 47 Requirements (Direction A — Head Runs Agent Tools)
+
+> Activated 2026-06-07 for **Phase 47** (milestone v1.9), narrowed from the original broad cross-context scope to **Direction A only**: making agent-executable tools runnable in the head loop. The reverse direction (agents running head/delegation/identity tools) splits out as the deferred **TOOLCFG-12** below.
+
+- [x] **TOOLCFG-10**: Every agent-executable tool's executor is runnable in the **head** loop. `HeadToolExecutor.dispatch()` falls through to the agent-registry executor (`getOptionalTool` + the note/reminder/schedule/usage builders) for any tool name not natively cased, invoked with a head-built `ctx` (`{ headId, timezone }`, no `abortSignal`). The head executor gains a `noteStore?` handle (the only missing store); `scheduleStore`/`usageStore`/`timezone` already exist. The head's candidate tool-def list (`activation.ts:844`) widens to `HEAD_TOOLS ∪ now-head-compatible agent defs` **before** the Phase 46 allowlist filter, and each ported tool is retagged with the `'head'` layer in `/api/tools` so it surfaces in the head picker. **Defaults unchanged** — an unconfigured head still resolves to exactly the 10 `HEAD_TOOL_NAMES`.
+- [x] **TOOLCFG-11**: Context-bound head behavior is correct and needs no special-casing, per verified store/cwd facts: head-created reminders/schedules are owned by the head's own `headId` (`src/db/schedules.ts`); head-run notes use the single global `notes(id,title,content)` pool (`src/db/notes.ts:42`, no scope column); head-run `bash` runs in the daemon `process.cwd()` (no per-agent workspace dir exists) and ships uncancellable (the `abortSignal` is optional; default 30 s `timeout` guards it). AGENTS.md reframes "the head never works directly — it delegates" as the **default/recommended posture that operator configurability supersedes** (the delegation model remains the documented default; it is not deleted).
+
 ## Future Requirements (deferred)
 
-- **TOOLCFG-10** (deferred): A single unified tool registry whose every tool's executor works in **both** the head loop and the agent loop, so any tool can be granted to either layer. (Today the head can only execute `HEAD_TOOLS`; making tools cross-context-executable is the deferred enabling change.)
-- **TOOLCFG-11** (deferred): Context-bound tools handled explicitly when cross-assigned — delegation tools (`spawn_agent`/`message_agent`/`cancel_agent`) granted to agents beyond the existing depth-1 spawn; identity/channel tools (`write_identity`, `list_identity_files`, `send_file`) behaving correctly or documented as no-ops where they cannot act. Defers with TOOLCFG-10.
-- **AGENTS.md philosophy reversal** — documenting "a head with no delegation tools acts directly" as an intentional configurable choice; defers with the cross-context executor work (TOOLCFG-10/11).
+- **TOOLCFG-12** (deferred — Direction B): Agents run head/delegation/identity tools — `spawn_agent`/`message_agent`/`cancel_agent` granted to agents beyond the existing depth-1 spawn, and identity/channel tools (`write_identity`, `list_identity_files`, `send_file`, `acknowledge_reminder`) behaving correctly or documented as no-ops where they cannot act in the agent loop. These touch head+channel state agents don't hold; its own future phase. (Was the second half of the original TOOLCFG-10/11.)
 - Per-task / per-skill tool overrides — the `trigger-tools` surface was deliberately removed earlier; re-introducing task-scoped gating is a separate effort.
-- Runtime / per-conversation tool toggling (this milestone is config-driven only).
+- Runtime / per-conversation tool toggling (config-driven only).
+- Head `bash` cancellation — threading a head-activation abort signal into head-run `bash`; add only if a real need appears.
 
 ## Out of Scope (this milestone)
 
@@ -55,5 +61,6 @@
 | TOOLCFG-07 | Phase 46 | Re-plan (defaults = pre-feature, not everything-on) |
 | TOOLCFG-08 | Phase 46 | Re-plan (tagged registry; effective-config display landed) |
 | TOOLCFG-09 | Phase 46 | Re-plan (two-state inherit/subset) |
-| TOOLCFG-10 | Deferred | Future phase — unified registry + dual-context executors |
-| TOOLCFG-11 | Deferred | Future phase — context-bound cross-assigned tool handling |
+| TOOLCFG-10 | Phase 47 | Active — head dispatch fallthrough into agent registry executors |
+| TOOLCFG-11 | Phase 47 | Active — context-bound head behavior (no special-casing) + AGENTS.md reframe |
+| TOOLCFG-12 | Deferred | Direction B — agents run head/delegation/identity tools |
