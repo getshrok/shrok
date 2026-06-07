@@ -1415,16 +1415,22 @@ describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04, two-state, per-lay
     expect(res.status).toBe(400)
   })
 
-  it('PATCH headToolsOverride with agent-only name (bash) → 400 (cross-layer membership check)', async () => {
+  it('PATCH headToolsOverride with now-head-runnable name (bash) → 200 + persists (Phase 47 T-47-11)', async () => {
     await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
     fs.writeFileSync(fx.configPath, JSON.stringify({
       heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
     }, null, 2) + '\n')
 
-    // 'bash' is agent-only — must not be assignable to the head layer
+    // Phase 47: 'bash' is now head-runnable — must be assignable to the head layer (200)
+    // and persist in config (confirms the membership gate no longer rejects head assignment)
     const res = await patch('work', { headToolsOverride: ['bash'] })
-    expect(res.status).toBe(400)
-    expect(JSON.stringify(res.json)).toContain('bash')
+    expect(res.status).toBe(200)
+    expect(res.json).toMatchObject({ ok: true, head: { id: 'work', headToolsOverride: ['bash'] } })
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; headToolsOverride?: unknown }>
+    const workHead = heads.find(h => h.id === 'work')
+    expect(workHead?.headToolsOverride).toEqual(['bash'])
   })
 
   it('PATCH agentToolsOverride with head-only name (spawn_agent) → 400 (cross-layer membership check)', async () => {

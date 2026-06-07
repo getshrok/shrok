@@ -1388,6 +1388,35 @@ export const AGENT_TOOL_NAMES: readonly string[] = [
   ...SCHEDULE_TOOL_NAMES,
 ].sort()
 
+/**
+ * Agent-executable tools that the head can now run via the dispatch fallthrough
+ * (Phase 47, TOOLCFG-10). Consumed by three callers:
+ *  1. HeadToolExecutor (src/head/index.ts) — to build the head-side tool map
+ *  2. /api/tools retag (src/dashboard/routes/tools.ts, Plan 02) — to mark these tools
+ *     as 'head'-layer so they appear in the head picker
+ *  3. Head-direction membership gates (src/dashboard/routes/heads.ts:508 +
+ *     src/dashboard/routes/settings.ts:388) — so PATCH/PUT assignment of these tools
+ *     to a head persists (200) instead of being rejected (400)
+ *
+ * Excludes:
+ *  - view_image / get_usage / ring_device — already native dual-head cases (D-05)
+ *  - spawn_agent / message_agent / cancel_agent — head-native delegation tools
+ *  - write_identity / list_identity_files / send_file / acknowledge_reminder — head-native
+ *  - bash_no_net — excluded in favor of bash; operator can still assign bash
+ *
+ * Defaults unchanged: an unconfigured head still resolves to exactly the 10 HEAD_TOOL_NAMES.
+ * These tools are opt-in via the Phase 46 assignment UI (D-02).
+ */
+export const HEAD_RUNNABLE_TOOL_NAMES: readonly string[] = [
+  // OPTIONAL_TOOL_NAMES minus the three already-dual head tools and bash_no_net
+  ...OPTIONAL_TOOL_NAMES.filter(n => n !== 'view_image' && n !== 'ring_device' && n !== 'bash_no_net'),
+  // note/reminder/schedule tools (dynamic builders)
+  ...NOTE_TOOL_NAMES,
+  ...REMINDER_TOOL_NAMES,
+  ...SCHEDULE_TOOL_NAMES,
+  // get_usage is NOT included here — it is a native head case (D-05 — never reaches default)
+].sort()
+
 export class AgentToolRegistryImpl implements AgentToolRegistry {
   builtins(): AgentToolEntry[] {
     return [

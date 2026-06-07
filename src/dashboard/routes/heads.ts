@@ -11,7 +11,7 @@ import { transaction } from '../../db/index.js'
 import type { MessageStore } from '../../db/messages.js'
 import type { QueueStore } from '../../db/queue.js'
 import type { ScheduleStore } from '../../db/schedules.js'
-import { AGENT_TOOL_NAMES } from '../../sub-agents/registry.js'
+import { AGENT_TOOL_NAMES, HEAD_RUNNABLE_TOOL_NAMES } from '../../sub-agents/registry.js'
 import { HEAD_TOOL_NAMES } from '../../head/index.js'
 
 /**
@@ -483,10 +483,19 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
     //   - Field is string[]        → set config key to that subset
     //   - null or anything else    → 400 (null is not a valid two-state value)
     //
-    // Security gate (T-46-06-E): per-layer membership check prevents privilege
-    // widening (e.g. assigning spawn_agent to agents or bash to the head).
-    // Every name in headToolsOverride must be in HEAD_TOOL_NAMES.
-    // Every name in agentToolsOverride must be in AGENT_TOOL_NAMES.
+    // Security gate (Phase 46 T-46-06-E, widened Phase 47 T-47-11):
+    //
+    // HEAD direction (headToolsOverride): accepts HEAD_TOOL_NAMES ∪ HEAD_RUNNABLE_TOOL_NAMES.
+    //   Phase 47 widened the head direction so an operator can assign now-head-runnable
+    //   agent tools (bash, read_file, etc.) and have the assignment PERSIST (200).
+    //   The runtime control that keeps bash off an unconfigured head is UNCHANGED
+    //   (the defaults remain HEAD_TOOL_NAMES + the resolved-allowlist filter in system.ts).
+    //   This gate is an INPUT VALIDATOR only — it can't grant a tool by itself; the
+    //   assigned tool still must survive the runtime filter to be offered to the model.
+    //
+    // AGENT direction (agentToolsOverride): accepts AGENT_TOOL_NAMES only (unchanged).
+    //   Head-native/delegation tools (spawn_agent, list_identity_files, etc.) must NOT
+    //   be assignable to the agent layer — the reverse direction stays strict (T-47-11).
     if (hasHeadToolsOverride || hasAgentToolsOverride) {
       // Validate type: only '__inherit__' or string[] are accepted (null rejected).
       const validateOverride = (val: unknown, fieldName: string): string | null => {
@@ -504,14 +513,16 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
       }
 
       // Per-layer membership check (both directions, before any write).
+      // HEAD direction: widened to HEAD_TOOL_NAMES ∪ HEAD_RUNNABLE_TOOL_NAMES (Phase 47 T-47-11).
       if (hasHeadToolsOverride && Array.isArray(body.headToolsOverride)) {
-        const headSet = new Set<string>(HEAD_TOOL_NAMES)
+        const headSet = new Set<string>([...HEAD_TOOL_NAMES, ...HEAD_RUNNABLE_TOOL_NAMES])
         const bad = (body.headToolsOverride as string[]).find(n => !headSet.has(n))
         if (bad !== undefined) {
           res.status(400).json({ error: `headToolsOverride: '${bad}' is not in the head-compatible tool set` })
           return
         }
       }
+      // AGENT direction: unchanged — still strict (AGENT_TOOL_NAMES only).
       if (hasAgentToolsOverride && Array.isArray(body.agentToolsOverride)) {
         const agentSet = new Set<string>(AGENT_TOOL_NAMES)
         const bad = (body.agentToolsOverride as string[]).find(n => !agentSet.has(n))

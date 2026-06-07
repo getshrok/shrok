@@ -13,7 +13,15 @@ import type { IdentityLoader } from '../identity/loader.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
 import { runResumeSteward, runMessageAgentSteward } from './steward.js'
-import { VIEW_IMAGE_DEF, executeViewImage } from '../sub-agents/registry.js'
+import {
+  VIEW_IMAGE_DEF, executeViewImage,
+  HEAD_RUNNABLE_TOOL_NAMES,
+  getOptionalTool,
+  buildNoteTools,
+  buildReminderTools,
+  buildScheduleTools,
+} from '../sub-agents/registry.js'
+import type { AgentToolEntry } from '../types/agent.js'
 import { RING_DEVICE_DEF, executeRingDevice } from '../ring/tool.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { timingMark } from '../timing.js'
@@ -177,10 +185,56 @@ export interface HeadToolExecutorOptions {
   /** Phase 45 — RingRunner for ring_device dispatch. Optional so existing callers
    *  without a runner remain tsc-clean (mirrors scheduleStore? pattern). */
   ringRunner?: import('../ring/runner.js').RingRunner
+  /** Phase 47 — NoteStore for head-direct note tools (write_note, read_note, etc.).
+   *  Optional so existing callers without a store remain tsc-clean.
+   *  Mirrored from the scheduleStore? optional pattern. */
+  noteStore?: import('../db/notes.js').NoteStore
+}
+
+/** Tools the head can dispatch to agent-registry executors (Phase 47, D-04).
+ *  Built once at construction time. Excludes view_image/get_usage/ring_device
+ *  which are already native head cases (D-05). */
+function buildHeadToolMap(opts: HeadToolExecutorOptions): Map<string, AgentToolEntry> {
+  const map = new Map<string, AgentToolEntry>()
+  const tz = opts.timezone ?? 'UTC'
+
+  // OPTIONAL tools (filesystem/bash/web) — exclude the three already-native dual tools
+  const DUAL_NATIVE = new Set(['view_image', 'get_usage', 'ring_device'])
+  for (const name of HEAD_RUNNABLE_TOOL_NAMES) {
+    if (DUAL_NATIVE.has(name)) continue  // D-05: native cases win; skip to avoid double-registration
+    const entry = getOptionalTool(name)
+    if (entry !== undefined) {
+      map.set(name, entry)
+    }
+    // note/reminder/schedule names are not in OPTIONAL_TOOLS — handled by builders below
+  }
+
+  // Note tools — always available when noteStore is present
+  if (opts.noteStore !== undefined) {
+    for (const entry of buildNoteTools(opts.noteStore)) {
+      map.set(entry.definition.name, entry)
+    }
+  }
+
+  // Reminder and schedule tools — available when scheduleStore is present
+  if (opts.scheduleStore !== undefined) {
+    for (const entry of buildReminderTools(opts.scheduleStore, tz, opts.headId)) {
+      map.set(entry.definition.name, entry)
+    }
+    for (const entry of buildScheduleTools(opts.scheduleStore, tz, opts.unifiedLoader ?? null, opts.headId)) {
+      map.set(entry.definition.name, entry)
+    }
+  }
+
+  return map
 }
 
 export class HeadToolExecutor implements ToolExecutor {
-  constructor(private opts: HeadToolExecutorOptions) {}
+  private readonly headToolMap: Map<string, AgentToolEntry>
+
+  constructor(private opts: HeadToolExecutorOptions) {
+    this.headToolMap = buildHeadToolMap(opts)
+  }
 
   async execute(toolCall: ToolCall): Promise<ToolResult> {
     try {
@@ -415,8 +469,31 @@ export class HeadToolExecutor implements ToolExecutor {
         return await executeRingDevice(input, this.opts.headId)
       }
 
-      default:
+      // ── Phase 47 fallthrough — agent-registry executors run in head loop ──
+      // Any non-natively-cased tool name that the head was assigned falls through
+      // here and is dispatched to its agent-registry executor with a head-built ctx.
+      // Native cases above (get_usage/view_image/ring_device/spawn_agent/…) never
+      // reach default — D-05 is enforced by switch ordering, not by a runtime guard.
+      default: {
+        const entry = this.headToolMap.get(name)
+        if (entry !== undefined) {
+          // Build a head ctx satisfying AgentContext. abortSignal is intentionally
+          // omitted (D-09): head-run bash ships uncancellable; registry executors
+          // that read abortSignal see undefined and treat it as no signal (optional).
+          // suspend/complete/fail are no-ops that satisfy the type — registry executors
+          // never call them (verified: they only read headId/timezone/abortSignal).
+          const ctx: import('../types/agent.js').AgentContext = {
+            agentId: `head:${this.opts.headId}`,
+            headId: this.opts.headId,
+            timezone: this.opts.timezone ?? 'UTC',
+            suspend: () => {},
+            complete: () => {},
+            fail: () => {},
+          }
+          return await entry.execute(input, ctx)
+        }
         return JSON.stringify({ error: true, message: `Unknown tool: ${name}` })
+      }
     }
   }
 }
