@@ -1,10 +1,42 @@
 import React from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../../lib/api'
 import type { SettingsTabProps } from './draft'
 import { Field } from './components'
+import { GlobalToolControl } from './ToolOverrideControl'
 
 export default function BehaviorTab({ d, set, isDeveloper, inputClass, selectClass }: SettingsTabProps) {
+  const toolsQuery = useQuery({ queryKey: ['tools'], queryFn: api.tools.list, staleTime: Infinity })
+  const headToolOptions = toolsQuery.data?.headTools ?? []
+  const agentToolOptions = toolsQuery.data?.tools ?? []
+
   return (
     <>
+      {/* Tool access */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-4">
+        <div className="text-sm font-semibold text-zinc-300">Tool access</div>
+        <p className="text-xs text-zinc-500">
+          Control which tools are available by default. "All tools" means no restriction.
+          Per-head overrides on each head card can further restrict (or expand to all) for that head only.
+        </p>
+
+        <Field label="Global head-tool default" tooltip="Which tools the head itself may use by default. Applies to every head that does not have a per-head override. All tools = unrestricted.">
+          <GlobalToolControl
+            value={d.headToolDefault}
+            onChange={v => set('headToolDefault', v)}
+            options={headToolOptions}
+          />
+        </Field>
+
+        <Field label="Global agent-tool default" tooltip="Which tools sub-agents spawned by any head may use by default. Applies to every head that does not have a per-head agent-tool override. All tools = unrestricted.">
+          <GlobalToolControl
+            value={d.agentToolDefault}
+            onChange={v => set('agentToolDefault', v)}
+            options={agentToolOptions}
+          />
+        </Field>
+      </div>
+
       {/* General */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-4">
         <div className="text-sm font-semibold text-zinc-300">General</div>

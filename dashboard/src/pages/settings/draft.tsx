@@ -72,6 +72,9 @@ export interface DraftState {
   usageFootersEnabled: boolean
   traceHistoryTokens: number
   timezone: string
+  // Tool access control (global defaults)
+  headToolDefault: string[] | null
+  agentToolDefault: string[] | null
   // Advanced
   llmMaxTokens: number
   snapshotTokenBudget: number
@@ -149,6 +152,8 @@ export function initDraft(s: SettingsData): DraftState {
     usageFootersEnabled: s.usageFootersEnabled,
     traceHistoryTokens: s.traceHistoryTokens,
     timezone: s.timezone,
+    headToolDefault: s.headToolDefault,
+    agentToolDefault: s.agentToolDefault,
     llmMaxTokens: s.llmMaxTokens,
     snapshotTokenBudget: s.snapshotTokenBudget,
     archivalThresholdFraction: s.archivalThresholdFraction,
@@ -243,6 +248,8 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.loopStewardSystemPromptChars !== s.loopStewardSystemPromptChars) return true
   if (draft.loopStewardMaxTokens !== s.loopStewardMaxTokens) return true
   if (draft.timezone !== s.timezone) return true
+  if (JSON.stringify(draft.headToolDefault) !== JSON.stringify(s.headToolDefault)) return true
+  if (JSON.stringify(draft.agentToolDefault) !== JSON.stringify(s.agentToolDefault)) return true
   return false
 }
 
@@ -313,6 +320,8 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.loopStewardSystemPromptChars !== s.loopStewardSystemPromptChars) body.loopStewardSystemPromptChars = draft.loopStewardSystemPromptChars
   if (draft.loopStewardMaxTokens !== s.loopStewardMaxTokens) body.loopStewardMaxTokens = draft.loopStewardMaxTokens
   if (draft.timezone !== s.timezone) body.timezone = draft.timezone
+  if (JSON.stringify(draft.headToolDefault) !== JSON.stringify(s.headToolDefault)) body.headToolDefault = draft.headToolDefault
+  if (JSON.stringify(draft.agentToolDefault) !== JSON.stringify(s.agentToolDefault)) body.agentToolDefault = draft.agentToolDefault
   // API key pending changes
   if (draft.anthropicApiKey !== null) body.anthropicApiKey = draft.anthropicApiKey
   if (draft.geminiApiKey !== null) body.geminiApiKey = draft.geminiApiKey
