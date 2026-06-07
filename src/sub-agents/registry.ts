@@ -1361,6 +1361,33 @@ export function getOptionalTool(name: string): AgentToolEntry | undefined {
 /** Sorted list of optional tool names — used by the dashboard skill/task editor to populate the allowed-tools picker. */
 export const OPTIONAL_TOOL_NAMES: readonly string[] = [...OPTIONAL_TOOLS.keys()].sort()
 
+/** Tool names produced by buildNoteTools — always agent-assignable when noteStore is present. */
+export const NOTE_TOOL_NAMES: readonly string[] = [
+  'write_note', 'read_note', 'list_notes', 'search_notes', 'delete_note',
+]
+
+/** Tool names produced by buildReminderTools — always agent-assignable when scheduleStore is present. */
+export const REMINDER_TOOL_NAMES: readonly string[] = [
+  'create_reminder', 'list_reminders', 'cancel_reminder',
+]
+
+/** Tool names produced by buildScheduleTools — always agent-assignable when scheduleStore is present. */
+export const SCHEDULE_TOOL_NAMES: readonly string[] = [
+  'create_schedule', 'list_schedules', 'update_schedule', 'delete_schedule',
+]
+
+/** Complete sorted list of all tool names that assembleTools will honor when present in an agent's allowedTools.
+ *  Combines OPTIONAL_TOOL_NAMES (filesystem/bash/web tools), get_usage, and the
+ *  dynamically-built note/reminder/schedule tool names.
+ *  Used by the dashboard agent-tool picker to ensure every assignable tool is selectable. */
+export const AGENT_TOOL_NAMES: readonly string[] = [
+  ...OPTIONAL_TOOL_NAMES,
+  'get_usage',
+  ...NOTE_TOOL_NAMES,
+  ...REMINDER_TOOL_NAMES,
+  ...SCHEDULE_TOOL_NAMES,
+].sort()
+
 export class AgentToolRegistryImpl implements AgentToolRegistry {
   builtins(): AgentToolEntry[] {
     return [
