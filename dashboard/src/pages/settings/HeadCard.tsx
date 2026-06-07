@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import type { HeadDTO, ChannelConfigSubmit } from '../../types/api'
 import { Field, SecretInput } from './components'
 import ChannelRow from './ChannelRow'
 import DeleteHeadModal from './DeleteHeadModal'
 import { vendorTheme, VENDORS, VENDOR_LABELS, type Vendor } from './vendor-theme'
+import { HeadToolOverrideControl, modeForValue } from './ToolOverrideControl'
 
 // Phase 33 Plan 06 (D-01, D-02, D-08, D-13, D-15) — a single head card. Holds
 // the head id (with non-default rename), the list of ChannelRow components,
@@ -52,6 +53,14 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [promptDraft, setPromptDraft] = useState(head.customPrompt ?? '')
 
+  // Tool override state — default to '__inherit__' when key is absent on the DTO
+  const [headToolsOverride, setHeadToolsOverride] = useState<string[] | null | '__inherit__'>(
+    modeForValue(head.headToolsOverride) === 'inherit' ? '__inherit__' : head.headToolsOverride ?? '__inherit__'
+  )
+  const [agentToolsOverride, setAgentToolsOverride] = useState<string[] | null | '__inherit__'>(
+    modeForValue(head.agentToolsOverride) === 'inherit' ? '__inherit__' : head.agentToolsOverride ?? '__inherit__'
+  )
+
   // New-channel form pending state. Initial id is suggested when the vendor
   // is picked; secrets all start blank.
   const [newId, setNewId] = useState('')
@@ -71,6 +80,15 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
 
   const customPromptMutation = useMutation({
     mutationFn: (cp: string) => api.heads.setCustomPrompt(head.id, cp),
+    onSuccess: () => onSaved(),
+  })
+
+  const toolsQuery = useQuery({ queryKey: ['tools'], queryFn: api.tools.list, staleTime: Infinity })
+  const headToolOptions = toolsQuery.data?.headTools ?? []
+  const agentToolOptions = toolsQuery.data?.tools ?? []
+
+  const toolOverrideMutation = useMutation({
+    mutationFn: () => api.heads.setToolOverrides(head.id, { headToolsOverride, agentToolsOverride }),
     onSuccess: () => onSaved(),
   })
 
@@ -232,6 +250,43 @@ export default function HeadCard({ head, allHeads, onSaved }: HeadCardProps) {
         </button>
         {customPromptMutation.isError && (
           <div className="text-xs text-red-400">Save failed: {(customPromptMutation.error as Error).message}</div>
+        )}
+      </div>
+
+      {/* Tool access overrides */}
+      <div className="space-y-3">
+        <label className="text-xs font-medium text-zinc-400">Tool access</label>
+        <p className="text-xs text-zinc-500">
+          Override the global tool defaults for this head.
+          "Inherit global" uses the defaults from Settings → Behavior.
+          Changes require a restart to take effect.
+        </p>
+
+        <Field label="Head tools" tooltip="Which tools this head may use. Inherit = use the global default. All = unrestricted. Choose subset = only those tools.">
+          <HeadToolOverrideControl
+            value={headToolsOverride}
+            onChange={setHeadToolsOverride}
+            options={headToolOptions}
+          />
+        </Field>
+
+        <Field label="Agent tools" tooltip="Which tools sub-agents spawned by this head may use. Inherit = use the global default. All = unrestricted. Choose subset = only those tools.">
+          <HeadToolOverrideControl
+            value={agentToolsOverride}
+            onChange={setAgentToolsOverride}
+            options={agentToolOptions}
+          />
+        </Field>
+
+        <button
+          onClick={() => toolOverrideMutation.mutate()}
+          disabled={toolOverrideMutation.isPending}
+          className="px-3 py-1.5 text-xs font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-md border border-[var(--accent)]/50 disabled:opacity-40"
+        >
+          {toolOverrideMutation.isPending ? 'Saving…' : 'Save'}
+        </button>
+        {toolOverrideMutation.isError && (
+          <div className="text-xs text-red-400">Save failed: {(toolOverrideMutation.error as Error).message}</div>
         )}
       </div>
 
