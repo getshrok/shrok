@@ -1,6 +1,6 @@
 # Shrok
 
-Shrok is a self-hosted personal AI agent that maintains a single persistent identity across channels (Discord, Telegram, Slack, WhatsApp, Zoho Cliq, web dashboard). Its core design principle: **the head never does work directly** — it delegates to asynchronous sub-agents. The head handles routing, memory, and coordination; agents handle execution.
+Shrok is a self-hosted personal AI agent that maintains a single persistent identity across channels (Discord, Telegram, Slack, WhatsApp, Zoho Cliq, web dashboard). Its default and recommended posture: **the head never does work directly** — it delegates to asynchronous sub-agents, handling routing, memory, and coordination while agents handle execution. Shrok is a tool operators configure to work how they need, so this delegation default can be superseded per head: an operator may grant a head direct access to agent-executable tools (file, web, bash, notes, reminders, schedules) on a tool-by-tool basis via Settings. Out of the box the head still does no work directly — every newly head-compatible tool is off by default and must be explicitly opted into.
 
 ## Project layout
 
