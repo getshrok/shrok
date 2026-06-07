@@ -153,8 +153,19 @@ function materializeLazyMigrationIfNeeded(deps: HeadsRouterDeps): void {
   }
 
   // Snapshot the synthesized heads (resolveHeads-style) into config.json.
+  // WR-03: preserve ALL resolved head fields — not just id/channels — so a
+  // default-head customPrompt or Phase 46 tool override carried by resolveHeads
+  // at first-mutation time is not silently discarded by the lazy migration.
+  // exactOptionalPropertyTypes: spread the optional keys only when present so we
+  // never write an explicit `undefined`.
   const synthesized = deps.resolveCurrentHeads()
-  configJson['heads'] = synthesized.map(h => ({ id: h.id, channels: h.channels }))
+  configJson['heads'] = synthesized.map(h => ({
+    id: h.id,
+    channels: h.channels,
+    ...(h.customPrompt !== undefined ? { customPrompt: h.customPrompt } : {}),
+    ...(h.headToolsOverride !== undefined ? { headToolsOverride: h.headToolsOverride } : {}),
+    ...(h.agentToolsOverride !== undefined ? { agentToolsOverride: h.agentToolsOverride } : {}),
+  }))
 
   // Remove shadowed flat channel-id fields — heads[].channels[] supersedes them.
   for (const flatKey of FLAT_CHANNEL_CONFIG_KEYS) {
@@ -351,6 +362,14 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
 
     let currentId = oldId
 
+    // WR-02: whether a later branch still has work to do. The rename and
+    // customPrompt branches must NOT return early while a tool-override write is
+    // still pending, otherwise a combined { newId, headToolsOverride } request
+    // silently drops the override (returning { ok: true }). When this is true the
+    // earlier branches fall through to the tool-override branch, which performs the
+    // final config write and sends the response.
+    const hasToolOverrides = hasHeadToolsOverride || hasAgentToolsOverride
+
     // ── Rename branch ─────────────────────────────────────────────────────────
     if (hasRename) {
       const newId = body.newId as string
@@ -367,13 +386,14 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
         return
       }
       if (newId === oldId) {
-        // no-op rename: if there is also a customPrompt, fall through to apply it;
-        // otherwise return immediately.
-        if (!hasCustomPrompt) {
+        // no-op rename: if there is also a customPrompt or tool override, fall
+        // through to apply it; otherwise return immediately.
+        if (!hasCustomPrompt && !hasToolOverrides) {
           res.status(200).json({ ok: true, head: { id: oldId } })
           return
         }
-        // Fall through with currentId unchanged — customPrompt will be applied below.
+        // Fall through with currentId unchanged — customPrompt / tool overrides
+        // will be applied by the branches below.
       } else {
         const current = deps.resolveCurrentHeads()
         if (!current.some(h => h.id === oldId)) {
@@ -411,8 +431,9 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
 
         currentId = newId
 
-        // If there is no customPrompt to apply, return now.
-        if (!hasCustomPrompt) {
+        // If there is no customPrompt or tool override to apply, return now.
+        // Otherwise fall through so the override branch performs the final write.
+        if (!hasCustomPrompt && !hasToolOverrides) {
           const renamed = next.find(h => h.id === newId)
           res.status(200).json({ ok: true, head: renamed })
           return
@@ -435,14 +456,19 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
       configJson['heads'] = heads
       writeFileAtomic(deps.configPath, JSON.stringify(configJson, null, 2) + '\n', { encoding: 'utf8' })
 
-      res.status(200).json({
-        ok: true,
-        head: {
-          id: currentId,
-          ...(head.customPrompt !== '' ? { customPrompt: head.customPrompt } : { customPrompt: head.customPrompt }),
-        },
-      })
-      return
+      // WR-02: if tool overrides are also pending, fall through to that branch so
+      // they are applied too (it re-reads config.json fresh, picking up this
+      // customPrompt write) instead of being silently dropped by an early return.
+      if (!hasToolOverrides) {
+        res.status(200).json({
+          ok: true,
+          head: {
+            id: currentId,
+            ...(head.customPrompt !== '' ? { customPrompt: head.customPrompt } : { customPrompt: head.customPrompt }),
+          },
+        })
+        return
+      }
     }
 
     // ── tool overrides branch (TOOLCFG-03/04) ────────────────────────────────

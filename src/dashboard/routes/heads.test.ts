@@ -1483,4 +1483,84 @@ describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04, two-state, per-lay
     const workHead = heads.find(h => h.id === 'work')
     expect('agentToolsOverride' in (workHead as object)).toBe(false)
   })
+
+  it('WR-02: combined { newId, agentToolsOverride } applies BOTH the rename and the override', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('work', { newId: 'work-new', agentToolsOverride: ['bash', 'read_file'] })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; agentToolsOverride?: unknown }>
+    // The head was renamed AND the override was persisted (not silently dropped).
+    const renamed = heads.find(h => h.id === 'work-new')
+    expect(renamed).toBeDefined()
+    expect(renamed?.agentToolsOverride).toEqual(['bash', 'read_file'])
+    expect(heads.find(h => h.id === 'work')).toBeUndefined()
+  })
+
+  it('WR-02: no-op rename { newId: same, headToolsOverride } still applies the override', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('work', { newId: 'work', headToolsOverride: ['spawn_agent'] })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; headToolsOverride?: unknown }>
+    const workHead = heads.find(h => h.id === 'work')
+    expect(workHead?.headToolsOverride).toEqual(['spawn_agent'])
+  })
+
+  it('WR-02: combined { customPrompt, agentToolsOverride } applies BOTH', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('work', { customPrompt: 'be concise', agentToolsOverride: ['bash'] })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; customPrompt?: unknown; agentToolsOverride?: unknown }>
+    const workHead = heads.find(h => h.id === 'work')
+    expect(workHead?.customPrompt).toBe('be concise')
+    expect(workHead?.agentToolsOverride).toEqual(['bash'])
+  })
+
+  it('WR-03: lazy migration preserves resolved customPrompt + tool overrides during synthesis', async () => {
+    // No config.json heads[] yet (legacy install). resolveCurrentHeads carries a
+    // default-head customPrompt + tool overrides. The first mutation must snapshot
+    // ALL those fields into config.json, not just { id, channels }.
+    await start([
+      {
+        id: 'default',
+        channels: [],
+        customPrompt: 'inherited prompt',
+        headToolsOverride: ['spawn_agent'],
+        agentToolsOverride: ['bash', 'read_file'],
+      },
+      { id: 'work', channels: [] },
+    ])
+    // config.json has NO heads[] — triggers materializeLazyMigrationIfNeeded.
+    fs.writeFileSync(fx.configPath, JSON.stringify({}, null, 2) + '\n')
+
+    // Any mutation triggers synthesis; use a no-op-ish override on 'work'.
+    const res = await patch('work', { agentToolsOverride: ['bash'] })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{
+      id: string; customPrompt?: unknown; headToolsOverride?: unknown; agentToolsOverride?: unknown
+    }>
+    const def = heads.find(h => h.id === 'default')
+    expect(def?.customPrompt).toBe('inherited prompt')
+    expect(def?.headToolsOverride).toEqual(['spawn_agent'])
+    expect(def?.agentToolsOverride).toEqual(['bash', 'read_file'])
+  })
 })
