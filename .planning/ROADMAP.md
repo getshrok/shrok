@@ -182,7 +182,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 **Plans**: 3 plans (re-plan; assignment-only reshape over scaffolding on main)
   - [x] 46-05-PLAN.md — Resolver two-state + explicit pre-feature head/agent defaults + runtime enforcement at both layers (Wave 1)
   - [x] 46-06-PLAN.md — Single tagged /api/tools registry + two-state settings/heads API with per-layer name validation + DTOs/client (Wave 2)
-  - [ ] 46-07-PLAN.md — Two-state dashboard controls (Inherit/Custom subset) fed per-layer-filtered registry + CHANGELOG wording + human-verify (Wave 3)
+  - [x] 46-07-PLAN.md — Two-state dashboard controls (Inherit/Custom subset) fed per-layer-filtered registry + CHANGELOG wording + human-verify (Wave 3)
 **UI hint**: yes
 
 ## Progress
@@ -209,4 +209,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 43. End-to-End Smoke Test & Setup Docs | v1.5 | 3/3 | Complete | 2026-05-24 |
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
-| 46. Tool Access Control | v1.8 | 5/3 | Complete   | 2026-06-07 |
+| 46. Tool Access Control | v1.8 | 6/3 | Complete   | 2026-06-07 |
