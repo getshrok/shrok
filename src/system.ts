@@ -33,6 +33,13 @@ import { ContextAssemblerImpl } from './head/assembler.js'
 import { HEAD_TOOLS, HEAD_TOOL_NAMES } from './head/index.js'
 import { ActivationLoop } from './head/activation.js'
 import { resolveAllowlist } from './sub-agents/tool-access.js'
+import {
+  HEAD_RUNNABLE_TOOL_NAMES,
+  getOptionalTool,
+  buildNoteTools,
+  buildReminderTools,
+  buildScheduleTools,
+} from './sub-agents/registry.js'
 import type { DatabaseSync } from './db/index.js'
 import type { Config } from './config.js'
 import type { LLMRouter, ToolDefinition } from './types/llm.js'
@@ -265,12 +272,35 @@ export function buildSystem(deps: SystemDeps): System {
     : HEAD_TOOL_NAMES
   const resolvedAgentTools = resolveAllowlist(deps.agentToolsOverride, config.workerDefaults.allowedTools)
   const resolvedHeadTools = resolveAllowlist(deps.headToolsOverride, headDefaultPool)
+  // D-13 (Phase 47): materialize head-runnable agent tool defs so the Phase 46 filter
+  // can offer them when the operator assigns them to a head via the UI. There is no
+  // static definition array — the defs only exist by invoking the dynamic builders.
+  // Dedup against HEAD_TOOLS by name so view_image/get_usage/ring_device (already in
+  // HEAD_TOOLS) are not duplicated in the widened pool.
+  const headToolNameSet = new Set<string>(HEAD_TOOL_NAMES)
+  const tz = config.timezone
+  const headId = deps.headId ?? 'default'
+  const headRunnableDefs = [
+    // Note tools
+    ...buildNoteTools(stores.notes).map(e => e.definition),
+    // Reminder tools
+    ...buildReminderTools(stores.schedules, tz, headId).map(e => e.definition),
+    // Schedule tools
+    ...buildScheduleTools(stores.schedules, tz, unifiedLoader ?? null, headId).map(e => e.definition),
+    // Optional tools (filesystem/bash/web) — lookup from registry, filter undefined
+    ...HEAD_RUNNABLE_TOOL_NAMES
+      .map(n => getOptionalTool(n)?.definition)
+      .filter((d): d is import('./types/llm.js').ToolDefinition => d !== undefined),
+  ].filter(d => !headToolNameSet.has(d.name))  // dedup against HEAD_TOOLS
+
   // Compute the effective HEAD_TOOLS to pass to ActivationLoop (TOOLCFG-05).
-  // deps.headTools (test override) wins if explicitly provided; otherwise filter HEAD_TOOLS
-  // to the resolved subset — always an array now (no null/all branch in the feature path).
+  // deps.headTools (test override) wins if explicitly provided; otherwise filter the
+  // WIDENED candidate pool (HEAD_TOOLS ∪ headRunnableDefs) to the resolved subset.
+  // The resolved allowlist (default = HEAD_TOOL_NAMES = 10) collapses the widened
+  // pool back to exactly 10 for unconfigured heads (D-02 defaults unchanged).
   const effectiveHeadTools = deps.headTools !== undefined
     ? deps.headTools
-    : HEAD_TOOLS.filter(t => resolvedHeadTools.includes(t.name))
+    : [...HEAD_TOOLS, ...headRunnableDefs].filter(t => resolvedHeadTools.includes(t.name))
 
   // ── Agent Runner ────────────────────────────────────────────────────────
   const agentContextComposer = deps.agentContextComposer ?? config.agentContextComposer
@@ -391,6 +421,7 @@ export function buildSystem(deps: SystemDeps): System {
     messageAgentStewardEnabled: config.messageAgentStewardEnabled,
     onIdentityChanged,
     scheduleStore: stores.schedules,
+    noteStore: stores.notes,  // Phase 47 D-07: mirrors LocalAgentRunner wiring at line ~293
     timezone: config.timezone,
     ...(deps.spawnAgentNote !== undefined ? { spawnAgentNote: deps.spawnAgentNote } : {}),
     ...(deps.ringRunner ? { ringRunner: deps.ringRunner } : {}),
