@@ -8,8 +8,9 @@ export function createAgentsRouter(agents: AgentStore, agentRunner?: AgentRunner
   const router = Router()
 
   // List recent agents (all statuses, not just active)
-  router.get('/', requireAuth, (_req: Request, res: Response): void => {
-    const recent = agents.getRecent(20)
+  router.get('/', requireAuth, (req: Request, res: Response): void => {
+    const head = typeof req.query['head'] === 'string' ? req.query['head'] : undefined
+    const recent = agents.getRecent(20, head)
     res.json({ agents: recent.map(a => ({
       id: a.id,
       task: a.task,

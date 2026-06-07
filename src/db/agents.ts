@@ -296,9 +296,13 @@ export class AgentStore {
     })
   }
 
-  /** Returns the N most recently updated agents, newest first. */
-  getRecent(limit: number): AgentState[] {
-    const rows = this.db.prepare('SELECT * FROM agents ORDER BY updated_at DESC LIMIT ?').all(limit) as unknown as AgentRow[]
+  /** Returns the N most recently updated agents, newest first.
+   *  When headId is provided, only agents belonging to that head are returned.
+   *  When omitted, agents across all heads are returned (backward-compatible). */
+  getRecent(limit: number, headId?: string): AgentState[] {
+    const rows = headId !== undefined
+      ? this.db.prepare('SELECT * FROM agents WHERE head_id = ? ORDER BY updated_at DESC LIMIT ?').all(headId, limit) as unknown as AgentRow[]
+      : this.db.prepare('SELECT * FROM agents ORDER BY updated_at DESC LIMIT ?').all(limit) as unknown as AgentRow[]
     return rows.map(row => {
       const msgRows = this.stmtGetMessages.all(row.id) as unknown as { data: string }[]
       const history: Message[] = msgRows.map(r => JSON.parse(r.data) as Message)
