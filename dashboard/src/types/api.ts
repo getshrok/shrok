@@ -185,6 +185,13 @@ export interface SkillFile {
   isProtected: boolean
 }
 
+export interface ReadFileResult {
+  content?: string
+  binary?: boolean
+  tooLarge?: boolean
+  size: number
+}
+
 export interface SkillDetail extends SkillInfo {
   rawContent: string
   files: SkillFile[]

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
-import type { SkillDetail, SkillInfo, SkillFile } from '../../types/api'
+import type { SkillDetail, SkillInfo, SkillFile, ReadFileResult } from '../../types/api'
 import { Pencil, MoreHorizontal, Plus, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SettingTooltip } from '../../pages/settings/components'
@@ -47,7 +47,7 @@ export interface KindApiClient {
   get: (name: string) => Promise<SkillDetail>
   save: (name: string, content: string, inPlace?: boolean) => Promise<{ ok: boolean }>
   delete: (name: string) => Promise<{ ok: boolean }>
-  readFile: (name: string, filename: string) => Promise<{ content: string }>
+  readFile: (name: string, filename: string) => Promise<ReadFileResult>
   writeFile: (name: string, filename: string, content: string) => Promise<{ ok: boolean }>
   deleteFile: (name: string, filename: string) => Promise<{ ok: boolean }>
   renameFile: (name: string, oldFilename: string, newName: string) => Promise<{ ok: boolean }>
@@ -92,6 +92,7 @@ interface SkillFormFields {
 interface FileState {
   draft: string
   saved: string
+  gate?: { kind: 'binary' | 'tooLarge'; size: number }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -157,11 +158,8 @@ Write your skill instructions here.
 }
 
 const SAFE_FILENAME_RE = /^[a-zA-Z0-9_.-]+$/
-const ALLOWED_EXTENSIONS = new Set(['.md', '.mjs', '.js', '.ts', '.sh', '.json', '.txt', '.yaml', '.yml'])
 function isValidFilename(f: string): boolean {
-  if (!SAFE_FILENAME_RE.test(f) || f.includes('..')) return false
-  const ext = f.lastIndexOf('.') >= 0 ? f.slice(f.lastIndexOf('.')).toLowerCase() : ''
-  return ALLOWED_EXTENSIONS.has(ext)
+  return SAFE_FILENAME_RE.test(f) && !f.includes('..')
 }
 
 // ─── TagInput ──────────────────────────────────────────────────────────────────
@@ -542,10 +540,16 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
   useEffect(() => {
     if (activeFile === primaryFile) return
     if (fileStates.has(activeFile)) return
-    apiClient.readFile(name, activeFile).then(({ content }) => {
+    apiClient.readFile(name, activeFile).then(result => {
       setFileStates(prev => {
         const next = new Map(prev)
-        next.set(activeFile, { draft: content, saved: content })
+        if (result.binary) {
+          next.set(activeFile, { draft: '', saved: '', gate: { kind: 'binary', size: result.size } })
+        } else if (result.tooLarge) {
+          next.set(activeFile, { draft: '', saved: '', gate: { kind: 'tooLarge', size: result.size } })
+        } else {
+          next.set(activeFile, { draft: result.content ?? '', saved: result.content ?? '' })
+        }
         return next
       })
     }).catch(() => { /* file may have been deleted */ })
@@ -651,7 +655,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
     : false
 
   const activeFileState = activeFile !== primaryFile ? fileStates.get(activeFile) : null
-  const otherFileDirty = activeFileState ? activeFileState.draft !== activeFileState.saved : false
+  const otherFileDirty = activeFileState && !activeFileState.gate ? activeFileState.draft !== activeFileState.saved : false
 
   const isDirty = activeFile === primaryFile ? skillMdDirty : otherFileDirty
   useUnsavedGuard(isDirty)
@@ -1111,13 +1115,21 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
       {activeFile !== primaryFile && (
         <div className="flex-1 p-5 min-h-0">
           {fileStates.has(activeFile) ? (
-            <textarea
-              value={fileStates.get(activeFile)!.draft}
-              onChange={e => updateFileDraft(activeFile, e.target.value)}
-              readOnly={!isEditable}
-              className="w-full h-full bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 font-mono leading-relaxed resize-none focus:outline-none focus:border-zinc-600"
-              spellCheck={false}
-            />
+            activeFileState?.gate ? (
+              <div className="flex items-center justify-center h-full text-sm text-zinc-500">
+                {activeFileState.gate.kind === 'binary'
+                  ? 'Binary file — can\'t display'
+                  : `File too large to display (${(activeFileState.gate.size / 1024 / 1024).toFixed(1)} MB)`}
+              </div>
+            ) : (
+              <textarea
+                value={fileStates.get(activeFile)!.draft}
+                onChange={e => updateFileDraft(activeFile, e.target.value)}
+                readOnly={!isEditable}
+                className="w-full h-full bg-zinc-900/60 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 font-mono leading-relaxed resize-none focus:outline-none focus:border-zinc-600"
+                spellCheck={false}
+              />
+            )
           ) : (
             <div className="flex items-center justify-center h-full text-sm text-zinc-500">Loading file...</div>
           )}

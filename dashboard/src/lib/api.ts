@@ -1,4 +1,4 @@
-import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, UsageThreshold, ThresholdWithSpend, HeadDTO, ChannelConfigMasked, ChannelConfigSubmit } from '../types/api'
+import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, ReadFileResult, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, UsageThreshold, ThresholdWithSpend, HeadDTO, ChannelConfigMasked, ChannelConfigSubmit } from '../types/api'
 
 function encSkillPath(name: string, suffix = '') {
   return '/api/skills/' + name.split('/').map(encodeURIComponent).join('/') + suffix
@@ -152,7 +152,7 @@ export const api = {
     delete: (name: string) =>
       request<{ ok: boolean }>(encSkillPath(name), { method: 'DELETE' }),
     readFile: (name: string, filename: string) =>
-      request<{ content: string }>(encSkillPath(name, `/files/${encodeURIComponent(filename)}`)),
+      request<ReadFileResult>(encSkillPath(name, `/files/${encodeURIComponent(filename)}`)),
     writeFile: (name: string, filename: string, content: string) =>
       request<{ ok: boolean }>(encSkillPath(name, `/files/${encodeURIComponent(filename)}`), {
         method: 'PUT',
@@ -190,7 +190,7 @@ export const api = {
     delete: (name: string) =>
       request<{ ok: boolean }>(encTaskPath(name), { method: 'DELETE' }),
     readFile: (name: string, filename: string) =>
-      request<{ content: string }>(encTaskPath(name, `/files/${encodeURIComponent(filename)}`)),
+      request<ReadFileResult>(encTaskPath(name, `/files/${encodeURIComponent(filename)}`)),
     writeFile: (name: string, filename: string, content: string) =>
       request<{ ok: boolean }>(encTaskPath(name, `/files/${encodeURIComponent(filename)}`), {
         method: 'PUT',
