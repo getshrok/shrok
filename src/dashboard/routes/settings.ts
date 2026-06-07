@@ -11,6 +11,8 @@ import { LLMApiError } from '../../llm/util.js'
 import { AnthropicProvider } from '../../llm/anthropic.js'
 import { GeminiProvider } from '../../llm/gemini.js'
 import { OpenAIProvider } from '../../llm/openai.js'
+import { AGENT_TOOL_NAMES } from '../../sub-agents/registry.js'
+import { HEAD_TOOL_NAMES } from '../../head/index.js'
 
 // Hardcoded mapping: body field → ENV key. No dynamic key construction.
 const ENV_FIELD_MAP: Record<string, string> = {
@@ -254,11 +256,17 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       accentColor: str('accentColor', '#8C51CD'),
       logoPath: str('logoPath', ''),
       timezone: str('timezone', config.timezone),
-      // TOOLCFG-08: global tool defaults (null = all tools, string[] = subset).
+      // TOOLCFG-08: global tool defaults — two-state (string[] = concrete subset; no null "all tools").
       // Read from the EFFECTIVE merged config (not the workspace-only cfg layer) so the
       // UI reflects the actual enforced value (e.g. the 25-tool curated base-config list).
-      agentToolDefault: config.workerDefaults.allowedTools,
-      headToolDefault: config.headToolDefaults.allowedTools,
+      // Coalesce legacy-null to a concrete pre-feature default array so the surface never
+      // returns null even on installs that wrote null before the two-state model landed.
+      agentToolDefault: Array.isArray(config.workerDefaults.allowedTools)
+        ? config.workerDefaults.allowedTools
+        : [] as string[],
+      headToolDefault: Array.isArray(config.headToolDefaults.allowedTools)
+        ? config.headToolDefaults.allowedTools
+        : HEAD_TOOL_NAMES,
     })
   })
 
@@ -345,13 +353,20 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
     }
 
     // --- Global tool defaults (TOOLCFG-01/02) ---
-    // These are nested fields in config.json (not flat CONFIG_JSON_FIELDS entries)
-    // so they need explicit deep-merge handling. null = all tools; string[] = subset.
+    // Two-state model: string[] = concrete subset (no null "all tools").
     // Key must be present in body to trigger write (omit = no change).
+    // Security gate (T-46-06-E): validate every submitted name against the layer's
+    // compatible set to prevent privilege widening (e.g. assigning spawn_agent to agents).
     if ('agentToolDefault' in body) {
       const val = body['agentToolDefault']
-      if (val !== null && (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string'))) {
-        res.status(400).json({ error: 'agentToolDefault must be null or an array of strings' })
+      if (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string')) {
+        res.status(400).json({ error: 'agentToolDefault must be an array of strings' })
+        return
+      }
+      const agentSet = new Set<string>(AGENT_TOOL_NAMES)
+      const badAgent = (val as string[]).find(n => !agentSet.has(n))
+      if (badAgent !== undefined) {
+        res.status(400).json({ error: `agentToolDefault: '${badAgent}' is not in the agent-compatible tool set` })
         return
       }
       const wd = (typeof configJson['workerDefaults'] === 'object' && configJson['workerDefaults'] !== null && !Array.isArray(configJson['workerDefaults']))
@@ -362,8 +377,14 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
     }
     if ('headToolDefault' in body) {
       const val = body['headToolDefault']
-      if (val !== null && (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string'))) {
-        res.status(400).json({ error: 'headToolDefault must be null or an array of strings' })
+      if (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string')) {
+        res.status(400).json({ error: 'headToolDefault must be an array of strings' })
+        return
+      }
+      const headSet = new Set<string>(HEAD_TOOL_NAMES)
+      const badHead = (val as string[]).find(n => !headSet.has(n))
+      if (badHead !== undefined) {
+        res.status(400).json({ error: `headToolDefault: '${badHead}' is not in the head-compatible tool set` })
         return
       }
       const htd = (typeof configJson['headToolDefaults'] === 'object' && configJson['headToolDefaults'] !== null && !Array.isArray(configJson['headToolDefaults']))

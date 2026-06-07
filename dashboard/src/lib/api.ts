@@ -1,4 +1,4 @@
-import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, ReadFileResult, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, UsageThreshold, ThresholdWithSpend, HeadDTO, ChannelConfigMasked, ChannelConfigSubmit } from '../types/api'
+import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, ReadFileResult, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, UsageThreshold, ThresholdWithSpend, HeadDTO, ChannelConfigMasked, ChannelConfigSubmit, ToolRegistryEntry } from '../types/api'
 
 function encSkillPath(name: string, suffix = '') {
   return '/api/skills/' + name.split('/').map(encodeURIComponent).join('/') + suffix
@@ -53,15 +53,15 @@ export const api = {
       }),
     /**
      * Set per-head tool allowlist overrides (TOOLCFG-03/04/09).
-     * Tri-state per field:
-     *   - omit key  → no change for that field
-     *   - null       → all tools allowed
-     *   - string[]   → only those tools
-     *   - '__inherit__' → delete key (reset to inherit global default)
+     * Two-state per field:
+     *   - omit key       → no change for that field
+     *   - string[]       → subset (only those tools allowed for this head)
+     *   - '__inherit__'  → delete key (reset to inherit global default)
+     * null is rejected by the backend (400) — do not send it.
      */
     setToolOverrides: (id: string, patch: {
-      headToolsOverride?: string[] | null | '__inherit__'
-      agentToolsOverride?: string[] | null | '__inherit__'
+      headToolsOverride?: string[] | '__inherit__'
+      agentToolsOverride?: string[] | '__inherit__'
     }) =>
       request<{ ok: boolean; head: HeadDTO }>(`/api/heads/${encodeURIComponent(id)}`, {
         method: 'PATCH',
@@ -252,7 +252,10 @@ export const api = {
       }),
   },
   tools: {
-    list: () => request<{ tools: string[]; headTools: string[] }>('/api/tools'),
+    /** Returns one tagged registry — filter by layer at assignment time.
+     *  head picker: tools.filter(t => t.layers.includes('head'))
+     *  agent picker: tools.filter(t => t.layers.includes('agent')) */
+    list: () => request<{ tools: ToolRegistryEntry[] }>('/api/tools'),
   },
   docs: {
     list: () =>

@@ -946,7 +946,7 @@ function EntryEditor({ name, onDeleted, onRenamed, apiClient, listQueryKey, deta
                       <TagSelect
                         values={fields.triggerTools}
                         onChange={v => setField('triggerTools', v)}
-                        options={toolsQuery.data?.tools ?? []}
+                        options={(toolsQuery.data?.tools ?? []).filter(t => t.layers.includes('agent')).map(t => t.name)}
                         placeholder="Add tool name..."
                         readOnly={!isEditable}
                       />

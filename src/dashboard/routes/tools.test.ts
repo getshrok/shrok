@@ -5,7 +5,8 @@ import * as path from 'node:path'
 import * as net from 'node:net'
 import * as url from 'node:url'
 import type { Server } from 'node:http'
-import { createToolsRouter } from './tools.js'
+import { createToolsRouter, type ToolRegistryEntry } from './tools.js'
+import { NOTE_TOOL_NAMES, REMINDER_TOOL_NAMES, SCHEDULE_TOOL_NAMES } from '../../sub-agents/registry.js'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /** Path to the repo's base config.json — the authoritative shipped default. */
@@ -27,7 +28,7 @@ interface Fixture {
   port: number
 }
 
-describe('GET /api/tools', () => {
+describe('GET /api/tools — tagged registry (D-08, TOOLCFG-08)', () => {
   let fx: Fixture | null = null
 
   async function start(): Promise<void> {
@@ -49,54 +50,104 @@ describe('GET /api/tools', () => {
     fx = null
   })
 
-  async function getTools(): Promise<{ tools: string[]; headTools: string[] }> {
+  async function getTools(): Promise<{ tools: ToolRegistryEntry[] }> {
     const r = await fetch(`http://127.0.0.1:${fx!.port}/api/tools`)
     expect(r.status).toBe(200)
-    return r.json() as Promise<{ tools: string[]; headTools: string[] }>
+    return r.json() as Promise<{ tools: ToolRegistryEntry[] }>
   }
 
-  it('returns { tools, headTools } with both arrays sorted', async () => {
+  it('response is a single array (no disjoint headTools key)', async () => {
     await start()
     const body = await getTools()
     expect(Array.isArray(body.tools)).toBe(true)
-    expect(Array.isArray(body.headTools)).toBe(true)
-    // Both arrays should be sorted
-    const toolsSorted = [...body.tools].sort()
-    expect(body.tools).toEqual(toolsSorted)
-    const headToolsSorted = [...body.headTools].sort()
-    expect(body.headTools).toEqual(headToolsSorted)
+    // The old disjoint shape must be gone
+    expect((body as Record<string, unknown>)['headTools']).toBeUndefined()
   })
 
-  it('tools includes all note tool names previously missing (write_note, read_note, list_notes, search_notes, delete_note)', async () => {
+  it('each entry has name (string) and layers (non-empty array of head|agent)', async () => {
     await start()
     const body = await getTools()
-    expect(body.tools).toContain('write_note')
-    expect(body.tools).toContain('read_note')
-    expect(body.tools).toContain('list_notes')
-    expect(body.tools).toContain('search_notes')
-    expect(body.tools).toContain('delete_note')
+    for (const entry of body.tools) {
+      expect(typeof entry.name).toBe('string')
+      expect(Array.isArray(entry.layers)).toBe(true)
+      expect(entry.layers.length).toBeGreaterThan(0)
+      for (const layer of entry.layers) {
+        expect(['head', 'agent']).toContain(layer)
+      }
+    }
   })
 
-  it('tools includes all reminder tool names previously missing (create_reminder, list_reminders, cancel_reminder)', async () => {
+  it('result is sorted deterministically by name', async () => {
     await start()
     const body = await getTools()
-    expect(body.tools).toContain('create_reminder')
-    expect(body.tools).toContain('list_reminders')
-    expect(body.tools).toContain('cancel_reminder')
+    const sorted = [...body.tools].sort((a, b) => a.name.localeCompare(b.name))
+    expect(body.tools.map(t => t.name)).toEqual(sorted.map(t => t.name))
   })
 
-  it('tools includes all schedule tool names previously missing (create_schedule, list_schedules, delete_schedule)', async () => {
+  it('view_image has both head and agent layers (dual-context tool)', async () => {
     await start()
     const body = await getTools()
-    expect(body.tools).toContain('create_schedule')
-    expect(body.tools).toContain('list_schedules')
-    expect(body.tools).toContain('delete_schedule')
+    const viewImage = body.tools.find(t => t.name === 'view_image')
+    expect(viewImage).toBeDefined()
+    expect(viewImage!.layers).toContain('head')
+    expect(viewImage!.layers).toContain('agent')
   })
 
-  it('structural invariant: every tool in config.json workerDefaults.allowedTools appears in GET /api/tools .tools', async () => {
+  it('spawn_agent is head-only (not in agent layer)', async () => {
     await start()
     const body = await getTools()
-    const toolSet = new Set(body.tools)
+    const spawnAgent = body.tools.find(t => t.name === 'spawn_agent')
+    expect(spawnAgent).toBeDefined()
+    expect(spawnAgent!.layers).toContain('head')
+    expect(spawnAgent!.layers).not.toContain('agent')
+  })
+
+  it('bash is agent-only (not in head layer)', async () => {
+    await start()
+    const body = await getTools()
+    const bash = body.tools.find(t => t.name === 'bash')
+    expect(bash).toBeDefined()
+    expect(bash!.layers).toContain('agent')
+    expect(bash!.layers).not.toContain('head')
+  })
+
+  it('all NOTE tool names appear with the agent layer', async () => {
+    await start()
+    const body = await getTools()
+    const byName = new Map(body.tools.map(t => [t.name, t]))
+    for (const name of NOTE_TOOL_NAMES) {
+      const entry = byName.get(name)
+      expect(entry, `${name} missing from registry`).toBeDefined()
+      expect(entry!.layers, `${name} not tagged as agent`).toContain('agent')
+    }
+  })
+
+  it('all REMINDER tool names appear with the agent layer', async () => {
+    await start()
+    const body = await getTools()
+    const byName = new Map(body.tools.map(t => [t.name, t]))
+    for (const name of REMINDER_TOOL_NAMES) {
+      const entry = byName.get(name)
+      expect(entry, `${name} missing from registry`).toBeDefined()
+      expect(entry!.layers, `${name} not tagged as agent`).toContain('agent')
+    }
+  })
+
+  it('all SCHEDULE tool names appear with the agent layer', async () => {
+    await start()
+    const body = await getTools()
+    const byName = new Map(body.tools.map(t => [t.name, t]))
+    for (const name of SCHEDULE_TOOL_NAMES) {
+      const entry = byName.get(name)
+      expect(entry, `${name} missing from registry`).toBeDefined()
+      expect(entry!.layers, `${name} not tagged as agent`).toContain('agent')
+    }
+  })
+
+  it('structural invariant: every tool in config.json workerDefaults.allowedTools appears in registry with agent layer', async () => {
+    await start()
+    const body = await getTools()
+    const byName = new Map(body.tools.map(t => [t.name, t]))
 
     // Load the repo's shipped default allowedTools
     const configRaw = fs.readFileSync(REPO_CONFIG_PATH, 'utf8')
@@ -106,7 +157,7 @@ describe('GET /api/tools', () => {
     const defaultAllowedTools = config.workerDefaults?.allowedTools ?? []
     expect(defaultAllowedTools.length).toBeGreaterThan(0)
 
-    const missingTools = defaultAllowedTools.filter(t => !toolSet.has(t))
-    expect(missingTools).toEqual([])
+    const missingTools = defaultAllowedTools.filter(t => !byName.has(t))
+    expect(missingTools, `Tools in config.json missing from registry: ${missingTools.join(', ')}`).toEqual([])
   })
 })

@@ -1311,9 +1311,9 @@ describe('GET /api/heads/:id/counts + DELETE confirmId (D-06 typed-confirmation)
   })
 })
 
-// ─── Plan 46-03 Task 2: PATCH tri-state tool overrides (TOOLCFG-03/04/09) ───
+// ─── Plan 46-06 Task 3: PATCH two-state tool overrides (TOOLCFG-03/04, T-46-06-E) ───
 
-describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04/09)', () => {
+describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04, two-state, per-layer validation)', () => {
   let fx: MutFixture
 
   async function start(initialHeads: ResolvedHead[]): Promise<void> {
@@ -1372,7 +1372,7 @@ describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04/09)', () => {
     return JSON.parse(fs.readFileSync(fx.configPath, 'utf8')) as Record<string, unknown>
   }
 
-  it('PATCH with agentToolsOverride array persists the array into config.json heads[]', async () => {
+  it('PATCH with agentToolsOverride array (valid agent tools) persists the array', async () => {
     await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
     fs.writeFileSync(fx.configPath, JSON.stringify({
       heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
@@ -1388,26 +1388,7 @@ describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04/09)', () => {
     expect(workHead?.agentToolsOverride).toEqual(['bash', 'read_file'])
   })
 
-  it('PATCH with headToolsOverride: null persists null (all tools)', async () => {
-    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
-    // Pre-seed with an existing override to show null replaces it
-    fs.writeFileSync(fx.configPath, JSON.stringify({
-      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [], headToolsOverride: ['spawn_agent'] }],
-    }, null, 2) + '\n')
-
-    const res = await patch('work', { headToolsOverride: null })
-    expect(res.status).toBe(200)
-    expect(res.json).toMatchObject({ ok: true, head: { id: 'work', headToolsOverride: null } })
-
-    const cfg = readConfig()
-    const heads = cfg['heads'] as Array<{ id: string; headToolsOverride?: unknown }>
-    const workHead = heads.find(h => h.id === 'work')
-    // null must be written verbatim (not dropped)
-    expect('headToolsOverride' in (workHead as object)).toBe(true)
-    expect(workHead?.headToolsOverride).toBeNull()
-  })
-
-  it('PATCH with headToolsOverride: "__inherit__" removes the key from config.json (reset to inherit)', async () => {
+  it('PATCH with headToolsOverride: "__inherit__" removes the key (reset to inherit)', async () => {
     await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
     // Pre-seed with an existing override
     fs.writeFileSync(fx.configPath, JSON.stringify({
@@ -1424,32 +1405,41 @@ describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04/09)', () => {
     expect('headToolsOverride' in (workHead as object)).toBe(false)
   })
 
-  it('PATCH with agentToolsOverride: "__inherit__" removes the agentToolsOverride key', async () => {
-    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
-    fs.writeFileSync(fx.configPath, JSON.stringify({
-      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [], agentToolsOverride: ['bash'] }],
-    }, null, 2) + '\n')
-
-    const res = await patch('work', { agentToolsOverride: '__inherit__' })
-    expect(res.status).toBe(200)
-
-    const cfg = readConfig()
-    const heads = cfg['heads'] as Array<{ id: string; agentToolsOverride?: unknown }>
-    const workHead = heads.find(h => h.id === 'work')
-    expect('agentToolsOverride' in (workHead as object)).toBe(false)
-  })
-
-  it('PATCH with a non-array, non-null, non-sentinel value returns 400', async () => {
+  it('PATCH with headToolsOverride: null → 400 (null is not a valid two-state value)', async () => {
     await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
     fs.writeFileSync(fx.configPath, JSON.stringify({
       heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
     }, null, 2) + '\n')
 
-    const res = await patch('work', { headToolsOverride: 42 })
+    const res = await patch('work', { headToolsOverride: null })
     expect(res.status).toBe(400)
   })
 
-  it('PATCH with agentToolsOverride containing non-strings returns 400', async () => {
+  it('PATCH headToolsOverride with agent-only name (bash) → 400 (cross-layer membership check)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    // 'bash' is agent-only — must not be assignable to the head layer
+    const res = await patch('work', { headToolsOverride: ['bash'] })
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toContain('bash')
+  })
+
+  it('PATCH agentToolsOverride with head-only name (spawn_agent) → 400 (cross-layer membership check)', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
+    }, null, 2) + '\n')
+
+    // 'spawn_agent' is head-only — must not be assignable to the agent layer
+    const res = await patch('work', { agentToolsOverride: ['spawn_agent'] })
+    expect(res.status).toBe(400)
+    expect(JSON.stringify(res.json)).toContain('spawn_agent')
+  })
+
+  it('PATCH with non-string array element → 400', async () => {
     await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
     fs.writeFileSync(fx.configPath, JSON.stringify({
       heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [] }],
@@ -1474,8 +1464,23 @@ describe('PATCH /api/heads/:id tool overrides (TOOLCFG-03/04/09)', () => {
     const body = await getHeads() as { heads: Array<{ id: string; headToolsOverride?: unknown }> }
     const workHead = body.heads.find(h => h.id === 'work')
     expect(workHead?.headToolsOverride).toEqual(['spawn_agent', 'message_agent'])
-    // default head has no override key — must be absent
+    // default head has no override key — must be absent (inherit-state invariant)
     const defaultHead = body.heads.find(h => h.id === 'default')
     expect('headToolsOverride' in (defaultHead as object)).toBe(false)
+  })
+
+  it('PATCH agentToolsOverride: "__inherit__" removes the key', async () => {
+    await start([{ id: 'default', channels: [] }, { id: 'work', channels: [] }])
+    fs.writeFileSync(fx.configPath, JSON.stringify({
+      heads: [{ id: 'default', channels: [] }, { id: 'work', channels: [], agentToolsOverride: ['bash'] }],
+    }, null, 2) + '\n')
+
+    const res = await patch('work', { agentToolsOverride: '__inherit__' })
+    expect(res.status).toBe(200)
+
+    const cfg = readConfig()
+    const heads = cfg['heads'] as Array<{ id: string; agentToolsOverride?: unknown }>
+    const workHead = heads.find(h => h.id === 'work')
+    expect('agentToolsOverride' in (workHead as object)).toBe(false)
   })
 })

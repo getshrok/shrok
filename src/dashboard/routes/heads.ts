@@ -11,6 +11,8 @@ import { transaction } from '../../db/index.js'
 import type { MessageStore } from '../../db/messages.js'
 import type { QueueStore } from '../../db/queue.js'
 import type { ScheduleStore } from '../../db/schedules.js'
+import { AGENT_TOOL_NAMES } from '../../sub-agents/registry.js'
+import { HEAD_TOOL_NAMES } from '../../head/index.js'
 
 /**
  * Head ID rules (D-13): lowercase kebab-case, must start with [a-z0-9],
@@ -445,22 +447,26 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
 
     // ── tool overrides branch (TOOLCFG-03/04) ────────────────────────────────
     //
-    // Tri-state write rule for headToolsOverride and agentToolsOverride:
+    // Two-state write rule for headToolsOverride and agentToolsOverride:
     //   - Field absent from body  → leave config key as-is (handled by hasX guard above)
-    //   - Field === null           → set config key to null (all tools allowed)
     //   - Field === '__inherit__'  → delete config key (inherit global default)
     //     The sentinel string is used because JSON PATCH cannot distinguish
     //     "key absent in body" from "key sent as undefined" through Express
     //     body parsing when other fields are also present. '__inherit__' makes
     //     the reset-to-inherit intent unambiguous in the HTTP body.
     //   - Field is string[]        → set config key to that subset
-    //   - Anything else            → 400
+    //   - null or anything else    → 400 (null is not a valid two-state value)
+    //
+    // Security gate (T-46-06-E): per-layer membership check prevents privilege
+    // widening (e.g. assigning spawn_agent to agents or bash to the head).
+    // Every name in headToolsOverride must be in HEAD_TOOL_NAMES.
+    // Every name in agentToolsOverride must be in AGENT_TOOL_NAMES.
     if (hasHeadToolsOverride || hasAgentToolsOverride) {
-      // Validate both fields before any write.
+      // Validate type: only '__inherit__' or string[] are accepted (null rejected).
       const validateOverride = (val: unknown, fieldName: string): string | null => {
-        if (val === null || val === '__inherit__') return null
+        if (val === '__inherit__') return null
         if (Array.isArray(val) && (val as unknown[]).every(v => typeof v === 'string')) return null
-        return `${fieldName} must be null, '__inherit__', or an array of strings`
+        return `${fieldName} must be '__inherit__' or an array of strings`
       }
       if (hasHeadToolsOverride) {
         const err = validateOverride(body.headToolsOverride, 'headToolsOverride')
@@ -471,14 +477,32 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
         if (err) { res.status(400).json({ error: err }); return }
       }
 
+      // Per-layer membership check (both directions, before any write).
+      if (hasHeadToolsOverride && Array.isArray(body.headToolsOverride)) {
+        const headSet = new Set<string>(HEAD_TOOL_NAMES)
+        const bad = (body.headToolsOverride as string[]).find(n => !headSet.has(n))
+        if (bad !== undefined) {
+          res.status(400).json({ error: `headToolsOverride: '${bad}' is not in the head-compatible tool set` })
+          return
+        }
+      }
+      if (hasAgentToolsOverride && Array.isArray(body.agentToolsOverride)) {
+        const agentSet = new Set<string>(AGENT_TOOL_NAMES)
+        const bad = (body.agentToolsOverride as string[]).find(n => !agentSet.has(n))
+        if (bad !== undefined) {
+          res.status(400).json({ error: `agentToolsOverride: '${bad}' is not in the agent-compatible tool set` })
+          return
+        }
+      }
+
       materializeLazyMigrationIfNeeded(deps)
       const configJson = loadConfigJsonInline(deps.configPath)
       const heads = (Array.isArray(configJson['heads']) ? configJson['heads'] : []) as Array<{
         id: string
         channels: ChannelConfig[]
         customPrompt?: string
-        headToolsOverride?: string[] | null
-        agentToolsOverride?: string[] | null
+        headToolsOverride?: string[]
+        agentToolsOverride?: string[]
       }>
       const headIdx = heads.findIndex(h => h.id === currentId)
       if (headIdx === -1) {
@@ -491,14 +515,14 @@ export function createHeadsRouter(deps: HeadsRouterDeps): Router {
         if (body.headToolsOverride === '__inherit__') {
           delete head.headToolsOverride
         } else {
-          head.headToolsOverride = body.headToolsOverride as string[] | null
+          head.headToolsOverride = body.headToolsOverride as string[]
         }
       }
       if (hasAgentToolsOverride) {
         if (body.agentToolsOverride === '__inherit__') {
           delete head.agentToolsOverride
         } else {
-          head.agentToolsOverride = body.agentToolsOverride as string[] | null
+          head.agentToolsOverride = body.agentToolsOverride as string[]
         }
       }
 
