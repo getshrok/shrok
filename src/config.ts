@@ -278,7 +278,7 @@ const ConfigSchema = z.object({
 
   // Ring delivery layer (Phase 45)
   publicBaseUrl: z.string().url().optional(),                          // device-reachable base URL override (RING-08)
-  ringVolume: z.coerce.number().min(0).max(1).default(0.5),           // HA media_player volume (0.0–1.0; RING-09)
+  ringVolume: z.coerce.number().min(0).max(1).default(1.0),           // HA media_player volume (0.0–1.0; RING-09). Default max — it's an alarm (issue #19).
   ringCapHours: z.coerce.number().min(1).max(72).default(24),         // auto-dismiss cap in hours (RING-10)
 
   // Dashboard
