@@ -12,8 +12,8 @@
 // ---------------------------------------------------------------------------
 // Minimal Slack block types (no @slack/bolt import)
 // ---------------------------------------------------------------------------
-type SlackTextField = { type: string; text: string }
-type SlackBlock =
+export type SlackTextField = { type: string; text: string }
+export type SlackBlock =
   | { type: 'section'; text: SlackTextField; fields?: never }
   | { type: 'section'; fields: SlackTextField[]; text?: never }
 
