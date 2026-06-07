@@ -26,6 +26,7 @@ import { RING_DEVICE_DEF, executeRingDevice } from '../ring/tool.js'
 import { DESCRIPTION_PARAM_SPEC } from '../tool-description.js'
 import { timingMark } from '../timing.js'
 import { nextRunAfter } from '../scheduler/cron.js'
+import { formatModelTime, parseModelTime } from '../util/model-time.js'
 
 // ─── HEAD_TOOLS definitions ───────────────────────────────────────────────────
 
@@ -357,10 +358,29 @@ export class HeadToolExecutor implements ToolExecutor {
       }
 
       case 'get_usage': {
-        const since = input['since'] as string | undefined
-        const summary = this.opts.usageStore.getSummary(since)
+        const tz = this.opts.timezone ?? 'UTC'
+        const sinceRaw = input['since'] as string | undefined
+        if (sinceRaw !== undefined) {
+          let parsed: Date
+          try {
+            parsed = parseModelTime(sinceRaw, tz)
+          } catch (e) {
+            return JSON.stringify({ error: true, message: (e as Error).message })
+          }
+          const summary = this.opts.usageStore.getSummary(parsed.toISOString())
+          return JSON.stringify({
+            since: formatModelTime(parsed, tz),
+            estimatedCostUsd: Number(summary.costUsd.toFixed(4)),
+            inputTokens: summary.inputTokens,
+            outputTokens: summary.outputTokens,
+            byModel: summary.byModel,
+            bySourceType: summary.bySourceType,
+            bySource: summary.bySource,
+          })
+        }
+        const summary = this.opts.usageStore.getSummary()
         return JSON.stringify({
-          since: since ?? 'all-time',
+          since: 'all-time',
           estimatedCostUsd: Number(summary.costUsd.toFixed(4)),
           inputTokens: summary.inputTokens,
           outputTokens: summary.outputTokens,
