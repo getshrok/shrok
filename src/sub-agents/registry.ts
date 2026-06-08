@@ -32,7 +32,7 @@ const SPAWN_AGENT_DEF: ToolDefinition = {
     properties: {
       description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
       prompt: { type: 'string', description: 'Full prompt for the child agent — task, context, and instructions.' },
-      model: { type: 'string', description: 'Optional: model tier (\'standard\'|\'capable\'|\'expert\') or direct model ID (e.g. \'claude-opus-4-6\').' },
+      model: { type: 'string', description: 'Optional: model tier (\'dumb\'|\'smart\'|\'genius\') or direct model ID (e.g. \'claude-opus-4-6\'). dumb = trivial lookups; smart = everyday work (default); genius = heavy reasoning.' },
     },
     required: ['description', 'prompt'],
   },

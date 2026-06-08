@@ -33,13 +33,14 @@ import { formatModelTime, parseModelTime } from '../util/model-time.js'
 export const HEAD_TOOLS: ToolDefinition[] = [
   {
     name: 'spawn_agent',
-    description: 'Spawn an agent to handle a task asynchronously. Tell the agent what to do, not how — relay the user\'s intent and any relevant context, but let the agent decide the approach. Only include implementation details if the user specifically requested them. Always include a brief acknowledgment in your response when calling this tool (e.g. "On it." or "Checking now.") — the user needs to know you\'re working on it, and the loop exits immediately after.',
+    description: 'Spawn an agent to handle a task asynchronously. Tell the agent what to do, not how — relay the user\'s intent and any relevant context, but let the agent decide the approach. Only include implementation details if the user specifically requested them. Tier guide: omit for everyday work (smart default); use genius for hard multi-step reasoning; use dumb for trivial single-fact lookups. Always include a brief acknowledgment in your response when calling this tool (e.g. "On it." or "Checking now.") — the user needs to know you\'re working on it, and the loop exits immediately after.',
     inputSchema: {
       type: 'object',
       properties: {
         description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
         prompt: { type: 'string', description: 'The full prompt for the agent.' },
         name: { type: 'string', description: 'Short human-readable name for this agent — 2-5 words describing what it\'s doing (e.g. "github-pr-123-review", "morning-email-triage", "fix-login-bug"). Used as the agent\'s ID prefix so you can identify it later. Multiple agents can run in parallel — be specific.' },
+        model: { type: 'string', enum: ['dumb', 'smart', 'genius'], description: 'Worker capability tier. dumb = trivial single-fact lookups / web searches only; smart = everyday work (default); genius = hard multi-step / reasoning-heavy work. Omit to use smart.' },
       },
       required: ['description', 'prompt', 'name'],
     },
@@ -264,6 +265,7 @@ export class HeadToolExecutor implements ToolExecutor {
           name: input['name'] as string,
           trigger: 'manual',
           headId: this.opts.headId,                       // Phase 34 D-EXEC-OPTION: agent inherits the spawning head's identity
+          ...(input['model'] ? { model: input['model'] as string } : {}),
           ...(this.opts.getHistory ? { headHistory: this.opts.getHistory() } : {}),
           ...(this.opts.onDebug ? { onDebug: this.opts.onDebug } : {}),
           ...(this.opts.onVerbose ? { onVerbose: this.opts.onVerbose } : {}),
