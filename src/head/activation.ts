@@ -891,12 +891,16 @@ export class ActivationLoop {
           this.opts.messages.append(msg, this.opts.headId)
         }
 
-        // Deliver intermediate assistant text to external channels
-        // (final round delivery happens post-loop, may include file attachments)
-        if (msg.kind === 'text' && msg.role === 'assistant' && sendChannel && !opts?.isFinal) {
-          await this.opts.channelRouter.send(sendChannel, msg.content)
-          lastAssistantContent = null  // already delivered — prevent post-loop duplicate
-        }
+        // Intermediate assistant text (text emitted alongside tool calls, !isFinal)
+        // is intentionally NOT delivered to external channels (issue #21): models
+        // narrate before each tool call and then recap everything at end_turn, so
+        // the intermediate "thinking" is redundant noise for the user. It is still
+        // stored above — the model needs to see its own prior text across rounds,
+        // and it remains the audit trail / dashboard transcript. Only the final
+        // bit is delivered post-loop (it lives in lastAssistantContent, set on
+        // every assistant text message above, so the last one wins). If the model
+        // ends a turn with no closing text, lastAssistantContent still holds the
+        // last text it produced, so the user always gets the model's last word.
       },
       ...(onHeadTools ? { onDebug: onHeadTools } : {}),
       // onVerbose intentionally not passed to the head's tool loop —
