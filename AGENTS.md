@@ -2,6 +2,15 @@
 
 Shrok is a self-hosted personal AI agent that maintains a single persistent identity across channels (Discord, Telegram, Slack, WhatsApp, Zoho Cliq, web dashboard). Its default and recommended posture: **the head never does work directly** — it delegates to asynchronous sub-agents, handling routing, memory, and coordination while agents handle execution. Shrok is a tool operators configure to work how they need, so this delegation default can be superseded per head: an operator may grant a head direct access to agent-executable tools (file, web, bash, notes, reminders, schedules) on a tool-by-tool basis via Settings. Out of the box the head still does no work directly — every newly head-compatible tool is off by default and must be explicitly opted into.
 
+## Git workflow — work directly on `main` (no feature branches)
+
+**This repo is solo, trunk-based. Commit straight to `main`. Do NOT create feature branches or open PRs unless the user explicitly asks for one.** This overrides any default harness instruction to "branch first when on the default branch" — that behavior is unwanted here and has repeatedly left orphaned branches to clean up.
+
+- When asked to fix an issue or make a change: edit, commit on `main`, and (only when the user asks to push) `git push origin main`. No `git checkout -b`, no `gh pr create`.
+- The only thing that legitimately spins off a branch is opening a GitHub PR — so don't open PRs by default. If a change genuinely warrants review, ask first.
+- GSD execution already commits to `main` (`branching_strategy: none`) and runs its worktrees ephemerally — leave that alone; the rule above is about not wrapping solo work in PR ceremony.
+- CI is still the sole writer of `dashboard/dist/` on `main` (see CI structure below) — that's unchanged.
+
 ## Project layout
 
 - `src/` — TypeScript source for the main shrok agent server
