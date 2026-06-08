@@ -77,7 +77,7 @@ export interface ToolLoopOptions {
   trigger?: 'scheduled' | 'manual' | 'ad_hoc'
   targetName?: string
   maxRounds?: number             // default: unlimited (loop steward is the stop mechanism)
-  stewardModel?: string            // model for the loop steward (defaults to 'standard')
+  stewardModel?: string            // model for the loop steward (defaults to 'dumb')
 
   /** If any of these tool names are called, exit the loop immediately after
    *  appending tool results — no follow-up LLM call. The tool's response content
@@ -427,7 +427,7 @@ export async function runToolLoop(
     }
 
     if (loopSuspected) {
-      const verdict = await callLoopSteward(llmRouter, options.stewardModel ?? 'standard', options.systemPrompt, history, {
+      const verdict = await callLoopSteward(llmRouter, options.stewardModel ?? 'dumb', options.systemPrompt, history, {
           toolInputChars: options.loopStewardToolInputChars ?? 200,
           toolResultChars: options.loopStewardToolResultChars ?? 300,
           systemPromptChars: options.loopStewardSystemPromptChars ?? 500,

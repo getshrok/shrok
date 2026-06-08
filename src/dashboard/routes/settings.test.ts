@@ -23,21 +23,21 @@ async function getFreePort(): Promise<number> {
 // Mirrors src/config.ts ConfigSchema defaults exactly — update both in lock-step.
 function makeTestConfig(overrides: Partial<Config> = {}): Config {
   return {
-    anthropicModelStandard: 'claude-haiku-4-5-20251001',
-    anthropicModelCapable: 'claude-sonnet-4-6',
-    anthropicModelExpert: 'claude-opus-4-6',
-    geminiModelStandard: 'gemini-3.1-flash-lite-preview',
-    geminiModelCapable: 'gemini-3-flash-preview',
-    geminiModelExpert: 'gemini-3.1-pro-preview',
-    openaiModelStandard: 'gpt-5.4-mini',
-    openaiModelCapable: 'gpt-5.4',
-    openaiModelExpert: 'gpt-5.4-pro',
-    headModel: 'capable',
-    agentModel: 'capable',
-    stewardModel: 'standard',
-    memoryChunkingModel: 'capable',
-    memoryArchivalModel: 'standard',
-    memoryRetrievalModel: 'standard',
+    anthropicModelDumb: 'claude-haiku-4-5-20251001',
+    anthropicModelSmart: 'claude-sonnet-4-6',
+    anthropicModelGenius: 'claude-opus-4-6',
+    geminiModelDumb: 'gemini-3.1-flash-lite-preview',
+    geminiModelSmart: 'gemini-3-flash-preview',
+    geminiModelGenius: 'gemini-3.1-pro-preview',
+    openaiModelDumb: 'gpt-5.4-mini',
+    openaiModelSmart: 'gpt-5.4',
+    openaiModelGenius: 'gpt-5.4-pro',
+    headModel: 'smart',
+    agentModel: 'smart',
+    stewardModel: 'dumb',
+    memoryChunkingModel: 'smart',
+    memoryArchivalModel: 'dumb',
+    memoryRetrievalModel: 'dumb',
     logLevel: 'info',
     webhookHost: '127.0.0.1',
     webhookPort: 8766,
@@ -224,25 +224,25 @@ describe('GET /api/settings — config-derived defaults', () => {
   it('returns anthropic model defaults from config (not old literals)', async () => {
     await startWithConfig(makeTestConfig())
     const b = await getBody()
-    expect(b['anthropicModelStandard']).toBe('claude-haiku-4-5-20251001')
-    expect(b['anthropicModelCapable']).toBe('claude-sonnet-4-6')
-    expect(b['anthropicModelExpert']).toBe('claude-opus-4-6')
+    expect(b['anthropicModelDumb']).toBe('claude-haiku-4-5-20251001')
+    expect(b['anthropicModelSmart']).toBe('claude-sonnet-4-6')
+    expect(b['anthropicModelGenius']).toBe('claude-opus-4-6')
   })
 
   it('returns corrected gemini model defaults from config', async () => {
     await startWithConfig(makeTestConfig())
     const b = await getBody()
-    expect(b['geminiModelStandard']).toBe('gemini-3.1-flash-lite-preview')
-    expect(b['geminiModelCapable']).toBe('gemini-3-flash-preview')
-    expect(b['geminiModelExpert']).toBe('gemini-3.1-pro-preview')
+    expect(b['geminiModelDumb']).toBe('gemini-3.1-flash-lite-preview')
+    expect(b['geminiModelSmart']).toBe('gemini-3-flash-preview')
+    expect(b['geminiModelGenius']).toBe('gemini-3.1-pro-preview')
   })
 
   it('returns corrected openai model defaults from config', async () => {
     await startWithConfig(makeTestConfig())
     const b = await getBody()
-    expect(b['openaiModelStandard']).toBe('gpt-5.4-mini')
-    expect(b['openaiModelCapable']).toBe('gpt-5.4')
-    expect(b['openaiModelExpert']).toBe('gpt-5.4-pro')
+    expect(b['openaiModelDumb']).toBe('gpt-5.4-mini')
+    expect(b['openaiModelSmart']).toBe('gpt-5.4')
+    expect(b['openaiModelGenius']).toBe('gpt-5.4-pro')
   })
 
   it('returns drift-corrected numeric and boolean defaults from config', async () => {

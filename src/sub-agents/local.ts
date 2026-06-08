@@ -489,7 +489,7 @@ export class LocalAgentRunner implements AgentRunner {
         options.prompt,
         snapshot,
         this.llmRouter,
-        this.stewardModel ?? 'standard',
+        this.stewardModel ?? 'dumb',
         this.usageStore,
       )
 

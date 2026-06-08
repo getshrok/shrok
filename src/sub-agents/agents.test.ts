@@ -934,7 +934,7 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const parentState = agentStore.create('tent_steward_reject', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'capable', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(
@@ -966,7 +966,7 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const parentState = agentStore.create('tent_steward_pass', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'capable', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(
@@ -998,7 +998,7 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const parentState = agentStore.create('tent_steward_off', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'capable', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(
@@ -1025,7 +1025,7 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const parentState = agentStore.create('tent_steward_throw', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'capable', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(

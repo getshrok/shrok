@@ -372,7 +372,7 @@ describe('AgentStore', () => {
 
   const baseOptions = {
     prompt: 'do something',
-    model: 'capable',
+    model: 'smart',
     trigger: 'manual' as const,
     headId: 'default',
   }
@@ -382,7 +382,7 @@ describe('AgentStore', () => {
     expect(t.id).toBe('t-1')
     expect(t.status).toBe('running')
     expect(t.task).toBe('do something')
-    expect(t.model).toBe('capable')
+    expect(t.model).toBe('smart')
 
     const fetched = store.get('t-1')
     expect(fetched?.id).toBe('t-1')

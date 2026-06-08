@@ -46,20 +46,20 @@ describe('DEFAULT_STEWARDS (Phase 15)', () => {
 describe('runSpawnAgentSteward', () => {
   it('TEST-02 pass path: returns pass:true when stub says pass', async () => {
     const router = makeStubRouter({ response: '{"pass": true, "reason": ""}' })
-    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'standard')
+    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'dumb')
     expect(result).toEqual({ pass: true, reason: '' })
   })
 
   it('TEST-02 reject path: returns pass:false with reason verbatim', async () => {
     const router = makeStubRouter({ response: '{"pass": false, "reason": "trivial task"}' })
-    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'standard')
+    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'dumb')
     expect(result).toEqual({ pass: false, reason: 'trivial task' })
   })
 
   it('TEST-02 fail-open on throw: returns pass:true and logs warning', async () => {
     const warnSpy = vi.spyOn(log, 'warn').mockImplementation(() => {})
     const router = makeStubRouter({ throwError: new Error('network down') })
-    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'standard')
+    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'dumb')
     expect(result).toEqual({ pass: true, reason: '' })
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('[steward:spawn-agent] failed, defaulting to pass:'),
@@ -70,7 +70,7 @@ describe('runSpawnAgentSteward', () => {
 
   it('TEST-02 schema-defensive: missing pass field treated as pass', async () => {
     const router = makeStubRouter({ response: '{}' })
-    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'standard')
+    const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'dumb')
     expect(result).toEqual({ pass: true, reason: '' })
   })
 })

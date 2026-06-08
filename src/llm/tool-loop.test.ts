@@ -199,7 +199,7 @@ describe('runToolLoop onRoundComplete callback', () => {
     const usage = freshUsage()
 
     await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [{ name: 'my_tool', description: 't', inputSchema: {} }],
       systemPrompt: 'sys',
       history: [...baseHistory],
@@ -223,7 +223,7 @@ describe('runToolLoop onRoundComplete callback', () => {
     const usage = freshUsage()
 
     await expect(runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [{ name: 'my_tool', description: 't', inputSchema: {} }],
       systemPrompt: 'sys',
       history: [...baseHistory],
@@ -247,7 +247,7 @@ describe('runToolLoop onRoundComplete callback', () => {
     const usage = freshUsage()
 
     const resp = await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [{ name: 'my_tool', description: 't', inputSchema: {} }],
       systemPrompt: 'sys',
       history: [...baseHistory],
@@ -271,7 +271,7 @@ describe('runToolLoop onRoundComplete callback', () => {
     const usage = freshUsage()
 
     await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [{ name: 'my_tool', description: 't', inputSchema: {} }],
       systemPrompt: 'sys',
       history: [...baseHistory],
@@ -304,7 +304,7 @@ describe('runToolLoop onRoundComplete callback', () => {
     })
 
     await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [{ name: 'my_tool', description: 't', inputSchema: {} }],
       systemPrompt: 'sys',
       history: [...baseHistory],

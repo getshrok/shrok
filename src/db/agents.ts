@@ -202,7 +202,7 @@ export class AgentStore {
       skill_name: options.skillName ?? null,
       task: options.prompt,
       instructions: '',
-      tier: options.model ?? 'capable',
+      tier: options.model ?? 'smart',
       tools: JSON.stringify([]),
       capabilities: JSON.stringify([]),
       trigger: options.trigger,

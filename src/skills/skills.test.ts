@@ -62,14 +62,14 @@ Legacy body.`
     const content = `---
 name: nightly-task
 description: A task
-model: capable
+model: smart
 npm-deps:
   - imapflow
 ---
 Body.`
     const { frontmatter } = parseSkillFile(content)
     const raw = frontmatter as unknown as Record<string, unknown>
-    expect(raw['model']).toBe('capable')
+    expect(raw['model']).toBe('smart')
     expect(raw['npm-deps']).toEqual(['imapflow'])
   })
 

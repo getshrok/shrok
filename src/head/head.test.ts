@@ -402,7 +402,7 @@ describe('ContextAssemblerImpl memory retrieval gating', () => {
       contextWindowTokens: 100_000,
       llmMaxTokens: 4096,
       memoryQueryContextTokens: opts.memoryQueryContextTokens ?? 3000,
-      memoryRetrievalModel: 'standard',
+      memoryRetrievalModel: 'dumb',
       memoryBudgetPercent: 40,
     }
     const mcpRegistry = { listCapabilities: vi.fn().mockReturnValue([]), loadTools: vi.fn().mockResolvedValue([]) }
