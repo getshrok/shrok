@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Dashboard conversation-view voice mode** now resolves the correct head per connection — per-turn live MSE, head-aware WebSocket URL, upgrade guard, multi-router registration. (closes #16)
 - **Task/skill rename** cascades through all references (loader frontmatter, schedule store, usage store, body-text mentions surfaced as warnings).
 - **Only the first head greets on startup** — with multiple heads configured, a restart no longer fires an "online" greeting from every head (which spoke on voice devices and pinged secondary chats unsolicited). Secondary heads still start their activation loops and remain fully responsive to inbound messages.
+- **Only the final message of a turn is delivered to chat channels** — the assistant no longer sends its running narration ("let me check…", "now I'll…") before each tool call. Models recap what they did at the end of a turn anyway, so the intermediate text was redundant noise; only the last message reaches the user now. The full transcript is still kept for the model's own context and the dashboard view. (closes #21)
 
 ### Fixed
 - **Long Telegram replies that exceeded Telegram's 4096-character limit are now split into multiple messages** instead of being silently dropped — long agent replies with code blocks, tables, or multi-section text now reach the user in full. (closes #20)

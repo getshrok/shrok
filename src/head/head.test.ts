@@ -653,6 +653,48 @@ describe('ActivationLoop batching', () => {
     expect(channelRouter.send).toHaveBeenCalledWith('discord', expect.any(String))
   })
 
+  it('intermediate (tool-call) text within a turn is not sent to the channel — only the final bit (issue #21)', async () => {
+    const { loop, llmRouter, queueStore, channelRouter } = makeActivationLoopFixture()
+
+    // Round 1: narration + a tool call (isFinal=false). Round 2: end_turn recap.
+    // The unknown tool errors harmlessly (one error < loopErrorTrigger), so the
+    // loop proceeds to round 2 and ends.
+    let call = 0
+    vi.mocked(llmRouter.complete).mockImplementation(async () => {
+      call++
+      if (call === 1) {
+        return {
+          stopReason: 'tool_use' as const,
+          content: 'let me check that for you',
+          toolCalls: [{ id: 'tc1', name: 'noop', input: {} }],
+          model: 'test', inputTokens: 10, outputTokens: 5,
+        }
+      }
+      return {
+        stopReason: 'end_turn' as const,
+        content: 'here is the final answer',
+        toolCalls: [], model: 'test', inputTokens: 10, outputTokens: 5,
+      }
+    })
+
+    let resolveSend!: () => void
+    const sendDone = new Promise<void>(r => { resolveSend = r })
+    vi.mocked(channelRouter.send).mockImplementation(async () => { resolveSend() })
+
+    vi.mocked(queueStore.claimNext)
+      .mockReturnValueOnce({ rowId: 'r1', event: makeUserMsg('e1', 'hello') })
+      .mockReturnValue(null)
+    vi.mocked(queueStore.claimAllPendingUserMessages).mockReturnValue([])
+
+    loop.start()
+    await sendDone
+    loop.stop()
+
+    // The intermediate "let me check that for you" must never reach the channel.
+    expect(channelRouter.send).toHaveBeenCalledTimes(1)
+    expect(channelRouter.send).toHaveBeenCalledWith('discord', 'here is the final answer')
+  })
+
   it('one follow-up: re-runs LLM, delivers only the final response', async () => {
     const { loop, llmRouter, llmResponses, queueStore, channelRouter } = makeActivationLoopFixture()
     llmResponses.push('intermediate response', 'final response')
