@@ -2,6 +2,7 @@ import type { Message } from '../types/core.js'
 import type { LLMRouter, LLMProvider, LLMResponse, ToolDefinition, LLMCallOptions, Tier, TierModels } from '../types/llm.js'
 import { LLMApiError } from './util.js'
 import { log } from '../logger.js'
+import { LEGACY_TIER_ALIAS } from '../config.js'
 
 export interface ProviderEntry {
   provider: LLMProvider
@@ -20,14 +21,16 @@ export class SingleProviderRouter implements LLMRouter {
     tools: ToolDefinition[],
     options: LLMCallOptions
   ): Promise<LLMResponse> {
-    const resolved = (model in this.tierModels)
-      ? this.tierModels[model as Tier]
-      : model
+    // Accept legacy tier names as aliases (e.g. 'capable' → 'smart')
+    const normalizedModel = LEGACY_TIER_ALIAS[model] ?? model
+    const resolved = (normalizedModel in this.tierModels)
+      ? this.tierModels[normalizedModel as Tier]
+      : normalizedModel
     return this.provider.complete(messages, tools, { ...options, model: resolved })
   }
 }
 
-const TIERS = new Set<string>(['standard', 'capable', 'expert'])
+const TIERS = new Set<string>(['dumb', 'smart', 'genius'])
 
 export class MultiProviderRouter implements LLMRouter {
   constructor(private entries: ProviderEntry[]) {
@@ -40,15 +43,18 @@ export class MultiProviderRouter implements LLMRouter {
     tools: ToolDefinition[],
     options: LLMCallOptions
   ): Promise<LLMResponse> {
+    // Accept legacy tier names as aliases (e.g. 'capable' → 'smart')
+    const normalizedModel = LEGACY_TIER_ALIAS[model] ?? model
+
     // Direct model IDs: first provider only, no fallback
-    if (!TIERS.has(model)) {
-      return this.entries[0]!.provider.complete(messages, tools, { ...options, model })
+    if (!TIERS.has(normalizedModel)) {
+      return this.entries[0]!.provider.complete(messages, tools, { ...options, model: normalizedModel })
     }
 
     // Tier names: try each provider in priority order
     let lastError: unknown
     for (const entry of this.entries) {
-      const resolved = entry.tierModels[model as Tier]
+      const resolved = entry.tierModels[normalizedModel as Tier]
       try {
         return await entry.provider.complete(messages, tools, { ...options, model: resolved })
       } catch (err) {
@@ -64,6 +70,6 @@ export class MultiProviderRouter implements LLMRouter {
         throw err
       }
     }
-    throw lastError // all providers exhausted
+    throw lastError  // all providers exhausted
   }
 }

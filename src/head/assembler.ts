@@ -404,11 +404,11 @@ function formatDateRange(start: string, end: string): string {
   return `${sMonth} ${sDay} – ${eMonth} ${eDay}`
 }
 
-function getCapableModel(config: Config): string {
+function getSmartModel(config: Config): string {
   switch (config.llmProvider) {
-    case 'anthropic': return config.anthropicModelCapable
-    case 'gemini': return config.geminiModelCapable
-    case 'openai': return config.openaiModelCapable
+    case 'anthropic': return config.anthropicModelSmart
+    case 'gemini': return config.geminiModelSmart
+    case 'openai': return config.openaiModelSmart
   }
 }
 
@@ -417,7 +417,7 @@ function buildEnvironmentBlock(config: Config): string {
   const arch = os.arch()             // 'x64', 'arm64', ...
   const osLabel = platform === 'darwin' ? 'macOS' : platform === 'win32' ? 'Windows' : 'Linux'
   const home = os.homedir()
-  const model = getCapableModel(config)
+  const model = getSmartModel(config)
 
   return `## System Environment
 OS: ${osLabel} (${platform}/${arch})

@@ -161,21 +161,21 @@ class StubProvider implements LLMProvider {
 function makeRouter(responses: LLMResponse[]) {
   const provider = new StubProvider(responses)
   const router = new SingleProviderRouter(provider, {
-    standard: 'stub-standard', capable: 'stub-capable', expert: 'stub-expert',
+    dumb: 'stub-dumb', smart: 'stub-smart', genius: 'stub-genius',
   })
   return { provider, router }
 }
 
 const TOOL_CALL_RESPONSE: LLMResponse = {
   content: '', toolCalls: [{ id: 'tc-1', name: 'my_tool', input: { x: 1 } }],
-  inputTokens: 20, outputTokens: 10, stopReason: 'tool_use', model: 'stub-capable',
+  inputTokens: 20, outputTokens: 10, stopReason: 'tool_use', model: 'stub-smart',
 }
 const TOOL_CALL_RESPONSE_2: LLMResponse = {
   content: '', toolCalls: [{ id: 'tc-2', name: 'my_tool', input: { x: 2 } }],
-  inputTokens: 20, outputTokens: 10, stopReason: 'tool_use', model: 'stub-capable',
+  inputTokens: 20, outputTokens: 10, stopReason: 'tool_use', model: 'stub-smart',
 }
 const END_TURN_RESPONSE: LLMResponse = {
-  content: 'Hello!', inputTokens: 10, outputTokens: 5, stopReason: 'end_turn', model: 'stub-capable',
+  content: 'Hello!', inputTokens: 10, outputTokens: 5, stopReason: 'end_turn', model: 'stub-smart',
 }
 
 const baseHistory: TextMessage[] = [{

@@ -165,8 +165,8 @@ export class LocalAgentRunner implements AgentRunner {
     this.agentDefaults = opts.agentDefaults ?? { env: null, allowedTools: null }
     this.envOverrides = opts.envOverrides ?? {}
     this.timezone = opts.timezone
-    this.agentModel = opts.agentModel ?? 'capable'
-    this.stewardModel = opts.stewardModel ?? 'standard'
+    this.agentModel = opts.agentModel ?? 'smart'
+    this.stewardModel = opts.stewardModel ?? 'dumb'
     this.snapshotTokenBudget = opts.snapshotTokenBudget ?? 60_000
     this.agentContextComposer = opts.agentContextComposer ?? false
     this.nestedAgentSpawningEnabled = opts.nestedAgentSpawningEnabled ?? true

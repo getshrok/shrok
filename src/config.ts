@@ -101,28 +101,29 @@ const ConfigSchema = z.object({
   llmProvider: z.enum(['anthropic', 'gemini', 'openai']).default('anthropic'),  // derived from priority[0] at load time
   llmProviderPriority: z.array(z.enum(['anthropic', 'gemini', 'openai'])).default(['anthropic']),
   anthropicApiKey: z.string().optional(),
-  anthropicModelStandard: z.string().default('claude-haiku-4-5-20251001'),
-  anthropicModelCapable: z.string().default('claude-sonnet-4-6'),
-  anthropicModelExpert: z.string().default('claude-opus-4-6'),
+  anthropicModelDumb: z.string().default('claude-haiku-4-5-20251001'),
+  anthropicModelSmart: z.string().default('claude-sonnet-4-6'),
+  anthropicModelGenius: z.string().default('claude-opus-4-6'),
   geminiApiKey: z.string().optional(),
-  geminiModelStandard: z.string().default('gemini-3.1-flash-lite-preview'),
-  geminiModelCapable: z.string().default('gemini-3-flash-preview'),
-  geminiModelExpert: z.string().default('gemini-3.1-pro-preview'),
+  geminiModelDumb: z.string().default('gemini-3.1-flash-lite-preview'),
+  geminiModelSmart: z.string().default('gemini-3-flash-preview'),
+  geminiModelGenius: z.string().default('gemini-3.1-pro-preview'),
   openaiApiKey: z.string().optional(),
-  openaiModelStandard: z.string().default('gpt-5.4-mini'),
-  openaiModelCapable: z.string().default('gpt-5.4'),
-  openaiModelExpert: z.string().default('gpt-5.4-pro'),
+  openaiModelDumb: z.string().default('gpt-5.4-mini'),
+  openaiModelSmart: z.string().default('gpt-5.4'),
+  openaiModelGenius: z.string().default('gpt-5.4-pro'),
 
-  // Role-based model selection — each accepts a tier name ('standard','capable','expert')
+  // Role-based model selection — each accepts a tier name ('dumb','smart','genius')
   // or a direct model ID. Router resolves tier names to concrete model IDs transparently.
-  headModel:     z.string().default('capable'),   // head conversation
-  agentModel:    z.string().default('capable'),   // default for spawned agents
-  composerModel: z.string().default('standard'),  // legacy — unused, kept for backward compat
-  stewardModel:    z.string().default('standard'),  // loop steward, summaries, internal reasoning
-  memoryModel:   z.string().default('standard'),  // legacy fallback — unused if chunking/archival/retrieval set
-  memoryChunkingModel:  z.string().default('capable'),  // topic segmentation + labels + entities (runs on every chunk call)
-  memoryArchivalModel:  z.string().default('standard'),  // compressing aged chunks into dense summaries (rarer)
-  memoryRetrievalModel: z.string().default('standard'),  // topic routing (retrieval-time)
+  // Tier heuristic: dumb = trivial lookups, smart = everyday work (default), genius = heavy reasoning.
+  headModel:     z.string().default('smart'),   // head conversation
+  agentModel:    z.string().default('smart'),   // default for spawned agents
+  composerModel: z.string().default('dumb'),  // legacy — unused, kept for backward compat
+  stewardModel:    z.string().default('dumb'),  // loop steward, summaries, internal reasoning
+  memoryModel:   z.string().default('dumb'),  // legacy fallback — unused if chunking/archival/retrieval set
+  memoryChunkingModel:  z.string().default('smart'),  // topic segmentation + labels + entities (runs on every chunk call)
+  memoryArchivalModel:  z.string().default('dumb'),  // compressing aged chunks into dense summaries (rarer)
+  memoryRetrievalModel: z.string().default('dumb'),  // topic routing (retrieval-time)
 
   // Channels
   discordBotToken: z.string().optional(),
@@ -321,6 +322,66 @@ function loadJsonFile(filePath: string): Record<string, unknown> {
 }
 
 /**
+ * Mapping from legacy tier names to their new equivalents.
+ * Exported so tests and the router can share the same canonical map.
+ */
+export const LEGACY_TIER_ALIAS: Record<string, string> = {
+  standard: 'dumb',
+  capable: 'smart',
+  expert: 'genius',
+}
+
+/**
+ * Non-destructive in-memory normalizer — converts legacy model config keys and
+ * role-default values to the new dumb/smart/genius vocabulary.
+ *
+ * (1) Provider model keys: if a new key (e.g. `anthropicModelDumb`) is absent but the
+ *     legacy key (`anthropicModelStandard`) is present, copy the legacy value into the
+ *     new key.  New key always wins when both are present.
+ *
+ * (2) Role-model field values: if a field value is one of 'standard'/'capable'/'expert',
+ *     rewrite it to 'dumb'/'smart'/'genius' via LEGACY_TIER_ALIAS.
+ *
+ * Does NOT write back to disk — purely in-memory transformation.
+ */
+export function normalizeLegacyModelConfig(merged: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...merged }
+
+  // Provider key migration: Standard→Dumb, Capable→Smart, Expert→Genius
+  const providerPairs: Array<[string, string]> = [
+    ['anthropicModelStandard', 'anthropicModelDumb'],
+    ['anthropicModelCapable', 'anthropicModelSmart'],
+    ['anthropicModelExpert', 'anthropicModelGenius'],
+    ['geminiModelStandard', 'geminiModelDumb'],
+    ['geminiModelCapable', 'geminiModelSmart'],
+    ['geminiModelExpert', 'geminiModelGenius'],
+    ['openaiModelStandard', 'openaiModelDumb'],
+    ['openaiModelCapable', 'openaiModelSmart'],
+    ['openaiModelExpert', 'openaiModelGenius'],
+  ]
+  for (const [legacy, newKey] of providerPairs) {
+    // New key wins — only copy legacy if new is absent
+    if (!(newKey in out) && legacy in out) {
+      out[newKey] = out[legacy]
+    }
+  }
+
+  // Role-value migration: rewrite tier VALUE strings
+  const roleFields = [
+    'headModel', 'agentModel', 'composerModel', 'stewardModel',
+    'memoryModel', 'memoryChunkingModel', 'memoryArchivalModel', 'memoryRetrievalModel',
+  ]
+  for (const field of roleFields) {
+    const val = out[field]
+    if (typeof val === 'string' && val in LEGACY_TIER_ALIAS) {
+      out[field] = LEGACY_TIER_ALIAS[val]
+    }
+  }
+
+  return out
+}
+
+/**
  * The curated global AGENT-tool default (Phase 46, D-06/D-07): the concrete
  * agent-tool subset shipped in the base repo `config.json`
  * (`workerDefaults.allowedTools` — the ~25-tool pre-feature set).
@@ -355,7 +416,11 @@ export function loadConfig(): Config {
   const userConfigPath = process.env['USER_CONFIG_PATH'] ?? path.join(resolvedWorkspace, 'config.json')
 
   // User config lives in the workspace folder — "what I've changed from the defaults."
-  const userJson = loadJsonFile(userConfigPath)
+  // Normalize legacy model key names and tier-value strings BEFORE merging so that a
+  // user's old key (e.g. anthropicModelCapable) is promoted to the new key
+  // (anthropicModelSmart) and properly overrides the base config's default value.
+  const rawUserJson = loadJsonFile(userConfigPath)
+  const userJson = normalizeLegacyModelConfig(rawUserJson)
 
   // Deep-merge workerDefaults from JSON sources; user overrides base field-by-field
   const jsonWorkerDefaults = {
@@ -372,8 +437,13 @@ export function loadConfig(): Config {
   // Provider choices are env-only — strip from JSON so config.json cannot set them
   delete (merged as Record<string, unknown>)['llmProvider']
 
+  // Also normalize the base config's legacy keys and role-default values (belt-and-suspenders).
+  // The user normalization above handles most cases; this catches a base config that was never
+  // updated (should not happen for the repo base config, but covers external base configs).
+  const normalizedMerged = normalizeLegacyModelConfig(merged as Record<string, unknown>)
+
   const jsonConfig = Object.fromEntries(
-    Object.entries(merged).filter(([, v]) => v !== null && (typeof v !== 'string' || v !== ''))
+    Object.entries(normalizedMerged).filter(([, v]) => v !== null && (typeof v !== 'string' || v !== ''))
   )
 
   // Resolve identity dir: explicit config override, or default to workspace/identity.

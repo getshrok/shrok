@@ -180,9 +180,9 @@ async function main() {
   const workspacePath = config.workspacePath.replace(/^~/, os.homedir())
 
   // Resolve actual context window from provider API (fallback: table → config default)
-  const headModelId = config.llmProvider === 'anthropic' ? config.anthropicModelExpert
-    : config.llmProvider === 'gemini' ? config.geminiModelExpert
-    : config.openaiModelExpert
+  const headModelId = config.llmProvider === 'anthropic' ? config.anthropicModelGenius
+    : config.llmProvider === 'gemini' ? config.geminiModelGenius
+    : config.openaiModelGenius
   const headApiKey = config.llmProvider === 'anthropic' ? (config.anthropicApiKey ?? '')
     : config.llmProvider === 'gemini' ? (config.geminiApiKey ?? '')
     : (config.openaiApiKey ?? '')

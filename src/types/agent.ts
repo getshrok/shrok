@@ -70,7 +70,7 @@ export interface SpawnOptions {
   agentId?: string               // pre-assigned ID; generated internally if omitted
   name?: string                  // human-readable label, used as slug prefix when agentId not pre-set
   prompt: string
-  model?: string                 // tier name or direct model ID; defaults to 'capable'
+  model?: string                 // tier name or direct model ID; defaults to 'smart'
   trigger: AgentState['trigger']
   /** Required: head this agent belongs to. Determines which head's activation loop
    *  claims the agent's completion / question / response queue events. Phase 34 D-SPAWN-REQUIRED:

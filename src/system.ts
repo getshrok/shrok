@@ -336,11 +336,11 @@ export function buildSystem(deps: SystemDeps): System {
           SHROK_SKILLS_DIR: skillsPath,
           // Expose the project's model/provider to every spawned agent so skills
           // can keep their own LLM calls in lock-step with shrok's config without
-          // guessing. Values may be tier names ('standard'|'capable'|'expert')
+          // guessing. Values may be tier names ('dumb'|'smart'|'genius')
           // or direct model IDs — skills can decide how to interpret.
           SHROK_LLM_PROVIDER: config.llmProvider,
-          SHROK_AGENT_MODEL: config.agentModel,
-          SHROK_STEWARD_MODEL: config.stewardModel,
+          SHROK_AGENT_MODEL: config.agentModel,     // may be tier name (dumb/smart/genius) or direct model ID
+          SHROK_STEWARD_MODEL: config.stewardModel, // same
         },
         archivalThreshold: Math.floor(config.contextWindowTokens * config.archivalThresholdFraction),
         toolOutputMaxChars: config.toolOutputMaxChars,

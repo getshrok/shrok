@@ -45,9 +45,9 @@ class StubProvider implements LLMProvider {
 function makeRouter(responses: LLMResponse[]) {
   const provider = new StubProvider(responses)
   const router = new SingleProviderRouter(provider, {
-    standard: 'stub-standard',
-    capable: 'stub-capable',
-    expert: 'stub-expert',
+    dumb: 'stub-dumb',
+    smart: 'stub-smart',
+    genius: 'stub-genius',
   })
   return { provider, router }
 }
@@ -57,7 +57,7 @@ const END_TURN_RESPONSE: LLMResponse = {
   inputTokens: 10,
   outputTokens: 5,
   stopReason: 'end_turn',
-  model: 'stub-capable',
+  model: 'stub-smart',
 }
 
 const TOOL_CALL_RESPONSE: LLMResponse = {
@@ -66,7 +66,7 @@ const TOOL_CALL_RESPONSE: LLMResponse = {
   inputTokens: 20,
   outputTokens: 10,
   stopReason: 'tool_use',
-  model: 'stub-capable',
+  model: 'stub-smart',
 }
 
 // Loop steward "continue" response — valid JSON the steward can parse
@@ -75,7 +75,7 @@ const LOOP_STEWARD_CONTINUE: LLMResponse = {
   inputTokens: 10,
   outputTokens: 10,
   stopReason: 'end_turn',
-  model: 'stub-standard',
+  model: 'stub-dumb',
 }
 
 // ─── SingleProviderRouter ─────────────────────────────────────────────────────
@@ -84,15 +84,15 @@ describe('SingleProviderRouter', () => {
   it('routes to the correct model for each tier', async () => {
     const provider = new StubProvider([END_TURN_RESPONSE, END_TURN_RESPONSE, END_TURN_RESPONSE])
     const router = new SingleProviderRouter(provider, {
-      standard: 'model-std',
-      capable: 'model-cap',
-      expert: 'model-exp',
+      dumb: 'model-dumb',
+      smart: 'model-smart',
+      genius: 'model-genius',
     })
 
     // Tier resolution happens inside the provider call — verify via callCount
-    await router.complete('standard', [], [], {})
-    await router.complete('capable', [], [], {})
-    await router.complete('expert', [], [], {})
+    await router.complete('dumb', [], [], {})
+    await router.complete('smart', [], [], {})
+    await router.complete('genius', [], [], {})
     expect(provider.callCount).toBe(3)
   })
 })
@@ -120,7 +120,7 @@ describe('runToolLoop', () => {
     const usage = freshUsage()
 
     const resp = await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [],
       systemPrompt: 'system',
       history: [...baseHistory],
@@ -143,7 +143,7 @@ describe('runToolLoop', () => {
     const usage = freshUsage()
 
     const resp = await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [{ name: 'my_tool', description: 'a tool', inputSchema: {} }],
       systemPrompt: 'system',
       history: [...baseHistory],
@@ -173,7 +173,7 @@ describe('runToolLoop', () => {
     const usage = freshUsage()
 
     await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [],
       systemPrompt: 'sys',
       history: [...baseHistory],
@@ -207,7 +207,7 @@ describe('runToolLoop', () => {
     }
 
     await expect(runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [],
       systemPrompt: 'sys',
       history: [...baseHistory],
@@ -233,7 +233,7 @@ describe('runToolLoop', () => {
     }
 
     await runToolLoop(router, {
-      model: 'capable',
+      model: 'smart',
       tools: [],
       systemPrompt: 'sys',
       history: [...baseHistory],
@@ -572,13 +572,13 @@ describe('MultiProviderRouter', () => {
     }
   }
 
-  const TIER_MODELS_A = { standard: 'a-std', capable: 'a-cap', expert: 'a-exp' }
-  const TIER_MODELS_B = { standard: 'b-std', capable: 'b-cap', expert: 'b-exp' }
+  const TIER_MODELS_A = { dumb: 'a-dumb', smart: 'a-smart', genius: 'a-genius' }
+  const TIER_MODELS_B = { dumb: 'b-dumb', smart: 'b-smart', genius: 'b-genius' }
 
   it('resolves tier using the first provider', async () => {
     const provider = new StubProvider([END_TURN_RESPONSE])
     const router = new MultiProviderRouter([{ provider, tierModels: TIER_MODELS_A }])
-    const result = await router.complete('capable', [], [], {})
+    const result = await router.complete('smart', [], [], {})
     expect(result.content).toBe('Hello!')
     expect(provider.callCount).toBe(1)
   })
@@ -600,7 +600,7 @@ describe('MultiProviderRouter', () => {
       { provider: failing, tierModels: TIER_MODELS_A },
       { provider: fallback, tierModels: TIER_MODELS_B },
     ])
-    const result = await router.complete('capable', [], [], {})
+    const result = await router.complete('smart', [], [], {})
     expect(result.content).toBe('Hello!')
     expect(fallback.callCount).toBe(1)
   })
@@ -612,7 +612,7 @@ describe('MultiProviderRouter', () => {
       { provider: failing, tierModels: TIER_MODELS_A },
       { provider: fallback, tierModels: TIER_MODELS_B },
     ])
-    const result = await router.complete('standard', [], [], {})
+    const result = await router.complete('dumb', [], [], {})
     expect(result.content).toBe('Hello!')
   })
 
@@ -623,7 +623,7 @@ describe('MultiProviderRouter', () => {
       { provider: failing, tierModels: TIER_MODELS_A },
       { provider: fallback, tierModels: TIER_MODELS_B },
     ])
-    const result = await router.complete('capable', [], [], {})
+    const result = await router.complete('smart', [], [], {})
     expect(result.content).toBe('Hello!')
   })
 
@@ -634,7 +634,7 @@ describe('MultiProviderRouter', () => {
       { provider: failing, tierModels: TIER_MODELS_A },
       { provider: fallback, tierModels: TIER_MODELS_B },
     ])
-    const result = await router.complete('capable', [], [], {})
+    const result = await router.complete('smart', [], [], {})
     expect(result.content).toBe('Hello!')
   })
 
@@ -645,7 +645,7 @@ describe('MultiProviderRouter', () => {
       { provider: failing, tierModels: TIER_MODELS_A },
       { provider: fallback, tierModels: TIER_MODELS_B },
     ])
-    await expect(router.complete('capable', [], [], {})).rejects.toThrow('bad request')
+    await expect(router.complete('smart', [], [], {})).rejects.toThrow('bad request')
     expect(fallback.callCount).toBe(0)
   })
 
@@ -667,20 +667,20 @@ describe('MultiProviderRouter', () => {
       { provider: failA, tierModels: TIER_MODELS_A },
       { provider: failB, tierModels: TIER_MODELS_B },
     ])
-    await expect(router.complete('capable', [], [], {})).rejects.toThrow('b failed')
+    await expect(router.complete('smart', [], [], {})).rejects.toThrow('b failed')
   })
 
   it('falls through three providers', async () => {
     const failA = new FailingProvider('a', new LLMApiError('a down', 'server_error', 503, 'a'))
     const failB = new FailingProvider('b', new LLMApiError('b limited', 'rate_limit', 429, 'b'))
     const fallback = new StubProvider([END_TURN_RESPONSE])
-    const tierC = { standard: 'c-std', capable: 'c-cap', expert: 'c-exp' }
+    const tierC = { dumb: 'c-dumb', smart: 'c-smart', genius: 'c-genius' }
     const router = new MultiProviderRouter([
       { provider: failA, tierModels: TIER_MODELS_A },
       { provider: failB, tierModels: TIER_MODELS_B },
       { provider: fallback, tierModels: tierC },
     ])
-    const result = await router.complete('expert', [], [], {})
+    const result = await router.complete('genius', [], [], {})
     expect(result.content).toBe('Hello!')
   })
 })

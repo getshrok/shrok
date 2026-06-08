@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, extractSecretValues, HeadConfigSchema, type Config } from './config.js'
+import { loadConfig, updateUserConfig, resolveHeads, ENV_KEY_ALLOWLIST, extractSecretValues, HeadConfigSchema, normalizeLegacyModelConfig, type Config } from './config.js'
 import { HEAD_TOOLS, HEAD_TOOL_NAMES } from './head/index.js'
 
 describe('loadConfig', () => {
@@ -20,9 +20,9 @@ describe('loadConfig', () => {
     const cfg = loadConfig()
 
     expect(cfg.llmProvider).toBe('anthropic')
-    expect(cfg.anthropicModelStandard).toBe('claude-haiku-4-5-20251001')
-    expect(cfg.anthropicModelCapable).toBe('claude-sonnet-4-6')
-    expect(cfg.anthropicModelExpert).toBe('claude-opus-4-6')
+    expect(cfg.anthropicModelDumb).toBe('claude-haiku-4-5-20251001')
+    expect(cfg.anthropicModelSmart).toBe('claude-sonnet-4-6')
+    expect(cfg.anthropicModelGenius).toBe('claude-opus-4-6')
     expect(cfg.webhookPort).toBe(8766)
     expect(cfg.webhookRateLimitPerMinute).toBe(60)
     expect(cfg.contextWindowTokens).toBe(100_000)
@@ -852,5 +852,143 @@ describe('Phase 46 ConfigSchema headToolDefaults', () => {
     // headToolsOverride was not supplied — key must be absent (not present-as-undefined)
     expect('headToolsOverride' in head).toBe(false)
     expect('agentToolsOverride' in head).toBe(false)
+  })
+})
+
+// ─── GH-31: normalizeLegacyModelConfig backward-compat shim ──────────────────
+
+describe('normalizeLegacyModelConfig — provider key shim', () => {
+  it('old provider keys only → normalized to new dumb/smart/genius keys', () => {
+    const input = {
+      anthropicModelStandard: 'haiku-model',
+      anthropicModelCapable: 'sonnet-model',
+      anthropicModelExpert: 'opus-model',
+      geminiModelStandard: 'gemini-flash',
+      geminiModelCapable: 'gemini-pro',
+      geminiModelExpert: 'gemini-ultra',
+      openaiModelStandard: 'gpt-mini',
+      openaiModelCapable: 'gpt-4o',
+      openaiModelExpert: 'gpt-4o-pro',
+    }
+    const out = normalizeLegacyModelConfig(input)
+    // New keys should be set from legacy values
+    expect(out['anthropicModelDumb']).toBe('haiku-model')
+    expect(out['anthropicModelSmart']).toBe('sonnet-model')
+    expect(out['anthropicModelGenius']).toBe('opus-model')
+    expect(out['geminiModelDumb']).toBe('gemini-flash')
+    expect(out['geminiModelSmart']).toBe('gemini-pro')
+    expect(out['geminiModelGenius']).toBe('gemini-ultra')
+    expect(out['openaiModelDumb']).toBe('gpt-mini')
+    expect(out['openaiModelSmart']).toBe('gpt-4o')
+    expect(out['openaiModelGenius']).toBe('gpt-4o-pro')
+  })
+
+  it('new keys present alongside old → new wins, old ignored', () => {
+    const input = {
+      anthropicModelStandard: 'old-haiku',
+      anthropicModelDumb: 'new-haiku',    // new key present — must win
+      anthropicModelCapable: 'old-sonnet',
+      anthropicModelSmart: 'new-sonnet',  // new key present — must win
+    }
+    const out = normalizeLegacyModelConfig(input)
+    expect(out['anthropicModelDumb']).toBe('new-haiku')
+    expect(out['anthropicModelSmart']).toBe('new-sonnet')
+  })
+
+  it('new keys only → passthrough unchanged', () => {
+    const input = {
+      anthropicModelDumb: 'haiku',
+      anthropicModelSmart: 'sonnet',
+      anthropicModelGenius: 'opus',
+    }
+    const out = normalizeLegacyModelConfig(input)
+    expect(out['anthropicModelDumb']).toBe('haiku')
+    expect(out['anthropicModelSmart']).toBe('sonnet')
+    expect(out['anthropicModelGenius']).toBe('opus')
+    // Legacy keys must NOT have been synthesized
+    expect('anthropicModelStandard' in out).toBe(false)
+  })
+})
+
+describe('normalizeLegacyModelConfig — role-default value shim', () => {
+  it("role-default value 'capable' normalizes to 'smart'", () => {
+    const out = normalizeLegacyModelConfig({ headModel: 'capable', agentModel: 'capable' })
+    expect(out['headModel']).toBe('smart')
+    expect(out['agentModel']).toBe('smart')
+  })
+
+  it("role-default value 'standard' normalizes to 'dumb'", () => {
+    const out = normalizeLegacyModelConfig({ stewardModel: 'standard', memoryModel: 'standard' })
+    expect(out['stewardModel']).toBe('dumb')
+    expect(out['memoryModel']).toBe('dumb')
+  })
+
+  it("role-default value 'expert' normalizes to 'genius'", () => {
+    const out = normalizeLegacyModelConfig({ headModel: 'expert' })
+    expect(out['headModel']).toBe('genius')
+  })
+
+  it("direct new tier value 'genius' passes through unchanged", () => {
+    const out = normalizeLegacyModelConfig({ headModel: 'genius', agentModel: 'smart' })
+    expect(out['headModel']).toBe('genius')
+    expect(out['agentModel']).toBe('smart')
+  })
+
+  it("direct model ID passthrough — not a tier name, leaves unchanged", () => {
+    const out = normalizeLegacyModelConfig({ headModel: 'claude-sonnet-4-6' })
+    expect(out['headModel']).toBe('claude-sonnet-4-6')
+  })
+
+  it('normalizes all role fields: memoryChunkingModel capable→smart, memoryArchivalModel standard→dumb', () => {
+    const out = normalizeLegacyModelConfig({
+      memoryChunkingModel: 'capable',
+      memoryArchivalModel: 'standard',
+      memoryRetrievalModel: 'standard',
+      composerModel: 'standard',
+    })
+    expect(out['memoryChunkingModel']).toBe('smart')
+    expect(out['memoryArchivalModel']).toBe('dumb')
+    expect(out['memoryRetrievalModel']).toBe('dumb')
+    expect(out['composerModel']).toBe('dumb')
+  })
+})
+
+describe('normalizeLegacyModelConfig — loadConfig integration', () => {
+  const originalEnv = process.env
+  let tmpConfigPath: string
+
+  beforeEach(() => {
+    process.env = { ...originalEnv }
+    tmpConfigPath = path.join(os.tmpdir(), `shrok-test-legacy-norm-${Date.now()}-${Math.random().toString(36).slice(2)}.json`)
+    process.env['USER_CONFIG_PATH'] = tmpConfigPath
+  })
+
+  afterEach(() => {
+    process.env = originalEnv
+    try { fs.unlinkSync(tmpConfigPath) } catch { /* ignore */ }
+  })
+
+  it('user config with old anthropicModelCapable normalizes to anthropicModelSmart via loadConfig', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ anthropicModelCapable: 'my-capable-model' }))
+    const cfg = loadConfig()
+    expect(cfg.anthropicModelSmart).toBe('my-capable-model')
+  })
+
+  it('user config with headModel: "capable" normalizes to "smart" via loadConfig', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ headModel: 'capable' }))
+    const cfg = loadConfig()
+    expect(cfg.headModel).toBe('smart')
+  })
+
+  it('user config with stewardModel: "standard" normalizes to "dumb" via loadConfig', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ stewardModel: 'standard' }))
+    const cfg = loadConfig()
+    expect(cfg.stewardModel).toBe('dumb')
+  })
+
+  it('user config with agentModel: "expert" normalizes to "genius" via loadConfig', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ agentModel: 'expert' }))
+    const cfg = loadConfig()
+    expect(cfg.agentModel).toBe('genius')
   })
 })

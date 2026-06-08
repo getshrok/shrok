@@ -12,9 +12,9 @@ function buildProviderEntry(name: string, config: Config): ProviderEntry | null 
       return {
         provider: new AnthropicProvider(config.anthropicApiKey),
         tierModels: {
-          standard: config.anthropicModelStandard,
-          capable: config.anthropicModelCapable,
-          expert: config.anthropicModelExpert,
+          dumb: config.anthropicModelDumb,
+          smart: config.anthropicModelSmart,
+          genius: config.anthropicModelGenius,
         },
       }
     }
@@ -23,9 +23,9 @@ function buildProviderEntry(name: string, config: Config): ProviderEntry | null 
       return {
         provider: new GeminiProvider(config.geminiApiKey),
         tierModels: {
-          standard: config.geminiModelStandard,
-          capable: config.geminiModelCapable,
-          expert: config.geminiModelExpert,
+          dumb: config.geminiModelDumb,
+          smart: config.geminiModelSmart,
+          genius: config.geminiModelGenius,
         },
       }
     }
@@ -34,9 +34,9 @@ function buildProviderEntry(name: string, config: Config): ProviderEntry | null 
       return {
         provider: new OpenAIProvider(config.openaiApiKey),
         tierModels: {
-          standard: config.openaiModelStandard,
-          capable: config.openaiModelCapable,
-          expert: config.openaiModelExpert,
+          dumb: config.openaiModelDumb,
+          smart: config.openaiModelSmart,
+          genius: config.openaiModelGenius,
         },
       }
     }

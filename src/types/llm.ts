@@ -41,12 +41,12 @@ export interface LLMOptions extends LLMCallOptions {
 
 // ─── Tier ─────────────────────────────────────────────────────────────────────
 
-export type Tier = 'standard' | 'capable' | 'expert'
+export type Tier = 'dumb' | 'smart' | 'genius'
 
 export interface TierModels {
-  standard: string
-  capable: string
-  expert: string
+  dumb: string
+  smart: string
+  genius: string
 }
 
 // ─── Router and provider contracts ───────────────────────────────────────────

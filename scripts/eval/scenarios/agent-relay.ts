@@ -91,9 +91,9 @@ function makeHeadRouter(): LLMRouter {
   const config = loadConfig()
   return createLLMRouter({
     ...config,
-    anthropicModelStandard: HAIKU,
-    anthropicModelCapable: SONNET,
-    anthropicModelExpert: SONNET,
+    anthropicModelDumb: HAIKU,
+    anthropicModelSmart: SONNET,
+    anthropicModelGenius: SONNET,
   })
 }
 
@@ -101,9 +101,9 @@ function makeAgentRouter(): LLMRouter {
   const config = loadConfig()
   return createLLMRouter({
     ...config,
-    anthropicModelStandard: HAIKU,
-    anthropicModelCapable: HAIKU,
-    anthropicModelExpert: HAIKU,
+    anthropicModelDumb: HAIKU,
+    anthropicModelSmart: HAIKU,
+    anthropicModelGenius: HAIKU,
   })
 }
 
