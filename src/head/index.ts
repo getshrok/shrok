@@ -33,16 +33,17 @@ import { formatModelTime, parseModelTime } from '../util/model-time.js'
 export const HEAD_TOOLS: ToolDefinition[] = [
   {
     name: 'spawn_agent',
-    description: 'Spawn an agent to handle a task asynchronously. Tell the agent what to do, not how — relay the user\'s intent and any relevant context, but let the agent decide the approach. Only include implementation details if the user specifically requested them. Tier guide: omit for everyday work (smart default); use genius for hard multi-step reasoning; use dumb for trivial single-fact lookups. Always include a brief acknowledgment in your response when calling this tool (e.g. "On it." or "Checking now.") — the user needs to know you\'re working on it, and the loop exits immediately after.',
+    description: 'Spawn an agent to handle a task asynchronously. Your job is to RELAY, not to author: pass the user\'s request through in their own words via `task`, and paste the relevant conversation verbatim into `context` — let the natural conversation be the agent\'s prompt rather than writing a fresh one. Tell the agent what is wanted, not how to do it; the agent decides the approach. Tier guide: omit for everyday work (smart default); use genius for hard multi-step reasoning; use dumb for trivial single-fact lookups. Always include a brief acknowledgment in your response when calling this tool (e.g. "On it." or "Checking now.") — the user needs to know you\'re working on it, and the loop exits immediately after.',
     inputSchema: {
       type: 'object',
       properties: {
         description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
-        prompt: { type: 'string', description: 'The full prompt for the agent.' },
+        task: { type: 'string', description: 'What the agent must accomplish, stated as the ask itself. Lead with the user\'s own words — quote them. Your only job here is to resolve what the agent can\'t see (pronouns, "that thing", which of several options) into concrete terms. Do not invent an approach, add steps, or prescribe how — the agent decides that. Write original prose only when the user\'s words alone wouldn\'t make the goal clear.' },
+        context: { type: 'string', description: 'Relevant messages or excerpts from the current conversation, pasted VERBATIM — constraints, preferences, prior turns, referenced details, names, links, IDs. Quote the actual words; do not summarize. Bad: "user wants a flight to Boston". Good: "I need to get to Boston Thursday before 5pm, under $300, window seat". Every paraphrase loses information the agent can\'t recover. When unsure whether something is relevant, include it.' },
         name: { type: 'string', description: 'Short human-readable name for this agent — 2-5 words describing what it\'s doing (e.g. "github-pr-123-review", "morning-email-triage", "fix-login-bug"). Used as the agent\'s ID prefix so you can identify it later. Multiple agents can run in parallel — be specific.' },
         model: { type: 'string', enum: ['dumb', 'smart', 'genius'], description: 'Worker capability tier. dumb = trivial single-fact lookups / web searches only; smart = everyday work (default); genius = hard multi-step / reasoning-heavy work. Omit to use smart.' },
       },
-      required: ['description', 'prompt', 'name'],
+      required: ['description', 'task', 'name'],
     },
   },
   {
@@ -261,7 +262,8 @@ export class HeadToolExecutor implements ToolExecutor {
       // ── Agent management ───────────────────────────────────────────────────
       case 'spawn_agent': {
         const spawnOpts: import('../types/agent.js').SpawnOptions = {
-          prompt: input['prompt'] as string,
+          task: input['task'] as string,
+          ...(input['context'] ? { context: input['context'] as string } : {}),
           name: input['name'] as string,
           trigger: 'manual',
           headId: this.opts.headId,                       // Phase 34 D-EXEC-OPTION: agent inherits the spawning head's identity

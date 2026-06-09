@@ -1285,7 +1285,7 @@ export class ActivationLoop {
     // test mocks spawn directly.
     await this.opts.toolExecutorOpts.agentRunner.spawn({
       agentId,
-      prompt,
+      task: prompt,
       trigger: 'scheduled',
       headId: this.opts.headId,                         // Phase 34 D-EXEC-OPTION: scheduled agents inherit the head's identity
       skillName: taskName!,

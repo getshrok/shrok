@@ -26,15 +26,16 @@ import { RING_DEVICE_DEF, executeRingDevice } from '../ring/tool.js'
 
 const SPAWN_AGENT_DEF: ToolDefinition = {
   name: 'spawn_agent',
-  description: 'Spawn a child agent. Use ONLY in these two scenarios:\n  1. PARALLELISM — multiple genuinely independent investigations that can run concurrently; total wall time bounded by the slowest, not the sum.\n  2. CONTEXT ISOLATION — a deep investigation that would otherwise generate enough intermediate work to bloat your own context.\n\nDo NOT spawn for: anything you can do with a direct tool (read_file, bash, grep — use them); fan-out over a list of similar items (services to scan, files to check — iterate inline); vague delegation ("check X", "look into Y" — too small or too poorly specified).\n\nReturns immediately with { subAgentId }. The child\'s completion/question/failure is delivered to your inbox as a user message — wait for that, don\'t poll. Child agents start generic; if the child should use a specific skill, say so in the prompt and the child will read the skill\'s files itself.',
+  description: 'Spawn a child agent. Use ONLY in these two scenarios:\n  1. PARALLELISM — multiple genuinely independent investigations that can run concurrently; total wall time bounded by the slowest, not the sum.\n  2. CONTEXT ISOLATION — a deep investigation that would otherwise generate enough intermediate work to bloat your own context.\n\nDo NOT spawn for: anything you can do with a direct tool (read_file, bash, grep — use them); fan-out over a list of similar items (services to scan, files to check — iterate inline); vague delegation ("check X", "look into Y" — too small or too poorly specified).\n\nReturns immediately with { subAgentId }. The child\'s completion/question/failure is delivered to your inbox as a user message — wait for that, don\'t poll. Child agents start generic; if the child should use a specific skill, say so in the task and the child will read the skill\'s files itself.',
   inputSchema: {
     type: 'object',
     properties: {
       description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
-      prompt: { type: 'string', description: 'Full prompt for the child agent — task, context, and instructions.' },
+      task: { type: 'string', description: 'What the child must accomplish, stated as the ask itself. Relay the request in the original words where possible; resolve only what the child can\'t see (pronouns, references) into concrete terms. Say what is wanted, not how — the child decides the approach.' },
+      context: { type: 'string', description: 'Relevant excerpts pasted VERBATIM — constraints, prior turns, referenced details, IDs, links. Quote, don\'t summarize; every paraphrase loses information the child can\'t recover. When unsure whether something is relevant, include it.' },
       model: { type: 'string', description: 'Optional: model tier (\'dumb\'|\'smart\'|\'genius\') or direct model ID (e.g. \'claude-opus-4-6\'). dumb = trivial lookups; smart = everyday work (default); genius = heavy reasoning.' },
     },
-    required: ['description', 'prompt'],
+    required: ['description', 'task'],
   },
 }
 

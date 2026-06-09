@@ -88,7 +88,7 @@ function seedRunningAgent(
   bundle.messages.append({
     kind: 'tool_call', id: generateId('msg'), createdAt: now(),
     content: 'On it!',
-    toolCalls: [{ id: tcId, name: 'spawn_agent', input: { prompt: variant.agentPrompt } }],
+    toolCalls: [{ id: tcId, name: 'spawn_agent', input: { task: variant.agentPrompt } }],
   } as any, 'default')
   bundle.messages.append({
     kind: 'tool_result', id: generateId('msg'), createdAt: now(),
@@ -96,7 +96,7 @@ function seedRunningAgent(
   } as any, 'default')
 
   // Create agent in running state
-  bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual', headId: 'default' })
+  bundle.workers.create(agentId, { task: variant.agentPrompt, trigger: 'manual', headId: 'default' })
 }
 
 // ─── Run ──────────────────────────────────────────────────────────────────────

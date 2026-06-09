@@ -122,18 +122,18 @@ describe('in-scope tool schemas', () => {
   it('both spawn_agent variants are distinct schema objects', () => {
     // Guards against a future refactor that collapses the two spawn_agent
     // schemas into a single shared object — they must remain independent
-    // because their non-description properties differ (registry has
-    // prompt/model; HEAD has prompt/name).
+    // because their property shapes differ: both carry task/context/model,
+    // but only HEAD has `name`.
     const subAgentSpawn = getSubAgentSpawnDef()
     const headSpawn = getHeadSpawnDef()
     expect(subAgentSpawn).not.toBe(headSpawn)
-    // And their non-description property shapes differ:
+    // And their property shapes differ:
     const subKeys = Object.keys(getProps(subAgentSpawn))
     const headKeys = Object.keys(getProps(headSpawn))
-    expect(subKeys).toContain('model')     // sub-agent only
+    expect(subKeys).toContain('task')      // both carry the restructured task/context args
+    expect(headKeys).toContain('task')
     expect(headKeys).toContain('name')     // HEAD only
     expect(subKeys).not.toContain('name')
-    expect(headKeys).not.toContain('model')
   })
 })
 
@@ -190,7 +190,7 @@ describe('src/head/index.ts executor behavior preservation', () => {
     //   D-01: send_file executor must continue to read only input['path'],
     //         even though its schema now has a (repurposed) description param.
     //   D-06: HEAD_TOOLS spawn_agent executor path must continue to read only
-    //         input['prompt'] and input['name'], even though its schema now
+    //         input['task'] and input['name'], even though its schema now
     //         has a new description param as the first required field.
     // This single grep guards against a future edit that accidentally starts
     // consuming input['description'] in EITHER executor path.

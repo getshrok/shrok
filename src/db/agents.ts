@@ -200,7 +200,7 @@ export class AgentStore {
     this.stmtCreate.run({
       id,
       skill_name: options.skillName ?? null,
-      task: options.prompt,
+      task: options.task,
       instructions: '',
       tier: options.model ?? 'smart',
       tools: JSON.stringify([]),

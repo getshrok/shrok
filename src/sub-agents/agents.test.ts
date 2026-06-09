@@ -509,7 +509,7 @@ describe('assembleTools spawn_agent gating', () => {
     )
     // makeRunner omits nestedAgentSpawningEnabled — defaults to true (depth-1, flag on)
     const { runner } = makeRunner(llmRouter, db)
-    await runner.spawn({ prompt: 'task', name: 'test', trigger: 'ad_hoc', headId: 'default' })
+    await runner.spawn({ task: 'task', name: 'test', trigger: 'ad_hoc', headId: 'default' })
     await runner.awaitAll(2000)
     expect(capturedTools).toContain('spawn_agent')
   })
@@ -533,7 +533,7 @@ describe('assembleTools spawn_agent gating', () => {
       frontmatter: { name: 'email', description: 'Email check' },
       instructions: 'Check system.',
     })
-    await runner.spawn({ prompt: 'run email', name: 'email', skillName: 'email', trigger: 'scheduled', headId: 'default' })
+    await runner.spawn({ task: 'run email', name: 'email', skillName: 'email', trigger: 'scheduled', headId: 'default' })
     await runner.awaitAll(2000)
     expect(capturedTools).toContain('spawn_agent')
   })
@@ -548,7 +548,7 @@ describe('async sub-agent spawning', () => {
     // end_turn responses to handle all possible LLM calls in any interleaving order.
     // The key assertion is that the parent reaches 'completed' without ever being 'suspended'.
     const llmRouter = makeLLMRouter([
-      makeToolCallResponse('spawn_agent', { prompt: 'do child task' }),
+      makeToolCallResponse('spawn_agent', { task: 'do child task' }),
       makeEndTurnResponse(),  // parent: after spawn, waits for child (has running child)
       makeEndTurnResponse(),  // child: auto-completes
       makeEndTurnResponse(),  // parent: after child inbox arrives, auto-completes
@@ -557,7 +557,7 @@ describe('async sub-agent spawning', () => {
     ])
     const { runner, agentStore } = makeRunner(llmRouter, db)
 
-    const parentId = await runner.spawn({ prompt: 'parent task', name: 'parent-task', trigger: 'manual', headId: 'default' })
+    const parentId = await runner.spawn({ task: 'parent task', name: 'parent-task', trigger: 'manual', headId: 'default' })
     await runner.awaitAll(3000)
 
     const parentState = agentStore.get(parentId)
@@ -581,10 +581,10 @@ describe('async sub-agent spawning', () => {
 
     // Create a parent record (not running via runner — just a DB entry to receive inbox)
     const parentId = 'tent_parent_test'
-    agentStore.create(parentId, { prompt: 'parent', trigger: 'manual', headId: 'default' })
+    agentStore.create(parentId, { task: 'parent', trigger: 'manual', headId: 'default' })
 
     const childId = await runner.spawn({
-      prompt: 'child task',
+      task: 'child task',
       name: 'child-task',
       trigger: 'ad_hoc',
       headId: 'default',
@@ -626,10 +626,10 @@ describe('async sub-agent spawning', () => {
     )
 
     const parentId = 'tent_parent_q'
-    agentStore.create(parentId, { prompt: 'parent', trigger: 'manual', headId: 'default' })
+    agentStore.create(parentId, { task: 'parent', trigger: 'manual', headId: 'default' })
 
     const childId = await runner.spawn({
-      prompt: 'child needs answer',
+      task: 'child needs answer',
       name: 'child-q',
       trigger: 'ad_hoc',
       headId: 'default',
@@ -667,8 +667,8 @@ describe('async sub-agent spawning', () => {
     // Create two unrelated agents
     const agentAId = 'tent_a'
     const agentBId = 'tent_b'
-    agentStore.create(agentAId, { prompt: 'a', trigger: 'manual', headId: 'default' })
-    agentStore.create(agentBId, { prompt: 'b', trigger: 'manual', headId: 'default' })
+    agentStore.create(agentAId, { task: 'a', trigger: 'manual', headId: 'default' })
+    agentStore.create(agentBId, { task: 'b', trigger: 'manual', headId: 'default' })
 
     // Agent B is not a child of Agent A — ownership guard should reject
     // We test via checkStatus since that's a direct method, but verify
@@ -694,7 +694,7 @@ describe('inbox processing', () => {
       db,
     )
 
-    const agentId = await runner.spawn({ prompt: 'test retract', name: 'retract-test', trigger: 'manual', headId: 'default' })
+    const agentId = await runner.spawn({ task: 'test retract', name: 'retract-test', trigger: 'manual', headId: 'default' })
     // Wait for the agent to reach suspended state
     await new Promise<void>(resolve => {
       const poll = setInterval(() => {
@@ -726,7 +726,7 @@ describe('inbox processing', () => {
       db,
     )
 
-    const agentId = await runner.spawn({ prompt: 'test signal', name: 'signal-test', trigger: 'manual', headId: 'default' })
+    const agentId = await runner.spawn({ task: 'test signal', name: 'signal-test', trigger: 'manual', headId: 'default' })
     // Wait for suspended state
     await new Promise<void>(resolve => {
       const poll = setInterval(() => {
@@ -753,7 +753,7 @@ describe('inbox processing', () => {
 
     // Create an agent record directly without spawning a loop (no emitter)
     const agentId = 'tent_update_test'
-    agentStore.create(agentId, { prompt: 'zombie agent', trigger: 'manual', headId: 'default' })
+    agentStore.create(agentId, { task: 'zombie agent', trigger: 'manual', headId: 'default' })
 
     await runner.update(agentId, 'additional context')
 
@@ -772,7 +772,7 @@ describe('nested spawn tool-assembly gating (TEST-01, TEST-05)', () => {
     const deps = makeToolSurfaceDeps({ nestedAgentSpawningEnabled: true })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'a1',
-      options: { prompt: 'x', trigger: 'ad_hoc', headId: 'default' },
+      options: { task: 'x', trigger: 'ad_hoc', headId: 'default' },
       skill: null,
     })
     const names = toolEntries.map(t => t.definition.name)
@@ -783,7 +783,7 @@ describe('nested spawn tool-assembly gating (TEST-01, TEST-05)', () => {
     const deps = makeToolSurfaceDeps({ nestedAgentSpawningEnabled: false })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'a1',
-      options: { prompt: 'x', trigger: 'ad_hoc', headId: 'default' },
+      options: { task: 'x', trigger: 'ad_hoc', headId: 'default' },
       skill: null,
     })
     expect(toolEntries.map(t => t.definition.name)).not.toContain('spawn_agent')
@@ -793,7 +793,7 @@ describe('nested spawn tool-assembly gating (TEST-01, TEST-05)', () => {
     const deps = makeToolSurfaceDeps({ nestedAgentSpawningEnabled: true })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'child',
-      options: { prompt: 'x', trigger: 'ad_hoc', headId: 'default', parentAgentId: 'parent-abc' },
+      options: { task: 'x', trigger: 'ad_hoc', headId: 'default', parentAgentId: 'parent-abc' },
       skill: null,
     })
     expect(toolEntries.map(t => t.definition.name)).not.toContain('spawn_agent')
@@ -803,7 +803,7 @@ describe('nested spawn tool-assembly gating (TEST-01, TEST-05)', () => {
     const deps = makeToolSurfaceDeps({ nestedAgentSpawningEnabled: false })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'child',
-      options: { prompt: 'x', trigger: 'ad_hoc', headId: 'default', parentAgentId: 'parent-abc' },
+      options: { task: 'x', trigger: 'ad_hoc', headId: 'default', parentAgentId: 'parent-abc' },
       skill: null,
     })
     expect(toolEntries.map(t => t.definition.name)).not.toContain('spawn_agent')
@@ -813,7 +813,7 @@ describe('nested spawn tool-assembly gating (TEST-01, TEST-05)', () => {
     const deps = makeToolSurfaceDeps({ nestedAgentSpawningEnabled: true })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'child',
-      options: { prompt: 'x', trigger: 'ad_hoc', headId: 'default', parentAgentId: 'parent-abc' },
+      options: { task: 'x', trigger: 'ad_hoc', headId: 'default', parentAgentId: 'parent-abc' },
       skill: null,
     })
     const names = toolEntries.map(t => t.definition.name)
@@ -828,7 +828,7 @@ describe('nested spawn tool-assembly gating (TEST-01, TEST-05)', () => {
     const deps = makeToolSurfaceDeps({ nestedAgentSpawningEnabled: true })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 's1',
-      options: { prompt: 'x', trigger: 'scheduled', headId: 'default' },
+      options: { task: 'x', trigger: 'scheduled', headId: 'default' },
       skill: null,
     })
     expect(toolEntries.map(t => t.definition.name)).toContain('spawn_agent')
@@ -838,7 +838,7 @@ describe('nested spawn tool-assembly gating (TEST-01, TEST-05)', () => {
     const deps = makeToolSurfaceDeps({ nestedAgentSpawningEnabled: true })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 's1',
-      options: { prompt: 'x', trigger: 'scheduled', headId: 'default', parentAgentId: 'p1' },
+      options: { task: 'x', trigger: 'scheduled', headId: 'default', parentAgentId: 'p1' },
       skill: null,
     })
     expect(toolEntries.map(t => t.definition.name)).not.toContain('spawn_agent')
@@ -855,16 +855,16 @@ describe('handleSpawnAgent defense-in-depth (TEST-04, NEST-06)', () => {
     // not in its assembled tool list. handleSpawnAgent should reject it via the
     // runtime defense-in-depth check at src/sub-agents/local.ts.
     const llmRouter = makeLLMRouter([
-      makeToolCallResponse('spawn_agent', { description: 'hallucinated', prompt: 'try to nest further' }),
+      makeToolCallResponse('spawn_agent', { description: 'hallucinated', task: 'try to nest further' }),
       makeEndTurnResponse(),   // after tool error, agent completes
       makeStewardDoneResponse(),  // completion steward classifies as done
     ])
     const { runner, agentStore } = makeRunner(llmRouter, db)
     // Create a fake parent record so the sub_agent_completed inbox write has a target.
-    agentStore.create('parent-x', { prompt: 'p', trigger: 'manual', headId: 'default' })
+    agentStore.create('parent-x', { task: 'p', trigger: 'manual', headId: 'default' })
 
     const childId = await runner.spawn({
-      prompt: 'child task',
+      task: 'child task',
       name: 'child',
       trigger: 'ad_hoc',
       headId: 'default',
@@ -931,16 +931,16 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const db = freshDb()
     const { runner, agentStore } = makeRunner(router, db, { spawnAgentStewardEnabled: true })
 
-    const parentState = agentStore.create('tent_steward_reject', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
+    const parentState = agentStore.create('tent_steward_reject', { task: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { task: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(
       parentAgentId,
       parentOptions,
-      { prompt: 'trivial child task' },
+      { task: 'trivial child task' },
       history,
     ) as string
 
@@ -963,16 +963,16 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const db = freshDb()
     const { runner, agentStore } = makeRunner(router, db, { spawnAgentStewardEnabled: true })
 
-    const parentState = agentStore.create('tent_steward_pass', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
+    const parentState = agentStore.create('tent_steward_pass', { task: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { task: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(
       parentAgentId,
       parentOptions,
-      { description: 'research', prompt: 'research task needing fresh context' },
+      { description: 'research', task: 'research task needing fresh context' },
       history,
     ) as string
 
@@ -995,16 +995,16 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const db = freshDb()
     const { runner, agentStore } = makeRunner(router, db, { spawnAgentStewardEnabled: false })
 
-    const parentState = agentStore.create('tent_steward_off', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
+    const parentState = agentStore.create('tent_steward_off', { task: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { task: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(
       parentAgentId,
       parentOptions,
-      { description: 'child', prompt: 'child task' },
+      { description: 'child', task: 'child task' },
       history,
     ) as string
 
@@ -1022,16 +1022,16 @@ describe('spawn steward wiring (TEST-03, STEW-07, STEW-08)', () => {
     const db = freshDb()
     const { runner, agentStore } = makeRunner(router, db, { spawnAgentStewardEnabled: true })
 
-    const parentState = agentStore.create('tent_steward_throw', { prompt: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
+    const parentState = agentStore.create('tent_steward_throw', { task: 'build the feature', trigger: 'ad_hoc', headId: 'default' })
     const parentAgentId = parentState.id
 
-    const parentOptions = { prompt: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
+    const parentOptions = { task: 'build the feature', model: 'smart', trigger: 'ad_hoc' as const, headId: 'default' }
     const history = makeHistory()
 
     const result = await (runner as any).handleSpawnAgent(
       parentAgentId,
       parentOptions,
-      { description: 'child', prompt: 'child task after steward failure' },
+      { description: 'child', task: 'child task after steward failure' },
       history,
     ) as string
 
@@ -1624,7 +1624,7 @@ describe('mid-loop update delivery (Phase 24 MSG-01)', () => {
     }
 
     const { runner, agentStore, inboxStore } = makeRunner(llmRouter, db)
-    const agentId = await runner.spawn({ prompt: 'mid-loop test', name: 'midloop', trigger: 'manual', headId: 'default' })
+    const agentId = await runner.spawn({ task: 'mid-loop test', name: 'midloop', trigger: 'manual', headId: 'default' })
 
     // Wait for the 1st LLM call + 1st bash call to complete, then fire update.
     // Total budget: 80ms LLM + ~few ms bash + safety margin.

@@ -371,7 +371,7 @@ describe('AgentStore', () => {
   })
 
   const baseOptions = {
-    prompt: 'do something',
+    task: 'do something',
     model: 'smart',
     trigger: 'manual' as const,
     headId: 'default',
@@ -400,7 +400,7 @@ describe('AgentStore', () => {
   it('create() with explicit headId persists head_id and round-trips through get() (Phase 34)', () => {
     const db = freshDb()
     const s = new AgentStore(db)
-    s.create('a-work', { prompt: 'task', trigger: 'manual', headId: 'work' })
+    s.create('a-work', { task: 'task', trigger: 'manual', headId: 'work' })
     const row = db.prepare("SELECT head_id FROM agents WHERE id = ?").get('a-work') as { head_id: string } | undefined
     expect(row?.head_id).toBe('work')
     const state = s.get('a-work')

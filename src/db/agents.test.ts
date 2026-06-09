@@ -32,9 +32,9 @@ describe('AgentStore.getRecent(limit, headId?)', () => {
   })
 
   it('returns only agents belonging to the specified head when headId is provided', () => {
-    store.create('agent-a1', { prompt: 'task A1', trigger: 'manual', headId: 'A' })
-    store.create('agent-a2', { prompt: 'task A2', trigger: 'manual', headId: 'A' })
-    store.create('agent-b1', { prompt: 'task B1', trigger: 'manual', headId: 'B' })
+    store.create('agent-a1', { task: 'task A1', trigger: 'manual', headId: 'A' })
+    store.create('agent-a2', { task: 'task A2', trigger: 'manual', headId: 'A' })
+    store.create('agent-b1', { task: 'task B1', trigger: 'manual', headId: 'B' })
 
     const result = store.getRecent(10, 'A')
     const ids = result.map(a => a.id)
@@ -45,9 +45,9 @@ describe('AgentStore.getRecent(limit, headId?)', () => {
   })
 
   it('returns agents from all heads when headId is omitted', () => {
-    store.create('agent-a1', { prompt: 'task A1', trigger: 'manual', headId: 'A' })
-    store.create('agent-a2', { prompt: 'task A2', trigger: 'manual', headId: 'A' })
-    store.create('agent-b1', { prompt: 'task B1', trigger: 'manual', headId: 'B' })
+    store.create('agent-a1', { task: 'task A1', trigger: 'manual', headId: 'A' })
+    store.create('agent-a2', { task: 'task A2', trigger: 'manual', headId: 'A' })
+    store.create('agent-b1', { task: 'task B1', trigger: 'manual', headId: 'B' })
 
     const result = store.getRecent(10)
     const ids = result.map(a => a.id)
@@ -58,7 +58,7 @@ describe('AgentStore.getRecent(limit, headId?)', () => {
   })
 
   it('returns empty array when the specified head has no agents', () => {
-    store.create('agent-a1', { prompt: 'task A1', trigger: 'manual', headId: 'A' })
+    store.create('agent-a1', { task: 'task A1', trigger: 'manual', headId: 'A' })
 
     const result = store.getRecent(10, 'nonexistent')
     expect(result).toHaveLength(0)

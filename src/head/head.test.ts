@@ -256,7 +256,7 @@ describe('HeadToolExecutor', () => {
   it('spawn_agent calls runner.spawn and returns agentId', async () => {
     const result = await executor.execute({
       id: 'tc1', name: 'spawn_agent',
-      input: { prompt: 'Do the thing carefully.' },
+      input: { task: 'Do the thing carefully.' },
     })
     expect(runner.spawn).toHaveBeenCalled()
     expect(result.content).toContain('tent_1')
@@ -267,7 +267,7 @@ describe('HeadToolExecutor', () => {
   it('execute() never throws — wraps subsystem errors', async () => {
     vi.mocked(runner.spawn).mockRejectedValue(new Error('MCP server down'))
     const result = await executor.execute({
-      id: 'tc1', name: 'spawn_agent', input: { prompt: 'x' },
+      id: 'tc1', name: 'spawn_agent', input: { task: 'x' },
     })
     const parsed = JSON.parse(result.content)
     expect(parsed.error).toBe(true)

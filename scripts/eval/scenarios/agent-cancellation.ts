@@ -88,13 +88,13 @@ function seedConversation(
   bundle.messages.append({
     kind: 'tool_call', id: generateId('msg'), createdAt: now(),
     content: 'On it!',
-    toolCalls: [{ id: tcId, name: 'spawn_agent', input: { prompt: variant.agentPrompt } }],
+    toolCalls: [{ id: tcId, name: 'spawn_agent', input: { task: variant.agentPrompt } }],
   } as any, 'default')
   bundle.messages.append({
     kind: 'tool_result', id: generateId('msg'), createdAt: now(),
     toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: JSON.stringify({ agentId }) }],
   } as any, 'default')
-  bundle.workers.create(agentId, { prompt: variant.agentPrompt, trigger: 'manual', headId: 'default' })
+  bundle.workers.create(agentId, { task: variant.agentPrompt, trigger: 'manual', headId: 'default' })
   if (variant.agentState === 'suspended' && variant.suspendQuestion) {
     bundle.workers.suspend(agentId, variant.suspendQuestion)
   }

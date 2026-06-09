@@ -403,7 +403,7 @@ export class LocalAgentRunner implements AgentRunner {
   private async resumeSuspended(agentId: string, state: import('../types/agent.js').AgentState): Promise<void> {
     const savedVerbose = this.verboseCallbacks.get(agentId)
     const options: SpawnOptions = {
-      prompt: state.task,
+      task: state.task,
       model: state.model,
       trigger: state.trigger,
       headId: state.headId,                   // Phase 34 D-RUNNER-HEADID: preserve head identity across resume
@@ -486,7 +486,7 @@ export class LocalAgentRunner implements AgentRunner {
       // EXTRACT rewrites partially-relevant messages to contain only the relevant portion,
       // solving the multi-task-in-one-message problem.
       const { relevantIndices, replacements } = await classifyAndCompose(
-        options.prompt,
+        options.task,
         snapshot,
         this.llmRouter,
         this.stewardModel ?? 'dumb',
@@ -520,10 +520,14 @@ export class LocalAgentRunner implements AgentRunner {
     // Must stay before the first await (runLoopFrom) so it's set before any messages are appended.
     this.agentStore.updateWorkStart(agentId, history.length)
 
-    // Inject the head's prompt as the agent's current task.
+    // Inject the head's task (+ verbatim context) as the agent's first message.
     // When agentContextComposer is on, relevant headHistory is prepended above.
-    // When off, this prompt is the agent's only context — it must be self-contained.
-    const agentFirstMessage = options.prompt
+    // When off, this message is the agent's only context — it must be self-contained.
+    // `context` holds conversation excerpts the head pasted verbatim; it follows the
+    // task so the ask leads and the raw material supports it.
+    const agentFirstMessage = options.context
+      ? `${options.task}\n\nRelevant messages from the conversation:\n"""\n${options.context}\n"""`
+      : options.task
     const last = history.length > 0 ? history[history.length - 1] : null
     if (last && last.kind === 'text' && last.role === 'user') {
       ;(last as TextMessage).content += `\n\n${agentFirstMessage}`
@@ -648,7 +652,7 @@ export class LocalAgentRunner implements AgentRunner {
       // Clean up inbox entries now that the agent has reached a terminal state
       try { this.inboxStore.deleteForAgent(agentId) } catch { /* ignore */ }
       // Commit any workspace changes the agent made — best-effort, never throws
-      const summary = options.prompt.replace(/\s+/g, ' ').trim().slice(0, 100)
+      const summary = options.task.replace(/\s+/g, ' ').trim().slice(0, 100)
       if (this.workspacePath) commitWorkspace(this.workspacePath, `agent: ${summary}`)
     }
   }
@@ -953,7 +957,7 @@ export class LocalAgentRunner implements AgentRunner {
 
         // Run completion steward to classify output as done or question.
         const stewardResult = await runCompletionSteward(
-          { task: options.prompt, output },
+          { task: options.task, output },
           this.llmRouter, this.stewardModel, this.usageStore,
         )
 
@@ -1159,8 +1163,9 @@ export class LocalAgentRunner implements AgentRunner {
       return JSON.stringify({ error: true, message: 'Sub-agents cannot spawn further sub-agents. Complete your task directly using the available tools.' })
     }
 
-    // Read child task prompt once; used by the steward gate and as the spawn payload below.
-    const childTaskPrompt = input['prompt'] as string
+    // Read child task once; used by the steward gate and as the spawn payload below.
+    const childTaskPrompt = input['task'] as string
+    const childContext = input['context'] as string | undefined
 
     // Steward gate (STEW-01..08, D-12). Skipped entirely when flag is off → byte-equivalent to pre-steward behavior.
     if (this.spawnAgentStewardEnabled) {
@@ -1169,7 +1174,7 @@ export class LocalAgentRunner implements AgentRunner {
         .slice(-4)
         .map(m => ({ role: m.role, content: m.content, createdAt: m.createdAt }))
       const decision = await runSpawnAgentSteward(
-        parentOptions.prompt,
+        parentOptions.task,
         childTaskPrompt,
         recent,
         this.llmRouter,
@@ -1191,7 +1196,8 @@ export class LocalAgentRunner implements AgentRunner {
 
     const descriptionArg = input['description'] as string | undefined
     const childOptions: SpawnOptions = {
-      prompt: childTaskPrompt,
+      task: childTaskPrompt,
+      ...(childContext ? { context: childContext } : {}),
       model,
       trigger: 'ad_hoc',
       headId: this.headId,                    // Phase 34 D-RUNNER-HEADID: child inherits parent's head

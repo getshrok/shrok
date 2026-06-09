@@ -125,13 +125,13 @@ function seedConversation(bundle: HeadBundle, agentId: string, question: string,
   bundle.messages.append({
     kind: 'tool_call', id: generateId('msg'), createdAt: now(),
     content: 'On it!',
-    toolCalls: [{ id: tcId, name: 'spawn_agent', input: { prompt: agentPrompt } }],
+    toolCalls: [{ id: tcId, name: 'spawn_agent', input: { task: agentPrompt } }],
   } as any, 'default')
   bundle.messages.append({
     kind: 'tool_result', id: generateId('msg'), createdAt: now(),
     toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: JSON.stringify({ agentId }) }],
   } as any, 'default')
-  bundle.workers.create(agentId, { prompt: agentPrompt, trigger: 'manual', headId: 'default' })
+  bundle.workers.create(agentId, { task: agentPrompt, trigger: 'manual', headId: 'default' })
   bundle.workers.suspend(agentId, question)
 }
 

@@ -71,7 +71,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     const benignAgentId = generateId('agent')
     env1.bundle.workers.create(benignAgentId, {
-      prompt: "Run the scheduled 'email' skill.",
+      task: "Run the scheduled 'email' skill.",
       trigger: 'scheduled',
       headId: 'default',
       skillName: 'email',
@@ -107,7 +107,7 @@ export async function run(opts: { replayHistory?: EvalMessage[]; noJudge?: boole
 
     const criticalAgentId = generateId('agent')
     env2.bundle.workers.create(criticalAgentId, {
-      prompt: "Run the scheduled 'email' skill.",
+      task: "Run the scheduled 'email' skill.",
       trigger: 'scheduled',
       headId: 'default',
       skillName: 'email',

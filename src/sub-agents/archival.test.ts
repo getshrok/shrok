@@ -70,7 +70,7 @@ describe('maybeArchiveHistory — compactHistory call sites (Plan 25-02)', () =>
     db = freshDb()
     agentStore = new AgentStore(db)
     agentId = 'test-agent-archival'
-    agentStore.create(agentId, { prompt: 'test task', trigger: 'manual', headId: 'default' })
+    agentStore.create(agentId, { task: 'test task', trigger: 'manual', headId: 'default' })
   })
 
   // ─── SUCCESS PATH: compactHistory called with summaryMsg ──────────────────

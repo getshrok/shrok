@@ -153,12 +153,12 @@ function seedPriorHistory(messages: MessageStore, triggerFormat: 'system' | 'act
     messages.append({ kind: 'text', id: generateId('msg'), role: 'user', content: c.userMsg, createdAt: step() }, 'default')
 
     if (c.round2Text) {
-      messages.append({ kind: 'tool_call', id: generateId('msg'), content: '', toolCalls: [{ id: tcId, name: 'spawn_agent', input: { prompt: `Look up: ${c.userMsg}` } }] as [ToolCall, ...ToolCall[]], createdAt: step() }, 'default')
+      messages.append({ kind: 'tool_call', id: generateId('msg'), content: '', toolCalls: [{ id: tcId, name: 'spawn_agent', input: { task: `Look up: ${c.userMsg}` } }] as [ToolCall, ...ToolCall[]], createdAt: step() }, 'default')
       messages.append({ kind: 'tool_result', id: generateId('msg'), toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: `<agent-result type="completed" agent="${c.agentId}">${c.workTranscript}\n\n${c.agentOutput}</agent-result>` }] as [ToolResult, ...ToolResult[]], createdAt: step() }, 'default')
       messages.append({ kind: 'text', id: generateId('msg'), role: 'assistant', content: c.round2Text, createdAt: step() }, 'default')
       messages.append({ kind: 'text', id: generateId('msg'), role: 'user', content: trigger(c.agentId), injected: true, createdAt: step() }, 'default')
     } else {
-      messages.append({ kind: 'tool_call', id: generateId('msg'), content: 'On it.', toolCalls: [{ id: tcId, name: 'spawn_agent', input: { prompt: `Look up: ${c.userMsg}` } }] as [ToolCall, ...ToolCall[]], createdAt: step() }, 'default')
+      messages.append({ kind: 'tool_call', id: generateId('msg'), content: 'On it.', toolCalls: [{ id: tcId, name: 'spawn_agent', input: { task: `Look up: ${c.userMsg}` } }] as [ToolCall, ...ToolCall[]], createdAt: step() }, 'default')
       messages.append({ kind: 'tool_result', id: generateId('msg'), toolResults: [{ toolCallId: tcId, name: 'spawn_agent', content: `<agent-result type="completed" agent="${c.agentId}">${c.workTranscript}\n\n${c.agentOutput}</agent-result>` }] as [ToolResult, ...ToolResult[]], createdAt: step() }, 'default')
       messages.append({ kind: 'text', id: generateId('msg'), role: 'user', content: trigger(c.agentId), injected: true, createdAt: step() }, 'default')
     }

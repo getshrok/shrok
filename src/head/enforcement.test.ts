@@ -226,7 +226,7 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'test-agent',
-      options: { prompt: 'test', trigger: 'ad_hoc', headId: 'default' },
+      options: { task: 'test', trigger: 'ad_hoc', headId: 'default' },
       skill: null,
     })
     const names = toolEntries.map(e => e.definition.name)
@@ -243,7 +243,7 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'test-agent',
-      options: { prompt: 'test', trigger: 'ad_hoc', headId: 'default' },
+      options: { task: 'test', trigger: 'ad_hoc', headId: 'default' },
       skill: null,
     })
     const names = toolEntries.map(e => e.definition.name)
@@ -267,7 +267,7 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     const { toolEntries } = await assembleTools(deps, {
       // top-level agent (no parentAgentId) so spawn_agent is eligible
       agentId: 'test-agent',
-      options: { prompt: 'test', trigger: 'ad_hoc', headId: 'default' },
+      options: { task: 'test', trigger: 'ad_hoc', headId: 'default' },
       skill: null,
     })
     const names = toolEntries.map(e => e.definition.name)
@@ -295,7 +295,7 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     })
     const { toolEntries } = await assembleTools(deps, {
       agentId: 'test-agent',
-      options: { prompt: 'test', trigger: 'ad_hoc', headId: 'default' },
+      options: { task: 'test', trigger: 'ad_hoc', headId: 'default' },
       skill: null,
     })
     const names = toolEntries.map(e => e.definition.name)

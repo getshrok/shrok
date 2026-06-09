@@ -69,7 +69,13 @@ export interface AgentState {
 export interface SpawnOptions {
   agentId?: string               // pre-assigned ID; generated internally if omitted
   name?: string                  // human-readable label, used as slug prefix when agentId not pre-set
-  prompt: string
+  /** The ask — what the agent must accomplish, in the user's own words where possible.
+   *  Stored as AgentState.task and used for summaries/classification. */
+  task: string
+  /** Verbatim conversation excerpts the head pastes through (constraints, prior turns,
+   *  referenced details). Folded into the agent's first message after `task`. Not stored
+   *  as the task, so summaries/history-classification stay clean. */
+  context?: string
   model?: string                 // tier name or direct model ID; defaults to 'smart'
   trigger: AgentState['trigger']
   /** Required: head this agent belongs to. Determines which head's activation loop

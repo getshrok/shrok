@@ -270,7 +270,7 @@ describe('handleScheduleTrigger — kind-aware dispatch', () => {
 
     expect(fix.agentRunner.spawn).toHaveBeenCalledOnce()
     const args = vi.mocked(fix.agentRunner.spawn).mock.calls[0]![0] as any
-    expect(args.prompt).toBe('Vacuum the database now.')
+    expect(args.task).toBe('Vacuum the database now.')
     expect(args.skillName).toBe('bar')
     expect(args.trigger).toBe('scheduled')
     expect(args.model).toBe('claude-opus-4-6')
