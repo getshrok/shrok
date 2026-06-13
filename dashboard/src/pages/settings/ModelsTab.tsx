@@ -102,8 +102,8 @@ export default function ModelsTab({ d, s, set }: SettingsTabProps) {
             <Field label="Head (main conversation)" tooltip="The model you talk to. Runs on every message, agent completion, and scheduled event. Handles conversation and decides when to hand work off to agents.">
               <ComboInput value={d.headModel} onChange={v => set('headModel', v)} options={roleOpts} />
             </Field>
-            <Field label="Agent (spawned workers)" tooltip="The default model for agents that do work in the background. Individual tasks can override this.">
-              <ComboInput value={d.agentModel} onChange={v => set('agentModel', v)} options={roleOpts} />
+            <Field label="Agent (spawned workers)" tooltip="The default model for agents that do work in the background. Set to 'dynamic' to let the head pick the tier per task (it must choose one each time it spawns an agent). Any fixed tier/model is authoritative — the head cannot override it.">
+              <ComboInput value={d.agentModel} onChange={v => set('agentModel', v)} options={['dynamic', ...roleOpts]} />
             </Field>
             <Field label="Steward (loop detection, nudges)" tooltip="Small, cheap model calls that run between turns — catching missed actions, filtering output, and keeping things on track. Runs often, so keep this on a fast cheap model.">
               <ComboInput value={d.stewardModel} onChange={v => set('stewardModel', v)} options={roleOpts} />

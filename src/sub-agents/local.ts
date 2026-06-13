@@ -165,7 +165,11 @@ export class LocalAgentRunner implements AgentRunner {
     this.agentDefaults = opts.agentDefaults ?? { env: null, allowedTools: null }
     this.envOverrides = opts.envOverrides ?? {}
     this.timezone = opts.timezone
-    this.agentModel = opts.agentModel ?? 'smart'
+    // "dynamic" is a head-only config sentinel (#37): the head picks the tier per
+    // spawn. As the runner's fallback for spawns that carry no explicit model
+    // (scheduled tasks, sub-agent spawns, or a head that omitted it), resolve it to
+    // a concrete tier — "dynamic" must never reach the LLM router.
+    this.agentModel = (opts.agentModel && opts.agentModel !== 'dynamic') ? opts.agentModel : 'smart'
     this.stewardModel = opts.stewardModel ?? 'dumb'
     this.snapshotTokenBudget = opts.snapshotTokenBudget ?? 60_000
     this.agentContextComposer = opts.agentContextComposer ?? false

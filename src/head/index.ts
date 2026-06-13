@@ -30,22 +30,45 @@ import { formatModelTime, parseModelTime } from '../util/model-time.js'
 
 // ─── HEAD_TOOLS definitions ───────────────────────────────────────────────────
 
-export const HEAD_TOOLS: ToolDefinition[] = [
-  {
+/**
+ * Build the head's spawn_agent tool definition.
+ *
+ * The `model` argument is present (and required) ONLY when the operator has set
+ * `config.agentModel` to "dynamic" — i.e. they want the head to pick the worker
+ * tier per task. When `agentModel` is a fixed tier/model, the arg is omitted
+ * entirely: the operator's configured model is authoritative for every agent and
+ * the head has no say (see #37). The dispatch layer also ignores any `model` that
+ * sneaks in when not dynamic (defense-in-depth).
+ */
+export function buildHeadSpawnAgentDef(agentModelDynamic: boolean): ToolDefinition {
+  const baseDesc = 'Spawn an agent to handle a task asynchronously. Your job is to RELAY, not to author: pass the user\'s request through in their own words via `task`, and paste the relevant conversation verbatim into `context` — let the natural conversation be the agent\'s prompt rather than writing a fresh one. Tell the agent what is wanted, not how to do it; the agent decides the approach.'
+  const tierDesc = ' Pick the worker tier per task via `model`: dumb for trivial single-fact lookups / web searches, smart for everyday work, genius for hard multi-step reasoning.'
+  const ackDesc = ' Always include a brief acknowledgment in your response when calling this tool (e.g. "On it." or "Checking now.") — the user needs to know you\'re working on it, and the loop exits immediately after.'
+
+  const properties: Record<string, unknown> = {
+    description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
+    task: { type: 'string', description: 'What the agent must accomplish, stated as the ask itself. Lead with the user\'s own words — quote them. Your only job here is to resolve what the agent can\'t see (pronouns, "that thing", which of several options) into concrete terms. Do not invent an approach, add steps, or prescribe how — the agent decides that. Write original prose only when the user\'s words alone wouldn\'t make the goal clear.' },
+    context: { type: 'string', description: 'Relevant messages or excerpts from the current conversation, pasted VERBATIM — constraints, preferences, prior turns, referenced details, names, links, IDs. Quote the actual words; do not summarize. Bad: "user wants a flight to Boston". Good: "I need to get to Boston Thursday before 5pm, under $300, window seat". Every paraphrase loses information the agent can\'t recover. When unsure whether something is relevant, include it.' },
+    name: { type: 'string', description: 'Short human-readable name for this agent — 2-5 words describing what it\'s doing (e.g. "github-pr-123-review", "morning-email-triage", "fix-login-bug"). Used as the agent\'s ID prefix so you can identify it later. Multiple agents can run in parallel — be specific.' },
+  }
+  const required = ['description', 'task', 'name']
+
+  if (agentModelDynamic) {
+    properties['model'] = { type: 'string', enum: ['dumb', 'smart', 'genius'], description: 'Worker capability tier for THIS task (required). dumb = trivial single-fact lookups / web searches only; smart = everyday work; genius = hard multi-step / reasoning-heavy work.' }
+    required.push('model')
+  }
+
+  return {
     name: 'spawn_agent',
-    description: 'Spawn an agent to handle a task asynchronously. Your job is to RELAY, not to author: pass the user\'s request through in their own words via `task`, and paste the relevant conversation verbatim into `context` — let the natural conversation be the agent\'s prompt rather than writing a fresh one. Tell the agent what is wanted, not how to do it; the agent decides the approach. Tier guide: omit for everyday work (smart default); use genius for hard multi-step reasoning; use dumb for trivial single-fact lookups. Always include a brief acknowledgment in your response when calling this tool (e.g. "On it." or "Checking now.") — the user needs to know you\'re working on it, and the loop exits immediately after.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
-        task: { type: 'string', description: 'What the agent must accomplish, stated as the ask itself. Lead with the user\'s own words — quote them. Your only job here is to resolve what the agent can\'t see (pronouns, "that thing", which of several options) into concrete terms. Do not invent an approach, add steps, or prescribe how — the agent decides that. Write original prose only when the user\'s words alone wouldn\'t make the goal clear.' },
-        context: { type: 'string', description: 'Relevant messages or excerpts from the current conversation, pasted VERBATIM — constraints, preferences, prior turns, referenced details, names, links, IDs. Quote the actual words; do not summarize. Bad: "user wants a flight to Boston". Good: "I need to get to Boston Thursday before 5pm, under $300, window seat". Every paraphrase loses information the agent can\'t recover. When unsure whether something is relevant, include it.' },
-        name: { type: 'string', description: 'Short human-readable name for this agent — 2-5 words describing what it\'s doing (e.g. "github-pr-123-review", "morning-email-triage", "fix-login-bug"). Used as the agent\'s ID prefix so you can identify it later. Multiple agents can run in parallel — be specific.' },
-        model: { type: 'string', enum: ['dumb', 'smart', 'genius'], description: 'Worker capability tier. dumb = trivial single-fact lookups / web searches only; smart = everyday work (default); genius = hard multi-step / reasoning-heavy work. Omit to use smart.' },
-      },
-      required: ['description', 'task', 'name'],
-    },
-  },
+    description: baseDesc + (agentModelDynamic ? tierDesc : '') + ackDesc,
+    inputSchema: { type: 'object', properties, required },
+  }
+}
+
+export const HEAD_TOOLS: ToolDefinition[] = [
+  // Static default uses the non-dynamic variant (default config agentModel is a
+  // fixed tier). system.ts swaps in the dynamic variant when agentModel === 'dynamic'.
+  buildHeadSpawnAgentDef(false),
   {
     name: 'message_agent',
     description: 'Send a message to an agent — works for running, paused, and completed agents. For running agents, delivers new context or instructions. For paused agents, provides the information they need and resumes them. For completed agents, resumes them with new instructions to continue where they left off.',
@@ -175,6 +198,10 @@ export interface HeadToolExecutorOptions {
   agentContinuationEnabled?: boolean
   /** Whether the message-agent steward validates calls (gates check-ins and continuations). */
   messageAgentStewardEnabled?: boolean
+  /** When true (config.agentModel === 'dynamic'), the head's spawn_agent carries a
+   *  required `model` arg and the head's choice is honored. When false, any incoming
+   *  `model` is ignored — the operator's configured agent model is authoritative (#37). */
+  agentModelDynamic?: boolean
   /** Called after an identity file is written. Used to extract assistant name from SOUL.md. */
   onIdentityChanged?: (file: string, content: string) => void
   /** Called when Head queues a file for delivery to the user via send_file. */
@@ -267,7 +294,9 @@ export class HeadToolExecutor implements ToolExecutor {
           name: input['name'] as string,
           trigger: 'manual',
           headId: this.opts.headId,                       // Phase 34 D-EXEC-OPTION: agent inherits the spawning head's identity
-          ...(input['model'] ? { model: input['model'] as string } : {}),
+          // Honor the head's model choice only in dynamic mode; otherwise the operator's
+          // configured agent model wins and any incoming `model` is ignored (#37).
+          ...(this.opts.agentModelDynamic && input['model'] ? { model: input['model'] as string } : {}),
           ...(this.opts.getHistory ? { headHistory: this.opts.getHistory() } : {}),
           ...(this.opts.onDebug ? { onDebug: this.opts.onDebug } : {}),
           ...(this.opts.onVerbose ? { onVerbose: this.opts.onVerbose } : {}),

@@ -117,7 +117,7 @@ const ConfigSchema = z.object({
   // or a direct model ID. Router resolves tier names to concrete model IDs transparently.
   // Tier heuristic: dumb = trivial lookups, smart = everyday work (default), genius = heavy reasoning.
   headModel:     z.string().default('smart'),   // head conversation
-  agentModel:    z.string().default('smart'),   // default for spawned agents
+  agentModel:    z.string().default('smart'),   // default for spawned agents; or 'dynamic' = head picks the tier per spawn (#37)
   composerModel: z.string().default('dumb'),  // legacy — unused, kept for backward compat
   stewardModel:    z.string().default('dumb'),  // loop steward, summaries, internal reasoning
   memoryModel:   z.string().default('dumb'),  // legacy fallback — unused if chunking/archival/retrieval set

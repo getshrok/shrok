@@ -264,6 +264,27 @@ describe('HeadToolExecutor', () => {
 
 
 
+  it('ignores the head-supplied model when not in dynamic mode (#37)', async () => {
+    // executor built without agentModelDynamic → operator's configured model wins
+    await executor.execute({
+      id: 'tc1', name: 'spawn_agent',
+      input: { task: 'do it', name: 'worker', model: 'genius' },
+    })
+    const opts = vi.mocked(runner.spawn).mock.calls[0]![0]
+    expect(opts.model).toBeUndefined()
+  })
+
+  it('forwards the head-supplied model in dynamic mode (#37)', async () => {
+    const identityLoader = new FileSystemIdentityLoader(tmpDir, tmpDir)
+    const dynExecutor = new HeadToolExecutor({ headId: 'default', agentRunner: runner, skillLoader, topicMemory: memory, usageStore, identityDir: tmpDir, identityLoader, messages: { getAll: () => [] } as unknown as MessageStore, agentModelDynamic: true })
+    await dynExecutor.execute({
+      id: 'tc1', name: 'spawn_agent',
+      input: { task: 'do it', name: 'worker', model: 'genius' },
+    })
+    const opts = vi.mocked(runner.spawn).mock.calls[0]![0]
+    expect(opts.model).toBe('genius')
+  })
+
   it('execute() never throws — wraps subsystem errors', async () => {
     vi.mocked(runner.spawn).mockRejectedValue(new Error('MCP server down'))
     const result = await executor.execute({

@@ -22,7 +22,7 @@ import {
   AgentToolRegistryImpl,
   VIEW_IMAGE_DEF,
 } from './sub-agents/registry.js'
-import { HEAD_TOOLS } from './head/index.js'
+import { HEAD_TOOLS, buildHeadSpawnAgentDef } from './head/index.js'
 import type { ToolDefinition } from './types/llm.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -134,6 +134,33 @@ describe('in-scope tool schemas', () => {
     expect(headKeys).toContain('task')
     expect(headKeys).toContain('name')     // HEAD only
     expect(subKeys).not.toContain('name')
+  })
+})
+
+// ─── #37: dynamic agent-model gates the head spawn_agent `model` arg ──────────
+
+describe('buildHeadSpawnAgentDef — dynamic agent-model mode', () => {
+  it('omits `model` from properties and required when not dynamic', () => {
+    const def = buildHeadSpawnAgentDef(false)
+    const props = (def.inputSchema as { properties: Record<string, unknown> }).properties
+    const required = (def.inputSchema as { required: string[] }).required
+    expect(Object.keys(props)).not.toContain('model')
+    expect(required).not.toContain('model')
+    expect(required).toEqual(['description', 'task', 'name'])
+  })
+
+  it('includes `model` in properties AND required when dynamic', () => {
+    const def = buildHeadSpawnAgentDef(true)
+    const props = (def.inputSchema as { properties: Record<string, unknown> }).properties
+    const required = (def.inputSchema as { required: string[] }).required
+    expect(Object.keys(props)).toContain('model')
+    expect(required).toContain('model')
+  })
+
+  it('the static HEAD_TOOLS spawn_agent uses the non-dynamic variant (no model)', () => {
+    const headSpawn = HEAD_TOOLS.find(t => t.name === 'spawn_agent')!
+    const props = (headSpawn.inputSchema as { properties: Record<string, unknown> }).properties
+    expect(Object.keys(props)).not.toContain('model')
   })
 })
 

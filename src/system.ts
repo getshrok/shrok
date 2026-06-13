@@ -30,7 +30,7 @@ import { LocalAgentRunner } from './sub-agents/local.js'
 import { FileSystemIdentityLoader } from './identity/loader.js'
 import { InjectorImpl } from './head/injector.js'
 import { ContextAssemblerImpl } from './head/assembler.js'
-import { HEAD_TOOLS, HEAD_TOOL_NAMES } from './head/index.js'
+import { HEAD_TOOLS, HEAD_TOOL_NAMES, buildHeadSpawnAgentDef } from './head/index.js'
 import { ActivationLoop } from './head/activation.js'
 import { resolveAllowlist } from './sub-agents/tool-access.js'
 import {
@@ -298,9 +298,14 @@ export function buildSystem(deps: SystemDeps): System {
   // WIDENED candidate pool (HEAD_TOOLS ∪ headRunnableDefs) to the resolved subset.
   // The resolved allowlist (default = HEAD_TOOL_NAMES = 10) collapses the widened
   // pool back to exactly 10 for unconfigured heads (D-02 defaults unchanged).
-  const effectiveHeadTools = deps.headTools !== undefined
+  // #37: when agentModel is "dynamic" the head picks the worker tier per spawn
+  // (spawn_agent gains a required `model` arg); otherwise the configured model is
+  // authoritative and the arg is omitted. Swap the spawn_agent def accordingly.
+  const agentModelDynamic = config.agentModel === 'dynamic'
+  const effectiveHeadTools = (deps.headTools !== undefined
     ? deps.headTools
     : [...HEAD_TOOLS, ...headRunnableDefs].filter(t => resolvedHeadTools.includes(t.name))
+  ).map(t => t.name === 'spawn_agent' ? buildHeadSpawnAgentDef(agentModelDynamic) : t)
 
   // ── Agent Runner ────────────────────────────────────────────────────────
   const agentContextComposer = deps.agentContextComposer ?? config.agentContextComposer
@@ -339,7 +344,9 @@ export function buildSystem(deps: SystemDeps): System {
           // guessing. Values may be tier names ('dumb'|'smart'|'genius')
           // or direct model IDs — skills can decide how to interpret.
           SHROK_LLM_PROVIDER: config.llmProvider,
-          SHROK_AGENT_MODEL: config.agentModel,     // may be tier name (dumb/smart/genius) or direct model ID
+          // Resolve the "dynamic" sentinel to a concrete tier — skills reading this
+          // env var expect a real tier/model ID, never "dynamic" (#37).
+          SHROK_AGENT_MODEL: agentModelDynamic ? 'smart' : config.agentModel,
           SHROK_STEWARD_MODEL: config.stewardModel, // same
         },
         archivalThreshold: Math.floor(config.contextWindowTokens * config.archivalThresholdFraction),
@@ -419,6 +426,7 @@ export function buildSystem(deps: SystemDeps): System {
     resumeStewardEnabled: config.resumeStewardEnabled,
     agentContinuationEnabled: config.agentContinuationEnabled,
     messageAgentStewardEnabled: config.messageAgentStewardEnabled,
+    agentModelDynamic,                                 // #37: gate the spawn_agent model arg
     onIdentityChanged,
     scheduleStore: stores.schedules,
     noteStore: stores.notes,  // Phase 47 D-07: mirrors LocalAgentRunner wiring at line ~293

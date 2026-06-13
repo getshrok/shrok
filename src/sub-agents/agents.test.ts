@@ -388,7 +388,7 @@ function makeStewardQuestionResponse(question: string): LLMResponse {
 function makeRunner(
   llmRouter: LLMRouter,
   db: ReturnType<typeof freshDb>,
-  overrides: { spawnAgentStewardEnabled?: boolean; stewardModel?: string; unifiedLoader?: import('../skills/unified.js').UnifiedLoader; skillLoader?: SkillLoader } = {},
+  overrides: { spawnAgentStewardEnabled?: boolean; stewardModel?: string; unifiedLoader?: import('../skills/unified.js').UnifiedLoader; skillLoader?: SkillLoader; agentModel?: string } = {},
 ) {
   const agentStore = new AgentStore(db)
   const inboxStore = new AgentInboxStore(db)
@@ -439,6 +439,7 @@ function makeRunner(
     ...(overrides.spawnAgentStewardEnabled !== undefined ? { spawnAgentStewardEnabled: overrides.spawnAgentStewardEnabled } : {}),
     ...(overrides.stewardModel !== undefined ? { stewardModel: overrides.stewardModel } : {}),
     ...(overrides.unifiedLoader ? { unifiedLoader: overrides.unifiedLoader } : {}),
+    ...(overrides.agentModel !== undefined ? { agentModel: overrides.agentModel } : {}),
   })
 
   return { runner, agentStore, inboxStore, queueStore, skillLoader }
@@ -512,6 +513,16 @@ describe('assembleTools spawn_agent gating', () => {
     await runner.spawn({ task: 'task', name: 'test', trigger: 'ad_hoc', headId: 'default' })
     await runner.awaitAll(2000)
     expect(capturedTools).toContain('spawn_agent')
+  })
+
+  it("resolves the 'dynamic' agent-model sentinel to 'smart' for spawns without an explicit model (#37)", async () => {
+    const db = freshDb()
+    const llmRouter = makeLLMRouter([makeEndTurnResponse()])
+    const { runner, agentStore } = makeRunner(llmRouter, db, { agentModel: 'dynamic' })
+    const id = await runner.spawn({ task: 'task', name: 'dyn', trigger: 'ad_hoc', headId: 'default' })
+    // The runner must never let "dynamic" reach the model field (it would 400 at the router).
+    expect(agentStore.get(id)?.model).toBe('smart')
+    await runner.awaitAll(2000)
   })
 
   it('skill agent without sub-skills (no parent) has spawn_agent when flag is on', async () => {
