@@ -55,12 +55,14 @@ export class ChannelRouterImpl implements ChannelRouter {
   async sendDebug(channelId: string, text: string): Promise<void> {
     const adapter = this.adapters.get(channelId)
     if (!adapter) return
+    // Debug/xray streams require an explicit debug surface. If an adapter does not
+    // implement sendDebug, DROP the stream — do NOT fall back to send(). The old
+    // fallback caused voice adapters (which only know how to speak) to read internal
+    // agent work aloud (#38). Voice adapters now declare a no-op sendDebug; any future
+    // adapter without one simply won't receive debug content.
+    if (!adapter.sendDebug) return
     try {
-      if (adapter.sendDebug) {
-        await adapter.sendDebug(text)
-      } else {
-        await adapter.send(text)
-      }
+      await adapter.sendDebug(text)
     } catch (err) {
       log.debug(`[router] sendDebug failed for ${channelId}:`, (err as Error).message)
     }

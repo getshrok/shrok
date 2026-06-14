@@ -143,6 +143,37 @@ describe('ChannelRouterImpl', () => {
     expect(a.sends).toEqual(['msg-a'])
     expect(b.sends).toEqual(['msg-b'])
   })
+
+  // ── #38: debug/xray streams must not leak to adapters without a debug surface ──
+
+  it('sendDebug routes to adapter.sendDebug when present', async () => {
+    const debugs: string[] = []
+    const adapter = makeAdapter('telegram')
+    adapter.sendDebug = vi.fn(async (text: string) => { debugs.push(text) })
+    router.register(adapter)
+    await router.sendDebug('telegram', '[agent work] reading SKILL.md')
+    expect(debugs).toEqual(['[agent work] reading SKILL.md'])
+    expect(adapter.sends).toEqual([])  // never falls through to send()
+  })
+
+  it('sendDebug DROPS the stream for adapters with no sendDebug (no send() fallback) — #38', async () => {
+    // A voice-style adapter that only knows how to speak. Debug content must never
+    // reach send() (it would be read aloud).
+    const voice = makeAdapter('home-assistant')  // makeAdapter intentionally omits sendDebug
+    router.register(voice)
+    await router.sendDebug('home-assistant', '[agent work] reading SKILL.md')
+    expect(voice.sends).toEqual([])  // dropped, not spoken
+    expect(voice.send).not.toHaveBeenCalled()
+  })
+
+  it('sendDebug is a no-op for an explicit no-op sendDebug (voice adapter pattern)', async () => {
+    const voice = makeAdapter('voice')
+    voice.sendDebug = vi.fn(async (_text: string) => {})  // mirrors the voice/HA adapter no-op
+    router.register(voice)
+    await router.sendDebug('voice', '[steward] checked output')
+    expect(voice.sendDebug).toHaveBeenCalledWith('[steward] checked output')
+    expect(voice.sends).toEqual([])
+  })
 })
 
 // ─── splitMessage — code fence awareness ──────────────────────────────────────

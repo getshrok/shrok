@@ -123,6 +123,12 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     }
   }
 
+  /** Debug/xray visibility streams (agent work, head tools, system events, steward
+   *  runs) must NEVER be spoken — voice has no collapsible surface and would read
+   *  them aloud via TTS. This no-op makes the router drop them here instead of
+   *  falling back to send(). (#38) */
+  async sendDebug(_text: string): Promise<void> {}
+
   private handleConnection(ws: WebSocket, req?: IncomingMessage): void {
     // D-03: reject a second concurrent connection; preserve the existing one
     if (this.activeSocket !== null) {

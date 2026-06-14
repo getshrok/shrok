@@ -159,6 +159,12 @@ export class HomeAssistantChannelAdapter implements ChannelAdapter {
     }
   }
 
+  /** Debug/xray visibility streams (agent work, head tools, system events, steward
+   *  runs) must NEVER reach a voice device — it has no collapsible surface and would
+   *  read them aloud. This no-op makes the router drop them here instead of falling
+   *  back to send() and announcing them. (#38) */
+  async sendDebug(_text: string): Promise<void> {}
+
   /** Production inbound path used by the router (Plan 03).
    *  Routes the extracted HA voice turn through the registered message handler. */
   dispatchInbound(text: string, conversationId: string): void {
