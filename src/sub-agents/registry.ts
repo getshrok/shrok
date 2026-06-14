@@ -31,7 +31,7 @@ const SPAWN_AGENT_DEF: ToolDefinition = {
     type: 'object',
     properties: {
       description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
-      task: { type: 'string', description: 'What the child must accomplish, stated as the ask itself. Relay the request in the original words where possible; resolve only what the child can\'t see (pronouns, references) into concrete terms. Say what is wanted, not how — the child decides the approach.' },
+      task: { type: 'string', description: 'What the child must accomplish, stated as the ask itself. Relay the request in the original words where possible; resolve only what the child can\'t see (pronouns, references) into concrete terms. Say what is wanted, not how — the child decides the approach. The test: every phrase in `task` should be traceable to the original ask — if it isn\'t, you\'re authoring, not relaying. E.g. asked "look up the NVIDIA stock price" → Good: "Look up the current NVIDIA stock price."; Bad: "Look up the NVIDIA stock price. Search the web and return any recent movement (% change today)." (invents a method and a return-scope the request never mentioned).' },
       context: { type: 'string', description: 'Relevant excerpts pasted VERBATIM — constraints, prior turns, referenced details, IDs, links. Quote, don\'t summarize; every paraphrase loses information the child can\'t recover. When unsure whether something is relevant, include it.' },
       model: { type: 'string', description: 'Optional: model tier (\'dumb\'|\'smart\'|\'genius\') or direct model ID (e.g. \'claude-opus-4-6\'). dumb = trivial lookups; smart = everyday work (default); genius = heavy reasoning.' },
     },
