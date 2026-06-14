@@ -230,7 +230,7 @@ describe('Multi-Head Task Delivery (Phase 44)', () => {
 
     const { runner, agentStore } = makeRunnerForHead('a', db, llmRouter)
     const agentId = await runner.spawn({
-      prompt: 'fan-out test',
+      task: 'fan-out test',
       name: 'fan-out-agent',
       trigger: 'scheduled',
       headId: 'a',
@@ -276,7 +276,7 @@ describe('Multi-Head Task Delivery (Phase 44)', () => {
 
     const { runner } = makeRunnerForHead('a', db, llmRouter)
     const agentId = await runner.spawn({
-      prompt: 'dedup test',
+      task: 'dedup test',
       name: 'dedup-agent',
       trigger: 'scheduled',
       headId: 'a',
@@ -312,7 +312,7 @@ describe('Multi-Head Task Delivery (Phase 44)', () => {
 
     const { runner } = makeRunnerForHead('a', db, llmRouter)
     const agentId = await runner.spawn({
-      prompt: 'regression test',
+      task: 'regression test',
       name: 'regression-agent',
       trigger: 'scheduled',
       headId: 'a',
@@ -352,7 +352,7 @@ describe('Multi-Head Task Delivery (Phase 44)', () => {
 
     const { runner, agentStore } = makeRunnerForHead('a', db, llmRouter)
     const agentId = await runner.spawn({
-      prompt: 'question-suppression test',
+      task: 'question-suppression test',
       name: 'question-agent',
       trigger: 'scheduled',     // D-06 gate — must not suspend
       headId: 'a',
@@ -391,7 +391,7 @@ describe('Multi-Head Task Delivery (Phase 44)', () => {
     const { runner, agentStore } = makeRunnerForHead('a', db, makeThrowingLLMRouter())
 
     const agentId = await runner.spawn({
-      prompt: 'will fail',
+      task: 'will fail',
       name: 'failing-agent',
       trigger: 'scheduled',
       headId: 'a',

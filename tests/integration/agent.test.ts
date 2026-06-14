@@ -32,7 +32,7 @@ describe('agent integration', () => {
 
     const id = await runner.spawn({
       name: 'basic-completion',
-      prompt: `Respond with exactly the phrase "task complete" and nothing else.`,
+      task: `Respond with exactly the phrase "task complete" and nothing else.`,
       trigger: 'manual',
       headId: 'default',
     })
@@ -52,7 +52,7 @@ describe('agent integration', () => {
 
     const id = await runner.spawn({
       name: 'bash-tool',
-      prompt: `Run this exact bash command: echo integration-test-marker
+      task: `Run this exact bash command: echo integration-test-marker
 Then respond with the output of the command. Do nothing else.`,
       trigger: 'manual',
       headId: 'default',
@@ -73,7 +73,7 @@ Then respond with the output of the command. Do nothing else.`,
 
     const id = await runner.spawn({
       name: 'suspend-question',
-      prompt: `You need to move some files to a destination folder, but you do not know which destination folder to use.
+      task: `You need to move some files to a destination folder, but you do not know which destination folder to use.
 Before doing anything, you must ask which destination folder to use. Do not proceed without an answer.
 Call bash with "echo starting" first, then respond asking for the folder.`,
       trigger: 'manual',
@@ -96,7 +96,7 @@ Call bash with "echo starting" first, then respond asking for the folder.`,
 
     const id = await runner.spawn({
       name: 'resume-signal',
-      prompt: `You need to organize files but you don't know the destination folder.
+      task: `You need to organize files but you don't know the destination folder.
 First, call bash with "echo starting". Then respond asking "Which folder should I use?" and wait for an answer.
 Once you receive the answer, respond with "organized into: " followed by the folder name you were given.
 Do not do anything else.`,
@@ -132,7 +132,7 @@ Do not do anything else.`,
 
     const id = await runner.spawn({
       name: 'file-write-read',
-      prompt: `Do these steps in order:
+      task: `Do these steps in order:
 1. Call write_file with path="${testPath}" and content="hello from integration test".
 2. Call read_file with path="${testPath}".
 3. Respond with the content you read back.
@@ -156,7 +156,7 @@ Do not deviate. Execute all three steps.`,
 
     const id = await runner.spawn({
       name: 'usage-recording',
-      prompt: `Respond with "done" immediately.`,
+      task: `Respond with "done" immediately.`,
       trigger: 'manual',
       headId: 'default',
     })
@@ -180,7 +180,7 @@ Do not deviate. Execute all three steps.`,
     // Parent spawns a sub-agent to do the actual work, then waits for its result
     const id = await runner.spawn({
       name: 'parent-sub-agent',
-      prompt: `Your job:
+      task: `Your job:
 1. Call spawn_agent with description="sub-task runner" and prompt="Respond with exactly: sub done"
 2. Wait for the sub-agent to complete. You will receive a [Sub-agent ... completed] message in the conversation.
 3. Once you see the sub-agent completed message, respond with "parent done: " followed by the sub-agent's output.
@@ -205,7 +205,7 @@ Do not respond before the sub-agent has finished.`,
     // Agent that asks a question — designed to suspend via the completion steward
     const id = await runner.spawn({
       name: 'retract-test',
-      prompt: `Call bash with "echo ready". Then respond asking "ready to start?" and wait for the answer before doing anything.`,
+      task: `Call bash with "echo ready". Then respond asking "ready to start?" and wait for the answer before doing anything.`,
       trigger: 'manual',
       headId: 'default',
     })
@@ -238,7 +238,7 @@ Do not respond before the sub-agent has finished.`,
 
     const id = await runner.spawn({
       name: 'nested-parent',
-      prompt: `Your job:\n1. Call spawn_agent with prompt="Run bash command: echo grandchild-done-marker then respond with the output" and description="nested bash child"\n2. Wait for the sub-agent to complete. You will receive a completed message.\n3. Once you see the sub-agent completed message, respond with "parent received" followed by whatever the sub-agent said.\nDo not do anything else.`,
+      task: `Your job:\n1. Call spawn_agent with prompt="Run bash command: echo grandchild-done-marker then respond with the output" and description="nested bash child"\n2. Wait for the sub-agent to complete. You will receive a completed message.\n3. Once you see the sub-agent completed message, respond with "parent received" followed by whatever the sub-agent said.\nDo not do anything else.`,
       trigger: 'manual',
       headId: 'default',
     })
@@ -271,7 +271,7 @@ Do not respond before the sub-agent has finished.`,
 
     const id = await runner.spawn({
       name: 'flag-off-test',
-      prompt: `First, run this bash command: echo flag-off-test-marker\nThen try to call spawn_agent with prompt="echo child done".\nIf spawn_agent is not available as a tool, respond with "no spawn tool available".`,
+      task: `First, run this bash command: echo flag-off-test-marker\nThen try to call spawn_agent with prompt="echo child done".\nIf spawn_agent is not available as a tool, respond with "no spawn tool available".`,
       trigger: 'manual',
       headId: 'default',
     })
@@ -299,7 +299,7 @@ Do not respond before the sub-agent has finished.`,
 
     const id = await runner.spawn({
       name: 'steward-reject-test',
-      prompt: `Your task is to respond with the word "hello".\nCall spawn_agent with prompt="Respond with hello" to delegate this.\nIf the spawn is rejected, respond with "did it myself: hello".`,
+      task: `Your task is to respond with the word "hello".\nCall spawn_agent with prompt="Respond with hello" to delegate this.\nIf the spawn is rejected, respond with "did it myself: hello".`,
       trigger: 'manual',
       headId: 'default',
     })

@@ -208,7 +208,7 @@ describe('Multi-Head Agent Lifecycle (Phase 34)', () => {
 
   it('persists head_id on the agents row when create() is called with headId="work" (D-ROW-WRITE-FROM-OPTIONS)', () => {
     agentStore.create('a-work', {
-      prompt: 'do work',
+      task: 'do work',
       trigger: 'manual',
       headId: 'work',
     })
@@ -236,7 +236,7 @@ describe('Multi-Head Agent Lifecycle (Phase 34)', () => {
 
     const { runner } = makeRunnerForHead('work', db, llmRouter)
     const agentId = await runner.spawn({
-      prompt: 'finish quickly',
+      task: 'finish quickly',
       name: 'quick',
       trigger: 'manual',
       headId: 'work',
@@ -305,7 +305,7 @@ describe('Multi-Head Agent Lifecycle (Phase 34)', () => {
 
     const { runner, agentStore: runnerAgentStore } = makeRunnerForHead('work', db, llmRouter)
     const agentId = await runner.spawn({
-      prompt: 'need a decision',
+      task: 'need a decision',
       name: 'decider',
       trigger: 'manual',
       headId: 'work',
@@ -344,7 +344,7 @@ describe('Multi-Head Agent Lifecycle (Phase 34)', () => {
     const { runner, agentStore: runnerAgentStore } = makeRunnerForHead('work', db, makeThrowingLLMRouter())
 
     const agentId = await runner.spawn({
-      prompt: 'will fail',
+      task: 'will fail',
       name: 'failing',
       trigger: 'manual',
       headId: 'work',
@@ -387,7 +387,7 @@ describe('Multi-Head Agent Lifecycle (Phase 34)', () => {
 
     const { runner } = makeRunnerForHead('work', db, llmRouter)
     const agentId = await runner.spawn({
-      prompt: 'respond then finish',
+      task: 'respond then finish',
       name: 'responder',
       trigger: 'manual',
       headId: 'work',

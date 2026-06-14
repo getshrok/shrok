@@ -77,7 +77,7 @@ function buildMessages(): Message[] {
         {
           id: spawnCallId,
           name: 'spawn_agent',
-          input: { prompt: 'Break down the sprint stories into tasks.', skillName: null },
+          input: { task: 'Break down the sprint stories into tasks.', skillName: null },
         },
       ],
       createdAt: ts(1),

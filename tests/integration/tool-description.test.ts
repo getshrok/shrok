@@ -42,7 +42,7 @@ describe('tool-description integration', () => {
       // Directive prompt: no ambiguity about which tool to call.
       // The `description` param is driven by schema required-ness, not by
       // mentioning it in the prompt — mentioning it would confound the test.
-      prompt: `Run this exact bash command: echo tool-description-marker
+      task: `Run this exact bash command: echo tool-description-marker
 Then respond with the output of the command. Do nothing else.`,
       trigger: 'manual',
       headId: 'default',
