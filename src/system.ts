@@ -89,6 +89,10 @@ export interface SystemDeps {
   dashboardEventBus?: DashboardEventBus
   /** Activation loop poll interval. Default: undefined (uses ActivationLoop default). Evals use 200ms. */
   pollIntervalMs?: number
+  /** Wake hook threaded into the QueueStore: called with the enqueued event's
+   *  headId so the matching head's activation loop wakes immediately instead of
+   *  waiting on its poll tick. Omitted when stores are injected (tests). */
+  onEnqueue?: (headId: string) => void
   /** Wrap the real assembler (e.g. eval CapturingAssembler). Applied after construction. */
   assemblerWrapper?: (assembler: ContextAssembler) => ContextAssembler
   /** Override HEAD_TOOLS for testing. */
@@ -162,7 +166,7 @@ export function buildSystem(deps: SystemDeps): System {
   const stores: Stores = deps.stores ?? {
     messages: new MessageStore(db, deps.dashboardEventBus),
     agents: new AgentStore(db, deps.dashboardEventBus),
-    queue: new QueueStore(db),
+    queue: new QueueStore(db, deps.onEnqueue),
     usage: new UsageStore(db, config.timezone),
     appState: new AppStateStore(db),
     schedules: new ScheduleStore(path.join(workspacePath, 'schedules')),

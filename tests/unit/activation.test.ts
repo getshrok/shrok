@@ -37,7 +37,7 @@ function makeStubRouter(): LLMRouter {
 
 // ─── Minimal loop builder ─────────────────────────────────────────────────────
 
-function makeLoop(getUptimeSeconds?: () => number) {
+function makeLoop(getUptimeSeconds?: () => number, pollIntervalMs = 50) {
   const router = makeStubRouter()
   const bundle = makeHeadBundle(router)
   const { messages, workers: agents, queue, usage, appState, schedules, channelRouter, tx } = bundle
@@ -94,7 +94,7 @@ function makeLoop(getUptimeSeconds?: () => number) {
     scheduleStore: schedules,
     mcpRegistry: makeMcpRegistry(),
     transaction: tx,
-    pollIntervalMs: 50,
+    pollIntervalMs,
     resolveCurrentHeads: () => [],
     ...(getUptimeSeconds ? { getUptimeSeconds } : {}),
   })
@@ -359,5 +359,48 @@ describe('ActivationLoop — per-head isolation (Phase 30 CORE-01)', () => {
     expect(appState.tryAcquireArchivalLock('personal')).toBe(true)
     // 'work' still held
     expect(appState.tryAcquireArchivalLock('work')).toBe(false)
+  })
+})
+
+// ─── Event-driven wake (notify) ──────────────────────────────────────────────
+
+describe('ActivationLoop — event-driven wake', () => {
+  // Returns ms from now until the queue has no pending row (i.e. the loop claimed
+  // it), or Infinity if it never clears within the deadline. A small deadline so a
+  // regression fails fast instead of hanging to vitest's 30s timeout.
+  async function msUntilClaimed(
+    queue: ReturnType<typeof makeLoop>['queue'],
+    deadlineMs = 3_000,
+  ): Promise<number> {
+    const start = Date.now()
+    while (Date.now() - start < deadlineMs) {
+      if (!queue.hasPending()) return Date.now() - start
+      await new Promise(resolve => setTimeout(resolve, 5))
+    }
+    return Infinity
+  }
+
+  function userMsg(text: string): QueueEvent {
+    return { type: 'user_message', id: generateId('ev'), channel: 'test', text, createdAt: new Date().toISOString() }
+  }
+
+  it('wakes on notify() in well under the poll interval (signal-driven, not timer-driven)', async () => {
+    // A 60s poll means ONLY an event-driven wake can claim the row quickly — if the
+    // loop fell back to the timer the assertions below would blow past 60s.
+    const { loop, queue } = makeLoop(undefined, 60_000)
+    loop.start()
+    try {
+      queue.enqueue(userMsg('hi'), PRIORITY.USER_MESSAGE)
+      loop.notify() // exactly what the QueueStore onEnqueue hook does in production
+      expect(await msUntilClaimed(queue)).toBeLessThan(2_000)
+
+      // A second cycle must also wake fast — proves the sticky latch doesn't wedge
+      // after a prior signal was consumed.
+      queue.enqueue(userMsg('again'), PRIORITY.USER_MESSAGE)
+      loop.notify()
+      expect(await msUntilClaimed(queue)).toBeLessThan(2_000)
+    } finally {
+      loop.stop()
+    }
   })
 })

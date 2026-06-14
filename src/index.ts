@@ -222,6 +222,14 @@ async function main() {
   }
   const headSystems: HeadSystem[] = []
 
+  // Registry of every head's activation loop, keyed by headId, so the shared
+  // QueueStore wake hook notifies the RIGHT head's loop on enqueue — a store can
+  // enqueue cross-head (deliverToHeadIds), so we route by the event's headId, not
+  // "my own loop". Late-bound: populated as each head is built below; fully
+  // populated before any event flows at runtime, so the closure reads it safely.
+  const headLoops = new Map<string, ReturnType<typeof buildSystem>['activationLoop']>()
+  const notifyHead = (headId: string): void => { headLoops.get(headId)?.notify() }
+
   // Hot-reload sentinels only apply to the synthesized 'default' head (Phase 31
   // limitation per RESEARCH §Pitfall 5). Named heads from config.heads[]
   // reconfigure by restarting the process.
@@ -270,6 +278,7 @@ async function main() {
       db, config, llmRouter, channelRouter: headRouter, mcpRegistry,
       dashboardEventBus: dashboardEvents,
       headId: head.id,
+      onEnqueue: notifyHead,
       ringRunner,
       ...(head.customPrompt !== undefined ? { customPrompt: head.customPrompt } : {}),
       // Phase 46 (TOOLCFG-05, TOOLCFG-06): per-head tool allowlist overrides.
@@ -280,6 +289,7 @@ async function main() {
       resolveCurrentHeads: () => resolveHeads(loadConfig()),
     })
     const { activationLoop: headLoop } = headSystem
+    headLoops.set(head.id, headLoop)
     const { queue: headQueue, appState, messages: headMessages, agents: headAgents } = headSystem.stores
 
     // Startup recovery, per head

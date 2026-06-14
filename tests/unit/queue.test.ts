@@ -184,3 +184,42 @@ describe('QueueStore.claimAllPendingBackground', () => {
   })
 })
 
+describe('QueueStore onEnqueue wake hook', () => {
+  it('calls the hook once with the enqueued headId after insert', () => {
+    const seen: string[] = []
+    const queue = new QueueStore(freshDb(), (headId) => seen.push(headId))
+
+    queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE, 'h1')
+    queue.enqueue(agentCompleted(), PRIORITY.AGENT_COMPLETED, 'h2')
+
+    expect(seen).toEqual(['h1', 'h2'])
+  })
+
+  it('passes the default headId when none is given', () => {
+    const seen: string[] = []
+    const queue = new QueueStore(freshDb(), (headId) => seen.push(headId))
+
+    queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE)
+
+    expect(seen).toEqual(['default'])
+  })
+
+  it('fires the hook only after the row is durably claimable', () => {
+    let claimableAtHookTime = false
+    const queue = new QueueStore(freshDb(), () => {
+      // The wake must see a claimable row — insert happens before the signal.
+      claimableAtHookTime = queue.claimNext('default') !== null
+    })
+
+    queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE)
+
+    expect(claimableAtHookTime).toBe(true)
+  })
+
+  it('works without a hook (backward compatible)', () => {
+    const queue = new QueueStore(freshDb())
+    expect(() => queue.enqueue(userMsg(), PRIORITY.USER_MESSAGE)).not.toThrow()
+    expect(queue.claimNext('default')).not.toBeNull()
+  })
+})
+

@@ -149,6 +149,11 @@ function buildStewardHistory(
 export class ActivationLoop {
   private running = false
   private emitter = new EventEmitter()
+  /** Sticky wake latch: set by notify(), consumed by waitForEvent(). Guards the
+   *  lost-wakeup race where a notify fires in the gap between claimNext() returning
+   *  null and waitForEvent() registering its listener — without this the signal
+   *  would be dropped and the event would wait a full poll interval. */
+  private pendingNotify = false
   private opts: ActivationLoopOptions
   private pollIntervalMs: number
   private usageModes = new Map<string, UsageMode>()
@@ -172,11 +177,14 @@ export class ActivationLoop {
 
   constructor(opts: ActivationLoopOptions) {
     this.opts = opts
-    this.pollIntervalMs = opts.pollIntervalMs ?? 2_000
+    this.pollIntervalMs = opts.pollIntervalMs ?? 1_000
   }
 
-  /** Notify the loop that a new event is available — skip the poll wait. */
+  /** Notify the loop that a new event is available — skip the poll wait.
+   *  Sets the sticky latch BEFORE emitting so a signal that arrives while no
+   *  waiter is registered is consumed on the next waitForEvent() rather than lost. */
   notify(): void {
+    this.pendingNotify = true
     this.emitter.emit('event')
   }
 
@@ -1311,9 +1319,12 @@ export class ActivationLoop {
   }
 
   private async waitForEvent(): Promise<void> {
+    // Consume a signal that fired before we got here (lost-wakeup guard) — return
+    // immediately instead of sleeping a full poll interval.
+    if (this.pendingNotify) { this.pendingNotify = false; return }
     await new Promise<void>(resolve => {
       const timer = setTimeout(() => { cleanup(); resolve() }, this.pollIntervalMs)
-      const handler = () => { cleanup(); resolve() }
+      const handler = () => { this.pendingNotify = false; cleanup(); resolve() }
       const cleanup = () => {
         clearTimeout(timer)
         this.emitter.off('event', handler)

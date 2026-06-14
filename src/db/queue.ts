@@ -28,7 +28,12 @@ export class QueueStore {
   private stmtClaimAllUserMessages: StatementSync
   private stmtDeleteAllForHead: StatementSync
 
-  constructor(private db: DatabaseSync) {
+  /** Optional wake hook: called with the enqueued event's headId after every
+   *  successful insert, so a head's activation loop can wake immediately instead
+   *  of waiting on its poll tick. No hook → no-op (backward compatible). The
+   *  matching loop is resolved by headId at the wiring site (src/index.ts), since
+   *  one store can enqueue cross-head (deliverToHeadIds). */
+  constructor(private db: DatabaseSync, private onEnqueue?: (headId: string) => void) {
     this.stmtEnqueue = db.prepare(`
       INSERT INTO queue_events (id, type, payload, priority, status, head_id)
       VALUES (@id, @type, @payload, @priority, 'pending', @headId)
@@ -115,6 +120,10 @@ export class QueueStore {
       priority,
       headId,
     })
+    // Wake the matching head's loop now that the row exists (insert before signal
+    // so the wake always finds a claimable row). Best-effort: a missing/failed
+    // hook only falls back to the poll backstop, never drops the event.
+    this.onEnqueue?.(headId)
   }
 
   /** Atomically claim the next pending event for the given head. Returns null if queue is empty for that head. */
