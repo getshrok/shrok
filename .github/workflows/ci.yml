@@ -57,7 +57,9 @@ jobs:
           echo "All .ps1 files are ASCII-clean"
 
       - run: npm ci
-      - run: npx tsc --noEmit
+      # Type-checks src, scripts AND tests/ (see tsconfig.typecheck.json). tests/ was
+      # historically unchecked, letting stale fixtures compile-fail only at runtime.
+      - run: npm run typecheck
 
   test:
     runs-on: ubuntu-latest

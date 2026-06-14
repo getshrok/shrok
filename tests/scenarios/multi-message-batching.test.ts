@@ -111,6 +111,8 @@ function makeLoop(router: LLMRouter) {
     usageStore: usage,
     topicMemory: stubTopicMemory,
     agentStore: agents,
+    scheduleStore: schedules,
+    mcpRegistry,
     llmRouter: router,
     channelRouter,
     assembler,
@@ -251,7 +253,7 @@ describe('message batching', () => {
     // The second (re-run) call should have BOTH messages in history
     const lastCallHistory = callHistories[callHistories.length - 1]!
     const userTexts = lastCallHistory
-      .filter((m): m is Extract<Message, { kind: 'text'; role: 'user' }> =>
+      .filter((m): m is Extract<Message, { kind: 'text' }> =>
         m.kind === 'text' && m.role === 'user'
       )
       .map(m => m.content)

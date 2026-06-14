@@ -23,17 +23,16 @@ function agentCompleted(agentId = generateId('ag')): QueueEvent {
     id: generateId('ev'),
     agentId,
     output: 'done',
-    silent: false,
     createdAt: new Date().toISOString(),
   }
 }
 
-function scheduleTrigger(skillName: string): QueueEvent {
+function scheduleTrigger(taskName: string): QueueEvent {
   return {
     type: 'schedule_trigger',
     id: generateId('ev'),
     scheduleId: generateId('sched'),
-    skillName,
+    taskName,
     kind: 'skill',
     createdAt: new Date().toISOString(),
   }

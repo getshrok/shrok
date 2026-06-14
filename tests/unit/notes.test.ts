@@ -104,9 +104,10 @@ describe('buildNoteTools', () => {
     tools = buildNoteTools(store)
   })
 
-  function exec(name: string, input: Record<string, unknown> = {}) {
+  async function exec(name: string, input: Record<string, unknown> = {}): Promise<string> {
     const tool = tools.find(t => t.definition.name === name)!
-    return tool.execute(input, {} as any)
+    const result = await tool.execute(input, {} as any)
+    return typeof result === 'string' ? result : result.content
   }
 
   it('write_note creates a new note', async () => {

@@ -42,9 +42,9 @@ const HAIKU = 'claude-haiku-4-5-20251001'
 export function makeRealRouter(): LLMRouter {
   const provider = new AnthropicProvider(ANTHROPIC_API_KEY)
   return new SingleProviderRouter(provider, {
-    standard: HAIKU,
-    capable: HAIKU,
-    expert: HAIKU,
+    dumb: HAIKU,
+    smart: HAIKU,
+    genius: HAIKU,
   })
 }
 
@@ -61,11 +61,16 @@ export function freshDb() {
 export function makeSkillLoader(): SkillLoader {
   return {
     load: () => null,
-    loadByPath: () => null,
     listAll: () => [],
     write: async () => undefined,
     delete: async () => undefined,
     watch: () => undefined,
+    listFiles: () => [],
+    readFile: () => ({ size: 0 }),
+    writeFile: async () => undefined,
+    deleteFile: async () => undefined,
+    renameFile: async () => undefined,
+    renameSkill: async () => ({ updatedDeps: [] }),
   }
 }
 
@@ -135,8 +140,8 @@ export function makeRunner(llmRouter: LLMRouter, db = freshDb(), opts?: MakeRunn
     pollIntervalMs: 200,
     timezone: 'UTC',
     checkStatusTimeoutMs: 10_000,
-    nestedAgentSpawningEnabled: opts?.nestedAgentSpawningEnabled,
-    spawnAgentStewardEnabled: opts?.spawnAgentStewardEnabled,
+    ...(opts?.nestedAgentSpawningEnabled !== undefined ? { nestedAgentSpawningEnabled: opts.nestedAgentSpawningEnabled } : {}),
+    ...(opts?.spawnAgentStewardEnabled !== undefined ? { spawnAgentStewardEnabled: opts.spawnAgentStewardEnabled } : {}),
   })
 
   return { runner, agentStore, inboxStore, queueStore, usageStore }

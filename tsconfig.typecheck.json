@@ -1,0 +1,8 @@
+{
+  "//": "Type-check ONLY config: same strict settings as tsconfig.json but adds tests/ and never emits. tsconfig.json stays the emit config for `npm run build` (which must not compile tests into dist/). CI lint runs this so test files are type-checked too — see #30 follow-up.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src", "scripts", "tests"]
+}

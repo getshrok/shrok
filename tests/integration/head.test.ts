@@ -14,7 +14,7 @@ import { ActivationLoop } from '../../src/head/activation.js'
 import { ContextAssemblerImpl } from '../../src/head/assembler.js'
 import { InjectorImpl } from '../../src/head/injector.js'
 import { generateId } from '../../src/llm/util.js'
-import type { QueueEvent } from '../../src/types/core.js'
+import type { QueueEvent, Message } from '../../src/types/core.js'
 import { PRIORITY } from '../../src/types/core.js'
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -108,11 +108,15 @@ function makeLoop(router: ReturnType<typeof makeRealRouter>) {
     appState: bundle.appState,
     usageStore: bundle.usage,
     topicMemory: stubTopicMemory,
+    agentStore: bundle.workers,
+    scheduleStore: bundle.schedules,
+    mcpRegistry,
     llmRouter: router,
     channelRouter: bundle.channelRouter,
     assembler,
     injector,
     toolExecutorOpts: {
+      headId: 'default',
       agentRunner,
       scheduleStore: bundle.schedules,
       skillLoader,
@@ -120,6 +124,7 @@ function makeLoop(router: ReturnType<typeof makeRealRouter>) {
       usageStore: bundle.usage,
       identityDir: '/tmp',
       identityLoader,
+      messages: bundle.messages,
     },
     config: {
       contextWindowTokens: 200_000,
@@ -187,7 +192,9 @@ describe('head activation integration', () => {
     await drainLoop(loop, queue)
 
     const history = messages.getRecent('default', Infinity)
-    const assistantTexts = history.filter(m => m.kind === 'assistant_text')
+    const assistantTexts = history.filter(
+      (m): m is Extract<Message, { kind: 'text' }> => m.kind === 'text' && m.role === 'assistant'
+    )
     const response = assistantTexts[assistantTexts.length - 1]?.content ?? ''
     expect(response.length).toBeGreaterThan(0)
     const toolCalls = history.filter(m => m.kind === 'tool_call')
@@ -247,7 +254,7 @@ describe('head activation integration', () => {
     // Simulate an agent that already completed
     const agentId = generateId('tent')
     workers.create(agentId, { task: 'test task', trigger: 'manual', headId: 'default' })
-    workers.complete(agentId, 'the answer is 42', [])
+    workers.complete(agentId, 'the answer is 42')
 
     const completedEvent: QueueEvent = {
       type: 'agent_completed',
