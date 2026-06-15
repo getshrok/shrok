@@ -31,6 +31,7 @@ import { systemTrigger, systemEvent, systemNudge, MARKER_TAGS, LEGACY_MARKER_PRE
 import { timingMark } from '../timing.js'
 import type { StewardRunStore } from '../db/steward_runs.js'
 import type { DashboardEventBus } from '../dashboard/events.js'
+import { isDashboardChannelId } from '../channels/dashboard/adapter.js'
 import { estimateTokens, estimateStringTokens } from '../db/token.js'
 import { generateId, generateAgentId, now, LLMApiError } from '../llm/util.js'
 import { runProactiveDecision, runReminderDecision } from '../scheduler/proactive.js'
@@ -383,8 +384,19 @@ export class ActivationLoop {
     for (const cb of this.postActivationCallbacks) cb()
   }
 
-  private async runCommand(text: string, channel: string): Promise<void> {
+  /** Stamp the originating channel as "last active" for proactive routing — but
+   *  never the dashboard. The dashboard sees every message via the DB/SSE stream,
+   *  so if it became last-active, scheduled-task results / reminders / agent
+   *  completions would silently stop reaching the user's real chat channel
+   *  (Telegram etc.) after any dashboard session. Replies to a dashboard message
+   *  still route to event.channel, so the dashboard conversation is unaffected. */
+  private rememberActiveChannel(channel: string): void {
+    if (isDashboardChannelId(channel)) return
     this.opts.appState.setLastActiveChannel(this.opts.headId, channel)
+  }
+
+  private async runCommand(text: string, channel: string): Promise<void> {
+    this.rememberActiveChannel(channel)
     const spaceIdx = text.indexOf(' ')
     const cmdName = (spaceIdx === -1 ? text.slice(1) : text.slice(1, spaceIdx)).toLowerCase()
     const args = spaceIdx === -1 ? '' : text.slice(spaceIdx + 1)
@@ -571,7 +583,7 @@ export class ActivationLoop {
             toolResults: toolResults as [ToolResult, ...ToolResult[]],
           } as ToolResultMessage, this.opts.headId)
         }
-        this.opts.appState.setLastActiveChannel(this.opts.headId, event.channel)
+        this.rememberActiveChannel(event.channel)
       }
 
       // Routing steward: hint at the best approach for this message.
@@ -965,7 +977,7 @@ export class ActivationLoop {
             channel: ev.channel,
             createdAt: now(),
           }, this.opts.headId)
-          this.opts.appState.setLastActiveChannel(this.opts.headId, ev.channel)
+          this.rememberActiveChannel(ev.channel)
           this.opts.queueStore.ack(rowId)
           hasNewMessages = true
         }

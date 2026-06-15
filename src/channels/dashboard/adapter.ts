@@ -4,6 +4,13 @@ import type { MessageStore } from '../../db/messages.js'
 import type { TextMessage } from '../../types/core.js'
 import { generateId, now } from '../../llm/util.js'
 
+/** True for a dashboard channel id (`dashboard` or `dashboard:<headId>`, see index.ts).
+ *  The dashboard reads all messages from the DB via SSE, so it must never be treated
+ *  as a routing target for proactive sends — i.e. it never becomes "last active". */
+export function isDashboardChannelId(id: string): boolean {
+  return id === 'dashboard' || id.startsWith('dashboard:')
+}
+
 export class DashboardChannelAdapter implements ChannelAdapter {
   readonly id: string
   private readonly headId: string

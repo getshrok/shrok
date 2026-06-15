@@ -645,7 +645,7 @@ function makeActivationLoopFixture() {
     resolveCurrentHeads: () => [],
   })
 
-  return { loop, llmRouter, llmResponses, messages, queueStore, channelRouter }
+  return { loop, llmRouter, llmResponses, messages, queueStore, channelRouter, appState }
 }
 
 const makeUserMsg = (id: string, text: string, channel = 'discord'): QueueEvent => ({
@@ -672,6 +672,49 @@ describe('ActivationLoop batching', () => {
     expect(llmRouter.complete).toHaveBeenCalledTimes(1)
     expect(channelRouter.send).toHaveBeenCalledTimes(1)
     expect(channelRouter.send).toHaveBeenCalledWith('discord', expect.any(String))
+  })
+
+  it('a real-channel user message is stamped as last-active (proactive routing target)', async () => {
+    const { loop, queueStore, channelRouter, appState } = makeActivationLoopFixture()
+
+    let resolveSend!: () => void
+    const sendDone = new Promise<void>(r => { resolveSend = r })
+    vi.mocked(channelRouter.send).mockImplementation(async () => { resolveSend() })
+
+    vi.mocked(queueStore.claimNext)
+      .mockReturnValueOnce({ rowId: 'r1', event: makeUserMsg('e1', 'hello', 'telegram') })
+      .mockReturnValue(null)
+    vi.mocked(queueStore.claimAllPendingUserMessages).mockReturnValue([])
+
+    loop.start()
+    await sendDone
+    loop.stop()
+
+    expect(appState.setLastActiveChannel).toHaveBeenCalledWith('default', 'telegram')
+  })
+
+  it('a dashboard-origin user message does NOT become last-active, but its reply still routes to the dashboard', async () => {
+    // The dashboard reads everything from the DB via SSE, so it must never be a
+    // proactive routing target — otherwise scheduled/reminder/agent_completed
+    // results would stop reaching the real chat channel after a dashboard session.
+    const { loop, queueStore, channelRouter, appState } = makeActivationLoopFixture()
+
+    let resolveSend!: () => void
+    const sendDone = new Promise<void>(r => { resolveSend = r })
+    vi.mocked(channelRouter.send).mockImplementation(async () => { resolveSend() })
+
+    vi.mocked(queueStore.claimNext)
+      .mockReturnValueOnce({ rowId: 'r1', event: makeUserMsg('e1', 'hello', 'dashboard:default') })
+      .mockReturnValue(null)
+    vi.mocked(queueStore.claimAllPendingUserMessages).mockReturnValue([])
+
+    loop.start()
+    await sendDone
+    loop.stop()
+
+    expect(appState.setLastActiveChannel).not.toHaveBeenCalled()
+    // the reply to a dashboard message still goes to its own channel, not last-active
+    expect(channelRouter.send).toHaveBeenCalledWith('dashboard:default', expect.any(String))
   })
 
   it('intermediate (tool-call) text within a turn is not sent to the channel — only the final bit (issue #21)', async () => {
