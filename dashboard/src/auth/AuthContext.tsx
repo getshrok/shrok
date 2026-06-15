@@ -3,7 +3,7 @@ import { api } from '../lib/api'
 
 interface AuthContextValue {
   isAuthenticated: boolean | null  // null = loading
-  login: (password: string) => Promise<void>
+  login: (password: string, user?: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -18,8 +18,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setIsAuthenticated(false))
   }, [])
 
-  async function login(password: string) {
-    await api.auth.login(password)
+  async function login(password: string, user?: string) {
+    await api.auth.login(password, user)
     setIsAuthenticated(true)
   }
 

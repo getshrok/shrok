@@ -62,6 +62,7 @@ export interface DraftState {
   memoryQueryContextTokens: number
   accentColor: string
   logoDataUrl: string | null
+  dashboardUsers: string[]
   logLevel: string
   visAgentWork: boolean
   visHeadTools: boolean
@@ -142,6 +143,7 @@ export function initDraft(s: SettingsData): DraftState {
     memoryQueryContextTokens: s.memoryQueryContextTokens,
     accentColor: s.accentColor,
     logoDataUrl: null,
+    dashboardUsers: s.dashboardUsers,
     logLevel: s.logLevel,
     visAgentWork:        s.visAgentWork,
     visHeadTools:        s.visHeadTools,
@@ -226,6 +228,7 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.memoryQueryContextTokens !== s.memoryQueryContextTokens) return true
   if (draft.accentColor !== s.accentColor) return true
   if (draft.logoDataUrl !== null) return true
+  if (JSON.stringify(draft.dashboardUsers) !== JSON.stringify(s.dashboardUsers)) return true
   if (draft.logLevel !== s.logLevel) return true
   if (draft.visAgentWork        !== s.visAgentWork)        return true
   if (draft.visHeadTools        !== s.visHeadTools)        return true
@@ -298,6 +301,7 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.memoryQueryContextTokens !== s.memoryQueryContextTokens) body.memoryQueryContextTokens = draft.memoryQueryContextTokens
   if (draft.accentColor !== s.accentColor) body.accentColor = draft.accentColor
   if (draft.logoDataUrl !== null) body.logoDataUrl = draft.logoDataUrl
+  if (JSON.stringify(draft.dashboardUsers) !== JSON.stringify(s.dashboardUsers)) body.dashboardUsers = draft.dashboardUsers
   if (draft.logLevel !== s.logLevel) body.logLevel = draft.logLevel
   if (draft.visAgentWork        !== s.visAgentWork)        body.visAgentWork        = draft.visAgentWork
   if (draft.visHeadTools        !== s.visHeadTools)        body.visHeadTools        = draft.visHeadTools

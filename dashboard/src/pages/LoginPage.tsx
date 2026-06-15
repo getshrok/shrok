@@ -8,14 +8,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // Identity pick (forced choice before the password when dashboard users exist).
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
 
   // Fetch theme from public endpoint (no auth required)
-  const [theme, setTheme] = useState({ assistantName: '', logoUrl: '/logo.svg', accentColor: '' })
+  const [theme, setTheme] = useState<{ assistantName: string; logoUrl: string; accentColor: string; dashboardUsers: string[] }>({ assistantName: '', logoUrl: '/logo.svg', accentColor: '', dashboardUsers: [] })
   useEffect(() => {
     fetch('/api/theme')
       .then(r => r.json())
-      .then((data: { assistantName: string; logoUrl: string; accentColor: string }) => {
-        setTheme(data)
+      .then((data: { assistantName: string; logoUrl: string; accentColor: string; dashboardUsers?: string[] }) => {
+        setTheme({ ...data, dashboardUsers: Array.isArray(data.dashboardUsers) ? data.dashboardUsers : [] })
         if (data.assistantName) document.title = data.assistantName
         // Set favicon to custom logo
         if (data.logoUrl && data.logoUrl !== '/logo.svg') {
@@ -33,17 +35,21 @@ export default function LoginPage() {
       .catch(() => {})
   }, [])
 
+  // Whether we still need the user to pick who they are before the password.
+  const needsPick = theme.dashboardUsers.length > 0 && selectedUser === null
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
     try {
-      await login(password)
+      await login(password, selectedUser ?? undefined)
       void navigate('/')
     } catch (err) {
       const msg = (err as Error).message ?? ''
       if (msg.includes('503')) setError('No password configured — run npm run setup on the server')
       else if (msg.includes('429')) setError('Too many attempts — try again later')
+      else if (msg.includes('400')) setError('Select who you are to sign in')
       else setError('Invalid password')
     } finally {
       setLoading(false)
@@ -59,34 +65,67 @@ export default function LoginPage() {
             <span style={{ color: theme.accentColor || 'var(--accent)' }}>{theme.assistantName}</span>
           </h1>
 
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-zinc-400 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
-                autoComplete="current-password"
-                autoFocus
-              />
+          {needsPick ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-zinc-400">Who are you?</p>
+              <div className="space-y-2">
+                {theme.dashboardUsers.map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => { setSelectedUser(name); setError(null) }}
+                    className="w-full py-2.5 px-4 bg-zinc-800 border border-zinc-700 rounded-lg text-sm font-medium text-zinc-100 hover:bg-zinc-700 hover:border-zinc-600 transition-colors text-left"
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
             </div>
+          ) : (
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+              {selectedUser !== null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-zinc-300">
+                    Signing in as <span className="font-medium text-zinc-100">{selectedUser}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedUser(null); setPassword(''); setError(null) }}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    ← not you?
+                  </button>
+                </div>
+              )}
 
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
-            )}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-zinc-400 mb-1">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
+                  autoComplete="current-password"
+                  autoFocus
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading || !password}
-              className="w-full py-2 px-4 bg-[var(--accent)] text-white text-sm font-medium rounded-lg hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
+              {error && (
+                <p className="text-sm text-red-400">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !password}
+                className="w-full py-2 px-4 bg-[var(--accent)] text-white text-sm font-medium rounded-lg hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>

@@ -137,6 +137,40 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
     )}
 
     {d && set && (
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
+        <div className="text-sm font-semibold text-zinc-300 flex items-center">Dashboard users<SettingTooltip text="Names shown as a pick at login. The name you choose is tagged onto each message you send (e.g. “[Ashley]: …”) so the assistant can tell who's talking when more than one person uses the dashboard. Leave empty to skip the picker entirely." /></div>
+        <p className="text-[11px] text-zinc-500 leading-snug">One name per person who signs in. They all share the dashboard password — this only adds a “who are you?” pick before it. Leave empty for no picker.</p>
+        {d.dashboardUsers.map((name, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={name}
+              onChange={e => { const next = [...d.dashboardUsers]; next[i] = e.target.value; set('dashboardUsers', next) }}
+              placeholder="Display name"
+              className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-600 outline-none"
+              aria-label={`Dashboard user ${i + 1}`}
+            />
+            <button
+              type="button"
+              onClick={() => set('dashboardUsers', d.dashboardUsers.filter((_, j) => j !== i))}
+              className="px-2 py-1.5 text-[11px] font-medium text-zinc-400 bg-zinc-800 hover:bg-zinc-700 rounded border border-zinc-700 transition-colors"
+              aria-label={`Remove ${name || `user ${i + 1}`}`}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => set('dashboardUsers', [...d.dashboardUsers, ''])}
+          className="px-3 py-1.5 text-[11px] font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded border border-zinc-700 transition-colors"
+        >
+          + Add user
+        </button>
+      </div>
+    )}
+
+    {d && set && (
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-4">
         <div className="text-sm font-semibold text-zinc-300">Scheduling</div>
 

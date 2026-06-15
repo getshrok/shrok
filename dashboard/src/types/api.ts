@@ -347,6 +347,7 @@ export interface SettingsData {
   usageFootersEnabled: boolean
   accentColor: string
   logoPath: string
+  dashboardUsers: string[]
   timezone: string
   traceHistoryTokens: number
   llmMaxTokens: number
