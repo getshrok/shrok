@@ -1,6 +1,21 @@
 // src/channels/voice/tts.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { streamTts, isAbortError, TTS_VOICE, TTS_MODEL } from './tts.js'
+import { streamTts, isAbortError, TTS_VOICE, TTS_MODEL, type TtsProvider } from './tts.js'
+
+// Wrap a mock OpenAI client into a single-provider list (the common case).
+function providersFor(
+  client: import('openai').default,
+  overrides?: Partial<Omit<TtsProvider, 'client'>>,
+): TtsProvider[] {
+  return [{
+    client,
+    model: TTS_MODEL,
+    voice: TTS_VOICE,
+    responseFormat: 'mp3',
+    label: 'openai',
+    ...overrides,
+  }]
+}
 
 // ─── Mock WebSocket ────────────────────────────────────────────────────────────
 class MockWS {
@@ -68,7 +83,7 @@ describe('streamTts', () => {
     const ws = new MockWS() as unknown as import('ws').WebSocket
     const ac = new AbortController()
 
-    await streamTts('hello', client, ws, ac.signal)
+    await streamTts('hello', providersFor(client), ws, ac.signal)
 
     const sent = (ws as unknown as MockWS).sent
     // First frame: tts_start JSON
@@ -92,7 +107,7 @@ describe('streamTts', () => {
     const ws = new MockWS() as unknown as import('ws').WebSocket
     const ac = new AbortController()
 
-    await streamTts('hi', client, ws, ac.signal)
+    await streamTts('hi', providersFor(client), ws, ac.signal)
 
     expect(create).toHaveBeenCalledTimes(1)
     const [params, options] = create.mock.calls[0]!
@@ -112,7 +127,7 @@ describe('streamTts', () => {
     // Abort immediately — fires before Readable.fromWeb processes any chunks.
     // The signal is aborted by the time streamTts resumes after await asResponse(),
     // so Node.js destroys the readable instantly and the for-await throws AbortError.
-    const p = streamTts('hi', client, ws, ac.signal)
+    const p = streamTts('hi', providersFor(client), ws, ac.signal)
     ac.abort()
 
     await expect(p).rejects.toSatisfy((e: unknown) => isAbortError(e))
@@ -139,7 +154,7 @@ describe('streamTts', () => {
       if (callCount === 2) mockWs.readyState = MockWS.CLOSED
     }
 
-    await expect(streamTts('hi', client, ws, new AbortController().signal)).resolves.toBeUndefined()
+    await expect(streamTts('hi', providersFor(client), ws, new AbortController().signal)).resolves.toBeUndefined()
 
     // No tts_done because the socket closed during the stream
     const sent = mockWs.sent
@@ -152,9 +167,97 @@ describe('streamTts', () => {
     const { client } = makeMockOpenAI(null, { throwOnCreate: err })
     const ws = new MockWS() as unknown as import('ws').WebSocket
 
-    await expect(streamTts('hi', client, ws, new AbortController().signal)).rejects.toBe(err)
+    await expect(streamTts('hi', providersFor(client), ws, new AbortController().signal)).rejects.toBe(err)
     const sent = (ws as unknown as MockWS).sent
     expect(sent).toHaveLength(0)
+  })
+
+  it('falls back to the next provider when the primary connection fails, and flags tts_start fallback:true', async () => {
+    const primaryErr = Object.assign(new Error('ECONNREFUSED'), { name: 'APIConnectionError' })
+    const { client: primary, create: primaryCreate } = makeMockOpenAI(null, { throwOnCreate: primaryErr })
+    const { client: fallback, create: fallbackCreate } = makeMockOpenAI(makeWebStream([new Uint8Array([0xaa])]))
+    const ws = new MockWS() as unknown as import('ws').WebSocket
+
+    const providers: TtsProvider[] = [
+      { client: primary, model: 'chatterbox-turbo', voice: 'Adrian.wav', responseFormat: 'mp3', label: 'self-hosted' },
+      { client: fallback, model: TTS_MODEL, voice: TTS_VOICE, responseFormat: 'mp3', label: 'openai' },
+    ]
+
+    await streamTts('hi', providers, ws, new AbortController().signal)
+
+    expect(primaryCreate).toHaveBeenCalledTimes(1)
+    expect(fallbackCreate).toHaveBeenCalledTimes(1)
+    const sent = (ws as unknown as MockWS).sent
+    // tts_start carries fallback:true because a non-primary provider served the turn
+    expect(sent[0]!.kind).toBe('text')
+    expect(JSON.parse(sent[0]!.value as string)).toEqual({ type: 'tts_start', fallback: true })
+    // stream still completes with tts_done
+    const last = sent[sent.length - 1]!
+    expect(JSON.parse(last.value as string)).toEqual({ type: 'tts_done' })
+  })
+
+  it('does NOT flag fallback when the primary provider succeeds', async () => {
+    const { client: primary } = makeMockOpenAI(makeWebStream([new Uint8Array([0x01])]))
+    const { client: fallback, create: fallbackCreate } = makeMockOpenAI(makeWebStream([new Uint8Array([0x02])]))
+    const ws = new MockWS() as unknown as import('ws').WebSocket
+
+    const providers: TtsProvider[] = [
+      { client: primary, model: 'chatterbox-turbo', voice: 'Adrian.wav', responseFormat: 'mp3', label: 'self-hosted' },
+      { client: fallback, model: TTS_MODEL, voice: TTS_VOICE, responseFormat: 'mp3', label: 'openai' },
+    ]
+
+    await streamTts('hi', providers, ws, new AbortController().signal)
+
+    // fallback never invoked; tts_start has no fallback flag
+    expect(fallbackCreate).not.toHaveBeenCalled()
+    const sent = (ws as unknown as MockWS).sent
+    expect(JSON.parse(sent[0]!.value as string)).toEqual({ type: 'tts_start' })
+  })
+
+  it('sends the per-provider model/voice/format to the SDK (self-hosted primary)', async () => {
+    const { client, create } = makeMockOpenAI(makeWebStream([new Uint8Array([0x01])]))
+    const ws = new MockWS() as unknown as import('ws').WebSocket
+    const providers: TtsProvider[] = [
+      { client, model: 'chatterbox-turbo', voice: 'Adrian.wav', responseFormat: 'mp3', label: 'self-hosted' },
+    ]
+
+    await streamTts('hi', providers, ws, new AbortController().signal)
+
+    const [params] = create.mock.calls[0]!
+    expect((params as { model: string }).model).toBe('chatterbox-turbo')
+    expect((params as { voice: string }).voice).toBe('Adrian.wav')
+    expect((params as { response_format: string }).response_format).toBe('mp3')
+  })
+
+  it('throws when every provider fails and sends nothing', async () => {
+    const e1 = new Error('primary down')
+    const e2 = new Error('fallback down')
+    const { client: c1 } = makeMockOpenAI(null, { throwOnCreate: e1 })
+    const { client: c2 } = makeMockOpenAI(null, { throwOnCreate: e2 })
+    const ws = new MockWS() as unknown as import('ws').WebSocket
+    const providers: TtsProvider[] = [
+      { client: c1, model: 'chatterbox-turbo', voice: 'Adrian.wav', responseFormat: 'mp3', label: 'self-hosted' },
+      { client: c2, model: TTS_MODEL, voice: TTS_VOICE, responseFormat: 'mp3', label: 'openai' },
+    ]
+
+    // The last provider's error is surfaced
+    await expect(streamTts('hi', providers, ws, new AbortController().signal)).rejects.toBe(e2)
+    expect((ws as unknown as MockWS).sent).toHaveLength(0)
+  })
+
+  it('does NOT fall back when the primary failure is an abort', async () => {
+    const abortErr = makeAbortError()
+    const { client: primary } = makeMockOpenAI(null, { throwOnCreate: abortErr })
+    const { client: fallback, create: fallbackCreate } = makeMockOpenAI(makeWebStream([new Uint8Array([0x01])]))
+    const ws = new MockWS() as unknown as import('ws').WebSocket
+    const providers: TtsProvider[] = [
+      { client: primary, model: 'chatterbox-turbo', voice: 'Adrian.wav', responseFormat: 'mp3', label: 'self-hosted' },
+      { client: fallback, model: TTS_MODEL, voice: TTS_VOICE, responseFormat: 'mp3', label: 'openai' },
+    ]
+
+    // Abort must propagate immediately, NOT trigger a fallback to the paid path
+    await expect(streamTts('hi', providers, ws, new AbortController().signal)).rejects.toSatisfy((e: unknown) => isAbortError(e))
+    expect(fallbackCreate).not.toHaveBeenCalled()
   })
 
   it('isAbortError returns true for APIUserAbortError and AbortError', () => {

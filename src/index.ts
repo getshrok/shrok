@@ -69,6 +69,7 @@ import { ZohoCliqStateStore } from './db/zoho_cliq_state.js'
 // WhatsApp adapter is dynamically imported — Baileys is an optional dependency
 import { DashboardChannelAdapter } from './channels/dashboard/adapter.js'
 import { VoiceChannelAdapter } from './channels/voice/adapter.js'
+import { TTS_MODEL, TTS_VOICE, type TtsProvider } from './channels/voice/tts.js'
 import { HomeAssistantChannelAdapter } from './channels/home-assistant/adapter.js'
 import { ScheduleEvaluatorImpl } from './scheduler/index.js'
 import { WebhookListenerImpl } from './webhook/index.js'
@@ -524,10 +525,45 @@ async function main() {
     if (httpServer) {
       const voiceOpenai = new OpenAI({ apiKey: config.openaiApiKey })
       const knownHeadIds = new Set(headSystems.map(h => h.head.id))
+
+      // TTS providers, in priority order. When a self-hosted endpoint is configured
+      // (config.ttsBaseUrl), it is the PRIMARY synthesizer and OpenAI is the FALLBACK
+      // used only when the self-hosted box is unreachable (it may be powered off). The
+      // self-hosted client is built to fail FAST — short timeout + no retries — so a
+      // dead box fails over to OpenAI quickly instead of hanging the voice turn. STT
+      // (Whisper) always uses `voiceOpenai`, unaffected by this.
+      const ttsProviders: TtsProvider[] = []
+      if (config.ttsBaseUrl) {
+        const selfHostedTts = new OpenAI({
+          baseURL: config.ttsBaseUrl,
+          apiKey: 'unused',          // self-hosted endpoint is unauthenticated (tailnet-scoped)
+          timeout: 5000,             // fail fast when the box is off, so fallback kicks in promptly
+          maxRetries: 0,             // no SDK retry storm before failing over
+        })
+        ttsProviders.push({
+          client: selfHostedTts,
+          model: config.ttsModel,
+          voice: config.ttsVoice,
+          responseFormat: config.ttsResponseFormat,
+          label: 'self-hosted',
+        })
+      }
+      ttsProviders.push({
+        client: voiceOpenai,
+        model: TTS_MODEL,
+        voice: TTS_VOICE,
+        responseFormat: 'mp3',
+        label: 'openai',
+      })
+      if (config.ttsBaseUrl) {
+        log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice}); fallback: OpenAI`)
+      }
+
       const voiceAdapter = new VoiceChannelAdapter(httpServer, voiceOpenai, {
         defaultHeadId: primary.head.id,
         knownHeadIds,
         routeFor: (headId) => (headSystems.find(h => h.head.id === headId) ?? primary).routeMessage,
+        ttsProviders,
       })
       voiceAdapter.onMessage(primary.routeMessage)   // harmless fallback; routeFor takes precedence
       for (const h of headSystems) h.channelRouter.register(voiceAdapter)

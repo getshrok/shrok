@@ -18,6 +18,11 @@ export interface UseVoiceReturn {
   voiceActive: boolean
   toggleVoice: () => Promise<void>
   errorMessage: string | null    // D-04: distinct message per failure class, 4s auto-dismiss
+  /** True when the most recent spoken turn was synthesized by the OpenAI (paid)
+   *  fallback because the self-hosted TTS endpoint was unreachable. Drives a visible
+   *  "via OpenAI fallback" badge so paid usage is never silent. Cleared when a turn
+   *  is served by the self-hosted endpoint again, and on voice-mode exit. */
+  ttsViaFallback: boolean
 }
 
 /** Pure predicate (DOM-free): returns true when the MediaSource needs to be recreated.
@@ -85,6 +90,7 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
   const [state, dispatch] = useReducer(voiceFSM, INITIAL_VOICE_STATE)
   const [voiceActive, setVoiceActive] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [ttsViaFallback, setTtsViaFallback] = useState(false)
 
   // Mutable handles — all accessed from VAD/WS callbacks which capture stale React state
   // (Pitfall 5). stateRef is kept in sync via a useEffect below.
@@ -258,6 +264,7 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
       await teardownAll()
       dispatch({ type: 'TOGGLE_OFF' })
       setVoiceActive(false)
+      setTtsViaFallback(false)
       return
     }
 
@@ -289,8 +296,12 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
         }
         if (typeof evt.data === 'string') {
           try {
-            const msg = JSON.parse(evt.data) as { type?: string }
+            const msg = JSON.parse(evt.data) as { type?: string; fallback?: boolean }
             if (msg.type === 'tts_start') {
+              // Visible-fallback badge: server flags fallback:true when the OpenAI
+              // (paid) path served this turn because the self-hosted box was down.
+              // Reflect the latest turn so the badge clears once self-hosted returns.
+              setTtsViaFallback(msg.fallback === true)
               if (streamMp3Ref.current) ensureLiveMSE()
               else chunkQueueRef.current = []   // start fresh capture for this turn
               dispatch({ type: 'TTS_START' })
@@ -409,5 +420,5 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
     }
   }, [teardownAll])
 
-  return { state, voiceActive, toggleVoice, errorMessage }
+  return { state, voiceActive, toggleVoice, errorMessage, ttsViaFallback }
 }

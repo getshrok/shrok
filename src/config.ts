@@ -138,6 +138,18 @@ const ConfigSchema = z.object({
   zohoCliqPollInterval: z.coerce.number().default(10_000),
   voicePort: z.coerce.number().default(8765),
 
+  // Self-hosted TTS (optional). When `ttsBaseUrl` is set, voice output uses this
+  // OpenAI-audio-compatible endpoint as the PRIMARY synthesizer and falls back to
+  // OpenAI TTS when it is unreachable (the self-hosted box may be powered off).
+  // When unset, voice output uses OpenAI TTS directly (legacy behavior).
+  // These are behavioral settings → config.json, not .env: the self-hosted endpoint
+  // is tailnet-scoped and unauthenticated, so there is no secret to keep. STT
+  // (Whisper) is unaffected and always uses OpenAI.
+  ttsBaseUrl: z.string().optional(),                       // e.g. http://100.80.122.111:8001/v1
+  ttsModel: z.string().default('chatterbox-turbo'),        // self-hosted model id
+  ttsVoice: z.string().default('Adrian.wav'),              // self-hosted voice (see GET /v1/audio/voices)
+  ttsResponseFormat: z.enum(['mp3', 'wav', 'opus']).default('mp3'),  // audio codec the endpoint returns
+
   // Webhook
   webhookPort: z.coerce.number().default(8766),
   webhookSecret: z.string().optional(),

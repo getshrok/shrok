@@ -7,7 +7,7 @@ import type { Attachment } from '../../types/core.js'
 import type { ChannelAdapter, InboundMessage } from '../../types/channel.js'
 import { log } from '../../logger.js'
 import { transcribeWav, TooShortError, InvalidWavError } from './stt.js'
-import { streamTts, isAbortError } from './tts.js'
+import { streamTts, isAbortError, TTS_MODEL, TTS_VOICE, type TtsProvider } from './tts.js'
 
 /** Hard ceiling on a single binary WAV frame. 10 MB = ~5 min of 16 kHz mono PCM,
  *  far larger than any reasonable voice turn. Oversized frames are dropped. */
@@ -42,6 +42,10 @@ export interface VoiceChannelAdapterOpts {
   defaultHeadId?: string
   knownHeadIds?: ReadonlySet<string>
   routeFor?: (headId: string) => (msg: InboundMessage) => void
+  /** Ordered TTS providers: [0] is primary (e.g. self-hosted), later ones are
+   *  fallbacks (e.g. OpenAI). When omitted, defaults to OpenAI-only using the
+   *  `openai` client (legacy behavior). */
+  ttsProviders?: TtsProvider[]
 }
 
 export class VoiceChannelAdapter implements ChannelAdapter {
@@ -55,12 +59,19 @@ export class VoiceChannelAdapter implements ChannelAdapter {
   private connectionRoute: ((msg: InboundMessage) => void) | null = null
   private ttsAbortController: AbortController | null = null
   private upgradeListener: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null
+  private readonly ttsProviders: TtsProvider[]
 
   constructor(private httpServer: Server, private openai: OpenAI, opts?: VoiceChannelAdapterOpts) {
     this.id = opts?.id ?? 'voice'
     this.defaultHeadId = opts?.defaultHeadId ?? 'default'
     this.knownHeadIds = opts?.knownHeadIds ?? new Set()
     this.routeFor = opts?.routeFor ?? null
+    // Default: OpenAI-only (legacy). The shared `openai` client doubles as both the
+    // STT (Whisper) client and — when no self-hosted endpoint is configured — the
+    // sole TTS provider.
+    this.ttsProviders = opts?.ttsProviders ?? [
+      { client: openai, model: TTS_MODEL, voice: TTS_VOICE, responseFormat: 'mp3', label: 'openai' },
+    ]
   }
 
   onMessage(handler: (msg: InboundMessage) => void): void {
@@ -111,7 +122,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     const ac = new AbortController()
     this.ttsAbortController = ac
     try {
-      await streamTts(text, this.openai, ws, ac.signal)
+      await streamTts(text, this.ttsProviders, ws, ac.signal)
     } catch (err) {
       if (isAbortError(err)) {
         log.debug('[voice] TTS aborted (barge-in or shutdown)')

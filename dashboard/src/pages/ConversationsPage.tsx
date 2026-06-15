@@ -497,7 +497,7 @@ export default function ConversationsPage() {
 
   const { isDeveloper } = useMode()
   const assistantName = useAssistantName()
-  const { state: voiceState, voiceActive, toggleVoice, errorMessage: voiceError } = useVoice(selectedHead)
+  const { state: voiceState, voiceActive, toggleVoice, errorMessage: voiceError, ttsViaFallback } = useVoice(selectedHead)
   const { data: isTyping } = useQuery({ queryKey: ['typing'], initialData: false, staleTime: Infinity })
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.settings.get })
   const s = settings as SettingsData | undefined
@@ -1001,6 +1001,14 @@ export default function ConversationsPage() {
             onToggle={() => { void toggleVoice() }}
             errorMessage={voiceError}
           />
+          {voiceActive && ttsViaFallback && (
+            <span
+              className="inline-flex items-center whitespace-nowrap rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-400"
+              title="The self-hosted TTS endpoint was unreachable, so this reply was spoken using the OpenAI (paid) API."
+            >
+              🔊 via OpenAI fallback
+            </span>
+          )}
           <textarea
             ref={inputRef}
             className="flex-1 bg-zinc-800 text-zinc-100 text-base md:text-sm rounded-xl px-4 py-2.5 resize-none outline-none placeholder:text-zinc-500 focus:ring-1 focus:ring-[var(--accent)]/50 max-h-40 overflow-y-auto"
