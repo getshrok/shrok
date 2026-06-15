@@ -1,6 +1,8 @@
 import React, { useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { Mode } from '../../context/ModeContext'
 import type { DraftState } from './draft'
+import { api } from '../../lib/api'
 import { useAssistantName } from '../../lib/assistant-name'
 import { useTheme } from '../../lib/theme'
 import { Field, SettingTooltip } from './components'
@@ -35,6 +37,8 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
   const assistantName = useAssistantName()
   const { logoUrl } = useTheme()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const headsQuery = useQuery({ queryKey: ['heads'], queryFn: api.heads.list, staleTime: Infinity })
+  const heads = headsQuery.data?.heads ?? []
 
   function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -138,23 +142,36 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
 
     {d && set && (
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
-        <div className="text-sm font-semibold text-zinc-300 flex items-center">Dashboard users<SettingTooltip text="Names shown as a pick at login. The name you choose is tagged onto each message you send (e.g. “[Ashley]: …”) so the assistant can tell who's talking when more than one person uses the dashboard. Leave empty to skip the picker entirely." /></div>
-        <p className="text-[11px] text-zinc-500 leading-snug">One name per person who signs in. They all share the dashboard password — this only adds a “who are you?” pick before it. Leave empty for no picker.</p>
-        {d.dashboardUsers.map((name, i) => (
+        <div className="text-sm font-semibold text-zinc-300 flex items-center">Dashboard users<SettingTooltip text="People shown as a pick at login. The name you choose is tagged onto each message you send (e.g. “[Ashley]: …”) so the assistant can tell who's talking. Assign a head and the dashboard opens on that head when you sign in (you can still switch). Leave empty to skip the picker entirely." /></div>
+        <p className="text-[11px] text-zinc-500 leading-snug">One row per person who signs in. They all share the dashboard password — this only adds a “who are you?” pick before it, tags your messages with your name, and opens your head. Leave empty for no picker.</p>
+        {d.dashboardUsers.map((user, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
               type="text"
-              value={name}
-              onChange={e => { const next = [...d.dashboardUsers]; next[i] = e.target.value; set('dashboardUsers', next) }}
+              value={user.name}
+              onChange={e => set('dashboardUsers', d.dashboardUsers.map((u, j) => j === i ? { ...u, name: e.target.value } : u))}
               placeholder="Display name"
-              className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-600 outline-none"
-              aria-label={`Dashboard user ${i + 1}`}
+              className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-600 outline-none"
+              aria-label={`Dashboard user ${i + 1} name`}
             />
+            <select
+              value={user.headId ?? ''}
+              onChange={e => {
+                const headId = e.target.value
+                set('dashboardUsers', d.dashboardUsers.map((u, j) => j === i ? (headId ? { name: u.name, headId } : { name: u.name }) : u))
+              }}
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-600 outline-none"
+              aria-label={`Dashboard user ${i + 1} head`}
+            >
+              <option value="">— no head —</option>
+              {heads.map(h => <option key={h.id} value={h.id}>{h.id}</option>)}
+              {user.headId && !heads.some(h => h.id === user.headId) && <option value={user.headId}>{user.headId}</option>}
+            </select>
             <button
               type="button"
               onClick={() => set('dashboardUsers', d.dashboardUsers.filter((_, j) => j !== i))}
               className="px-2 py-1.5 text-[11px] font-medium text-zinc-400 bg-zinc-800 hover:bg-zinc-700 rounded border border-zinc-700 transition-colors"
-              aria-label={`Remove ${name || `user ${i + 1}`}`}
+              aria-label={`Remove ${user.name || `user ${i + 1}`}`}
             >
               Remove
             </button>
@@ -162,7 +179,7 @@ export default function GeneralTab({ draftMode, onSetMode, d, set }: { draftMode
         ))}
         <button
           type="button"
-          onClick={() => set('dashboardUsers', [...d.dashboardUsers, ''])}
+          onClick={() => set('dashboardUsers', [...d.dashboardUsers, { name: '' }])}
           className="px-3 py-1.5 text-[11px] font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded border border-zinc-700 transition-colors"
         >
           + Add user

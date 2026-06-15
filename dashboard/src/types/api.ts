@@ -279,6 +279,12 @@ export interface Schedule {
 
 export interface ApiKeyStatus { isSet: boolean }
 
+/** A dashboard login identity: a display name and an optional head it scopes to. */
+export interface DashboardUser {
+  name: string
+  headId?: string
+}
+
 export interface SettingsData {
   llmProvider: 'anthropic' | 'gemini' | 'openai'
   llmProviderPriority: Array<'anthropic' | 'gemini' | 'openai'>
@@ -347,7 +353,7 @@ export interface SettingsData {
   usageFootersEnabled: boolean
   accentColor: string
   logoPath: string
-  dashboardUsers: string[]
+  dashboardUsers: DashboardUser[]
   timezone: string
   traceHistoryTokens: number
   llmMaxTokens: number

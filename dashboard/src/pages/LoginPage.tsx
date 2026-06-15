@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import type { DashboardUser } from '../types/api'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -12,11 +13,11 @@ export default function LoginPage() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
 
   // Fetch theme from public endpoint (no auth required)
-  const [theme, setTheme] = useState<{ assistantName: string; logoUrl: string; accentColor: string; dashboardUsers: string[] }>({ assistantName: '', logoUrl: '/logo.svg', accentColor: '', dashboardUsers: [] })
+  const [theme, setTheme] = useState<{ assistantName: string; logoUrl: string; accentColor: string; dashboardUsers: DashboardUser[] }>({ assistantName: '', logoUrl: '/logo.svg', accentColor: '', dashboardUsers: [] })
   useEffect(() => {
     fetch('/api/theme')
       .then(r => r.json())
-      .then((data: { assistantName: string; logoUrl: string; accentColor: string; dashboardUsers?: string[] }) => {
+      .then((data: { assistantName: string; logoUrl: string; accentColor: string; dashboardUsers?: DashboardUser[] }) => {
         setTheme({ ...data, dashboardUsers: Array.isArray(data.dashboardUsers) ? data.dashboardUsers : [] })
         if (data.assistantName) document.title = data.assistantName
         // Set favicon to custom logo
@@ -44,6 +45,11 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(password, selectedUser ?? undefined)
+      // Open the dashboard on the picked user's assigned head (still switchable).
+      // Seeds localStorage['active-head'], which ConversationsPage reads on mount —
+      // overriding any stale head left by a previous user on a shared browser.
+      const picked = theme.dashboardUsers.find(u => u.name === selectedUser)
+      if (picked?.headId) localStorage.setItem('active-head', picked.headId)
       void navigate('/')
     } catch (err) {
       const msg = (err as Error).message ?? ''
@@ -69,14 +75,14 @@ export default function LoginPage() {
             <div className="space-y-3">
               <p className="text-sm font-medium text-zinc-400">Who are you?</p>
               <div className="space-y-2">
-                {theme.dashboardUsers.map(name => (
+                {theme.dashboardUsers.map(user => (
                   <button
-                    key={name}
+                    key={user.name}
                     type="button"
-                    onClick={() => { setSelectedUser(name); setError(null) }}
+                    onClick={() => { setSelectedUser(user.name); setError(null) }}
                     className="w-full py-2.5 px-4 bg-zinc-800 border border-zinc-700 rounded-lg text-sm font-medium text-zinc-100 hover:bg-zinc-700 hover:border-zinc-600 transition-colors text-left"
                   >
-                    {name}
+                    {user.name}
                   </button>
                 ))}
               </div>

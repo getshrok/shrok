@@ -1,4 +1,4 @@
-import type { SettingsData } from '../../types/api'
+import type { SettingsData, DashboardUser } from '../../types/api'
 
 export interface DraftState {
   llmProviderPriority: string[]
@@ -62,7 +62,7 @@ export interface DraftState {
   memoryQueryContextTokens: number
   accentColor: string
   logoDataUrl: string | null
-  dashboardUsers: string[]
+  dashboardUsers: DashboardUser[]
   logLevel: string
   visAgentWork: boolean
   visHeadTools: boolean
