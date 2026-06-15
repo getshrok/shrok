@@ -1,10 +1,8 @@
 # Security
 
-Shrok is a personal agent that runs on your machine with your user privileges. It can read files, run commands, send messages, and use any account you connect to it. That's a lot of trust to place in any piece of software, so this page is about what to expect, what to watch for, and how to tell me if you find something wrong.
+Shrok is a personal agent that runs on your machine with your user privileges. It can read files, run commands, send messages, and use any account you connect to it. That's a lot of trust to place in any piece of software, so this page is about what to expect and what to watch for.
 
-## Reporting a vulnerability
-
-If you think you've found a security issue, please don't open a public GitHub issue for it. Email **ashley@shrok.ai** with a description of the problem and how to reproduce it. I'll get back to you as quickly as I can and work with you on a fix before anything becomes public.
+> **This is a personal project, not a supported product.** There's no security response process and no guarantee anything reported will be looked at. This page exists so you understand the risks before running it — not as a promise of support. If you find a problem, the most reliable fix is to fork and patch it yourself.
 
 ## What Shrok can do
 
@@ -48,4 +46,4 @@ If you think Shrok has been compromised or has done something it shouldn't have:
 3. Check `~/.shrok/workspace/skills` for anything you don't recognize.
 4. Look through recent activity in the dashboard's Usage area for anything surprising.
 
-If you think it's a bug rather than an account compromise, please report it using the process at the top of this page.
+If you think it's a bug rather than an account compromise, you're welcome to fix it in your own fork.
