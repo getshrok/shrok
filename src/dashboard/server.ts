@@ -13,6 +13,7 @@ import type { UsageStore } from '../db/usage.js'
 import type { StewardRunStore } from '../db/steward_runs.js'
 import type { DashboardEventBus } from './events.js'
 import { TokenStore, sessionMiddleware, requireSameOrigin } from './auth.js'
+import { normalizeDashboardUsers } from './dashboard-users.js'
 import { createAuthRouter } from './routes/auth.js'
 import { createMessagesRouter } from './routes/messages.js'
 import { createHeadsRouter } from './routes/heads.js'
@@ -262,9 +263,7 @@ export class DashboardServer {
         if (fs.existsSync(p)) cfg = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>
       } catch { /* ignore */ }
       const logoPath = (cfg['logoPath'] as string) || ''
-      const dashboardUsers = Array.isArray(cfg['dashboardUsers'])
-        ? (cfg['dashboardUsers'] as unknown[]).filter((u): u is string => typeof u === 'string')
-        : []
+      const dashboardUsers = normalizeDashboardUsers(cfg['dashboardUsers'])
       res.json({
         accentColor: (cfg['accentColor'] as string) || '#8C51CD',
         logoUrl: logoPath ? `/api/branding/${logoPath}` : '/logo.svg',

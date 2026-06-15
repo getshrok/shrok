@@ -460,24 +460,42 @@ describe('PUT/GET /api/settings — dashboardUsers (login identity picker)', () 
     expect(await getUsers()).toEqual([])
   })
 
-  it('PUT persists names and GET round-trips them', async () => {
+  it('PUT persists { name, headId } objects and GET round-trips them', async () => {
+    expect((await put({ dashboardUsers: [{ name: 'Zoey', headId: 'zoey' }, { name: 'Ashley', headId: 'ashley' }] })).status).toBe(200)
+    expect(persisted()).toEqual([{ name: 'Zoey', headId: 'zoey' }, { name: 'Ashley', headId: 'ashley' }])
+    expect(await getUsers()).toEqual([{ name: 'Zoey', headId: 'zoey' }, { name: 'Ashley', headId: 'ashley' }])
+  })
+
+  it('PUT keeps a name with no head as a bare { name } (blank headId dropped)', async () => {
+    expect((await put({ dashboardUsers: [{ name: 'Ashley' }, { name: 'Zoey', headId: '' }] })).status).toBe(200)
+    expect(persisted()).toEqual([{ name: 'Ashley' }, { name: 'Zoey' }])
+  })
+
+  it('PUT accepts legacy bare strings and coerces them to { name }', async () => {
     expect((await put({ dashboardUsers: ['Zoey', 'Ashley'] })).status).toBe(200)
-    expect(persisted()).toEqual(['Zoey', 'Ashley'])
-    expect(await getUsers()).toEqual(['Zoey', 'Ashley'])
+    expect(persisted()).toEqual([{ name: 'Zoey' }, { name: 'Ashley' }])
   })
 
-  it('PUT trims whitespace, drops blanks, and dedupes case-insensitively (first spelling wins)', async () => {
-    expect((await put({ dashboardUsers: ['  Ashley ', '', 'ashley', 'Zoey', '   '] })).status).toBe(200)
-    expect(persisted()).toEqual(['Ashley', 'Zoey'])
+  it('PUT trims names, drops blanks, and dedupes case-insensitively (first entry wins)', async () => {
+    expect((await put({ dashboardUsers: [{ name: '  Ashley ', headId: 'ashley' }, { name: '' }, { name: 'ashley' }, { name: 'Zoey' }] })).status).toBe(200)
+    expect(persisted()).toEqual([{ name: 'Ashley', headId: 'ashley' }, { name: 'Zoey' }])
   })
 
-  it('PUT rejects a non-string array with 400', async () => {
-    const res = await put({ dashboardUsers: ['ok', 5] })
-    expect(res.status).toBe(400)
+  it('PUT rejects a non-array with 400', async () => {
+    expect((await put({ dashboardUsers: 'nope' })).status).toBe(400)
+  })
+
+  it('PUT rejects an entry that is neither string nor object with 400', async () => {
+    expect((await put({ dashboardUsers: [{ name: 'ok' }, 5] })).status).toBe(400)
+  })
+
+  it('GET coerces a legacy string list stored in config.json into objects', async () => {
+    fs.writeFileSync(path.join(workspace, 'config.json'), JSON.stringify({ dashboardUsers: ['Ashley'] }), 'utf8')
+    expect(await getUsers()).toEqual([{ name: 'Ashley' }])
   })
 
   it('PUT [] clears the list', async () => {
-    await put({ dashboardUsers: ['Ashley'] })
+    await put({ dashboardUsers: [{ name: 'Ashley' }] })
     expect((await put({ dashboardUsers: [] })).status).toBe(200)
     expect(persisted()).toEqual([])
   })

@@ -4,6 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { sync as writeFileAtomic } from 'write-file-atomic'
 import { requireAuth } from '../auth.js'
+import { normalizeDashboardUsers } from '../dashboard-users.js'
 import { ENV_KEY_ALLOWLIST, AGENT_TOOL_DEFAULT } from '../../config.js'
 import { setLogLevel } from '../../logger.js'
 import type { Config } from '../../config.js'
@@ -255,9 +256,7 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       usageFootersEnabled: bool('usageFootersEnabled', config.usageFootersEnabled),
       accentColor: str('accentColor', '#8C51CD'),
       logoPath: str('logoPath', ''),
-      dashboardUsers: Array.isArray(cfg['dashboardUsers'])
-        ? (cfg['dashboardUsers'] as unknown[]).filter((u): u is string => typeof u === 'string')
-        : [],
+      dashboardUsers: normalizeDashboardUsers(cfg['dashboardUsers']),
       timezone: str('timezone', config.timezone),
       // TOOLCFG-08: global tool defaults — two-state (string[] = concrete subset; no null "all tools").
       // Read from the EFFECTIVE merged config (not the workspace-only cfg layer) so the
@@ -408,23 +407,36 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
     }
 
     // --- Dashboard users (login identity picker) ---
-    // Array of display names. Trim, drop blanks, and dedupe case-insensitively
-    // (keeping the first spelling) so the stored list is clean for the login picker.
+    // Array of { name, headId? } (legacy bare strings accepted). Trim, drop blank
+    // names, drop blank headIds, and dedupe case-insensitively by name (keeping the
+    // first spelling) so the stored list is clean for the login picker.
     if ('dashboardUsers' in body) {
       const val = body['dashboardUsers']
-      if (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string')) {
-        res.status(400).json({ error: 'dashboardUsers must be an array of strings' })
+      if (!Array.isArray(val)) {
+        res.status(400).json({ error: 'dashboardUsers must be an array' })
         return
       }
       const seen = new Set<string>()
-      const cleaned: string[] = []
-      for (const raw of val as string[]) {
-        const name = raw.trim()
+      const cleaned: Array<{ name: string; headId?: string }> = []
+      for (const raw of val as unknown[]) {
+        const u = typeof raw === 'string' ? { name: raw } : raw
+        if (!u || typeof u !== 'object') {
+          res.status(400).json({ error: 'dashboardUsers entries must be strings or { name, headId? } objects' })
+          return
+        }
+        const nameRaw = (u as { name?: unknown }).name
+        const headRaw = (u as { headId?: unknown }).headId
+        if (typeof nameRaw !== 'string' || (headRaw !== undefined && typeof headRaw !== 'string')) {
+          res.status(400).json({ error: 'dashboardUsers: name and headId must be strings' })
+          return
+        }
+        const name = nameRaw.trim()
         if (!name) continue
         const key = name.toLowerCase()
         if (seen.has(key)) continue
         seen.add(key)
-        cleaned.push(name)
+        const headId = typeof headRaw === 'string' ? headRaw.trim() : ''
+        cleaned.push(headId ? { name, headId } : { name })
       }
       if (JSON.stringify(configJson['dashboardUsers']) !== JSON.stringify(cleaned)) {
         configJson['dashboardUsers'] = cleaned

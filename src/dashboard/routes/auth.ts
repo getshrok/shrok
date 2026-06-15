@@ -4,19 +4,18 @@ import path from 'node:path'
 import { Router } from 'express'
 import type { Request, Response } from 'express'
 import { TokenStore, setSessionCookie, verifyPassword, requireAuth } from '../auth.js'
+import { normalizeDashboardUsers } from '../dashboard-users.js'
 import type { Config } from '../../config.js'
 
-/** Read the operator-configured dashboard display names fresh from config.json
- *  so a name added via Settings works without a server restart. Returns [] on
- *  any read/parse error or when the field is absent. */
+/** Read the operator-configured dashboard login identities fresh from config.json
+ *  so a name added via Settings works without a server restart. Returns [] on any
+ *  read/parse error or when the field is absent. */
 function readDashboardUsers(workspacePath: string): string[] {
   try {
     const p = path.join(workspacePath.replace(/^~/, os.homedir()), 'config.json')
     if (!fs.existsSync(p)) return []
     const cfg = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>
-    const users = cfg['dashboardUsers']
-    if (!Array.isArray(users)) return []
-    return users.filter((u): u is string => typeof u === 'string')
+    return normalizeDashboardUsers(cfg['dashboardUsers']).map(u => u.name)
   } catch {
     return []
   }

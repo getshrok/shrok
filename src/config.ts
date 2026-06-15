@@ -96,6 +96,12 @@ export interface ResolvedHead {
   agentToolsOverride?: string[] | null
 }
 
+/** A dashboard login identity: a display name and an optional head it scopes to. */
+const DashboardUserSchema = z.object({
+  name: z.string(),
+  headId: z.string().optional(),
+})
+
 const ConfigSchema = z.object({
   // LLM
   llmProvider: z.enum(['anthropic', 'gemini', 'openai']).default('anthropic'),  // derived from priority[0] at load time
@@ -299,10 +305,15 @@ const ConfigSchema = z.object({
   dashboardHost: z.string().default('127.0.0.1'),
   dashboardPasswordHash: z.string().optional(),
   dashboardHttps: z.coerce.boolean().default(false),
-  // Operator-managed display names shown as a forced pick at dashboard login.
+  // Operator-managed login identities shown as a forced pick at dashboard login.
   // The chosen name is bound to the session and prepended to dashboard messages
-  // (`[Ashley]: …`) so a head can tell who's talking. Empty = no picker, no prefix.
-  dashboardUsers: z.array(z.string()).default([]),
+  // (`[Ashley]: …`) so a head can tell who's talking; an optional headId scopes the
+  // dashboard to that head on login. Empty = no picker, no prefix. Legacy entries
+  // stored as bare strings are coerced to { name } for backward compatibility.
+  dashboardUsers: z.preprocess(
+    v => (Array.isArray(v) ? v.map(u => (typeof u === 'string' ? { name: u } : u)) : v),
+    z.array(DashboardUserSchema),
+  ).default([]),
 
   // Webhook
   webhookHost: z.string().default('127.0.0.1'),
