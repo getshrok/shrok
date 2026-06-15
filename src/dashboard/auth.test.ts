@@ -64,6 +64,38 @@ describe('TokenStore', () => {
     expect(store.validate(newToken)).toBe(true)
     expect(store.validate(oldToken)).toBe(false)
   })
+
+  it('getUser() returns the display name bound at create()', () => {
+    const token = store.create('Ashley')
+    expect(store.getUser(token)).toBe('Ashley')
+  })
+
+  it('getUser() returns undefined when no user was bound', () => {
+    const token = store.create()
+    expect(store.getUser(token)).toBeUndefined()
+  })
+
+  it('getUser() returns undefined for unknown/revoked tokens', () => {
+    expect(store.getUser('nonexistent-token')).toBeUndefined()
+    const token = store.create('Zoey')
+    store.revoke(token)
+    expect(store.getUser(token)).toBeUndefined()
+  })
+
+  it('getUser() returns undefined after the session expires', () => {
+    const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
+    const realNow = Date.now()
+    const dateSpy = vi.spyOn(Date, 'now')
+    dateSpy.mockReturnValue(realNow)
+
+    const token = store.create('Ashley')
+    expect(store.getUser(token)).toBe('Ashley')
+
+    dateSpy.mockReturnValue(realNow + SESSION_TTL_MS + 1)
+    expect(store.getUser(token)).toBeUndefined()
+
+    dateSpy.mockRestore()
+  })
 })
 
 describe('verifyPassword', () => {

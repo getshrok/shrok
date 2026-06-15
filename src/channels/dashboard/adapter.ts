@@ -38,7 +38,12 @@ export class DashboardChannelAdapter implements ChannelAdapter {
   // Dashboard xray comes from the DB via agent_message_added SSE events — no sendDebug needed.
   async sendDebug(_text: string): Promise<void> {}
 
-  injectMessage(text: string, attachments?: import('../../types/core.js').Attachment[]): void {
-    this.handler?.({ channel: this.id, text: text.trim(), ...(attachments?.length ? { attachments } : {}) })
+  injectMessage(text: string, attachments?: import('../../types/core.js').Attachment[], senderName?: string): void {
+    this.handler?.({
+      channel: this.id,
+      text: text.trim(),
+      ...(senderName ? { senderName } : {}),
+      ...(attachments?.length ? { attachments } : {}),
+    })
   }
 }

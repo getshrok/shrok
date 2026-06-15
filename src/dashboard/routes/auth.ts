@@ -1,7 +1,26 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { Router } from 'express'
 import type { Request, Response } from 'express'
 import { TokenStore, setSessionCookie, verifyPassword, requireAuth } from '../auth.js'
 import type { Config } from '../../config.js'
+
+/** Read the operator-configured dashboard display names fresh from config.json
+ *  so a name added via Settings works without a server restart. Returns [] on
+ *  any read/parse error or when the field is absent. */
+function readDashboardUsers(workspacePath: string): string[] {
+  try {
+    const p = path.join(workspacePath.replace(/^~/, os.homedir()), 'config.json')
+    if (!fs.existsSync(p)) return []
+    const cfg = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>
+    const users = cfg['dashboardUsers']
+    if (!Array.isArray(users)) return []
+    return users.filter((u): u is string => typeof u === 'string')
+  } catch {
+    return []
+  }
+}
 
 // Simple per-IP rate limiter for login attempts
 const LOGIN_MAX_ATTEMPTS = 5
@@ -52,10 +71,23 @@ export function createAuthRouter(store: TokenStore, config: Config): Router {
           return
         }
 
-        const { password } = req.body as { password?: string }
+        const { password, user } = req.body as { password?: string; user?: string }
         if (typeof password !== 'string' || !password) {
           res.status(400).json({ error: 'Missing password' })
           return
+        }
+
+        // Identity pick: when dashboard users are configured, the chosen name
+        // must be one of them (defends against a stale/forged pick). When none
+        // are configured, ignore any submitted user — behavior is unchanged.
+        const dashboardUsers = readDashboardUsers(config.workspacePath)
+        let resolvedUser: string | undefined
+        if (dashboardUsers.length > 0) {
+          if (typeof user !== 'string' || !dashboardUsers.includes(user)) {
+            res.status(400).json({ error: 'Select who you are to sign in' })
+            return
+          }
+          resolvedUser = user
         }
 
         const valid = await verifyPassword(password, config.dashboardPasswordHash)
@@ -66,7 +98,7 @@ export function createAuthRouter(store: TokenStore, config: Config): Router {
 
         clearRateLimit(ip)
 
-        const token = store.create()
+        const token = store.create(resolvedUser)
         setSessionCookie(req, res, token, config)
         res.json({ ok: true })
       } catch {

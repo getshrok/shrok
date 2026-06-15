@@ -415,3 +415,70 @@ describe('PUT /api/settings — tool defaults two-state validation (TOOLCFG-08, 
     expect(htd['allowedTools']).toEqual(['spawn_agent'])
   })
 })
+
+describe('PUT/GET /api/settings — dashboardUsers (login identity picker)', () => {
+  let workspace: string
+  let envFile: string
+  let server: Server
+  let port: number
+
+  beforeEach(async () => {
+    workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'settings-users-ws-'))
+    envFile = path.join(workspace, '.env')
+    fs.writeFileSync(envFile, '', 'utf8')
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => { res.locals['authenticated'] = true; next() })
+    app.use('/api/settings', createSettingsRouter(workspace, envFile, makeTestConfig()))
+    port = await getFreePort()
+    await new Promise<void>((resolve, reject) => {
+      server = app.listen(port, '127.0.0.1', () => resolve())
+      server.once('error', reject)
+    })
+  })
+
+  afterEach(async () => {
+    if (server) await new Promise<void>(r => server.close(() => r()))
+    if (workspace) fs.rmSync(workspace, { recursive: true, force: true })
+  })
+
+  async function put(body: Record<string, unknown>): Promise<{ status: number; json: unknown }> {
+    const r = await fetch(`http://127.0.0.1:${port}/api/settings`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    })
+    return { status: r.status, json: await r.json() }
+  }
+  async function getUsers(): Promise<unknown> {
+    const r = await fetch(`http://127.0.0.1:${port}/api/settings`)
+    return (await r.json() as Record<string, unknown>)['dashboardUsers']
+  }
+  function persisted(): unknown {
+    return (JSON.parse(fs.readFileSync(path.join(workspace, 'config.json'), 'utf8')) as Record<string, unknown>)['dashboardUsers']
+  }
+
+  it('GET returns [] when none configured', async () => {
+    expect(await getUsers()).toEqual([])
+  })
+
+  it('PUT persists names and GET round-trips them', async () => {
+    expect((await put({ dashboardUsers: ['Zoey', 'Ashley'] })).status).toBe(200)
+    expect(persisted()).toEqual(['Zoey', 'Ashley'])
+    expect(await getUsers()).toEqual(['Zoey', 'Ashley'])
+  })
+
+  it('PUT trims whitespace, drops blanks, and dedupes case-insensitively (first spelling wins)', async () => {
+    expect((await put({ dashboardUsers: ['  Ashley ', '', 'ashley', 'Zoey', '   '] })).status).toBe(200)
+    expect(persisted()).toEqual(['Ashley', 'Zoey'])
+  })
+
+  it('PUT rejects a non-string array with 400', async () => {
+    const res = await put({ dashboardUsers: ['ok', 5] })
+    expect(res.status).toBe(400)
+  })
+
+  it('PUT [] clears the list', async () => {
+    await put({ dashboardUsers: ['Ashley'] })
+    expect((await put({ dashboardUsers: [] })).status).toBe(200)
+    expect(persisted()).toEqual([])
+  })
+})

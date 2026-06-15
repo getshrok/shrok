@@ -82,7 +82,8 @@ export function createMessagesRouter(messages: MessageStore, dashboardAdapters: 
       }
     }
 
-    channelAdapter.injectMessage(messageText, attachments.length > 0 ? attachments : undefined)
+    const senderName = typeof res.locals['user'] === 'string' ? (res.locals['user'] as string) : undefined
+    channelAdapter.injectMessage(messageText, attachments.length > 0 ? attachments : undefined, senderName)
     res.json({ ok: true })
   })
 

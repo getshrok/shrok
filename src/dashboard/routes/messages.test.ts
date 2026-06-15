@@ -119,9 +119,9 @@ describe('GET /api/messages — head-scoped filtering (DASH-02)', () => {
  * which is out of scope for the route test).
  */
 class SpyAdapter extends DashboardChannelAdapter {
-  public injected: Array<{ text: string; attachments?: Attachment[] }> = []
-  override injectMessage(text: string, attachments?: Attachment[]): void {
-    this.injected.push({ text, ...(attachments ? { attachments } : {}) })
+  public injected: Array<{ text: string; attachments?: Attachment[]; senderName?: string }> = []
+  override injectMessage(text: string, attachments?: Attachment[], senderName?: string): void {
+    this.injected.push({ text, ...(attachments ? { attachments } : {}), ...(senderName ? { senderName } : {}) })
   }
 }
 
@@ -223,5 +223,55 @@ describe('POST /api/messages/send — per-head adapter routing (DASH-05)', () =>
     const r = await postSend({})
     expect(r.status).toBe(400)
     expect(defaultAdapter.injected).toHaveLength(0)
+  })
+})
+
+describe('POST /api/messages/send — sender attribution from session', () => {
+  let server: Server
+  let port: number
+  let adapter: SpyAdapter
+
+  async function startWithSessionUser(user: string | undefined): Promise<void> {
+    adapter = new SpyAdapter('dashboard:default', 'default')
+    const app = express()
+    app.use(express.json())
+    app.use((_req, res, next) => {
+      res.locals['authenticated'] = true
+      if (user) res.locals['user'] = user
+      next()
+    })
+    const messagesMock = {} as unknown as MessageStore
+    app.use('/api/messages', createMessagesRouter(messagesMock, new Map([['default', adapter]])))
+    port = await getFreePort()
+    await new Promise<void>((resolve, reject) => {
+      server = app.listen(port, '127.0.0.1', () => resolve())
+      server.once('error', reject)
+    })
+  }
+
+  afterEach(async () => {
+    if (server) await new Promise<void>(r => server.close(() => r()))
+  })
+
+  async function postSend(body: Record<string, unknown>): Promise<Response> {
+    return await fetch(`http://127.0.0.1:${port}/api/messages/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('passes the session display name into injectMessage as senderName', async () => {
+    await startWithSessionUser('Ashley')
+    const r = await postSend({ text: 'hi' })
+    expect(r.status).toBe(200)
+    expect(adapter.injected[0]?.senderName).toBe('Ashley')
+  })
+
+  it('omits senderName when the session has no bound user', async () => {
+    await startWithSessionUser(undefined)
+    const r = await postSend({ text: 'hi' })
+    expect(r.status).toBe(200)
+    expect(adapter.injected[0]?.senderName).toBeUndefined()
   })
 })

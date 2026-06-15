@@ -255,6 +255,9 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
       usageFootersEnabled: bool('usageFootersEnabled', config.usageFootersEnabled),
       accentColor: str('accentColor', '#8C51CD'),
       logoPath: str('logoPath', ''),
+      dashboardUsers: Array.isArray(cfg['dashboardUsers'])
+        ? (cfg['dashboardUsers'] as unknown[]).filter((u): u is string => typeof u === 'string')
+        : [],
       timezone: str('timezone', config.timezone),
       // TOOLCFG-08: global tool defaults — two-state (string[] = concrete subset; no null "all tools").
       // Read from the EFFECTIVE merged config (not the workspace-only cfg layer) so the
@@ -402,6 +405,31 @@ export function createSettingsRouter(workspacePath: string, envFilePath: string,
         : {}
       configJson['headToolDefaults'] = { ...htd, allowedTools: val }
       configChanged = true
+    }
+
+    // --- Dashboard users (login identity picker) ---
+    // Array of display names. Trim, drop blanks, and dedupe case-insensitively
+    // (keeping the first spelling) so the stored list is clean for the login picker.
+    if ('dashboardUsers' in body) {
+      const val = body['dashboardUsers']
+      if (!Array.isArray(val) || (val as unknown[]).some(v => typeof v !== 'string')) {
+        res.status(400).json({ error: 'dashboardUsers must be an array of strings' })
+        return
+      }
+      const seen = new Set<string>()
+      const cleaned: string[] = []
+      for (const raw of val as string[]) {
+        const name = raw.trim()
+        if (!name) continue
+        const key = name.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        cleaned.push(name)
+      }
+      if (JSON.stringify(configJson['dashboardUsers']) !== JSON.stringify(cleaned)) {
+        configJson['dashboardUsers'] = cleaned
+        configChanged = true
+      }
     }
 
     // --- Logo upload (base64 data URL) ---

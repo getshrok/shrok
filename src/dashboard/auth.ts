@@ -7,29 +7,46 @@ import type { Config } from '../config.js'
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000  // 30 days
 
+interface Session {
+  expiresAt: number  // ms
+  /** Display name picked at login; prepended to dashboard messages so a head
+   *  can tell who's talking. Undefined when no dashboard users are configured. */
+  user?: string
+}
+
 export class TokenStore {
-  private sessions = new Map<string, number>()  // token → expiresAt (ms)
+  private sessions = new Map<string, Session>()  // token → session
   private sweepTimer = setInterval(() => {
     const now = Date.now()
-    for (const [token, expiresAt] of this.sessions) {
-      if (now > expiresAt) this.sessions.delete(token)
+    for (const [token, session] of this.sessions) {
+      if (now > session.expiresAt) this.sessions.delete(token)
     }
   }, 60 * 60 * 1000).unref() // sweep expired sessions every hour
 
-  create(): string {
+  create(user?: string): string {
     const token = randomBytes(32).toString('hex')
-    this.sessions.set(token, Date.now() + SESSION_TTL_MS)
+    const session: Session = { expiresAt: Date.now() + SESSION_TTL_MS }
+    if (user) session.user = user
+    this.sessions.set(token, session)
     return token
   }
 
   validate(token: string): boolean {
-    const expiresAt = this.sessions.get(token)
-    if (expiresAt === undefined) return false
-    if (Date.now() > expiresAt) {
+    const session = this.sessions.get(token)
+    if (session === undefined) return false
+    if (Date.now() > session.expiresAt) {
       this.sessions.delete(token)
       return false
     }
     return true
+  }
+
+  /** The display name bound to a session at login, if any. Returns undefined
+   *  for unknown/expired tokens and for sessions created without a user. */
+  getUser(token: string): string | undefined {
+    const session = this.sessions.get(token)
+    if (session === undefined || Date.now() > session.expiresAt) return undefined
+    return session.user
   }
 
   revoke(token: string): void {
@@ -49,6 +66,8 @@ export function sessionMiddleware(store: TokenStore) {
     const token = (req.cookies as Record<string, string> | undefined)?.['shrok_session']
     if (token && store.validate(token)) {
       res.locals['authenticated'] = true
+      const user = store.getUser(token)
+      if (user) res.locals['user'] = user
     }
     next()
   }

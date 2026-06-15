@@ -299,6 +299,10 @@ const ConfigSchema = z.object({
   dashboardHost: z.string().default('127.0.0.1'),
   dashboardPasswordHash: z.string().optional(),
   dashboardHttps: z.coerce.boolean().default(false),
+  // Operator-managed display names shown as a forced pick at dashboard login.
+  // The chosen name is bound to the session and prepended to dashboard messages
+  // (`[Ashley]: …`) so a head can tell who's talking. Empty = no picker, no prefix.
+  dashboardUsers: z.array(z.string()).default([]),
 
   // Webhook
   webhookHost: z.string().default('127.0.0.1'),

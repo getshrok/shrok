@@ -262,10 +262,14 @@ export class DashboardServer {
         if (fs.existsSync(p)) cfg = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>
       } catch { /* ignore */ }
       const logoPath = (cfg['logoPath'] as string) || ''
+      const dashboardUsers = Array.isArray(cfg['dashboardUsers'])
+        ? (cfg['dashboardUsers'] as unknown[]).filter((u): u is string => typeof u === 'string')
+        : []
       res.json({
         accentColor: (cfg['accentColor'] as string) || '#8C51CD',
         logoUrl: logoPath ? `/api/branding/${logoPath}` : '/logo.svg',
         assistantName: readAssistantName(workspacePath),
+        dashboardUsers,
         version: process.env['SHROK_VERSION'] ?? 'unknown',
       })
     })
