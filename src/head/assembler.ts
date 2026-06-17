@@ -20,6 +20,7 @@ import type { TextMessage } from '../types/core.js'
 import { log } from '../logger.js'
 import { formatIanaTimeLine } from '../util/time.js'
 import { loadMemoryPromptOverrides } from '../memory/prompts.js'
+import { scanAmbient } from '../sensors/scan.js'
 
 // ─���─ AssembledContext ───────────────────────��───────────────────────────��─────
 
@@ -111,15 +112,6 @@ export class ContextAssemblerImpl implements ContextAssembler {
       systemPrompt = systemPrompt.replaceAll('{workspacePath}', resolvedWorkspace)
     }
 
-    // Ambient context — cached situational snapshot
-    if (this.config.workspacePath) {
-      try {
-        const ambientPath = path.join(this.config.workspacePath.replace(/^~/, os.homedir()), 'AMBIENT.md')
-        const ambient = fs.readFileSync(ambientPath, 'utf8').trim()
-        if (ambient) systemPrompt += `\n\n## Ambient Context\n${ambient}`
-      } catch { /* file doesn't exist yet — skip */ }
-    }
-
     const capabilitiesBlock = await buildCapabilitiesBlock(this.mcpRegistry)
     if (capabilitiesBlock) {
       systemPrompt = `${systemPrompt}\n\n${capabilitiesBlock}`
@@ -142,6 +134,14 @@ export class ContextAssemblerImpl implements ContextAssembler {
     const scheduleBlock = this.buildScheduleBlock()
     if (scheduleBlock) {
       systemPrompt += `\n\n${scheduleBlock}`
+    }
+
+    // Fresh ambient scan from ambient/*.md — placed AFTER "Current time:" so it
+    // lands in the uncached region (T-48-08 mitigation; SENSOR-10).
+    if (this.config.workspacePath) {
+      const resolvedWorkspace = this.config.workspacePath.replace(/^~/, os.homedir())
+      const ambientBlock = scanAmbient(resolvedWorkspace)
+      if (ambientBlock) systemPrompt += `\n\n${ambientBlock}`
     }
 
     // 2. Fixed allocation — split the context window between system, memory, history, and output.
@@ -202,7 +202,7 @@ export class ContextAssemblerImpl implements ContextAssembler {
     if (!this.scheduleStore) return ''
     const items = this.scheduleStore
       .list({ headId: this.headId })
-      .filter(s => s.enabled && s.nextRun != null)
+      .filter(s => s.enabled && s.nextRun != null && s.kind !== 'script')
       .sort((a, b) => (a.nextRun ?? '').localeCompare(b.nextRun ?? ''))
     if (items.length === 0) return ''
 

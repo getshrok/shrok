@@ -425,4 +425,77 @@ describe('ContextAssemblerImpl — scheduled reminders & tasks awareness block',
     const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
     expect(systemPrompt).not.toContain('## Scheduled reminders & tasks')
   })
+
+  it('excludes kind:script schedules from the awareness block (Pitfall 5)', async () => {
+    const items = [
+      makeSchedule({ id: 'task1', kind: 'task', taskName: 'email', cron: '0 9 * * *', nextRun: '2026-06-18T09:00:00Z' }),
+      makeSchedule({ id: 'script1', kind: 'script' as any, taskName: 'weather-sensor', cron: '*/15 * * * *', nextRun: '2026-06-17T12:15:00Z' }),
+    ]
+    const { systemPrompt } = await makeAssemblerWithSchedules(items).assemble(makeScheduleTrigger())
+    expect(systemPrompt).toContain('email')
+    expect(systemPrompt).not.toContain('weather-sensor')
+  })
+})
+
+// ─── Phase 48: scanAmbient injection in uncached region ──────────────────────
+
+describe('ContextAssemblerImpl — scanAmbient injection (Phase 48, SENSOR-10/12)', () => {
+  let tmpDir: string
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'assembler-ambient-test-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  function makeAssemblerWithWorkspace(workspaceDir: string): ContextAssemblerImpl {
+    return new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      makeMessageStore(),
+      makeAgentStore(),
+      makeSkillLoader(),
+      { ...makeMinimalConfig(), workspacePath: workspaceDir },
+      makeMcpRegistry(),
+      () => new Date('2026-06-17T12:00:00Z'),
+    )
+  }
+
+  it('injects ## Weather block AFTER Current time: (uncached region, T-48-08)', async () => {
+    const ambientDir = path.join(tmpDir, 'ambient')
+    fs.mkdirSync(ambientDir)
+    fs.writeFileSync(path.join(ambientDir, 'weather.md'), 'Sunny')
+
+    const assembler = makeAssemblerWithWorkspace(tmpDir)
+    const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
+
+    expect(systemPrompt).toContain('## Weather')
+    expect(systemPrompt).toContain('Sunny')
+
+    const weatherIdx = systemPrompt.indexOf('## Weather')
+    const currentTimeIdx = systemPrompt.indexOf('\n\nCurrent time:')
+    expect(weatherIdx).toBeGreaterThan(0)
+    expect(currentTimeIdx).toBeGreaterThanOrEqual(0)
+    expect(weatherIdx).toBeGreaterThan(currentTimeIdx)
+  })
+
+  it('does not inject any ambient block when ambient/ is absent', async () => {
+    const assembler = makeAssemblerWithWorkspace(tmpDir)
+    const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
+    expect(systemPrompt).not.toContain('## Weather')
+    // ambient/ doesn't exist — no ambient block at all
+    expect(systemPrompt.split('\n').filter(l => l.startsWith('## ')).every(h => !h.includes('Weather'))).toBe(true)
+  })
+
+  it('does NOT inject legacy root-level AMBIENT.md content (D-09 / SENSOR-12)', async () => {
+    // Write the old-style AMBIENT.md to workspace root — must be invisible
+    fs.writeFileSync(path.join(tmpDir, 'AMBIENT.md'), 'legacy text from AMBIENT.md')
+
+    const assembler = makeAssemblerWithWorkspace(tmpDir)
+    const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
+
+    expect(systemPrompt).not.toContain('legacy text from AMBIENT.md')
+    expect(systemPrompt).not.toContain('## Ambient Context')
+  })
 })
