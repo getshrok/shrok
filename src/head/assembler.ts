@@ -6,6 +6,8 @@ import type { SkillLoader } from '../types/skill.js'
 import type { IdentityLoader } from '../identity/loader.js'
 import type { MessageStore } from '../db/messages.js'
 import type { AgentStore } from '../db/agents.js'
+import type { ScheduleStore } from '../db/schedules.js'
+import { describeScheduleLine } from '../scheduler/describe-schedule.js'
 import type { Config } from '../config.js'
 import { estimateStringTokens, estimateTokens } from '../db/token.js'
 import { agentResult, priorTool, priorResult, escapeXmlBody, _descriptionForMarker } from '../markers.js'
@@ -94,6 +96,7 @@ export class ContextAssemblerImpl implements ContextAssembler {
     private router?: LLMRouter,
     private headId: string = 'default',
     private customPrompt?: string,
+    private scheduleStore?: ScheduleStore,
   ) {}
 
   async assemble(trigger: QueueEvent): Promise<AssembledContext> {
@@ -132,6 +135,13 @@ export class ContextAssemblerImpl implements ContextAssembler {
     systemPrompt += `\n\nCurrent time: ${formatIanaTimeLine(this.getNow(), this.config.timezone)}`
     if (trigger.type === 'user_message' && trigger.channel) {
       systemPrompt += `\nChannel: ${trigger.channel}`
+    }
+
+    // Ambient awareness of this head's own reminders/scheduled tasks. Dynamic, so
+    // it goes AFTER the "Current time:" cache-split marker (uncached region).
+    const scheduleBlock = this.buildScheduleBlock()
+    if (scheduleBlock) {
+      systemPrompt += `\n\n${scheduleBlock}`
     }
 
     // 2. Fixed allocation — split the context window between system, memory, history, and output.
@@ -179,6 +189,33 @@ export class ContextAssemblerImpl implements ContextAssembler {
     const history = this.messages.getRecent(this.headId, historyBudget)
 
     return { systemPrompt: finalSystemPrompt, history, historyBudget, memoryBlock }
+  }
+
+  /**
+   * Build the "Scheduled reminders & tasks" awareness block for this head: its
+   * enabled, still-pending reminders and scheduled tasks, sorted by next fire.
+   * Returns '' when there's no schedule store or nothing eligible (the caller
+   * then appends nothing). Each line renders in the schedule's effective zone
+   * (cronTimezone ?? workspace tz) so the clock matches the computed nextRun.
+   */
+  private buildScheduleBlock(): string {
+    if (!this.scheduleStore) return ''
+    const items = this.scheduleStore
+      .list({ headId: this.headId })
+      .filter(s => s.enabled && s.nextRun != null)
+      .sort((a, b) => (a.nextRun ?? '').localeCompare(b.nextRun ?? ''))
+    if (items.length === 0) return ''
+
+    const now = this.getNow()
+    const lines = items.map(s =>
+      describeScheduleLine(s, now, s.cronTimezone ?? this.config.timezone),
+    )
+    return [
+      '## Scheduled reminders & tasks (this head)',
+      'These are already set and each fires automatically at the time shown — nothing is needed from you now. Listed for background awareness.',
+      '',
+      ...lines,
+    ].join('\n')
   }
 
   /**

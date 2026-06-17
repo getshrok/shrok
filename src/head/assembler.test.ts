@@ -16,6 +16,7 @@ import type { SkillLoader } from '../types/skill.js'
 import type { McpRegistry } from '../mcp/registry.js'
 import type { Config } from '../config.js'
 import type { QueueEvent } from '../types/core.js'
+import type { Schedule, ScheduleStore } from '../db/schedules.js'
 
 // ─── Minimal mock helpers ─────────────────────────────────────────────────────
 
@@ -303,5 +304,125 @@ describe('ContextAssemblerImpl — customPrompt + headId (issue #12)', () => {
 
     expect(recentCalls.length).toBeGreaterThan(0)
     expect(recentCalls.every(id => id === 'work')).toBe(true)
+  })
+})
+
+// ─── Scheduled reminders & tasks awareness block ──────────────────────────────
+
+function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
+  const now = new Date('2026-06-17T12:00:00Z').toISOString()
+  return {
+    id: 'sched_1',
+    headId: 'default',
+    taskName: 'email',
+    kind: 'task',
+    cron: null,
+    runAt: null,
+    enabled: true,
+    lastRun: null,
+    nextRun: null,
+    lastSkipped: null,
+    lastSkipReason: null,
+    conditions: null,
+    agentContext: null,
+    cronTimezone: null,
+    requiresAck: false,
+    nagIntervalMinutes: null,
+    ackPending: false,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  }
+}
+
+function makeScheduleStore(items: Schedule[]): ScheduleStore {
+  return {
+    list: (filter?: { headId?: string }) =>
+      filter?.headId !== undefined ? items.filter(s => s.headId === filter.headId) : items,
+  } as unknown as ScheduleStore
+}
+
+function makeAssemblerWithSchedules(items: Schedule[], headId = 'default'): ContextAssemblerImpl {
+  return new ContextAssemblerImpl(
+    makeIdentityLoader(),
+    makeMessageStore(),
+    makeAgentStore(),
+    makeSkillLoader(),
+    makeMinimalConfig(),
+    makeMcpRegistry(),
+    () => new Date('2026-06-17T12:00:00Z'), // getNow
+    undefined, // topicMemory
+    undefined, // router
+    headId,
+    undefined, // customPrompt
+    makeScheduleStore(items),
+  )
+}
+
+describe('ContextAssemblerImpl — scheduled reminders & tasks awareness block', () => {
+  it('renders the block AFTER "Current time:" (dynamic region) with one line per item', async () => {
+    const items = [
+      makeSchedule({ id: 'a', kind: 'reminder', runAt: '2026-06-17T17:30:00Z', nextRun: '2026-06-17T17:30:00Z', agentContext: 'call the bank' }),
+      makeSchedule({ id: 'b', kind: 'task', taskName: 'backup-photos', cron: '0 2 * * *', nextRun: '2026-06-18T02:00:00Z' }),
+    ]
+    const { systemPrompt } = await makeAssemblerWithSchedules(items).assemble(makeScheduleTrigger())
+
+    expect(systemPrompt).toContain('## Scheduled reminders & tasks (this head)')
+    expect(systemPrompt).toContain('- Reminder · today 17:30 — call the bank')
+    expect(systemPrompt).toContain('- Task · daily 02:00, next tomorrow — backup-photos')
+
+    const blockIdx = systemPrompt.indexOf('## Scheduled reminders & tasks')
+    const currentTimeIdx = systemPrompt.indexOf('Current time:')
+    expect(currentTimeIdx).toBeGreaterThanOrEqual(0)
+    expect(blockIdx).toBeGreaterThan(currentTimeIdx)
+  })
+
+  it('sorts by next fire (soonest first)', async () => {
+    const items = [
+      makeSchedule({ id: 'late', kind: 'task', taskName: 'late', cron: '0 2 * * *', nextRun: '2026-06-20T02:00:00Z' }),
+      makeSchedule({ id: 'soon', kind: 'reminder', runAt: '2026-06-17T17:30:00Z', nextRun: '2026-06-17T17:30:00Z', agentContext: 'soon' }),
+    ]
+    const { systemPrompt } = await makeAssemblerWithSchedules(items).assemble(makeScheduleTrigger())
+    expect(systemPrompt.indexOf('— soon')).toBeLessThan(systemPrompt.indexOf('— late'))
+  })
+
+  it('excludes disabled schedules and those without a nextRun', async () => {
+    const items = [
+      makeSchedule({ id: 'off', kind: 'reminder', enabled: false, nextRun: '2026-06-18T09:00:00Z', agentContext: 'disabled one' }),
+      makeSchedule({ id: 'nonext', kind: 'reminder', enabled: true, nextRun: null, agentContext: 'no next run' }),
+      makeSchedule({ id: 'live', kind: 'reminder', runAt: '2026-06-17T17:30:00Z', nextRun: '2026-06-17T17:30:00Z', agentContext: 'live one' }),
+    ]
+    const { systemPrompt } = await makeAssemblerWithSchedules(items).assemble(makeScheduleTrigger())
+    expect(systemPrompt).toContain('live one')
+    expect(systemPrompt).not.toContain('disabled one')
+    expect(systemPrompt).not.toContain('no next run')
+  })
+
+  it('only lists schedules owned by this head', async () => {
+    const items = [
+      makeSchedule({ id: 'mine', headId: 'work', kind: 'reminder', runAt: '2026-06-17T17:30:00Z', nextRun: '2026-06-17T17:30:00Z', agentContext: 'mine' }),
+      makeSchedule({ id: 'theirs', headId: 'default', kind: 'reminder', runAt: '2026-06-17T18:00:00Z', nextRun: '2026-06-17T18:00:00Z', agentContext: 'theirs' }),
+    ]
+    const { systemPrompt } = await makeAssemblerWithSchedules(items, 'work').assemble(makeScheduleTrigger())
+    expect(systemPrompt).toContain('mine')
+    expect(systemPrompt).not.toContain('theirs')
+  })
+
+  it('omits the block entirely when there are no eligible items', async () => {
+    const { systemPrompt } = await makeAssemblerWithSchedules([]).assemble(makeScheduleTrigger())
+    expect(systemPrompt).not.toContain('## Scheduled reminders & tasks')
+  })
+
+  it('omits the block when no schedule store is wired (back-compat)', async () => {
+    const assembler = new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      makeMessageStore(),
+      makeAgentStore(),
+      makeSkillLoader(),
+      makeMinimalConfig(),
+      makeMcpRegistry(),
+    )
+    const { systemPrompt } = await assembler.assemble(makeScheduleTrigger())
+    expect(systemPrompt).not.toContain('## Scheduled reminders & tasks')
   })
 })

@@ -386,6 +386,7 @@ export function buildSystem(deps: SystemDeps): System {
     llmRouter,
     deps.headId ?? 'default',
     deps.customPrompt,
+    stores.schedules,
   )
   const assembler = deps.assemblerWrapper ? deps.assemblerWrapper(baseAssembler) : baseAssembler
 
