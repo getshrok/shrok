@@ -166,7 +166,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 **Success Criteria** (what must be TRUE):
   1. A sensor script placed in the workspace sensors directory and referenced by a `kind:'script'` schedule row runs in the scheduler tick with no queue event enqueued, no activation loop activation, and no model call — only a child process is spawned
   2. After a successful sensor run, `ambient/<slug>.md` contains the script's stdout (truncated to the max-output cap); after a failed run (non-zero exit, timeout, or throw), the file is overwritten with actionable error text
-  3. A newly created or re-enabled sensor runs once immediately (before its next scheduled tick) so its output is available without waiting
+  3. The runner exposes a directly-callable "run this sensor now" path (the backend half of run-on-save, SENSOR-09) that executes a sensor immediately and writes its output independent of the schedule tick — the create/enable UI trigger that invokes it is Phase 49
   4. Every model turn sees each `ambient/*.md` file injected as a `## <Label>` block (filename-derived heading, e.g. `weather.md` → `## Weather`) in the uncached region — after the `\n\nCurrent time:` cache-split marker — and this injection is a fresh filesystem scan each turn, not a cached value
   5. Both the head assembler (for head turns) and the proactive scheduler path see the same ambient scan; no consumer still reads the old single-file `AMBIENT.md`
 **Plans**: 3 plans
