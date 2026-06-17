@@ -27,13 +27,13 @@
 
 ### Runner & Output
 
-- [ ] **SENSOR-07**: On a successful run, the sensor's captured stdout, truncated to a maximum length, is written to `ambient/<slug>.md`.
-- [ ] **SENSOR-08**: On a failed run (throw, non-zero exit, or timeout), `ambient/<slug>.md` is overwritten with actionable error text that includes the trimmed error message.
-- [ ] **SENSOR-09**: A sensor runs once immediately on create/enable/save, so its first output appears without waiting for the next scheduled tick.
+- [x] **SENSOR-07**: On a successful run, the sensor's captured stdout, truncated to a maximum length, is written to `ambient/<slug>.md`.
+- [x] **SENSOR-08**: On a failed run (throw, non-zero exit, or timeout), `ambient/<slug>.md` is overwritten with actionable error text that includes the trimmed error message.
+- [x] **SENSOR-09**: A sensor runs once immediately on create/enable/save, so its first output appears without waiting for the next scheduled tick.
 
 ### Injection
 
-- [ ] **SENSOR-10**: Sensor output is injected into every model turn as a fresh scan of `ambient/*.md`, each block labeled by a filename-derived heading (`weather.md` → `## Weather`), placed in the uncached system-prompt region so updates never bust prompt caching.
+- [x] **SENSOR-10**: Sensor output is injected into every model turn as a fresh scan of `ambient/*.md`, each block labeled by a filename-derived heading (`weather.md` → `## Weather`), placed in the uncached system-prompt region so updates never bust prompt caching.
 - [ ] **SENSOR-11**: The same ambient scan feeds both the head's own turns (assembler) and the proactive scheduler, so proactive runs see the same situational state.
 
 ### Cleanup
@@ -68,9 +68,9 @@ Which phases cover which requirements. Filled during roadmap creation.
 | SENSOR-04 | Phase 49 | Pending |
 | SENSOR-05 | Phase 49 | Pending |
 | SENSOR-06 | Phase 48 | Pending |
-| SENSOR-07 | Phase 48 | Pending |
-| SENSOR-08 | Phase 48 | Pending |
-| SENSOR-09 | Phase 48 | Pending |
-| SENSOR-10 | Phase 48 | Pending |
+| SENSOR-07 | Phase 48 | Complete |
+| SENSOR-08 | Phase 48 | Complete |
+| SENSOR-09 | Phase 48 | Complete |
+| SENSOR-10 | Phase 48 | Complete |
 | SENSOR-11 | Phase 48 | Pending |
 | SENSOR-12 | Phase 48 | Pending |
