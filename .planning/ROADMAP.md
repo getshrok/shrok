@@ -154,7 +154,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 
 ## v1.10 Ambient Context (Sensors)
 
-- [ ] **Phase 48: Sensor Backend** — Sensor file storage, `kind:'script'` schedule type, child-process runner (timeout + output cap), `ambient/<slug>.md` output, uncached ambient scan injected into both the head assembler and the proactive scheduler, and removal of the legacy `AMBIENT.md` path. Sensors work end-to-end without a dashboard.
+- [x] **Phase 48: Sensor Backend** — Sensor file storage, `kind:'script'` schedule type, child-process runner (timeout + output cap), `ambient/<slug>.md` output, uncached ambient scan injected into both the head assembler and the proactive scheduler, and removal of the legacy `AMBIENT.md` path. Sensors work end-to-end without a dashboard. (completed 2026-06-17)
 - [ ] **Phase 49: Sensors Dashboard** — New "Sensors" sidebar section (parallel to Tasks) with full create/edit/delete CRUD, run-on-save wiring, and Schedules UI support for `kind:'script'` sensor schedules.
 
 ## Phase Details
@@ -172,7 +172,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 **Plans**: 3 plans
   - [x] 48-01-PLAN.md — src/sensors/ core: shared scanAmbient + slugToTitle scanner and the child-process runSensor (timeout + output cap + atomic write + slug guard) (Wave 1)
   - [x] 48-02-PLAN.md — Schedule.kind:'script' + inline scheduler dispatch branch (no queue/model) + SensorRunner injection at index.ts (Wave 2)
-  - [ ] 48-03-PLAN.md — Repoint all 3 ambient read sites to scanAmbient() uncached + delete legacy AMBIENT.md path + filter script schedules from buildScheduleBlock (Wave 2)
+  - [x] 48-03-PLAN.md — Repoint all 3 ambient read sites to scanAmbient() uncached + delete legacy AMBIENT.md path + filter script schedules from buildScheduleBlock (Wave 2)
 **UI hint**: no
 
 ### Phase 49: Sensors Dashboard
@@ -268,5 +268,5 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
 | 46. Tool Access Control | v1.8 | 6/3 | Complete    | 2026-06-07 |
 | 47. Head Runs Agent Tools | v1.9 | 3/3 | Complete | 2026-06-07 |
-| 48. Sensor Backend | v1.10 | 2/3 | In Progress|  |
+| 48. Sensor Backend | v1.10 | 3/3 | Complete   | 2026-06-17 |
 | 49. Sensors Dashboard | v1.10 | 0/TBD | Not started | — |

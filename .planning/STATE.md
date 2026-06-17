@@ -2,24 +2,24 @@
 gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: Ambient Context (Sensors)
-status: executing
-last_updated: "2026-06-17T21:36:16.187Z"
+status: verifying
+last_updated: "2026-06-17T21:44:56.941Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 0
+  completed_plans: 3
+  percent: 20
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 48 (sensor-backend) — EXECUTING
+Phase: 48 (sensor-backend) — COMPLETE
 Plan: 3 of 3
-Status: Ready to execute
+Status: All plans executed and verified
 Last activity: 2026-06-17
 
 ### Quick Tasks Completed
@@ -281,6 +281,11 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 - D-45-06-NO-ACK (Plan 45-06): set-alarm never sets requiresAck/nag — continuous ring + 24h cap is the entire alert mechanism
 - D-45-06-TEST-SCOPE (Plan 45-06): TIMER-02 test checks numbered steps section only (not guidance text); ALARM-03 test checks code-block examples only (not constraint text) — avoids false positives from advisory references
 
+## Decisions (Phase 48)
+
+- D-48-03-THREE-CALL-SITES (Plan 48-03): activation.ts had THREE readAmbientContext() call sites (lines ~1136, ~1213, plus one at different indentation); all three replaced with scanAmbient() via workspacePath ternary guard. The plan named two; the third was caught by test failures and fixed as Rule 1 auto-fix.
+- D-48-03-WORKSPACEPATH-FIXTURE (Plan 48-03): activation.test.ts makeFixture config lacked workspacePath, so scanAmbient call site was unreachable (ternary returned '' before calling scanAmbient). Added workspacePath: tmpDir to the config. Existing tests unaffected (tmpDir has no ambient/ directory — scanAmbient returns '' for all legacy tests).
+
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -321,7 +326,8 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 | Phase 46 P02 | 5min | 2 tasks | 4 files |
 | Phase 46 P03 | 3min | 3 tasks | 6 files |
 | Phase 48-sensor-backend P02 | 8min | 2 tasks | 4 files |
+| Phase 48-sensor-backend P03 | 5min | 2 tasks | 6 files |
 
 ## Operator Next Steps
 
-- Plan Phase 48 with /gsd:plan-phase 48
+- Phase 48 sensor-backend COMPLETE — proceed to Phase 49 (Sensors Dashboard)
