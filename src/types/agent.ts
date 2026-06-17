@@ -104,8 +104,11 @@ export interface AgentRunner {
   /** Spawn a new agent. Returns agent ID. Non-blocking — agent runs async. */
   spawn(options: SpawnOptions): Promise<string>
 
-  /** Push new context to a running agent via agent_inbox. */
-  update(agentId: string, message: string): Promise<void>
+  /** Push new context to a running agent via agent_inbox.
+   *  `onVerbose` re-binds the agent's xray (tool-work) stream to the caller's
+   *  current channel — without it a continued agent keeps streaming work to the
+   *  channel it was first spawned from. */
+  update(agentId: string, message: string, onVerbose?: (msg: string) => Promise<void>): Promise<void>
 
   /** Provide an answer to a suspended agent's question. Resumes execution. */
   signal(agentId: string, answer: string): Promise<void>

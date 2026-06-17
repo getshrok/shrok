@@ -243,7 +243,16 @@ export class LocalAgentRunner implements AgentRunner {
     return agentId
   }
 
-  async update(agentId: string, message: string): Promise<void> {
+  async update(agentId: string, message: string, onVerbose?: (msg: string) => Promise<void>): Promise<void> {
+    // Re-bind the xray (verbose) callback to the CURRENT caller's channel before
+    // resuming. Agents preserve their spawn-time onVerbose across continuations
+    // (verboseCallbacks + resumeSuspended's savedVerbose), so without this an agent
+    // first spawned from one channel (e.g. Telegram) keeps streaming its tool work
+    // to that channel even when continued from another (e.g. the dashboard) —
+    // surfacing a stray tool call on the old channel while the real reply goes to
+    // the new one. runLoopFrom's agentVerbose reads this map live, so the rebind
+    // also reaches an already-running in-process loop.
+    if (onVerbose) this.verboseCallbacks.set(agentId, onVerbose)
     // Suspended agents need a 'signal' type to resume; running agents get 'update'.
     const state = this.agentStore.get(agentId)
     if (state?.status === 'completed') {
@@ -847,8 +856,15 @@ export class LocalAgentRunner implements AgentRunner {
       // onDebug is intentionally NOT threaded into the agent tool loop: agent internals belong to xray
       // (onVerbose). onDebug is for head-level internals only; passing both would duplicate every
       // thinking block / tool call / tool result into the channel.
-      const agentVerbose = options.onVerbose && options.trigger === 'manual'
-        ? (msg: string) => options.onVerbose!(`\`\`\`\n${circlePrefix}[${displayName}] ${msg}\n\`\`\``)
+      // Read the verbose callback LIVE from the per-agent map (rather than capturing
+      // options.onVerbose once) so a rebind via update() — e.g. continuing the agent
+      // from a different channel — takes effect immediately, even mid-loop. No-ops
+      // when no callback is registered (e.g. xray off, or a non-debug spawn).
+      const agentVerbose = options.trigger === 'manual'
+        ? (msg: string) => {
+            const cb = this.verboseCallbacks.get(agentId)
+            return cb ? cb(`\`\`\`\n${circlePrefix}[${displayName}] ${msg}\n\`\`\``) : Promise.resolve()
+          }
         : undefined
 
       await runToolLoop(this.llmRouter, {
@@ -1111,7 +1127,8 @@ export class LocalAgentRunner implements AgentRunner {
       const target = this.agentStore.get(targetId)
       if (!target || target.parentAgentId !== agentId)
         return JSON.stringify({ error: true, message: `Agent ${targetId} is not a child of ${agentId}` })
-      await this.update(targetId, input['message'] as string)
+      // Re-bind the child's xray to the parent's current channel (mirrors the head path).
+      await this.update(targetId, input['message'] as string, options.onVerbose)
       return JSON.stringify({ ok: true })
     }
 

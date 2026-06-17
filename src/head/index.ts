@@ -381,7 +381,9 @@ export class HeadToolExecutor implements ToolExecutor {
             }
           }
         }
-        await this.opts.agentRunner.update(agentId, message)
+        // Pass the head's current xray callback so a continued agent streams its
+        // work to THIS activation's channel, not the one it was first spawned from.
+        await this.opts.agentRunner.update(agentId, message, this.opts.onVerbose)
         return JSON.stringify({ ok: true })
       }
 
