@@ -673,6 +673,7 @@ export class ActivationLoop {
           userMd: identityLoader.readFile('USER.md') ?? '',
           soulMd: identityLoader.readFile('SOUL.md') ?? '',
           currentTime: formatIanaTimeLine(new Date(), config.timezone),
+          ...(a.relayGuidance ? { relayGuidance: a.relayGuidance } : {}),
         }, this.opts.llmRouter, config.stewardModel, this.opts.usageStore, ce.id)
         if (!relay) {
           suppressedEventIds.add(ce.id)
@@ -1311,6 +1312,7 @@ export class ActivationLoop {
       skillName: taskName!,
       ...(scheduledModel ? { model: scheduledModel } : {}),
       ...(schedule?.deliverToHeadIds?.length ? { deliverToHeadIds: schedule.deliverToHeadIds } : {}),
+      ...(schedule?.relayGuidance ? { relayGuidance: schedule.relayGuidance } : {}),
     })
   }
 

@@ -25,6 +25,10 @@ export interface Schedule {
    *  Absent on reminders and legacy rows (absent = owner-only; do NOT migrate to []).
    *  Effective delivery set is dedupe([headId, ...deliverToHeadIds]). */
   deliverToHeadIds?: string[]
+  /** Optional operator guidance for the relay steward, injected into its prompt to bias
+   *  whether THIS scheduled task's output is surfaced (e.g. "always deliver" / "only ping
+   *  on failure"). Only meaningful for kind:'task'. Absent = relay defaults apply. */
+  relayGuidance?: string
   createdAt: string
   updatedAt: string
 }
@@ -44,12 +48,13 @@ export interface CreateScheduleOptions {
   nagIntervalMinutes?: number | null
   ackPending?: boolean
   deliverToHeadIds?: string[]
+  relayGuidance?: string
 }
 
 export type SchedulePatch = Partial<Pick<Schedule,
   'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' |
   'agentContext' | 'cronTimezone' | 'ackPending' | 'requiresAck' | 'nagIntervalMinutes' |
-  'deliverToHeadIds'
+  'deliverToHeadIds' | 'relayGuidance'
 >>
 
 // ─── Lazy schedule migration (Phase 35 D-03, Phase 37 D-08) ──────────────────
@@ -103,6 +108,7 @@ export class ScheduleStore {
       nagIntervalMinutes: options.nagIntervalMinutes ?? null,
       ackPending: options.ackPending ?? false,
       ...(options.deliverToHeadIds?.length ? { deliverToHeadIds: options.deliverToHeadIds } : {}),
+      ...(options.relayGuidance ? { relayGuidance: options.relayGuidance } : {}),
       createdAt: now,
       updatedAt: now,
     }
@@ -157,6 +163,13 @@ export class ScheduleStore {
         existing.deliverToHeadIds = patch.deliverToHeadIds
       } else {
         delete existing.deliverToHeadIds
+      }
+    }
+    if (patch.relayGuidance !== undefined) {
+      if (patch.relayGuidance) {
+        existing.relayGuidance = patch.relayGuidance
+      } else {
+        delete existing.relayGuidance
       }
     }
 

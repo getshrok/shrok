@@ -327,6 +327,9 @@ export interface RelayStewardContext {
   soulMd: string
   /** Current ISO timestamp */
   currentTime: string
+  /** Optional per-schedule operator guidance, injected into the relay prompt to bias the
+   *  surface-vs-suppress decision for this specific scheduled task. Absent = defaults. */
+  relayGuidance?: string
 }
 
 // Cap the agent output passed to the relay steward. The steward needs the gist
@@ -355,6 +358,7 @@ export async function runRelaySteward(
     USER_MD: ctx.userMd || '(empty)',
     SOUL_MD: ctx.soulMd || '(empty)',
     CURRENT_TIME: ctx.currentTime,
+    SCHEDULE_RELAY_GUIDANCE: ctx.relayGuidance?.trim() || '(none — apply the default rules below)',
   })
   try {
     const response = await stewardComplete('steward-relay', router, model, prompt, 128, usageStore, eventId, onDebug,

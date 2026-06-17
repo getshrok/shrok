@@ -40,8 +40,8 @@ export function createSchedulesRouter(
       return
     }
 
-    const { taskName, cron, runAt, conditions, agentContext } = req.body as {
-      taskName?: unknown; cron?: unknown; runAt?: unknown; conditions?: unknown; agentContext?: unknown
+    const { taskName, cron, runAt, conditions, agentContext, relayGuidance } = req.body as {
+      taskName?: unknown; cron?: unknown; runAt?: unknown; conditions?: unknown; agentContext?: unknown; relayGuidance?: unknown
     }
 
     // D-04: validate ack↔nag coupling, floor, and ceiling before any other logic
@@ -178,6 +178,7 @@ export function createSchedulesRouter(
       if (nextRun !== undefined) createOpts.nextRun = nextRun
       if (typeof conditions === 'string' && conditions) createOpts.conditions = conditions
       if (typeof agentContext === 'string' && agentContext) createOpts.agentContext = agentContext
+      if (typeof relayGuidance === 'string' && relayGuidance) createOpts.relayGuidance = relayGuidance
       // D-04: apply validated ack/nag fields
       if (ackBool) createOpts.requiresAck = true
       if (ackBool && nagNum > 0) createOpts.nagIntervalMinutes = nagNum
@@ -205,9 +206,9 @@ export function createSchedulesRouter(
       res.status(400).json({ error: 'headId cannot be reassigned via PATCH. To move a schedule to a different head, delete and recreate.' })
       return
     }
-    const { enabled, cron, runAt, conditions, agentContext } = req.body as {
+    const { enabled, cron, runAt, conditions, agentContext, relayGuidance } = req.body as {
       enabled?: unknown; cron?: unknown; runAt?: unknown;
-      conditions?: unknown; agentContext?: unknown
+      conditions?: unknown; agentContext?: unknown; relayGuidance?: unknown
     }
 
     const patch: Parameters<typeof scheduleStore.update>[1] = {}
@@ -227,6 +228,7 @@ export function createSchedulesRouter(
     }
     if (typeof conditions === 'string') patch.conditions = conditions
     if (typeof agentContext === 'string') patch.agentContext = agentContext
+    if (typeof relayGuidance === 'string') patch.relayGuidance = relayGuidance
 
     // Recompute nextRun if cron changed (overrides runAt-derived nextRun if both sent)
     if (typeof cron === 'string' && cron) {

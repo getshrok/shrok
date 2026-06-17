@@ -275,6 +275,9 @@ export interface Schedule {
   updatedAt: string
   /** Phase 44 — delivery set for task schedules. Absent = owner-only. */
   deliverToHeadIds?: string[]
+  /** Operator guidance injected into the relay steward's prompt to bias whether this
+   *  task's output is surfaced. Task-only; absent = relay defaults apply. */
+  relayGuidance?: string
 }
 
 export interface ApiKeyStatus { isSet: boolean }

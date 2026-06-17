@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runSpawnAgentSteward, DEFAULT_STEWARDS } from './steward.js'
+import { runSpawnAgentSteward, runRelaySteward, DEFAULT_STEWARDS } from './steward.js'
 import { log } from '../logger.js'
 import type { LLMRouter, LLMResponse } from '../types/llm.js'
 
@@ -72,5 +72,52 @@ describe('runSpawnAgentSteward', () => {
     const router = makeStubRouter({ response: '{}' })
     const result = await runSpawnAgentSteward('parent task', 'child task', [], router, 'dumb')
     expect(result).toEqual({ pass: true, reason: '' })
+  })
+})
+
+describe('runRelaySteward — per-schedule relay guidance', () => {
+  // Captures the interpolated prompt so we can assert what the steward actually saw.
+  function makeCapturingRouter(response: string): { router: LLMRouter; prompts: string[] } {
+    const prompts: string[] = []
+    const router = {
+      complete: async (model: string, messages: Array<{ content: string }>): Promise<LLMResponse> => {
+        prompts.push(messages[0]?.content ?? '')
+        return { content: response, inputTokens: 1, outputTokens: 1, stopReason: 'end_turn', model }
+      },
+    } as unknown as LLMRouter
+    return { router, prompts }
+  }
+
+  const baseCtx = {
+    output: 'all clear, nothing to report',
+    task: 'health check',
+    skillInstructions: '',
+    userMd: '',
+    soulMd: '',
+    currentTime: '2026-06-17 12:00',
+  }
+
+  it('injects the per-schedule relayGuidance into the prompt', async () => {
+    const { router, prompts } = makeCapturingRouter('{"relay": true}')
+    await runRelaySteward({ ...baseCtx, relayGuidance: 'Always notify me of this digest' }, router, 'dumb')
+    expect(prompts[0]).toContain('Always notify me of this digest')
+  })
+
+  it('uses a (none) placeholder when no relayGuidance is set', async () => {
+    const { router, prompts } = makeCapturingRouter('{"relay": false}')
+    await runRelaySteward(baseCtx, router, 'dumb')
+    expect(prompts[0]).toContain('(none')
+  })
+
+  it('returns the steward decision', async () => {
+    const { router } = makeCapturingRouter('{"relay": false}')
+    const relay = await runRelaySteward({ ...baseCtx, relayGuidance: 'only on failure' }, router, 'dumb')
+    expect(relay).toBe(false)
+  })
+
+  it('fails open (relays) on a malformed response', async () => {
+    const { router } = makeCapturingRouter('not json')
+    const relay = await runRelaySteward(baseCtx, router, 'dumb')
+    expect(relay).toBe(true)
   })
 })

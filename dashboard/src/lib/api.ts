@@ -290,13 +290,13 @@ export const api = {
   schedules: {
     list: () =>
       request<{ schedules: Schedule[] }>('/api/schedules'),
-    create: (body: { headId: string; taskName?: string; kind?: 'task' | 'reminder'; cron?: string; runAt?: string; conditions?: string; agentContext?: string; requiresAck?: boolean; nagIntervalMinutes?: number; startAt?: string; deliverToHeadIds?: string[] }) =>
+    create: (body: { headId: string; taskName?: string; kind?: 'task' | 'reminder'; cron?: string; runAt?: string; conditions?: string; agentContext?: string; relayGuidance?: string; requiresAck?: boolean; nagIntervalMinutes?: number; startAt?: string; deliverToHeadIds?: string[] }) =>
       request<{ schedule: Schedule }>('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }),
-    update: (id: string, patch: { enabled?: boolean; cron?: string; runAt?: string; conditions?: string; agentContext?: string; requiresAck?: boolean; nagIntervalMinutes?: number | null; deliverToHeadIds?: string[] }) =>
+    update: (id: string, patch: { enabled?: boolean; cron?: string; runAt?: string; conditions?: string; agentContext?: string; relayGuidance?: string; requiresAck?: boolean; nagIntervalMinutes?: number | null; deliverToHeadIds?: string[] }) =>
       request<{ schedule: Schedule }>(`/api/schedules/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

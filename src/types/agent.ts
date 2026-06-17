@@ -51,6 +51,10 @@ export interface AgentState {
   /** Additional heads to deliver task completion to (Phase 44). Only populated on top-level
    *  scheduled agents. Empty array = owner-only (today's single-head behavior). */
   deliverToHeadIds: string[]
+  /** Optional per-schedule operator guidance for the relay steward (set on the schedule,
+   *  persisted here at spawn). Injected into the relay prompt at completion to bias the
+   *  surface-vs-suppress decision for this scheduled task. Absent = no extra guidance. */
+  relayGuidance?: string
   workStart: number              // index into history[] where agent's own work begins (after prepended head history)
   history: Message[]             // full message history; populated when suspended/completed
   pendingQuestion?: string
@@ -87,6 +91,10 @@ export interface SpawnOptions {
   /** Optional delivery set (Phase 44). Only meaningful for top-level scheduled agents.
    *  Sub-agents and manual spawns leave this absent (treated as empty = owner-only). */
   deliverToHeadIds?: string[]
+  /** Optional per-schedule relay-steward guidance (Schedule.relayGuidance), persisted on
+   *  the agents row so it's available to the relay steward at completion. Only meaningful
+   *  for scheduled agents; absent elsewhere. */
+  relayGuidance?: string
   /** Head conversation history to prepend as context. Agent sees what led to the task. */
   headHistory?: Message[]
   /** Attachments from the triggering message to include in the agent's initial context. */

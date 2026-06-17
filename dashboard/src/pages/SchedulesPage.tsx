@@ -101,6 +101,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   const [editValue, setEditValue] = useState('')
   const [editConditions, setEditConditions] = useState('')
   const [editAgentContext, setEditAgentContext] = useState('')
+  const [editRelayGuidance, setEditRelayGuidance] = useState('')
   const [editDeliverToHeadIds, setEditDeliverToHeadIds] = useState<string[]>([])
 
   const headsQuery = useQuery({
@@ -119,7 +120,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string; deliverToHeadIds?: string[] }) => api.schedules.update(schedule.id, update),
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string; relayGuidance?: string; deliverToHeadIds?: string[] }) => api.schedules.update(schedule.id, update),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
   })
 
@@ -127,6 +128,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     setEditValue(schedule.cron !== null ? schedule.cron : (schedule.runAt ? toDatetimeLocalInTz(schedule.runAt, tz) : ''))
     setEditConditions(schedule.conditions ?? '')
     setEditAgentContext(schedule.agentContext ?? '')
+    setEditRelayGuidance(schedule.relayGuidance ?? '')
     setEditDeliverToHeadIds(schedule.deliverToHeadIds ?? [])
     setEditing(true)
   }
@@ -136,21 +138,22 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     if (!trimmed) { setEditing(false); return }
     const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
     const agentContextUnchanged = editAgentContext === (schedule.agentContext ?? '')
+    const relayGuidanceUnchanged = editRelayGuidance === (schedule.relayGuidance ?? '')
     // A delivery-set-only edit must still PATCH — otherwise the modal closes and the
     // change is silently lost (#CR-02; ReminderRow guards the same way for ack/nag).
     const deliverUnchanged =
       JSON.stringify([...editDeliverToHeadIds].sort()) ===
       JSON.stringify([...(schedule.deliverToHeadIds ?? [])].sort())
     if (schedule.cron !== null) {
-      if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged && deliverUnchanged) { setEditing(false); return }
-      updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
+      if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged && relayGuidanceUnchanged && deliverUnchanged) { setEditing(false); return }
+      updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext, relayGuidance: editRelayGuidance, deliverToHeadIds: editDeliverToHeadIds })
       return
     }
     const runAtUtc = datetimeLocalToUtc(trimmed, tz)
     if (!runAtUtc) return
     const runAtUnchanged = runAtUtc === schedule.runAt
-    if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged && deliverUnchanged) { setEditing(false); return }
-    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions, agentContext: editAgentContext, deliverToHeadIds: editDeliverToHeadIds })
+    if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged && relayGuidanceUnchanged && deliverUnchanged) { setEditing(false); return }
+    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions, agentContext: editAgentContext, relayGuidance: editRelayGuidance, deliverToHeadIds: editDeliverToHeadIds })
   }
 
   const scheduleLabel = schedule.cron
@@ -258,6 +261,16 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                   />
                 </div>
                 <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">When to notify me</label>
+                  <textarea
+                    rows={2}
+                    value={editRelayGuidance}
+                    onChange={e => setEditRelayGuidance(e.target.value)}
+                    placeholder="e.g. Always send me this result, or: only notify me if something failed"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+                  />
+                </div>
+                <div>
                   <label className="text-xs text-zinc-500 mb-1 block">Also deliver to</label>
                   <select
                     multiple
@@ -323,6 +336,7 @@ function AddScheduleForm({
   const [startAt, setStartAt] = useState('')
   const [conditions, setConditions] = useState('')
   const [agentContext, setAgentContext] = useState('')
+  const [relayGuidance, setRelayGuidance] = useState('')
   const [error, setError] = useState('')
 
   const headsQuery = useQuery({
@@ -362,6 +376,7 @@ function AddScheduleForm({
         ...(type === 'repeating' ? { cron } : { runAt: datetimeLocalToUtc(runAt, tz) }),
         ...(conditions ? { conditions } : {}),
         ...(agentContext ? { agentContext } : {}),
+        ...(relayGuidance ? { relayGuidance } : {}),
         ...(type === 'repeating' && startAt ? { startAt: datetimeLocalToUtc(startAt, tz) } : {}),
         ...(deliverToHeadIds.length ? { deliverToHeadIds } : {}),
       })
@@ -493,6 +508,17 @@ function AddScheduleForm({
           value={agentContext}
           onChange={e => setAgentContext(e.target.value)}
           placeholder="Anything you want added to the task prompt for this schedule only"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">When to notify me</label>
+        <textarea
+          rows={2}
+          value={relayGuidance}
+          onChange={e => setRelayGuidance(e.target.value)}
+          placeholder="e.g. Always send me this result, or: only notify me if something failed"
           className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
         />
       </div>

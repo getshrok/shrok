@@ -24,6 +24,7 @@ interface AgentRow {
   parent_agent_id: string | null
   head_id: string
   deliver_to_head_ids: string
+  relay_guidance: string | null
   created_at: string
   updated_at: string
   completed_at: string | null
@@ -61,6 +62,7 @@ function rowToState(row: AgentRow, history: Message[]): AgentState {
     ...(row.parent_agent_id != null ? { parentAgentId: row.parent_agent_id } : {}),
     headId: row.head_id,
     deliverToHeadIds: parseDeliverToHeadIds(row.deliver_to_head_ids),
+    ...(row.relay_guidance != null ? { relayGuidance: row.relay_guidance } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.completed_at != null ? { completedAt: row.completed_at } : {}),
@@ -92,9 +94,9 @@ export class AgentStore {
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
     this.stmtCreate = db.prepare(`
       INSERT INTO agents
-        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, head_id, deliver_to_head_ids, color_slot, created_at, updated_at)
+        (id, skill_name, status, task, instructions, tier, tools, capabilities, trigger, parent_agent_id, head_id, deliver_to_head_ids, relay_guidance, color_slot, created_at, updated_at)
       VALUES
-        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @head_id, @deliver_to_head_ids, @color_slot, datetime('now'), datetime('now'))
+        (@id, @skill_name, 'running', @task, @instructions, @tier, @tools, @capabilities, @trigger, @parent_agent_id, @head_id, @deliver_to_head_ids, @relay_guidance, @color_slot, datetime('now'), datetime('now'))
     `)
 
     this.stmtListActiveSlots = db.prepare(
@@ -209,6 +211,7 @@ export class AgentStore {
       parent_agent_id: options.parentAgentId ?? null,
       head_id: options.headId,
       deliver_to_head_ids: JSON.stringify(options.deliverToHeadIds ?? []),
+      relay_guidance: options.relayGuidance ?? null,
       color_slot: colorSlot,
     })
     return this.get(id)!
