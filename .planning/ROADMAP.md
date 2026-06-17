@@ -12,6 +12,7 @@
 - ✅ **v1.7 Voice Alarms & Timers** — Phase 45 (shipped 2026-06-07)
 - ✅ **v1.8 Tool Access Control** — Phase 46 (shipped 2026-06-07)
 - [ ] **v1.9 Head Runs Agent Tools** — Phase 47 (in progress)
+- [ ] **v1.10 Ambient Context (Sensors)** — Phases 48–49 (in progress)
 
 Full per-phase detail for shipped milestones lives in `.planning/milestones/` and `.planning/MILESTONES.md`.
 
@@ -151,7 +152,38 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 
 - [x] **Phase 47: Head Runs Agent Tools** — Make every agent-executable tool (fs, bash, web, notes, reminders, schedules) runnable in the head loop via a dispatch fallthrough into the existing registry executors, so an operator can assign these tools to a head through the Phase 46 UI (off by default; defaults stay the 10 head-native tools). Direction A only — agents running head/delegation tools stays deferred. (completed 2026-06-07)
 
+## v1.10 Ambient Context (Sensors)
+
+- [ ] **Phase 48: Sensor Backend** — Sensor file storage, `kind:'script'` schedule type, child-process runner (timeout + output cap), `ambient/<slug>.md` output, uncached ambient scan injected into both the head assembler and the proactive scheduler, and removal of the legacy `AMBIENT.md` path. Sensors work end-to-end without a dashboard.
+- [ ] **Phase 49: Sensors Dashboard** — New "Sensors" sidebar section (parallel to Tasks) with full create/edit/delete CRUD, run-on-save wiring, and Schedules UI support for `kind:'script'` sensor schedules.
+
 ## Phase Details
+
+### Phase 48: Sensor Backend
+**Goal**: Sensor scripts run on a `kind:'script'` schedule, their output lands in `ambient/<slug>.md`, and every model turn sees a fresh ambient scan injected into the uncached system-prompt region — with the legacy `AMBIENT.md` path deleted and its cache-busting injection bug fixed
+**Depends on**: Phase 47 (v1.9 shipped — existing schedule system with `'task'|'reminder'` kinds, `ScheduleEvaluator`, `src/db/schedules.ts`, `src/db/file-store.ts`; `src/head/assembler.ts`; `readAmbientContext` in `src/head/activation.ts` → `src/scheduler/proactive.ts`; `toAnthropicSystem` in `src/llm/anthropic.ts` with `\n\nCurrent time:` cache-split marker)
+**Requirements**: SENSOR-06, SENSOR-07, SENSOR-08, SENSOR-09, SENSOR-10, SENSOR-11, SENSOR-12
+**Success Criteria** (what must be TRUE):
+  1. A sensor script placed in the workspace sensors directory and referenced by a `kind:'script'` schedule row runs in the scheduler tick with no queue event enqueued, no activation loop activation, and no model call — only a child process is spawned
+  2. After a successful sensor run, `ambient/<slug>.md` contains the script's stdout (truncated to the max-output cap); after a failed run (non-zero exit, timeout, or throw), the file is overwritten with actionable error text
+  3. A newly created or re-enabled sensor runs once immediately (before its next scheduled tick) so its output is available without waiting
+  4. Every model turn sees each `ambient/*.md` file injected as a `## <Label>` block (filename-derived heading, e.g. `weather.md` → `## Weather`) in the uncached region — after the `\n\nCurrent time:` cache-split marker — and this injection is a fresh filesystem scan each turn, not a cached value
+  5. Both the head assembler (for head turns) and the proactive scheduler path see the same ambient scan; no consumer still reads the old single-file `AMBIENT.md`
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 49: Sensors Dashboard
+**Goal**: Operator can create, view, edit, and delete sensor scripts in a dedicated "Sensors" dashboard section (parallel to Tasks), schedule them through the existing Schedules UI using `kind:'script'`, and see sensor output appear in model turns immediately on save without touching the filesystem directly
+**Depends on**: Phase 48 (sensor backend complete — `kind:'script'` schedule, runner, `ambient/<slug>.md` output, ambient scan injection)
+**Requirements**: SENSOR-01, SENSOR-02, SENSOR-03, SENSOR-04, SENSOR-05
+**Success Criteria** (what must be TRUE):
+  1. The dashboard sidebar shows a "Sensors" section; operator can create a sensor by entering a name and script body, and the sensor's script file appears on disk immediately
+  2. Operator can open an existing sensor, edit its name or script body, and save — the on-disk file reflects the change; operator can also delete a sensor and its `ambient/<slug>.md` output file is removed
+  3. A sensor edited on disk (outside the dashboard) is visible in the Sensors section with the updated content on next load — filesystem and dashboard are two views of the same files, not separate databases
+  4. Operator can attach a cron schedule to a sensor through the existing Schedules UI; the schedule row is `kind:'script'` and the Schedules UI renders it distinctly from task and reminder rows
+  5. Creating or saving a sensor triggers an immediate run so the operator sees output in the model's context without waiting for the next cron tick
+**Plans**: TBD
+**UI hint**: yes
 
 ### Phase 47: Head Runs Agent Tools
 **Goal**: An operator can optionally grant a head direct access to agent-executable tools (file read/write, bash, web, notes, reminders, schedules) — assigned through the existing Phase 46 per-head/global UI and actually executed in the head loop — while a head with no such configuration still resolves to exactly the 10 pre-feature head-native tools (zero behavior change out of the box)
@@ -232,3 +264,6 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 44. Multi-head task delivery | v1.6 | 5/5 | Complete | 2026-05-24 |
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
 | 46. Tool Access Control | v1.8 | 6/3 | Complete    | 2026-06-07 |
+| 47. Head Runs Agent Tools | v1.9 | 3/3 | Complete | 2026-06-07 |
+| 48. Sensor Backend | v1.10 | 0/TBD | Not started | — |
+| 49. Sensors Dashboard | v1.10 | 0/TBD | Not started | — |

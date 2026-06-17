@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: Ambient Context (Sensors)
-status: planning
-last_updated: "2026-06-17T20:16:28.102Z"
+status: roadmap_complete
+last_updated: "2026-06-17T00:00:00.000Z"
 last_activity: 2026-06-17
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 48 — Sensor Backend (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-17 — Milestone v1.10 started
+Status: Roadmap complete — ready to plan Phase 48
+Last activity: 2026-06-17 — Roadmap written for v1.10 Ambient Context (Sensors)
 
 ### Quick Tasks Completed
 
@@ -46,7 +46,14 @@ Last activity: 2026-06-17 — Milestone v1.10 started
 See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Milestone complete
+**Current focus:** v1.10 Ambient Context (Sensors) — Phase 48 Sensor Backend
+
+## v1.10 Phase Map
+
+| Phase | Goal | Requirements | Status |
+|-------|------|--------------|--------|
+| 48. Sensor Backend | Sensor scripts run on `kind:'script'` schedules, output lands in `ambient/<slug>.md`, every model turn sees a fresh uncached ambient scan, legacy `AMBIENT.md` path deleted | SENSOR-06, SENSOR-07, SENSOR-08, SENSOR-09, SENSOR-10, SENSOR-11, SENSOR-12 | Not started |
+| 49. Sensors Dashboard | Dedicated "Sensors" sidebar section with full CRUD, run-on-save wiring, Schedules UI support for `kind:'script'` | SENSOR-01, SENSOR-02, SENSOR-03, SENSOR-04, SENSOR-05 | Not started |
 
 ## v1.8 Phase Map
 
@@ -76,6 +83,20 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 - Phase 44 added: v1.6 Multi-Head Task Delivery — single phase; fan-out of agent_completed to multiple heads, force-complete for scheduled agents, dashboard task delivery multi-select.
 - Phase 45 added: v1.7 Voice Alarms & Timers — single phase covering the entire milestone; shared ring delivery layer (ring runner, ring_device tool, auto-derived entities, shrok-served beep, LED control, persisted ring state, 24h cap) + timer skill integration (ring on elapse) + set-alarm skill (non-ack reminder fires ring).
 - Phase 46 added: v1.8 Tool Access Control — single phase covering the entire milestone; config schema extensions (global + per-head tool allowlists, tri-state), head-tool enforcement at activation.ts:844, agent-tool threading from spawning head into assembleTools(), dashboard Settings UI (global allowlists) + per-head management UI (per-head overrides with explicit inherit-global state).
+- Phase 47 added: v1.9 Head Runs Agent Tools — single phase; dispatch fallthrough from HeadToolExecutor into agent registry executors, candidate-def widening, '/api/tools' retag, AGENTS.md delegation reframe.
+- Phases 48–49 added: v1.10 Ambient Context (Sensors) — Phase 48 is the backend vertical slice (sensor entity, `kind:'script'` schedule, child-process runner, ambient/<slug>.md output, ambient folder scan replacing old AMBIENT.md, cache-split injection fix); Phase 49 is the dashboard Sensors section CRUD + Schedules UI wiring.
+
+### Key Architecture Decisions (v1.10 — locked in design session)
+
+- A sensor is pure code (no LLM, no agent). Contrast: a task is a prompt run by an agent.
+- Scheduling reuses the existing schedules system: `Schedule.kind` gains a third value `'script'` alongside `'task'`/'reminder'`. A `kind:'script'` schedule bypasses the activation loop — the scheduler runs the script directly in its tick via a child process (no queue event, no context assembly, no model call).
+- Runner: child process per run, timeout + max-output cap. Success writes stdout (truncated) to `{workspace}/ambient/<slug>.md`. Failure (throw/nonzero/timeout) overwrites that file with trimmed error text. No last-good, no freshness stamps.
+- Injection uses a FRESH scan of `ambient/*.md` each turn (not reusing identityLoader). Filename-derived heading: `weather.md` → `## Weather`. Concatenated into the UNCACHED region — AFTER the `\n\nCurrent time:` marker that `toAnthropicSystem` (`src/llm/anthropic.ts`) splits on for `cache_control`.
+- Two consumers repointed: `src/head/assembler.ts` (currently injects AMBIENT.md ABOVE the marker = a cache bug) and `readAmbientContext()` in `src/head/activation.ts` → `src/scheduler/proactive.ts`.
+- Legacy single-file AMBIENT.md path deleted entirely (both injection points removed).
+- Run-once-on-save/enable: a sensor runs immediately when created or re-enabled, not only at the next scheduled tick.
+- Heading is owned by the scanner, not the file. Scripts emit pure body text; the scan derives `## <Label>` from the slug. Files stay clean and hand-editable.
+- No last-good: failure → overwrite with error. Stale block means genuinely broken, which the error already signals. This avoids forcing a strict parsable schema.
 
 ### Key Architecture Decisions (v1.8 — locked in design session)
 
@@ -302,4 +323,4 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 
 ## Operator Next Steps
 
-- Plan Phase 46 with /gsd:plan-phase 46
+- Plan Phase 48 with /gsd:plan-phase 48

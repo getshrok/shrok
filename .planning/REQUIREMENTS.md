@@ -62,15 +62,15 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SENSOR-01 | TBD | Pending |
-| SENSOR-02 | TBD | Pending |
-| SENSOR-03 | TBD | Pending |
-| SENSOR-04 | TBD | Pending |
-| SENSOR-05 | TBD | Pending |
-| SENSOR-06 | TBD | Pending |
-| SENSOR-07 | TBD | Pending |
-| SENSOR-08 | TBD | Pending |
-| SENSOR-09 | TBD | Pending |
-| SENSOR-10 | TBD | Pending |
-| SENSOR-11 | TBD | Pending |
-| SENSOR-12 | TBD | Pending |
+| SENSOR-01 | Phase 49 | Pending |
+| SENSOR-02 | Phase 49 | Pending |
+| SENSOR-03 | Phase 49 | Pending |
+| SENSOR-04 | Phase 49 | Pending |
+| SENSOR-05 | Phase 49 | Pending |
+| SENSOR-06 | Phase 48 | Pending |
+| SENSOR-07 | Phase 48 | Pending |
+| SENSOR-08 | Phase 48 | Pending |
+| SENSOR-09 | Phase 48 | Pending |
+| SENSOR-10 | Phase 48 | Pending |
+| SENSOR-11 | Phase 48 | Pending |
+| SENSOR-12 | Phase 48 | Pending |
