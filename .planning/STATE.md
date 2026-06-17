@@ -1,27 +1,26 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: Head Runs Agent Tools
-status: milestone_complete
-last_updated: 2026-06-07T23:41:01.503Z
-last_activity: 2026-06-07 -- Phase 47 execution started
+milestone: v1.10
+milestone_name: Ambient Context (Sensors)
+status: planning
+last_updated: "2026-06-17T20:16:28.102Z"
+last_activity: 2026-06-17
 progress:
-  total_phases: 3
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 9
-  percent: 33
-stopped_at: Milestone complete (Phase 47 was final phase)
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 47
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-07
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-17 — Milestone v1.10 started
 
 ### Quick Tasks Completed
 
@@ -40,6 +39,7 @@ Last activity: 2026-06-07
 | fast | Louder ring default (0.5→1.0) + stronger triple-beep alarm tone (issue #19) | 2026-06-07 | 022fcda |  | (gsd-fast, no dir) |
 | 260607-mp4 | Chunk long Telegram messages under the 4096-char limit (source-split, per-chunk HTML, sequential send) (issue #20) | 2026-06-07 | db4da23 |  | [260607-mp4-fix-issue-20-chunk-long-telegram-message](./quick/260607-mp4-fix-issue-20-chunk-long-telegram-message/) |
 | 260607-mz8 | Fix long-message silent-drop in Slack (block-aware: 3000/2000/10-field/50-block) + WhatsApp (chunker @65k) adapters — audit sibling of #20 | 2026-06-07 | 616d04e | Verified (plan-check + 255 channel tests + tsc; commits clean) | [260607-mz8-fix-long-message-silent-drop-in-slack-bl](./quick/260607-mz8-fix-long-message-silent-drop-in-slack-bl/) |
+| 260608-6ny | Rename model-tier vocabulary to dumb/smart/genius + expose model arg on head spawn_agent (issue #31) | 2026-06-08 | 7d5915c | Verified (tsc clean + 242 targeted tests green; backward-compat shim tested) | [260608-6ny-rename-model-tier-vocabulary-to-dumb-sma](./quick/260608-6ny-rename-model-tier-vocabulary-to-dumb-sma/) |
 
 ## Project Reference
 
