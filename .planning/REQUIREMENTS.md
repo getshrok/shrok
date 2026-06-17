@@ -15,14 +15,14 @@
 
 ### Sensor Management
 
-- [ ] **SENSOR-01**: Operator can create a sensor (name + script body) in a dedicated dashboard "Sensors" section, parallel to Tasks.
-- [ ] **SENSOR-02**: Operator can edit an existing sensor's name and script body from the Sensors section.
-- [ ] **SENSOR-03**: Operator can delete a sensor from the Sensors section, removing its script and its `ambient/<slug>.md` output.
-- [ ] **SENSOR-04**: Operator can hand-edit a sensor's script directly on disk and the Sensors section reflects it (filesystem and dashboard are two views of the same files).
+- [x] **SENSOR-01**: Operator can create a sensor (name + script body) in a dedicated dashboard "Sensors" section, parallel to Tasks.
+- [x] **SENSOR-02**: Operator can edit an existing sensor's name and script body from the Sensors section.
+- [x] **SENSOR-03**: Operator can delete a sensor from the Sensors section, removing its script and its `ambient/<slug>.md` output.
+- [x] **SENSOR-04**: Operator can hand-edit a sensor's script directly on disk and the Sensors section reflects it (filesystem and dashboard are two views of the same files).
 
 ### Scheduling
 
-- [ ] **SENSOR-05**: Operator can schedule a sensor to run on a cron interval through the existing Schedules UI (a sensor schedule is `Schedule.kind:'script'`, the third kind alongside `'task'`/`'reminder'`).
+- [x] **SENSOR-05**: Operator can schedule a sensor to run on a cron interval through the existing Schedules UI (a sensor schedule is `Schedule.kind:'script'`, the third kind alongside `'task'`/`'reminder'`).
 - [x] **SENSOR-06**: A scheduled sensor runs directly in the scheduler tick — no queue event, no context assembly, no model invocation — bypassing the activation loop entirely.
 
 ### Runner & Output
@@ -62,11 +62,11 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SENSOR-01 | Phase 49 | Pending |
-| SENSOR-02 | Phase 49 | Pending |
-| SENSOR-03 | Phase 49 | Pending |
-| SENSOR-04 | Phase 49 | Pending |
-| SENSOR-05 | Phase 49 | Pending |
+| SENSOR-01 | Phase 49 | Complete |
+| SENSOR-02 | Phase 49 | Complete |
+| SENSOR-03 | Phase 49 | Complete |
+| SENSOR-04 | Phase 49 | Complete |
+| SENSOR-05 | Phase 49 | Complete |
 | SENSOR-06 | Phase 48 | Complete |
 | SENSOR-07 | Phase 48 | Complete |
 | SENSOR-08 | Phase 48 | Complete |
