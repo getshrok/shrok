@@ -4,7 +4,7 @@ export interface Schedule {
   id: string
   headId: string
   taskName: string | null
-  kind: 'task' | 'reminder'
+  kind: 'task' | 'reminder' | 'script'
   cron: string | null        // null for one-time
   runAt: string | null       // null for repeating
   enabled: boolean
@@ -37,7 +37,7 @@ export interface CreateScheduleOptions {
   id: string
   headId: string
   taskName?: string
-  kind?: 'task' | 'reminder'
+  kind?: 'task' | 'reminder' | 'script'
   cron?: string
   runAt?: string
   nextRun?: string
