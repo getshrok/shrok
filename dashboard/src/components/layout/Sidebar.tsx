@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   MessageSquare, BrainCircuit, UserCircle, Zap, BarChart3,
   ScrollText, FlaskConical, ClipboardCheck, Settings, LogOut,
-  Clock, PanelLeftClose, PanelLeftOpen, CheckSquare, BookOpen,
+  Clock, PanelLeftClose, PanelLeftOpen, CheckSquare, BookOpen, Activity,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../auth/AuthContext'
@@ -120,6 +120,7 @@ const NAV_ICONS = {
   Identity: UserCircle,
   Skills: Zap,
   Tasks: CheckSquare,
+  Sensors: Activity,
   Schedules: Clock,
   Docs: BookOpen,
   Usage: BarChart3,
@@ -184,6 +185,7 @@ export default function Sidebar({ onSettingsOpen, mobileOpen, onMobileClose }: {
           { to: '/identity', label: 'Identity', end: false },
           { to: '/skills', label: 'Skills', end: false },
           { to: '/tasks', label: 'Tasks', end: false },
+          { to: '/sensors', label: 'Sensors', end: false },
           { to: '/schedules', label: 'Schedules', end: false },
           { to: '/memory', label: 'Memory', end: false },
           { to: '/docs', label: 'Docs', end: false },

@@ -13,6 +13,7 @@ import SkillsPage from './pages/SkillsPage'
 import TasksPage from './pages/TasksPage'
 import DocsPage from './pages/DocsPage'
 import SchedulesPage from './pages/SchedulesPage'
+import SensorsPage from './pages/SensorsPage.js'
 import TestsPage from './pages/TestsPage'
 import EvalsPage from './pages/EvalsPage'
 
@@ -73,6 +74,7 @@ const router = createBrowserRouter([
               { path: '/identity', element: <IdentityPage /> },
               { path: '/skills', element: <SkillsPage /> },
               { path: '/tasks', element: <TasksPage /> },
+              { path: '/sensors', element: <SensorsPage /> },
               { path: '/schedules', element: <SchedulesPage /> },
               { path: '/tests', element: <TestsPage /> },
               { path: '/evals', element: <EvalsPage /> },
