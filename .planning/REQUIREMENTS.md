@@ -23,7 +23,7 @@
 ### Scheduling
 
 - [ ] **SENSOR-05**: Operator can schedule a sensor to run on a cron interval through the existing Schedules UI (a sensor schedule is `Schedule.kind:'script'`, the third kind alongside `'task'`/`'reminder'`).
-- [ ] **SENSOR-06**: A scheduled sensor runs directly in the scheduler tick — no queue event, no context assembly, no model invocation — bypassing the activation loop entirely.
+- [x] **SENSOR-06**: A scheduled sensor runs directly in the scheduler tick — no queue event, no context assembly, no model invocation — bypassing the activation loop entirely.
 
 ### Runner & Output
 
@@ -67,7 +67,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | SENSOR-03 | Phase 49 | Pending |
 | SENSOR-04 | Phase 49 | Pending |
 | SENSOR-05 | Phase 49 | Pending |
-| SENSOR-06 | Phase 48 | Pending |
+| SENSOR-06 | Phase 48 | Complete |
 | SENSOR-07 | Phase 48 | Complete |
 | SENSOR-08 | Phase 48 | Complete |
 | SENSOR-09 | Phase 48 | Complete |

@@ -171,7 +171,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
   5. Both the head assembler (for head turns) and the proactive scheduler path see the same ambient scan; no consumer still reads the old single-file `AMBIENT.md`
 **Plans**: 3 plans
   - [x] 48-01-PLAN.md — src/sensors/ core: shared scanAmbient + slugToTitle scanner and the child-process runSensor (timeout + output cap + atomic write + slug guard) (Wave 1)
-  - [ ] 48-02-PLAN.md — Schedule.kind:'script' + inline scheduler dispatch branch (no queue/model) + SensorRunner injection at index.ts (Wave 2)
+  - [x] 48-02-PLAN.md — Schedule.kind:'script' + inline scheduler dispatch branch (no queue/model) + SensorRunner injection at index.ts (Wave 2)
   - [ ] 48-03-PLAN.md — Repoint all 3 ambient read sites to scanAmbient() uncached + delete legacy AMBIENT.md path + filter script schedules from buildScheduleBlock (Wave 2)
 **UI hint**: no
 
@@ -268,5 +268,5 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
 | 46. Tool Access Control | v1.8 | 6/3 | Complete    | 2026-06-07 |
 | 47. Head Runs Agent Tools | v1.9 | 3/3 | Complete | 2026-06-07 |
-| 48. Sensor Backend | v1.10 | 1/3 | In Progress|  |
+| 48. Sensor Backend | v1.10 | 2/3 | In Progress|  |
 | 49. Sensors Dashboard | v1.10 | 0/TBD | Not started | — |
