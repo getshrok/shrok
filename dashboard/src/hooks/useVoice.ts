@@ -363,6 +363,10 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
         model: 'legacy',
         baseAssetPath: '/',
         onnxWASMBasePath: '/',
+        // How long to wait after you stop talking before deciding you're
+        // finished and sending the clip. Library default is 1400ms; bumped
+        // to 3000ms so it doesn't cut off mid-sentence pauses.
+        redemptionMs: 3000,
         onSpeechStart: () => {
           if (stateRef.current === 'speaking') {
             // Barge-in (Pitfall 4): stop local playback + tell server to cancel TTS.
