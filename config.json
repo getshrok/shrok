@@ -27,7 +27,7 @@
   "logLevel": "info",
   "llmMaxTokens": 16384,
   "snapshotTokenBudget": 8000,
-  "contextWindowTokens": 100000,
+  "contextWindowTokens": 30000,
   "compactionThresholdFraction": 0.60,
   "contextAssemblyTokenBudget": 100000,
   "curatorCron": "0 3 * * *",

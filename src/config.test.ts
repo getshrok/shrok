@@ -25,7 +25,7 @@ describe('loadConfig', () => {
     expect(cfg.anthropicModelGenius).toBe('claude-opus-4-6')
     expect(cfg.webhookPort).toBe(8766)
     expect(cfg.webhookRateLimitPerMinute).toBe(60)
-    expect(cfg.contextWindowTokens).toBe(100_000)
+    expect(cfg.contextWindowTokens).toBe(30_000)
     expect(cfg.archivalThresholdFraction).toBe(0.80)
     expect(cfg.mcpConfigPath).toBe('./mcp.json')
     expect(cfg.logLevel).toBe('info')
