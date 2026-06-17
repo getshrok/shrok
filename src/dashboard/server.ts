@@ -115,6 +115,23 @@ export class DashboardServer {
   /** Revoke all dashboard sessions (e.g. after password change). */
   revokeAllSessions(): void { this.tokenStore.revokeAll() }
 
+  /** Resolve the login-picked display name for the session in a raw `Cookie` header,
+   *  if any. The voice WebSocket authenticates via the same `shrok_session` cookie as
+   *  the rest of the dashboard, so this lets it attribute spoken messages to the
+   *  logged-in user (the `[Name]:` prefix), exactly like the typed-message path. Returns
+   *  undefined when there's no cookie, no session, or no name bound to it. */
+  resolveSessionUser(cookieHeader: string | undefined): string | undefined {
+    if (!cookieHeader) return undefined
+    for (const part of cookieHeader.split(';')) {
+      const eq = part.indexOf('=')
+      if (eq === -1) continue
+      if (part.slice(0, eq).trim() !== 'shrok_session') continue
+      const token = decodeURIComponent(part.slice(eq + 1).trim())
+      return this.tokenStore.getUser(token)
+    }
+    return undefined
+  }
+
   /** Expose the underlying http.Server so channel adapters (e.g. VoiceChannelAdapter)
    *  can attach a WebSocket upgrade listener. Returns null before .start() resolves
    *  or after .stop() runs. (Phase 19 D-01) */

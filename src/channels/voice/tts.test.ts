@@ -105,8 +105,10 @@ describe('createSelfHostedTtsFetch', () => {
 
   it('routes requests through the dispatcher, preserving the original init', async () => {
     undiciFetchMock.mockClear()
-    const f = createSelfHostedTtsFetch()
-    await f!('http://tts.local/v1/audio/speech', { method: 'POST' } as RequestInit)
+    // Call through a loose signature — the SDK's Fetch param type (node-fetch's
+    // RequestInfo) is awkward to satisfy from a test and irrelevant to what we assert.
+    const f = createSelfHostedTtsFetch() as unknown as (url: string, init?: Record<string, unknown>) => Promise<unknown>
+    await f('http://tts.local/v1/audio/speech', { method: 'POST' })
     expect(undiciFetchMock).toHaveBeenCalledTimes(1)
     const [, init] = undiciFetchMock.mock.calls[0] as unknown as [unknown, Record<string, unknown>]
     expect(init).toHaveProperty('dispatcher')

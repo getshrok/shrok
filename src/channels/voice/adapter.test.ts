@@ -226,6 +226,38 @@ describe('VoiceChannelAdapter', () => {
     expect(messages).toEqual([{ channel: 'voice', text: 'hello world' }])
   })
 
+  it('prefixes the routed message with the resolved sender name (parity with typed channels)', async () => {
+    const httpServer = new MockHttpServer() as unknown as import('node:http').Server
+    const { client } = makeMockOpenAI('hello world')
+    const seen: Array<import('node:http').IncomingMessage> = []
+    const messages: InboundMessage[] = []
+    const adapter = new VoiceChannelAdapter(httpServer, client, {
+      resolveSenderName: (req) => { seen.push(req); return 'Ashley' },
+    })
+    adapter.onMessage(m => messages.push(m))
+    await adapter.start()
+    triggerUpgrade(httpServer as unknown as MockHttpServer)
+    const ws = getActiveSocket(adapter)
+    ws.emit('message', buildWav(32000, 16000), true)
+    await new Promise(r => setImmediate(r))
+
+    // The transcript carries senderName so the ingestion path adds the `[Name]:` prefix.
+    expect(messages).toEqual([{ channel: 'voice', text: 'hello world', senderName: 'Ashley' }])
+    // The resolver is given the upgrade request (which carries the session cookie).
+    expect(seen).toHaveLength(1)
+  })
+
+  it('omits senderName when none is resolved (no empty-prefix placeholder)', async () => {
+    const { adapter, httpServer, messages } = await setupAdapter('hello world')
+    triggerUpgrade(httpServer as unknown as MockHttpServer)
+    const ws = getActiveSocket(adapter)
+    ws.emit('message', buildWav(32000, 16000), true)
+    await new Promise(r => setImmediate(r))
+
+    expect(messages).toEqual([{ channel: 'voice', text: 'hello world' }])
+    expect(messages[0]).not.toHaveProperty('senderName')
+  })
+
   it('silently drops sub-500ms WAV frames without calling Whisper (VOICE-IN-05)', async () => {
     const { adapter, httpServer, messages, transcribe } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)

@@ -46,6 +46,11 @@ export interface VoiceChannelAdapterOpts {
    *  fallbacks (e.g. OpenAI). When omitted, defaults to OpenAI-only using the
    *  `openai` client (legacy behavior). */
   ttsProviders?: TtsProvider[]
+  /** Resolve the logged-in dashboard user's display name from the WS upgrade request
+   *  (it carries the same session cookie as the rest of the dashboard). Used to prefix
+   *  spoken messages with `[Name]:` so the head can tell who's talking — matching the
+   *  typed dashboard path. Returns undefined when no name is bound to the session. */
+  resolveSenderName?: (req: IncomingMessage) => string | undefined
 }
 
 export class VoiceChannelAdapter implements ChannelAdapter {
@@ -57,9 +62,13 @@ export class VoiceChannelAdapter implements ChannelAdapter {
   private handler: ((msg: InboundMessage) => void) | null = null
   private activeSocket: WebSocket | null = null
   private connectionRoute: ((msg: InboundMessage) => void) | null = null
+  /** Display name for the current connection's logged-in user, resolved once at
+   *  connect from the session cookie. Prefixed to each transcript as `[Name]:`. */
+  private connectionSenderName: string | undefined = undefined
   private ttsAbortController: AbortController | null = null
   private upgradeListener: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null
   private readonly ttsProviders: TtsProvider[]
+  private readonly resolveSenderName: ((req: IncomingMessage) => string | undefined) | null
 
   constructor(private httpServer: Server, private openai: OpenAI, opts?: VoiceChannelAdapterOpts) {
     this.id = opts?.id ?? 'voice'
@@ -72,6 +81,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     this.ttsProviders = opts?.ttsProviders ?? [
       { client: openai, model: TTS_MODEL, voice: TTS_VOICE, responseFormat: 'mp3', label: 'openai' },
     ]
+    this.resolveSenderName = opts?.resolveSenderName ?? null
   }
 
   onMessage(handler: (msg: InboundMessage) => void): void {
@@ -151,7 +161,10 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     // Resolve the head for this connection from ?head= and set the per-connection route
     const headId = resolveHeadFromUrl(req?.url, this.knownHeadIds, this.defaultHeadId)
     this.connectionRoute = this.routeFor ? this.routeFor(headId) : this.handler
-    log.info(`[voice] client connected (head: ${headId})`)
+    // Attribute spoken messages to the logged-in user (same session cookie as typed
+    // messages), so transcripts get the `[Name]:` prefix like every other channel.
+    this.connectionSenderName = req && this.resolveSenderName ? this.resolveSenderName(req) : undefined
+    log.info(`[voice] client connected (head: ${headId}${this.connectionSenderName ? `, user: ${this.connectionSenderName}` : ''})`)
 
     ws.on('message', (data, isBinary) => {
       void this.handleMessage(ws, data as Buffer | Buffer[] | ArrayBuffer, isBinary)
@@ -159,6 +172,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     ws.on('close', () => {
       if (this.activeSocket === ws) this.activeSocket = null
       this.connectionRoute = null
+      this.connectionSenderName = undefined
       // T-19-13: client vanished mid-TTS — cancel the upstream HTTP request
       this.ttsAbortController?.abort()
       log.info('[voice] client disconnected')
@@ -209,8 +223,13 @@ export class VoiceChannelAdapter implements ChannelAdapter {
         return
       }
       // VOICE-IN-06: route as a normal user message — same path as typed input
-      // Use the per-connection route (head-specific when routeFor is set), falling back to handler
-      ;(this.connectionRoute ?? this.handler)?.({ channel: this.id, text: transcript })
+      // Use the per-connection route (head-specific when routeFor is set), falling back to handler.
+      // Carry the resolved sender name so the ingestion path prefixes `[Name]:` like other channels.
+      ;(this.connectionRoute ?? this.handler)?.({
+        channel: this.id,
+        text: transcript,
+        ...(this.connectionSenderName ? { senderName: this.connectionSenderName } : {}),
+      })
     } catch (err) {
       if (err instanceof TooShortError) {
         log.debug(`[voice] clip too short (${err.durationSeconds.toFixed(3)}s) — dropped`)

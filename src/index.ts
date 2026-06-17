@@ -569,6 +569,9 @@ async function main() {
         knownHeadIds,
         routeFor: (headId) => (headSystems.find(h => h.head.id === headId) ?? primary).routeMessage,
         ttsProviders,
+        // Attribute spoken turns to the logged-in dashboard user (the voice WS carries
+        // the same session cookie) so transcripts get the `[Name]:` sender prefix.
+        resolveSenderName: (req) => dashboard.resolveSessionUser(req.headers.cookie),
       })
       voiceAdapter.onMessage(primary.routeMessage)   // harmless fallback; routeFor takes precedence
       for (const h of headSystems) h.channelRouter.register(voiceAdapter)
