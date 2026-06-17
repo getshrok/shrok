@@ -352,3 +352,129 @@ describe('ScheduleEvaluatorImpl', () => {
     expect(scheduleStore.update).not.toHaveBeenCalled()
   })
 })
+
+// ─── kind:'script' dispatch (Plan 48-02 Task 2) ──────────────────────────────
+
+describe('ScheduleEvaluatorImpl — kind:script dispatch', () => {
+  let queueStore: QueueStore
+  let scheduleStore: ScheduleStore
+  let sensorRunner: { run: ReturnType<typeof vi.fn> }
+  let evaluatorWithRunner: ScheduleEvaluatorImpl
+  let evaluatorNoRunner: ScheduleEvaluatorImpl
+
+  beforeEach(() => {
+    queueStore = {
+      enqueue: vi.fn(),
+      claimNext: vi.fn(),
+      ack: vi.fn(),
+      fail: vi.fn(),
+      requeueStale: vi.fn(),
+    } as unknown as QueueStore
+
+    scheduleStore = {
+      getDue: vi.fn().mockReturnValue([]),
+      markFired: vi.fn(),
+      advanceNextRun: vi.fn(),
+      create: vi.fn(),
+      get: vi.fn(),
+      list: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    } as unknown as ScheduleStore
+
+    sensorRunner = { run: vi.fn().mockResolvedValue(undefined) }
+
+    // 5-arg construction (with runner)
+    evaluatorWithRunner = new ScheduleEvaluatorImpl(queueStore, scheduleStore, 'UTC', 999_999, sensorRunner)
+    // 4-arg construction (backward compat — existing tests must not break)
+    evaluatorNoRunner = new ScheduleEvaluatorImpl(queueStore, scheduleStore, 'UTC', 999_999)
+  })
+
+  it('calls sensorRunner.run(slug) and does NOT call queueStore.enqueue for kind:script (SENSOR-06)', async () => {
+    const schedule = makeSchedule({ kind: 'script', taskName: 'weather', cron: '*/5 * * * *' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluatorWithRunner.tick()
+
+    // enqueue must not be called — script bypasses the activation loop
+    expect(queueStore.enqueue).not.toHaveBeenCalled()
+    // give the fire-and-forget promise a chance to run
+    await new Promise(r => setTimeout(r, 10))
+    expect(sensorRunner.run).toHaveBeenCalledOnce()
+    expect(sensorRunner.run).toHaveBeenCalledWith('weather')
+  })
+
+  it('advances nextRun for a cron kind:script schedule', () => {
+    const schedule = makeSchedule({ kind: 'script', taskName: 'weather', cron: '*/5 * * * *' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluatorWithRunner.tick()
+
+    expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
+    const [id, nextRunIso] = vi.mocked(scheduleStore.advanceNextRun).mock.calls[0]!
+    expect(id).toBe('sched_1')
+    expect(new Date(nextRunIso).getTime()).toBeGreaterThan(Date.now())
+  })
+
+  it('disables one-time kind:script schedule after firing (proves enqueued=true set in script branch)', () => {
+    const schedule = makeSchedule({ kind: 'script', taskName: 'weather', cron: null, runAt: '2026-01-01T10:00:00Z' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluatorWithRunner.tick()
+
+    expect(scheduleStore.update).toHaveBeenCalledOnce()
+    expect(scheduleStore.update).toHaveBeenCalledWith('sched_1', { enabled: false, nextRun: null })
+    // still must not enqueue
+    expect(queueStore.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('does not call runner and logs warn when kind:script schedule has no taskName/slug', async () => {
+    const schedule = makeSchedule({ kind: 'script', taskName: null, cron: '*/5 * * * *' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect(() => evaluatorWithRunner.tick()).not.toThrow()
+
+    await new Promise(r => setTimeout(r, 10))
+    expect(sensorRunner.run).not.toHaveBeenCalled()
+    expect(queueStore.enqueue).not.toHaveBeenCalled()
+    // advance still runs (enqueued=true set even when slug is missing)
+    expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
+    warnSpy.mockRestore()
+  })
+
+  it('regression: kind:task schedule still calls queueStore.enqueue', () => {
+    const schedule = makeSchedule({ kind: 'task', taskName: 'nightly-vacuum', cron: '0 2 * * *' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluatorWithRunner.tick()
+
+    expect(queueStore.enqueue).toHaveBeenCalledOnce()
+    const [event] = vi.mocked(queueStore.enqueue).mock.calls[0]!
+    expect((event as { type: string }).type).toBe('schedule_trigger')
+    expect(sensorRunner.run).not.toHaveBeenCalled()
+  })
+
+  it('regression: kind:reminder schedule still calls queueStore.enqueue', () => {
+    const schedule = makeSchedule({ kind: 'reminder', taskName: null, cron: '0 9 * * 1' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluatorWithRunner.tick()
+
+    expect(queueStore.enqueue).toHaveBeenCalledOnce()
+    expect(sensorRunner.run).not.toHaveBeenCalled()
+  })
+
+  it('backward compat: 4-arg construction + kind:script schedule does not throw, still sets enqueued=true and advances', () => {
+    const schedule = makeSchedule({ kind: 'script', taskName: 'weather', cron: '*/5 * * * *' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    // No runner injected — should not throw; runner is just skipped
+    expect(() => evaluatorNoRunner.tick()).not.toThrow()
+
+    // Advance still runs (enqueued=true set in branch even without runner)
+    expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
+    // No enqueue
+    expect(queueStore.enqueue).not.toHaveBeenCalled()
+  })
+})
