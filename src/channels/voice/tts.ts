@@ -1,8 +1,44 @@
 // src/channels/voice/tts.ts
 import type OpenAI from 'openai'
+import type { ClientOptions } from 'openai'
 import { Readable } from 'node:stream'
+import { Agent, fetch as undiciFetch } from 'undici'
 import type { WebSocket } from 'ws'
 import { log } from '../../logger.js'
+
+/** Connect-phase timeout (ms) for the self-hosted TTS client. Short, so a powered-off
+ *  / unreachable box fails over to the fallback provider promptly. */
+export const TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS = 4000
+
+/** Response-phase budget (ms) — headers + body — for the self-hosted TTS client. Must
+ *  comfortably exceed the synthesis time of the longest plausible spoken reply. The
+ *  self-hosted model (Chatterbox) returns the WHOLE clip before sending response
+ *  headers, and synthesis time scales with text length (a ~430-char reply ≈ 10s), so
+ *  this phase must NOT be capped at the connect budget. */
+export const TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS = 180_000
+
+/**
+ * Build a `fetch` for the self-hosted TTS OpenAI client that fails FAST on connection
+ * (box off/unreachable → prompt fallback to OpenAI) but tolerates a SLOW response (a
+ * healthy box synthesizing a long reply). The OpenAI SDK exposes only a single total
+ * `timeout`, which cannot express this split: a value low enough to fail over quickly
+ * when the box is dead (5s) also aborts legitimate long synthesis and spuriously falls
+ * back to the paid provider. Backing the client with an undici dispatcher separates the
+ * connect timeout from the headers/body timeout, so each concern gets its own budget.
+ */
+export function createSelfHostedTtsFetch(
+  connectTimeoutMs: number = TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS,
+  responseTimeoutMs: number = TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+): ClientOptions['fetch'] {
+  const dispatcher = new Agent({
+    connect: { timeout: connectTimeoutMs },
+    headersTimeout: responseTimeoutMs,
+    bodyTimeout: responseTimeoutMs,
+  })
+  return ((url: string | URL | Request, init?: RequestInit) =>
+    undiciFetch(url as Parameters<typeof undiciFetch>[0], { ...(init as Record<string, unknown>), dispatcher })
+  ) as ClientOptions['fetch']
+}
 
 /** OpenAI TTS voice used for assistant speech. `alloy` is the SDK default and works
  *  across all `tts-*` models. Used for the OpenAI fallback provider. */

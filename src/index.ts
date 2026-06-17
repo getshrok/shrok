@@ -69,7 +69,7 @@ import { ZohoCliqStateStore } from './db/zoho_cliq_state.js'
 // WhatsApp adapter is dynamically imported — Baileys is an optional dependency
 import { DashboardChannelAdapter } from './channels/dashboard/adapter.js'
 import { VoiceChannelAdapter } from './channels/voice/adapter.js'
-import { TTS_MODEL, TTS_VOICE, type TtsProvider } from './channels/voice/tts.js'
+import { TTS_MODEL, TTS_VOICE, createSelfHostedTtsFetch, type TtsProvider } from './channels/voice/tts.js'
 import { HomeAssistantChannelAdapter } from './channels/home-assistant/adapter.js'
 import { ScheduleEvaluatorImpl } from './scheduler/index.js'
 import { WebhookListenerImpl } from './webhook/index.js'
@@ -529,15 +529,20 @@ async function main() {
       // TTS providers, in priority order. When a self-hosted endpoint is configured
       // (config.ttsBaseUrl), it is the PRIMARY synthesizer and OpenAI is the FALLBACK
       // used only when the self-hosted box is unreachable (it may be powered off). The
-      // self-hosted client is built to fail FAST — short timeout + no retries — so a
-      // dead box fails over to OpenAI quickly instead of hanging the voice turn. STT
-      // (Whisper) always uses `voiceOpenai`, unaffected by this.
+      // self-hosted client fails fast on CONNECTION (short connect timeout → prompt
+      // fallback when the box is off) but tolerates a SLOW RESPONSE: the model returns
+      // the whole clip before headers and synthesis scales with text length, so a long
+      // reply legitimately takes >5s. Backing the client with an undici dispatcher
+      // separates those two budgets (see createSelfHostedTtsFetch) — a single SDK
+      // timeout low enough for fast failover would spuriously abort long synthesis and
+      // fall back to the paid provider. STT (Whisper) always uses `voiceOpenai`.
       const ttsProviders: TtsProvider[] = []
       if (config.ttsBaseUrl) {
         const selfHostedTts = new OpenAI({
           baseURL: config.ttsBaseUrl,
           apiKey: 'unused',          // self-hosted endpoint is unauthenticated (tailnet-scoped)
-          timeout: 5000,             // fail fast when the box is off, so fallback kicks in promptly
+          fetch: createSelfHostedTtsFetch(),  // fast connect-fail, slow-response-tolerant
+          timeout: 180_000,          // backstop above the dispatcher's response timeout
           maxRetries: 0,             // no SDK retry storm before failing over
         })
         ttsProviders.push({

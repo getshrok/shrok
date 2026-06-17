@@ -1,6 +1,20 @@
 // src/channels/voice/tts.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { streamTts, isAbortError, TTS_VOICE, TTS_MODEL, type TtsProvider } from './tts.js'
+import {
+  streamTts, isAbortError, TTS_VOICE, TTS_MODEL,
+  createSelfHostedTtsFetch, TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS, TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+  type TtsProvider,
+} from './tts.js'
+
+// Mock undici so we can assert HOW the self-hosted fetch is wired without real sockets.
+const { agentCtor, undiciFetchMock } = vi.hoisted(() => ({
+  agentCtor: vi.fn(),
+  undiciFetchMock: vi.fn(async () => ({ ok: true } as unknown)),
+}))
+vi.mock('undici', () => ({
+  Agent: class { constructor(opts: unknown) { agentCtor(opts) } },
+  fetch: (...args: unknown[]) => undiciFetchMock(...(args as [])),
+}))
 
 // Wrap a mock OpenAI client into a single-provider list (the common case).
 function providersFor(
@@ -74,6 +88,31 @@ function makeMockOpenAI(body: ReadableStream<Uint8Array> | null, opts?: { throwO
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
+
+describe('createSelfHostedTtsFetch', () => {
+  it('builds the dispatcher with a SHORT connect timeout and a LONG response timeout', () => {
+    agentCtor.mockClear()
+    createSelfHostedTtsFetch()
+    // The split is the whole point: a healthy box may take >5s to synthesize a long
+    // reply (allowed by the response timeout), while a dead box fails the connect fast.
+    expect(agentCtor).toHaveBeenCalledWith({
+      connect: { timeout: TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS },
+      headersTimeout: TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+      bodyTimeout: TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+    })
+    expect(TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS).toBeLessThan(TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS)
+  })
+
+  it('routes requests through the dispatcher, preserving the original init', async () => {
+    undiciFetchMock.mockClear()
+    const f = createSelfHostedTtsFetch()
+    await f!('http://tts.local/v1/audio/speech', { method: 'POST' } as RequestInit)
+    expect(undiciFetchMock).toHaveBeenCalledTimes(1)
+    const [, init] = undiciFetchMock.mock.calls[0] as unknown as [unknown, Record<string, unknown>]
+    expect(init).toHaveProperty('dispatcher')
+    expect(init['method']).toBe('POST')
+  })
+})
 
 describe('streamTts', () => {
   it('sends tts_start, forwards binary chunks, then sends tts_done', async () => {
