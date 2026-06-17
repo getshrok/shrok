@@ -34,11 +34,11 @@
 ### Injection
 
 - [x] **SENSOR-10**: Sensor output is injected into every model turn as a fresh scan of `ambient/*.md`, each block labeled by a filename-derived heading (`weather.md` → `## Weather`), placed in the uncached system-prompt region so updates never bust prompt caching.
-- [ ] **SENSOR-11**: The same ambient scan feeds both the head's own turns (assembler) and the proactive scheduler, so proactive runs see the same situational state.
+- [x] **SENSOR-11**: The same ambient scan feeds both the head's own turns (assembler) and the proactive scheduler, so proactive runs see the same situational state.
 
 ### Cleanup
 
-- [ ] **SENSOR-12**: The legacy single-file `AMBIENT.md` mechanism is removed (both the assembler injection and `readAmbientContext`), eliminating its current above-the-cache-split injection bug.
+- [x] **SENSOR-12**: The legacy single-file `AMBIENT.md` mechanism is removed (both the assembler injection and `readAmbientContext`), eliminating its current above-the-cache-split injection bug.
 
 ## v2 Requirements (deferred)
 
@@ -72,5 +72,5 @@ Which phases cover which requirements. Filled during roadmap creation.
 | SENSOR-08 | Phase 48 | Complete |
 | SENSOR-09 | Phase 48 | Complete |
 | SENSOR-10 | Phase 48 | Complete |
-| SENSOR-11 | Phase 48 | Pending |
-| SENSOR-12 | Phase 48 | Pending |
+| SENSOR-11 | Phase 48 | Complete |
+| SENSOR-12 | Phase 48 | Complete |

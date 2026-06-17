@@ -268,5 +268,5 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 45. Ring Delivery Layer + Timer Ring + Alarm | v1.7 | 6/6 | Complete   | 2026-05-26 |
 | 46. Tool Access Control | v1.8 | 6/3 | Complete    | 2026-06-07 |
 | 47. Head Runs Agent Tools | v1.9 | 3/3 | Complete | 2026-06-07 |
-| 48. Sensor Backend | v1.10 | 3/3 | Complete   | 2026-06-17 |
+| 48. Sensor Backend | v1.10 | 3/3 | Complete    | 2026-06-17 |
 | 49. Sensors Dashboard | v1.10 | 0/TBD | Not started | — |
