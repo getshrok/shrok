@@ -185,7 +185,10 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
   3. A sensor edited on disk (outside the dashboard) is visible in the Sensors section with the updated content on next load — filesystem and dashboard are two views of the same files, not separate databases
   4. Operator can attach a cron schedule to a sensor through the existing Schedules UI; the schedule row is `kind:'script'` and the Schedules UI renders it distinctly from task and reminder rows
   5. Creating or saving a sensor triggers an immediate run so the operator sees output in the model's context without waiting for the next cron tick
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 49-01-PLAN.md — Backend: schedules-route kind:'script' patch + new createSensorsRouter (filesystem CRUD) + wiring + tests (Wave 1)
+  - [ ] 49-02-PLAN.md — Frontend Sensors page (two-panel CRUD) + api.sensors client + sidebar nav + /sensors route (Wave 2)
+  - [ ] 49-03-PLAN.md — Schedules UI kind:'script' support: SensorScheduleRow + AddSensorScheduleForm + type widening + CHANGELOG (Wave 3)
 **UI hint**: yes
 
 ### Phase 47: Head Runs Agent Tools
@@ -269,4 +272,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 46. Tool Access Control | v1.8 | 6/3 | Complete    | 2026-06-07 |
 | 47. Head Runs Agent Tools | v1.9 | 3/3 | Complete | 2026-06-07 |
 | 48. Sensor Backend | v1.10 | 3/3 | Complete    | 2026-06-17 |
-| 49. Sensors Dashboard | v1.10 | 0/TBD | Not started | — |
+| 49. Sensors Dashboard | v1.10 | 0/3 | Planned | — |

@@ -78,11 +78,11 @@ export function createSchedulesRouter(
     }
 
     const rawKind = (req.body as { kind?: unknown }).kind
-    if (rawKind !== undefined && rawKind !== 'task' && rawKind !== 'reminder') {
-      res.status(400).json({ error: "kind must be 'task' or 'reminder'" })
+    if (rawKind !== undefined && rawKind !== 'task' && rawKind !== 'reminder' && rawKind !== 'script') {
+      res.status(400).json({ error: "kind must be 'task', 'reminder', or 'script'" })
       return
     }
-    const kind: 'task' | 'reminder' = rawKind === 'reminder' ? 'reminder' : 'task'
+    const kind: 'task' | 'reminder' | 'script' = rawKind === 'reminder' ? 'reminder' : rawKind === 'script' ? 'script' : 'task'
 
     // Phase 44 D-08: deliverToHeadIds — task-only, validate shape + known heads, dedupe
     let deliverToHeadIds: string[] | undefined
