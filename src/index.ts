@@ -511,6 +511,7 @@ async function main() {
       systemSkillNames,
     },
     tasks: { loader: taskKindLoader },
+    sensors: { workspacePath, sensorRunner },
     unifiedLoader,
     db,
     evalResultsDir: path.join(workspacePath, 'eval-results'),

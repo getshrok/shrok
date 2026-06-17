@@ -27,6 +27,7 @@ import { createTracesRouter } from './routes/traces.js'
 import { createMemoryRouter } from './routes/memory.js'
 import { createIdentityRouter } from './routes/identity.js'
 import { createKindRouter } from './routes/kind.js'
+import { createSensorsRouter } from './routes/sensors.js'
 import { readAssistantName } from '../config-file.js'
 import { createTestsRouter } from './routes/tests.js'
 import { createEvalsRouter } from './routes/evals.js'
@@ -80,6 +81,10 @@ export interface DashboardServerOptions {
   }
   tasks?: {
     loader: SkillLoader
+  }
+  sensors?: {
+    workspacePath: string
+    sensorRunner: import('../sensors/runner.js').SensorRunner
   }
   unifiedLoader?: UnifiedLoader
   db?: DatabaseSync
@@ -249,6 +254,9 @@ export class DashboardServer {
         ...(this.opts.schedules ? { scheduleStore: this.opts.schedules } : {}),
       }
       app.use('/api/tasks', createKindRouter(this.opts.tasks.loader, tasksOpts))
+    }
+    if (this.opts.sensors) {
+      app.use('/api/sensors', createSensorsRouter(this.opts.sensors))
     }
     app.use('/api/tools', createToolsRouter())
     if (this.opts.mcpRegistry) {
