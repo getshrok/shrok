@@ -8,6 +8,10 @@ function encTaskPath(name: string, suffix = '') {
   return '/api/tasks/' + name.split('/').map(encodeURIComponent).join('/') + suffix
 }
 
+function encSensorPath(slug: string) {
+  return '/api/sensors/' + encodeURIComponent(slug)
+}
+
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, { credentials: 'include', ...opts })
   if (!res.ok) {
@@ -230,6 +234,20 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newName }),
       }),
+  },
+  sensors: {
+    list: () =>
+      request<{ sensors: Array<{ slug: string }> }>('/api/sensors'),
+    get: (slug: string) =>
+      request<{ slug: string; content: string }>(encSensorPath(slug)),
+    save: (slug: string, content: string) =>
+      request<{ slug: string }>(encSensorPath(slug), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      }),
+    delete: (slug: string) =>
+      request<{ ok: true }>(encSensorPath(slug), { method: 'DELETE' }),
   },
   evals: {
     list: () =>
