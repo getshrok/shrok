@@ -72,6 +72,7 @@ import { VoiceChannelAdapter } from './channels/voice/adapter.js'
 import { TTS_MODEL, TTS_VOICE, createSelfHostedTtsFetch, type TtsProvider } from './channels/voice/tts.js'
 import { HomeAssistantChannelAdapter } from './channels/home-assistant/adapter.js'
 import { ScheduleEvaluatorImpl } from './scheduler/index.js'
+import { runSensor } from './sensors/runner.js'
 import { WebhookListenerImpl } from './webhook/index.js'
 import { DashboardServer } from './dashboard/server.js'
 import { DashboardEventBus } from './dashboard/events.js'
@@ -467,7 +468,17 @@ async function main() {
   }
 
   // ── Scheduler ────────────────────────────────────────────────────────────────
-  const scheduler = new ScheduleEvaluatorImpl(queue, schedules, config.timezone)
+  // Build a concrete SensorRunner that closes over the workspace path. The
+  // scheduler uses it to run kind:'script' schedules inline — no queue event,
+  // no activation loop, no model (SENSOR-06).
+  const sensorRunner = {
+    run(slug: string): Promise<void> {
+      const scriptPath = path.join(workspacePath, 'sensors', slug, 'sensor.mjs')
+      const ambientDir = path.join(workspacePath, 'ambient')
+      return runSensor(slug, scriptPath, ambientDir)
+    },
+  }
+  const scheduler = new ScheduleEvaluatorImpl(queue, schedules, config.timezone, undefined, sensorRunner)
   scheduler.start()
   log.info('[startup] Scheduler started')
 

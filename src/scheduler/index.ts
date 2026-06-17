@@ -3,6 +3,9 @@ import { log } from '../logger.js'
 import type { ScheduleStore } from '../db/schedules.js'
 import { PRIORITY } from '../types/core.js'
 import { nextRunAfter } from './cron.js'
+import type { SensorRunner } from '../sensors/runner.js'
+
+export type { SensorRunner }
 
 export interface ScheduleEvaluator {
   start(): void
@@ -17,12 +20,14 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
   private intervalMs: number
   private timer: ReturnType<typeof setInterval> | null = null
   private directHandlers = new Map<string, () => Promise<void>>()
+  private sensorRunner: SensorRunner | undefined
 
-  constructor(queueStore: QueueStore, scheduleStore: ScheduleStore, timezone: string, intervalMs = 60_000) {
+  constructor(queueStore: QueueStore, scheduleStore: ScheduleStore, timezone: string, intervalMs = 60_000, sensorRunner?: SensorRunner) {
     this.queueStore = queueStore
     this.scheduleStore = scheduleStore
     this.timezone = timezone
     this.intervalMs = intervalMs
+    this.sensorRunner = sensorRunner
   }
 
   registerDirectHandler(skillName: string, handler: () => Promise<void>): void {
@@ -58,28 +63,46 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
     for (const schedule of due) {
       let enqueued = false
       try {
-        const directHandler = this.directHandlers.get(schedule.taskName ?? '')
-        if (directHandler) {
-          directHandler().catch(err =>
-            log.error(`[scheduler] Direct handler for ${schedule.taskName ?? schedule.id} failed:`, (err as Error).message)
-          )
+        if (schedule.kind === 'script') {
+          // SENSOR-06: bypass the activation loop entirely — run the sensor inline.
+          // Fire-and-forget the runner (mirrors directHandler pattern); errors are caught
+          // and logged so a failing sensor never disrupts other due schedules.
+          const slug = schedule.taskName
+          if (!slug) {
+            log.warn(`[scheduler] script schedule ${schedule.id} has no taskName/slug — skipping`)
+          } else if (this.sensorRunner) {
+            this.sensorRunner.run(slug).catch(err =>
+              log.error(`[scheduler] sensor:${slug} runner error:`, (err as Error).message)
+            )
+          }
+          // CRITICAL (Pitfall 1): set enqueued=true even though no queue event is produced.
+          // Without this, one-time kind:'script' schedules re-fire every tick because the
+          // advance block below only disables a row when enqueued===true.
           enqueued = true
         } else {
-          const eventId = `qe_sched_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-          this.queueStore.enqueue(
-            {
-              type: 'schedule_trigger',
-              id: eventId,
-              scheduleId: schedule.id,
-              taskName: schedule.taskName,
-              kind: schedule.kind,
-              createdAt: nowIso,
-            },
-            PRIORITY.SCHEDULE_TRIGGER,
-            schedule.headId,
-          )
-          enqueued = true
-          log.info(`[scheduler] enqueued ${schedule.kind}:${schedule.taskName ?? schedule.id}`)
+          const directHandler = this.directHandlers.get(schedule.taskName ?? '')
+          if (directHandler) {
+            directHandler().catch(err =>
+              log.error(`[scheduler] Direct handler for ${schedule.taskName ?? schedule.id} failed:`, (err as Error).message)
+            )
+            enqueued = true
+          } else {
+            const eventId = `qe_sched_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+            this.queueStore.enqueue(
+              {
+                type: 'schedule_trigger',
+                id: eventId,
+                scheduleId: schedule.id,
+                taskName: schedule.taskName,
+                kind: schedule.kind,
+                createdAt: nowIso,
+              },
+              PRIORITY.SCHEDULE_TRIGGER,
+              schedule.headId,
+            )
+            enqueued = true
+            log.info(`[scheduler] enqueued ${schedule.kind}:${schedule.taskName ?? schedule.id}`)
+          }
         }
       } catch (err) {
         log.error(`[scheduler] Failed to enqueue schedule ${schedule.id}:`, (err as Error).message)
