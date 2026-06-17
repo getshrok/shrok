@@ -1,66 +1,76 @@
-# Requirements: v1.8 Tool Access Control
+# Requirements: v1.10 Ambient Context (Sensors)
 
-**Milestone goal:** Give the operator config-driven, dashboard-editable control over **which tools each layer is allowed to use** — for the head itself and for the sub-agents a head spawns — globally and per-head. Each layer is assigned from the tools it can already execute today (head picker = head-executable tools; agent picker = agent-executable registry), surfaced from one tagged registry shaped so future cross-layer expansion is purely additive. Fresh-install defaults reproduce the **pre-feature** tool sets exactly, so there is zero behavior change until an operator edits the settings. Implements GitHub issue #7.
+**Defined:** 2026-06-17
+**Core Value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
 
-> **Re-plan note (2026-06-07, narrowed):** An earlier implementation pass (commits up to `550b05b`) built this around **two separate, fixed tool universes** and **everything-on defaults**. UAT first reframed this as a unified, cross-assignable pool; a follow-up discussion then **narrowed the scope to assignment-only** (`.planning/phases/46-tool-access-control/46-DISCUSSION-LOG.md`): ship the allowlist/assignment control over each layer's *currently-executable* tool set, with the registry shaped for additive expansion, and **defer all new cross-context executor wiring** (head running agent tools, agents running delegation tools) plus the AGENTS.md philosophy reversal to a future phase. The `null` = "all tools" sentinel is dropped from the UI (two-state: inherit / custom subset). Prior commits remain as reusable scaffolding (`resolveAllowlist`, the API/DTO/client shape, the `TagSelect`/`ToolOverrideControl` UI). See `.planning/phases/46-tool-access-control/46-UAT-FINDINGS.md` and `46-CONTEXT.md`.
+**Milestone goal:** Give the model live situational state (weather, smart-home device state, etc.) gathered by user-defined "sensor" scripts on a schedule, injected into every model turn — without busting prompt caching. Sensors are pure scripts: no LLM, no agent. Implements GitHub issue #25.
 
-**Core semantics (apply to every TOOLCFG requirement):**
-- **One tagged registry, per-layer-restricted pickers.** `/api/tools` returns a single tool list where each tool is tagged with the layer(s) it can currently execute in. Each picker filters to its own layer's compatible tools — the head picker shows head-executable tools, the agent picker shows agent-executable tools. (`view_image` is genuinely dual-context and appears in both.) Shaped so future cross-compat = add the executor + flip the tag, with no schema/UI rework.
-- **Two-state, two layers.** Each layer (head, agent) has a concrete global default plus an optional per-head override. A per-head override is **key omitted** = inherit the global default, or `[array]` = a custom subset. There is no `null`/"all tools" state in the surface (the schema may still tolerate a legacy `null` for backward-compat, but the feature never surfaces or writes it). "Give a layer everything it can run" = check every box in that layer's picker. Resolution order: per-head override (if set) → global default.
-- **Pre-feature defaults (no behavior change).** The fresh-install **global** defaults are explicit subsets equal to the pre-feature sets: the **head** default = the 10 head-executable tools (`spawn_agent`, `message_agent`, `cancel_agent`, `list_identity_files`, `write_identity`, `send_file`, `view_image`, `get_usage`, `acknowledge_reminder`, `ring_device`); the **agent** default = the prior `worker_defaults.allowedTools` set (the 25-tool list shipped in `config.json`, a deliberate subset of the ~29 agent-compatible tools).
+**Core semantics (apply to every SENSOR requirement):**
+- **A sensor is pure code.** It emits plain body text on stdout; no model or agent is ever invoked to run it. (Contrast: a *task* is a prompt run by an agent — that already exists and is unchanged.)
+- **One output file per sensor.** A sensor named `Weather` (slug `weather`) owns `{workspace}/ambient/weather.md`. The runner is the sole writer of that file.
+- **Uncached injection.** The assembled `ambient/*.md` block is placed AFTER the `\n\nCurrent time:` marker that `toAnthropicSystem` (`src/llm/anthropic.ts`) splits on for `cache_control`, so frequent sensor updates never invalidate the cached system-prompt prefix.
+- **No last-good, no freshness stamps.** On failure the output file is overwritten with the error (sensors are cheap and refresh often → a stale block means genuinely broken, which the error already signals).
 
 ## v1 Requirements
 
-### Configuration
+### Sensor Management
 
-- [x] **TOOLCFG-01**: Operator can set a **global head-tool** allowlist in config, selected from the head-executable tool set. Absent = the pre-feature head default (above).
-- [x] **TOOLCFG-02**: Operator can set a **global agent-tool** allowlist in config (the canonical `worker_defaults.allowedTools`), selected from the agent-executable registry. Absent = the pre-feature agent default (the prior 25-tool set).
-- [x] **TOOLCFG-03**: Operator can set a **per-head override** for head tools (two-state: inherit global / custom subset), over the head-executable tool set.
-- [x] **TOOLCFG-04**: Operator can set a **per-head override** for agent tools (two-state, same semantics as TOOLCFG-03), over the agent-executable registry.
+- [ ] **SENSOR-01**: Operator can create a sensor (name + script body) in a dedicated dashboard "Sensors" section, parallel to Tasks.
+- [ ] **SENSOR-02**: Operator can edit an existing sensor's name and script body from the Sensors section.
+- [ ] **SENSOR-03**: Operator can delete a sensor from the Sensors section, removing its script and its `ambient/<slug>.md` output.
+- [ ] **SENSOR-04**: Operator can hand-edit a sensor's script directly on disk and the Sensors section reflects it (filesystem and dashboard are two views of the same files).
 
-### Enforcement
+### Scheduling
 
-- [x] **TOOLCFG-05**: At runtime, the head's available tool surface is the head-executable pool filtered to its resolved head-tool allowlist.
-- [x] **TOOLCFG-06**: Sub-agents spawned by a head receive the agent-executable pool filtered to that head's resolved agent-tool allowlist (the per-head override threads from the spawning head into the agent tool-assembly path).
-- [x] **TOOLCFG-07**: A fresh install (no tool configuration) reproduces the **pre-feature** behavior exactly — head gets its delegating set, agents get the prior `worker_defaults` set — with no tool added or removed. There are no mandatory-tool guardrails: the operator may disable any tool that layer can execute (including core orchestration tools) within that layer's compatible set.
+- [ ] **SENSOR-05**: Operator can schedule a sensor to run on a cron interval through the existing Schedules UI (a sensor schedule is `Schedule.kind:'script'`, the third kind alongside `'task'`/`'reminder'`).
+- [ ] **SENSOR-06**: A scheduled sensor runs directly in the scheduler tick — no queue event, no context assembly, no model invocation — bypassing the activation loop entirely.
 
-### Dashboard UI
+### Runner & Output
 
-- [x] **TOOLCFG-08**: Operator can view and edit the **global** head-tool and agent-tool allowlists from the dashboard Settings page, with each picker populated from the single tagged tool registry (`/api/tools`) filtered to its layer. The displayed value reflects the **effective** config (not just the workspace-override layer), and saving never silently widens or narrows the effective set.
-- [x] **TOOLCFG-09**: Operator can view and edit each head's **per-head** head-tool and agent-tool overrides — with an explicit "inherit global" state distinct from a chosen subset — in the per-head management UI.
+- [ ] **SENSOR-07**: On a successful run, the sensor's captured stdout, truncated to a maximum length, is written to `ambient/<slug>.md`.
+- [ ] **SENSOR-08**: On a failed run (throw, non-zero exit, or timeout), `ambient/<slug>.md` is overwritten with actionable error text that includes the trimmed error message.
+- [ ] **SENSOR-09**: A sensor runs once immediately on create/enable/save, so its first output appears without waiting for the next scheduled tick.
 
-## Phase 47 Requirements (Direction A — Head Runs Agent Tools)
+### Injection
 
-> Activated 2026-06-07 for **Phase 47** (milestone v1.9), narrowed from the original broad cross-context scope to **Direction A only**: making agent-executable tools runnable in the head loop. The reverse direction (agents running head/delegation/identity tools) splits out as the deferred **TOOLCFG-12** below.
+- [ ] **SENSOR-10**: Sensor output is injected into every model turn as a fresh scan of `ambient/*.md`, each block labeled by a filename-derived heading (`weather.md` → `## Weather`), placed in the uncached system-prompt region so updates never bust prompt caching.
+- [ ] **SENSOR-11**: The same ambient scan feeds both the head's own turns (assembler) and the proactive scheduler, so proactive runs see the same situational state.
 
-- [x] **TOOLCFG-10**: Every agent-executable tool's executor is runnable in the **head** loop. `HeadToolExecutor.dispatch()` falls through to the agent-registry executor (`getOptionalTool` + the note/reminder/schedule/usage builders) for any tool name not natively cased, invoked with a head-built `ctx` (`{ headId, timezone }`, no `abortSignal`). The head executor gains a `noteStore?` handle (the only missing store); `scheduleStore`/`usageStore`/`timezone` already exist. The head's candidate tool-def list (`activation.ts:844`) widens to `HEAD_TOOLS ∪ now-head-compatible agent defs` **before** the Phase 46 allowlist filter, and each ported tool is retagged with the `'head'` layer in `/api/tools` so it surfaces in the head picker. **Defaults unchanged** — an unconfigured head still resolves to exactly the 10 `HEAD_TOOL_NAMES`.
-- [x] **TOOLCFG-11**: Context-bound head behavior is correct and needs no special-casing, per verified store/cwd facts: head-created reminders/schedules are owned by the head's own `headId` (`src/db/schedules.ts`); head-run notes use the single global `notes(id,title,content)` pool (`src/db/notes.ts:42`, no scope column); head-run `bash` runs in the daemon `process.cwd()` (no per-agent workspace dir exists) and ships uncancellable (the `abortSignal` is optional; default 30 s `timeout` guards it). AGENTS.md reframes "the head never works directly — it delegates" as the **default/recommended posture that operator configurability supersedes** (the delegation model remains the documented default; it is not deleted).
+### Cleanup
 
-## Future Requirements (deferred)
+- [ ] **SENSOR-12**: The legacy single-file `AMBIENT.md` mechanism is removed (both the assembler injection and `readAmbientContext`), eliminating its current above-the-cache-split injection bug.
 
-- **TOOLCFG-12** (deferred — Direction B): Agents run head/delegation/identity tools — `spawn_agent`/`message_agent`/`cancel_agent` granted to agents beyond the existing depth-1 spawn, and identity/channel tools (`write_identity`, `list_identity_files`, `send_file`, `acknowledge_reminder`) behaving correctly or documented as no-ops where they cannot act in the agent loop. These touch head+channel state agents don't hold; its own future phase. (Was the second half of the original TOOLCFG-10/11.)
-- Per-task / per-skill tool overrides — the `trigger-tools` surface was deliberately removed earlier; re-introducing task-scoped gating is a separate effort.
-- Runtime / per-conversation tool toggling (config-driven only).
-- Head `bash` cancellation — threading a head-activation abort signal into head-run `bash`; add only if a real need appears.
+## v2 Requirements (deferred)
 
-## Out of Scope (this milestone)
+### Sensor Enhancements
 
-- **MCP-server-level tool gating** beyond the existing optional-tool registry — MCP capability scoping is governed elsewhere.
-- **Public release versioning** — this is the internal GSD `v1.8` planning milestone; the repo's public `v0.x` release/tag scheme is separate and untouched.
+- **SENSOR-F-01**: Per-head ambient scoping (a head sees only its own sensors' output).
+- **SENSOR-F-02**: Inline run-now / last-status / last-error surfaced per sensor in the dashboard beyond the basic CRUD.
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Per-head ambient scoping | Global only this milestone — one `ambient/` folder feeds all heads. Deferred to SENSOR-F-01. |
+| LLM/agent-driven gathering | That is exactly what a scheduled *task* already is; sensors are deliberately model-free. |
+| Sandboxed secret model for sensor scripts | Scripts inherit the server env / workspace `.env`, same trust as task write-along scripts. |
+| Last-good preservation + freshness stamps | Explicitly rejected — would force a strict parsable markdown schema; overwrite-with-error is the chosen failure model. |
 
 ## Traceability
 
+Which phases cover which requirements. Filled during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TOOLCFG-01 | Phase 46 | Re-plan (revised; scaffolding exists) |
-| TOOLCFG-02 | Phase 46 | Re-plan (revised; scaffolding exists) |
-| TOOLCFG-03 | Phase 46 | Re-plan (revised; scaffolding exists) |
-| TOOLCFG-04 | Phase 46 | Re-plan (revised; scaffolding exists) |
-| TOOLCFG-05 | Phase 46 | Re-plan (enforcement: per-layer pool filter) |
-| TOOLCFG-06 | Phase 46 | Re-plan (enforcement: per-layer pool filter) |
-| TOOLCFG-07 | Phase 46 | Re-plan (defaults = pre-feature, not everything-on) |
-| TOOLCFG-08 | Phase 46 | Re-plan (tagged registry; effective-config display landed) |
-| TOOLCFG-09 | Phase 46 | Re-plan (two-state inherit/subset) |
-| TOOLCFG-10 | Phase 47 | Active — head dispatch fallthrough into agent registry executors |
-| TOOLCFG-11 | Phase 47 | Active — context-bound head behavior (no special-casing) + AGENTS.md reframe |
-| TOOLCFG-12 | Deferred | Direction B — agents run head/delegation/identity tools |
+| SENSOR-01 | TBD | Pending |
+| SENSOR-02 | TBD | Pending |
+| SENSOR-03 | TBD | Pending |
+| SENSOR-04 | TBD | Pending |
+| SENSOR-05 | TBD | Pending |
+| SENSOR-06 | TBD | Pending |
+| SENSOR-07 | TBD | Pending |
+| SENSOR-08 | TBD | Pending |
+| SENSOR-09 | TBD | Pending |
+| SENSOR-10 | TBD | Pending |
+| SENSOR-11 | TBD | Pending |
+| SENSOR-12 | TBD | Pending |
