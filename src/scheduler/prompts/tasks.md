@@ -41,7 +41,7 @@ Skip ({"action": "skip"}) only if:
 - The same task was completed very recently — within the last scheduled interval or less (e.g., a task that runs every 2 hours was manually done 30 minutes ago)
 - Run conditions are set and clearly not satisfied right now (e.g. "weekdays only" but today is Sunday, "only after 5pm" but it is 10am, "only when I'm home" but ambient context shows otherwise)
 
-When running, optionally include a "context" field — but only if the conversation contains something directly relevant to what this task does. The task agent already has ambient context (AMBIENT.md) in its system prompt, so don't repeat that. This field is for conversation-specific details the task wouldn't otherwise know. Omit the context field entirely if nothing stands out.
+When running, optionally include a "context" field — but only if the conversation contains something directly relevant to what this task does. The task agent already has ambient context (from the `ambient/` sensor scan) in its system prompt, so don't repeat that. This field is for conversation-specific details the task wouldn't otherwise know. Omit the context field entirely if nothing stands out.
 
 Always provide a brief reason.
 

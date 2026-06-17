@@ -33,6 +33,12 @@ vi.mock('../scheduler/proactive.js', async () => {
   }
 })
 
+// Phase 48 SENSOR-11 — hoisted mock for scanAmbient sentinel test
+import * as scanModule from '../sensors/scan.js'
+vi.mock('../sensors/scan.js', () => ({
+  scanAmbient: vi.fn(() => '## SENTINEL-AMBIENT\nsentinel-body'),
+}))
+
 interface Fixture {
   loop: ActivationLoop
   agentRunner: AgentRunner
@@ -159,6 +165,7 @@ function makeFixture(opts: {
     proactiveEnabled: opts.proactiveEnabled ?? false,
     proactiveShadow: false,
     stewardModel: 'claude-haiku-4-5',
+    workspacePath: tmpDir,  // Phase 48: needed so scanAmbient call site is reached
   } as unknown as Config
 
   // Default proactive decision: fire (no skip).
@@ -525,6 +532,48 @@ describe('handleScheduleTrigger reminder branch — D-07 fallback', () => {
     // discarded; the scheduler already re-armed nextRun and it re-nags next tick.
     expect(fix.queueStore.enqueue).not.toHaveBeenCalled()
     expect(fix.scheduleStore.delete).not.toHaveBeenCalled()
+  })
+})
+
+// ─── Phase 48 SENSOR-11: scanAmbient sentinel reaches ambientContext at both proactive call sites ──
+
+describe('handleScheduleTrigger — scanAmbient sentinel reaches ambientContext (SENSOR-11 / D-12)', () => {
+  let fix: Fixture
+
+  afterEach(() => {
+    if (fix?.tmpDir) fs.rmSync(fix.tmpDir, { recursive: true, force: true })
+    vi.clearAllMocks()
+  })
+
+  it('REMINDER branch: mocked scanAmbient sentinel reaches ambientContext field of ReminderDecisionContext', async () => {
+    vi.mocked(scanModule.scanAmbient).mockReturnValue('## SENTINEL-AMBIENT\nsentinel-body')
+    vi.mocked(proactive.runReminderDecision).mockResolvedValue({ action: 'inject', reason: 'ok' } as any)
+
+    fix = makeFixture({
+      proactiveEnabled: true,
+      kind: 'reminder',
+      agentContext: 'test reminder',
+    })
+    await fire(fix.loop, { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', taskName: null, kind: 'reminder', createdAt: new Date().toISOString() })
+
+    expect(proactive.runReminderDecision).toHaveBeenCalledOnce()
+    const ctx = vi.mocked(proactive.runReminderDecision).mock.calls[0]![0]
+    expect(ctx.ambientContext).toBe('## SENTINEL-AMBIENT\nsentinel-body')
+  })
+
+  it('TASK branch: mocked scanAmbient sentinel reaches ambientContext field of ProactiveContext', async () => {
+    vi.mocked(scanModule.scanAmbient).mockReturnValue('## SENTINEL-AMBIENT\nsentinel-body')
+    vi.mocked(proactive.runProactiveDecision).mockResolvedValue({ action: 'run', reason: 'ok' } as any)
+
+    fix = makeFixture({
+      proactiveEnabled: true,
+      kind: 'task',
+    })
+    await fire(fix.loop, { type: 'schedule_trigger', id: 'qe_1', scheduleId: 's1', taskName: 'bar', kind: 'task', createdAt: new Date().toISOString() })
+
+    expect(proactive.runProactiveDecision).toHaveBeenCalledOnce()
+    const ctx = vi.mocked(proactive.runProactiveDecision).mock.calls[0]![0]
+    expect(ctx.ambientContext).toBe('## SENTINEL-AMBIENT\nsentinel-body')
   })
 })
 

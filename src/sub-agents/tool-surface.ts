@@ -14,6 +14,7 @@ import { formatIanaTimeLine } from '../util/time.js'
 import { buildScopedEnv } from './env.js'
 import { getOptionalTools, buildScopedBashTools, buildUsageTool, buildScheduleTools, buildReminderTools, buildNoteTools } from './registry.js'
 import { truncateToolOutput } from './output-cap.js'
+import { scanAmbient } from '../sensors/scan.js'
 
 const BASH_TOOL_NAMES = new Set(['bash', 'bash_no_net'])
 
@@ -73,14 +74,14 @@ export function buildSystemPrompt(deps: ToolSurfaceDeps, _skill: Skill | null): 
 
   let prompt = identityPrompt
 
-  if (deps.workspacePath) {
-    try {
-      const ambient = fs.readFileSync(path.join(deps.workspacePath, 'AMBIENT.md'), 'utf8').trim()
-      if (ambient) prompt += `\n\n## Ambient Context\n${ambient}`
-    } catch { /* file doesn't exist yet — skip */ }
-  }
-
   prompt += `\n\nCurrent time: ${formatIanaTimeLine(new Date(), deps.timezone)}`
+
+  // Fresh ambient scan from ambient/*.md — placed AFTER "Current time:" so it
+  // lands in the uncached region (SENSOR-10; parity with the head's assembler).
+  if (deps.workspacePath) {
+    const ambientBlock = scanAmbient(deps.workspacePath)
+    if (ambientBlock) prompt += `\n\n${ambientBlock}`
+  }
 
   const listing = buildSkillsListing(deps)
   if (listing) prompt += `\n\n${listing}`

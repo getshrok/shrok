@@ -28,6 +28,7 @@ import { runToolLoop, LoopDetectedError, stripLeadingBracketPrefixes } from '../
 import { runStewards, runRelaySteward, runWorkSummarySteward, runHeadRelaySteward, runRoutingSteward, runContextRelevanceSteward, DEFAULT_STEWARDS } from './steward.js'
 import { extractAgentOwnWork, formatWorkForSummary } from './injector.js'
 import { systemTrigger, systemEvent, systemNudge, MARKER_TAGS, LEGACY_MARKER_PREFIXES } from '../markers.js'
+import { scanAmbient } from '../sensors/scan.js'
 import { timingMark } from '../timing.js'
 import type { StewardRunStore } from '../db/steward_runs.js'
 import type { DashboardEventBus } from '../dashboard/events.js'
@@ -163,14 +164,6 @@ export class ActivationLoop {
 
   /** Late-bind session revocation (dashboard created after activation loop). */
   setRevokeDashboardSessions(fn: () => void): void { this.opts.revokeDashboardSessions = fn }
-
-  private readAmbientContext(): string {
-    try {
-      const ws = this.opts.config.workspacePath?.replace(/^~/, os.homedir())
-      if (!ws) return ''
-      return fs.readFileSync(path.join(ws, 'AMBIENT.md'), 'utf8').trim()
-    } catch { return '' }
-  }
 
   // Track event IDs whose user messages have already been appended to history.
   // Prevents double-appending when the rate-limit retry re-calls handleEvent.
@@ -1140,7 +1133,9 @@ export class ActivationLoop {
           userMd: identityLoader.readFile('USER.md') ?? '',
           recentHistory: recentMsgs
             .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
-          ambientContext: this.readAmbientContext(),
+          ambientContext: this.opts.config.workspacePath
+            ? scanAmbient(this.opts.config.workspacePath.replace(/^~/, os.homedir()))
+            : '',
           currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
           ...(schedule.conditions ? { conditions: schedule.conditions } : {}),
         }, this.opts.llmRouter, this.opts.config.stewardModel, this.opts.usageStore, event.id)
@@ -1215,7 +1210,9 @@ export class ActivationLoop {
         userMd: identityLoader.readFile('USER.md') ?? '',
         recentHistory: recentMsgs
           .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
-        ambientContext: this.readAmbientContext(),
+        ambientContext: this.opts.config.workspacePath
+          ? scanAmbient(this.opts.config.workspacePath.replace(/^~/, os.homedir()))
+          : '',
         currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
         ...(schedule?.conditions ? { conditions: schedule.conditions } : {}),
       }, this.opts.llmRouter, this.opts.config.stewardModel,
