@@ -109,7 +109,7 @@ export function createSchedulesRouter(
         if (deduped.length > 0) deliverToHeadIds = deduped
       }
     } else if ((req.body as { deliverToHeadIds?: unknown }).deliverToHeadIds !== undefined) {
-      // 400 on reminders — clearer than silently ignoring (D-08)
+      // 400 on reminder/script kinds — clearer than silently ignoring (D-08)
       res.status(400).json({ error: 'deliverToHeadIds is only valid for task schedules' })
       return
     }
@@ -125,6 +125,15 @@ export function createSchedulesRouter(
           res.status(400).json({ error: `Unknown task: ${taskName}` })
           return
         }
+      }
+    } else if (kind === 'script') {
+      // SENSOR-05: script schedules carry the sensor slug in taskName. It is deliberately
+      // NOT validated against the tasks loader (it names a sensor, not a task — Plan 01),
+      // but it MUST be present: the scheduler reads schedule.taskName as the slug and skips
+      // any null row, so a missing slug would silently produce an inoperable schedule.
+      if (typeof taskName !== 'string' || !taskName.trim()) {
+        res.status(400).json({ error: 'taskName (sensor slug) is required for script schedules' })
+        return
       }
     }
 
@@ -172,7 +181,7 @@ export function createSchedulesRouter(
       // Plan 35-03 D-11: headId comes from the validated req body — schedule
       // belongs to the head the client picked.
       const createOpts: import('../../db/schedules.js').CreateScheduleOptions = { id: generateId('sched'), headId, kind }
-      if (kind === 'task' && typeof taskName === 'string') createOpts.taskName = taskName
+      if ((kind === 'task' || kind === 'script') && typeof taskName === 'string') createOpts.taskName = taskName
       if (typeof cron === 'string' && cron) createOpts.cron = cron
       if (typeof runAt === 'string' && runAt) createOpts.runAt = runAt
       if (nextRun !== undefined) createOpts.nextRun = nextRun

@@ -155,7 +155,7 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 ## v1.10 Ambient Context (Sensors)
 
 - [x] **Phase 48: Sensor Backend** — Sensor file storage, `kind:'script'` schedule type, child-process runner (timeout + output cap), `ambient/<slug>.md` output, uncached ambient scan injected into both the head assembler and the proactive scheduler, and removal of the legacy `AMBIENT.md` path. Sensors work end-to-end without a dashboard. (completed 2026-06-17)
-- [ ] **Phase 49: Sensors Dashboard** — New "Sensors" sidebar section (parallel to Tasks) with full create/edit/delete CRUD, run-on-save wiring, and Schedules UI support for `kind:'script'` sensor schedules.
+- [x] **Phase 49: Sensors Dashboard** — New "Sensors" sidebar section (parallel to Tasks) with full create/edit/delete CRUD, run-on-save wiring, and Schedules UI support for `kind:'script'` sensor schedules. (completed 2026-06-18)
 
 ## Phase Details
 
@@ -187,8 +187,8 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
   5. Creating or saving a sensor triggers an immediate run so the operator sees output in the model's context without waiting for the next cron tick
 **Plans**: 3 plans
   - [x] 49-01-PLAN.md — Backend: schedules-route kind:'script' patch + new createSensorsRouter (filesystem CRUD) + wiring + tests (Wave 1)
-  - [ ] 49-02-PLAN.md — Frontend Sensors page (two-panel CRUD) + api.sensors client + sidebar nav + /sensors route (Wave 2)
-  - [ ] 49-03-PLAN.md — Schedules UI kind:'script' support: SensorScheduleRow + AddSensorScheduleForm + type widening + CHANGELOG (Wave 3)
+  - [x] 49-02-PLAN.md — Frontend Sensors page (two-panel CRUD) + api.sensors client + sidebar nav + /sensors route (Wave 2)
+  - [x] 49-03-PLAN.md — Schedules UI kind:'script' support: SensorScheduleRow + AddSensorScheduleForm + type widening + CHANGELOG (Wave 3)
 **UI hint**: yes
 
 ### Phase 47: Head Runs Agent Tools
@@ -272,4 +272,4 @@ A scheduled **task** runs once but fans out its `agent_completed` to every head 
 | 46. Tool Access Control | v1.8 | 6/3 | Complete    | 2026-06-07 |
 | 47. Head Runs Agent Tools | v1.9 | 3/3 | Complete | 2026-06-07 |
 | 48. Sensor Backend | v1.10 | 3/3 | Complete    | 2026-06-17 |
-| 49. Sensors Dashboard | v1.10 | 1/3 | In Progress|  |
+| 49. Sensors Dashboard | v1.10 | 3/3 | Complete   | 2026-06-18 |

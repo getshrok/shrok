@@ -138,6 +138,28 @@ describe('POST /api/schedules kind validation', () => {
     const err = (r.data as { error: string }).error
     expect(err.toLowerCase()).toMatch(/unknown|not found/)
   })
+
+  // SENSOR-05 regression guard (code-review CR-01): a kind:'script' schedule MUST persist
+  // its sensor slug in taskName. The scheduler reads schedule.taskName as the slug and skips
+  // null rows, so dropping taskName here would make every UI-created sensor schedule silently
+  // inoperable. The slug is NOT validated against the tasks loader (it names a sensor).
+  it("Test G: kind='script' with a sensor slug → 200, persists kind='script' + taskName (slug not tasks-validated)", async () => {
+    const r = await post({ taskName: 'weather', kind: 'script', cron: '*/30 * * * *', headId: 'default' })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { kind: string; taskName: string | null } }).schedule
+    expect(schedule.kind).toBe('script')
+    expect(schedule.taskName).toBe('weather')
+  })
+
+  // WR-01: script schedules require a taskName (sensor slug) — a missing slug is rejected
+  // up front rather than persisted as an inoperable row.
+  it("Test H: kind='script' without taskName → 400", async () => {
+    const before = store.list().length
+    const r = await post({ kind: 'script', cron: '*/30 * * * *', headId: 'default' })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error.toLowerCase()).toContain('taskname')
+    expect(store.list().length).toBe(before)
+  })
 })
 
 describe('cadence validation (POST + PATCH /api/schedules)', () => {
