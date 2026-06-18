@@ -136,3 +136,42 @@ describe('InjectorImpl.injectHeadMessage', () => {
     expect(trigger!.msg.content).toContain('<system-trigger type="respond"')
   })
 })
+
+describe('InjectorImpl.injectSensorEvent', () => {
+  function captureStore(): { store: MessageStore; appended: Array<{ msg: TextMessage; headId: string }> } {
+    const appended: Array<{ msg: TextMessage; headId: string }> = []
+    const store = {
+      append: (msg: TextMessage, headId: string) => { appended.push({ msg, headId }) },
+    } as unknown as MessageStore
+    return { store, appended }
+  }
+
+  const event: QueueEvent & { type: 'sensor_event' } = {
+    type: 'sensor_event',
+    id: 'qe_2',
+    slug: 'weather',
+    text: 'Storm warning',
+    createdAt: '',
+  }
+
+  it('appends exactly two messages: assistant sensor system-event + user respond trigger', () => {
+    const { store, appended } = captureStore()
+    new InjectorImpl(store, 'ashley').injectSensorEvent(event)
+
+    expect(appended).toHaveLength(2)
+    // Both land on the owning head and are injected (user-invisible).
+    expect(appended.every(a => a.headId === 'ashley')).toBe(true)
+    expect(appended.every(a => a.msg.injected === true)).toBe(true)
+
+    const [evt, trigger] = appended
+    // First message: assistant-role system-event type="sensor" with slug + text
+    expect(evt!.msg.role).toBe('assistant')
+    expect(evt!.msg.content).toContain('type="sensor"')
+    expect(evt!.msg.content).toContain('slug="weather"')
+    expect(evt!.msg.content).toContain('Storm warning')
+
+    // Second message: user-role respond trigger
+    expect(trigger!.msg.role).toBe('user')
+    expect(trigger!.msg.content).toContain('<system-trigger type="respond"')
+  })
+})

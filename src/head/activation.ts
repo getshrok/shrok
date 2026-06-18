@@ -1332,6 +1332,9 @@ export class ActivationLoop {
       case 'head_message':
         this.opts.injector.injectHeadMessage(event)
         break
+      case 'sensor_event':
+        this.opts.injector.injectSensorEvent(event)
+        break
     }
   }
 
@@ -1461,6 +1464,8 @@ function formatInjectedEvent(event: QueueEvent): string {
       return systemEvent('webhook', { source: event.source ?? '', event: event.event ?? '' })
     case 'head_message':
       return systemEvent('head-message', { from: event.fromHeadName }, event.text.slice(0, 300))
+    case 'sensor_event':
+      return systemEvent('sensor', { slug: event.slug }, event.text.slice(0, 300))
     default:
       return JSON.stringify(event).slice(0, 150)
   }

@@ -137,6 +137,7 @@ export interface Injector {
   injectAgentEvent(event: QueueEvent & { type: 'agent_completed' | 'agent_question' | 'agent_failed' | 'agent_response' }, workSummaryOverride?: string): void
   injectWebhookEvent(event: QueueEvent & { type: 'webhook' }): void
   injectHeadMessage(event: QueueEvent & { type: 'head_message' }): void
+  injectSensorEvent(event: QueueEvent & { type: 'sensor_event' }): void
 }
 
 export class InjectorImpl implements Injector {
@@ -298,6 +299,31 @@ export class InjectorImpl implements Injector {
       createdAt: now(),
       role: 'assistant',
       content: systemEvent('head-message', { from: event.fromHeadName }, event.text),
+      injected: true,
+    }
+
+    const triggerMsg: TextMessage = {
+      kind: 'text',
+      id: generateId('msg'),
+      createdAt: now(),
+      role: 'user',
+      content: systemTrigger('respond'),
+      injected: true,
+    }
+
+    this.messages.append(eventMsg, this.headId)
+    this.messages.append(triggerMsg, this.headId)
+  }
+
+  /** A sensor observation pushed into the head turn. Mirrors injectWebhookEvent:
+   *  assistant-role sensor system-event + user-role respond trigger. */
+  injectSensorEvent(event: QueueEvent & { type: 'sensor_event' }): void {
+    const eventMsg: TextMessage = {
+      kind: 'text',
+      id: generateId('msg'),
+      createdAt: now(),
+      role: 'assistant',
+      content: systemEvent('sensor', { slug: event.slug }, event.text),
       injected: true,
     }
 

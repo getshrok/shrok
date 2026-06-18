@@ -78,6 +78,9 @@ export function deriveQueryText(
     case 'head_message':
       return `${trigger.fromHeadName}: ${trigger.text}`
 
+    case 'sensor_event':
+      return trigger.text
+
   }
 }
 
