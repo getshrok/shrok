@@ -13,4 +13,4 @@ Env var mapping: tavily → `TAVILY_API_KEY`, brave → `BRAVE_API_KEY`.
 
 Write config: `cd $SHROK_ROOT && npm run config:set -- SEARCH_PROVIDER=<provider> <API_KEY_VAR>=<key>`
 
-Restart: `touch $HOME/.shrok/.restart-requested`
+`SEARCH_PROVIDER` is read from `.env` at search time (there's no `config.json` field for it), so a new provider/key takes effect on the next `web_search` call — **no restart required**.

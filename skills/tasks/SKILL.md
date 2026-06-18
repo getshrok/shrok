@@ -24,11 +24,16 @@ Use `$SHROK_TASKS_DIR` in all paths. Resolve it via `bash` before using in file 
 ---
 name: my-task
 description: What the task does.
+model: smart   # optional, task-only — worker tier for scheduled runs
 skill-deps:
   - system-stats
   - email
 ---
 ```
+
+Same fields as a skill (`name`, `description`, `skill-deps`, `mcp-capabilities`, `npm-deps`, `max-per-month-usd`) plus one that's **task-only**:
+
+- `model` — the worker tier a scheduled run of this task uses (e.g. `dumb`/`smart`/`genius`, mapped to the configured model IDs). This is the field that distinguishes a task from a skill; it is parsed but ignored on a plain skill.
 
 ## Scheduling
 
@@ -37,6 +42,10 @@ Tasks can be scheduled through the dashboard Schedules page or by using the crea
 - **One-time** — fires once at a specific time, then never again
 
 A task can have multiple schedules (e.g., a news monitor that runs hourly on weekdays but twice daily on weekends).
+
+A schedule references its task by **name** (the schedule's `taskName` field), not by a stable ID. Two consequences:
+- **Renaming a task cascades** — every schedule pointing at the old name is updated automatically.
+- **Deleting a task does NOT delete its schedules** — they're left orphaned (they'll fail to find the task at fire time). Clean up or repoint a task's schedules before deleting it.
 
 ## The bundled-skills pattern
 

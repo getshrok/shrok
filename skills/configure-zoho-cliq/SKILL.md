@@ -16,4 +16,8 @@ You need Zoho OAuth credentials and a Cliq chat ID.
 
 Write credentials: `cd $SHROK_ROOT && npm run config:set -- ZOHO_CLIENT_ID=<id> ZOHO_CLIENT_SECRET=<secret> ZOHO_REFRESH_TOKEN=<token> ZOHO_CLIQ_CHAT_ID=<chatId>`
 
+**All four keys must be present** — the Cliq integration only activates when `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, and `ZOHO_CLIQ_CHAT_ID` are all set; miss one and it silently stays off.
+
+Optional: set `zohoCliqPollInterval` (milliseconds, default 10000) in `config.json` to tune how often shrok polls for new messages.
+
 Hot-reload: `touch $SHROK_WORKSPACE_PATH/.reload-zoho-cliq`

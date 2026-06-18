@@ -16,3 +16,7 @@ Env var mapping: anthropic → `ANTHROPIC_API_KEY`, gemini → `GEMINI_API_KEY`,
 Write config: `cd $SHROK_ROOT && npm run config:set -- LLM_PROVIDER=<provider> <API_KEY_VAR>=<key>`
 
 Restart: `touch $HOME/.shrok/.restart-requested`
+
+**Beyond the basics:**
+- **Per-tier model IDs** live in `config.json` (the workspace `config.json`, NOT `.env`) — e.g. `anthropicModelDumb`/`anthropicModelSmart`/`anthropicModelGenius` and the `gemini*`/`openai*` equivalents. Edit them there (or via the Settings dashboard) to override the defaults; the API keys stay in `.env`.
+- **Fallback chain:** set `LLM_PROVIDER_PRIORITY` (e.g. `anthropic,gemini,openai`) in `.env` to auto-fall-back to the next provider on auth/rate-limit/server errors. Each provider in the chain needs its API key set.

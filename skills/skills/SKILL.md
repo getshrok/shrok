@@ -48,6 +48,11 @@ skill-deps:
 | `name` | yes | Skill name (kebab-case) |
 | `description` | yes | What the skill does and when to reach for it — not how it works internally |
 | `skill-deps` | no | Other skills whose instructions are auto-included when this skill is read |
+| `mcp-capabilities` | no | MCP capability names this skill requires |
+| `npm-deps` | no | npm packages installed at fire time |
+| `max-per-month-usd` | no | Monthly spend cap; scheduled runs are skipped once exceeded |
+
+(The `model` field is task-only — see the `tasks` skill. It is parsed but ignored on a SKILL.md.)
 
 ## Guiding principles
 
@@ -63,7 +68,7 @@ Scripts should be self-contained (`--help`, JSON to stdout, errors to stderr) so
 
 ## Credentials
 
-**Secrets never go in MEMORY.md, and the model should never have to type them.** Long opaque values (OAuth refresh tokens, API keys) get mis-copied even by capable models. A skill that needs credentials keeps them in a per-skill **`.<service>-credentials.json`** store, keyed by a short **account alias**, and the script reads them itself. The `gmail` skill is the reference implementation.
+**Secrets never go in MEMORY.md, and the model should never have to type them.** Long opaque values (OAuth refresh tokens, API keys) get mis-copied even by capable models. A skill that needs credentials keeps them in a per-skill **`.<service>-credentials.json`** store, keyed by a short **account alias**, and the script reads them itself.
 
 Conventions:
 - **Use by alias.** Normal commands take `--account <alias>` (with `-a` short form); the script loads the secret. The model only handles the short alias, never the secret value.

@@ -3,7 +3,7 @@ name: configure-slack
 description: Set up the Slack channel integration — bot token, app-level token, and channel ID.
 ---
 
-You need three things: a bot token (`xoxb-`), an app-level token (`xapp-`), and a channel ID.
+You need three things, **all required** — the integration won't start if any is missing: a bot token (`xoxb-`), an app-level token (`xapp-`, for Socket Mode), and a channel ID.
 
 **Creating the app:**
 1. [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From scratch
