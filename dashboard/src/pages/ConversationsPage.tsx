@@ -514,8 +514,8 @@ export default function ConversationsPage() {
 
   // Agent work backfill + live stream (gated by the agentWork category)
   const { data: xrayBackfill } = useQuery({
-    queryKey: ['xray-backfill'],
-    queryFn: api.agents.xrayHistory,
+    queryKey: ['xray-backfill', selectedHead],
+    queryFn: () => api.agents.xrayHistory(selectedHead),
     enabled: visibility.agentWork,
     staleTime: Infinity,
   })
@@ -560,8 +560,8 @@ export default function ConversationsPage() {
   })
 
   const stewardRunsQuery = useQuery({
-    queryKey: ['stewardRuns'],
-    queryFn: api.stewardRuns.list,
+    queryKey: ['stewardRuns', selectedHead],
+    queryFn: () => api.stewardRuns.list(selectedHead),
   })
 
   const usageQuery = useQuery({

@@ -110,8 +110,8 @@ export const api = {
       }),
   },
   stewardRuns: {
-    list: () =>
-      request<{ stewardRuns: StewardRun[] }>('/api/steward-runs'),
+    list: (headId?: string) =>
+      request<{ stewardRuns: StewardRun[] }>(headId ? '/api/steward-runs?head=' + encodeURIComponent(headId) : '/api/steward-runs'),
   },
   usage: {
     get: () =>
@@ -136,8 +136,8 @@ export const api = {
       request<{ history: Message[]; status: string; task: string; pendingQuestion: string | null }>(`/api/agents/${encodeURIComponent(id)}/history`),
     cancel: (id: string) =>
       request<{ ok: boolean }>(`/api/agents/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
-    xrayHistory: () =>
-      request<{ messages: Array<{ agentId: string; message: Message }> }>('/api/agents/xray-history'),
+    xrayHistory: (headId?: string) =>
+      request<{ messages: Array<{ agentId: string; message: Message }> }>(headId ? '/api/agents/xray-history?head=' + encodeURIComponent(headId) : '/api/agents/xray-history'),
   },
   activity: {
     get: () =>
