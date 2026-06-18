@@ -7,7 +7,7 @@
 **Goal:** When a head is selected, the dashboard shows only that head's agent activity, steward runs, memory retrievals, and agent pills — and nothing from any other head — on both initial backfill and live streaming, including across head switches. Closes the four documented "accepted cross-head leakage" surfaces (T-33-09): `agent_message_added`, `agent_status_changed`, `memory_retrieval`, `steward_run_added`. Single-head deployments see zero behavior change.
 **Requirements**: D-01, D-02, D-03, D-04 (CONTEXT.md locked decisions; no REQ-IDs mapped in roadmap)
 **Depends on:** Phase 49
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -20,7 +20,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 50-03-PLAN.md — head-scope the backfill REST routes (?head=) + client api wrappers (Wave 2)
+- [x] 50-03-PLAN.md — head-scope the backfill REST routes (?head=) + client api wrappers (Wave 2)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

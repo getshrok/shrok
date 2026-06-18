@@ -1,15 +1,20 @@
-import type { DashboardEvent } from '../types/api'
+import type { DashboardEvent, StewardRun } from '../types/api'
 
 /**
- * Per-head SSE filter (D-11 minimum-correct scope per RESEARCH § A4).
+ * Per-head SSE filter.
  *
- * Returns false ONLY for `message_added` and `typing` events whose
- * headId does not match the currently selected head. Every other event
- * type passes through unconditionally — they are either process-wide
- * (usage_updated, theme_changed, thresholds_changed,
- * assistant_name_changed) or accepted cross-head leakage in this phase
- * (agent_status_changed, agent_message_added, steward_run_added,
- * memory_retrieval — see T-33-09).
+ * Returns false for per-head event types whose headId does not match the
+ * currently selected head. Process-wide events (usage_updated,
+ * theme_changed, thresholds_changed, assistant_name_changed) always pass.
+ *
+ * HeadId is resolved per type: `message_added`, `typing`,
+ * `agent_message_added`, `agent_status_changed`, and `memory_retrieval`
+ * carry headId at the top level of the event; `steward_run_added` carries
+ * it inside the StewardRun payload as `event.payload.headId`.
+ *
+ * The filter is fail-closed: per-head events with an absent or mismatched
+ * headId are dropped (the comparison against selectedHead naturally yields
+ * false for undefined).
  *
  * @param selectedHead Currently selected head id, or null to deliver every
  *   per-head event regardless (used during initial render before head is
@@ -19,7 +24,24 @@ export function shouldDeliverStreamEvent(
   event: DashboardEvent,
   selectedHead: string | null,
 ): boolean {
-  if (event.type !== 'message_added' && event.type !== 'typing') return true
+  const perHeadTypes = new Set([
+    'message_added',
+    'typing',
+    'agent_message_added',
+    'agent_status_changed',
+    'memory_retrieval',
+    'steward_run_added',
+  ])
+  if (!perHeadTypes.has(event.type)) return true
   if (selectedHead === null) return true
+
+  // Resolve headId per type — steward_run_added carries it on the payload;
+  // the other five per-head types carry it at the top level of the event.
+  if (event.type === 'steward_run_added') {
+    return (event.payload as StewardRun).headId === selectedHead
+  }
+
+  // message_added, typing, agent_message_added, agent_status_changed, memory_retrieval
+  // all carry headId at the top level — TypeScript narrows correctly here.
   return event.headId === selectedHead
 }
