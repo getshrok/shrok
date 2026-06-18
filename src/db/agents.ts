@@ -225,9 +225,9 @@ export class AgentStore {
     return rowToState(row, history)
   }
 
-  updateStatus(id: string, status: AgentStatus): void {
+  updateStatus(id: string, status: AgentStatus, headId?: string): void {
     this.stmtUpdateStatus.run(status, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status } })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status }, ...(headId !== undefined ? { headId } : {}) })
   }
 
   updateStatusText(id: string, statusText: string): void {
@@ -238,29 +238,29 @@ export class AgentStore {
     this.stmtUpdateWorkStart.run(workStart, id)
   }
 
-  suspend(id: string, question: string): void {
+  suspend(id: string, question: string, headId?: string): void {
     this.stmtSuspend.run(question, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'suspended' } })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'suspended' }, ...(headId !== undefined ? { headId } : {}) })
   }
 
-  resume(id: string): void {
+  resume(id: string, headId?: string): void {
     this.stmtResume.run(id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'running' } })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'running' }, ...(headId !== undefined ? { headId } : {}) })
   }
 
   /** Emit an SSE event for a new message appended to an agent's in-progress history. */
-  emitMessageAdded(agentId: string, message: Message, trigger?: string): void {
-    this.eventBus?.emit('dashboard', { type: 'agent_message_added', payload: { agentId, message, trigger: trigger ?? 'manual' } })
+  emitMessageAdded(agentId: string, message: Message, trigger?: string, headId?: string): void {
+    this.eventBus?.emit('dashboard', { type: 'agent_message_added', payload: { agentId, message, trigger: trigger ?? 'manual' }, ...(headId !== undefined ? { headId } : {}) })
   }
 
-  complete(id: string, output: string): void {
+  complete(id: string, output: string, headId?: string): void {
     this.stmtComplete.run(output, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'completed' } })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'completed' }, ...(headId !== undefined ? { headId } : {}) })
   }
 
-  fail(id: string, error: string): void {
+  fail(id: string, error: string, headId?: string): void {
     this.stmtFail.run(error, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'failed' } })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'failed' }, ...(headId !== undefined ? { headId } : {}) })
   }
 
   getActive(): AgentState[] {
@@ -277,7 +277,7 @@ export class AgentStore {
     const active = this.getActive()
     this.stmtCancelAllActive.run()
     for (const a of active) {
-      this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id: a.id, status: 'retracted' } })
+      this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id: a.id, status: 'retracted' }, headId: a.headId })
     }
     return active.length
   }
