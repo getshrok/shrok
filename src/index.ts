@@ -512,10 +512,10 @@ async function main() {
   // scheduler uses it to run kind:'script' schedules inline — no queue event,
   // no activation loop, no model (SENSOR-06).
   const sensorRunner = {
-    run(slug: string): Promise<void> {
+    run(slug: string, headId: string): Promise<void> {
       const scriptPath = path.join(workspacePath, 'sensors', slug, 'sensor.mjs')
-      const ambientDir = path.join(workspacePath, 'ambient')
-      return runSensor(slug, scriptPath, ambientDir)
+      const ambientBaseDir = path.join(workspacePath, 'ambient')
+      return runSensor(slug, headId, scriptPath, ambientBaseDir, queue)
     },
   }
   const scheduler = new ScheduleEvaluatorImpl(queue, schedules, config.timezone, undefined, sensorRunner)

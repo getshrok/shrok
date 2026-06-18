@@ -390,7 +390,7 @@ describe('ScheduleEvaluatorImpl — kind:script dispatch', () => {
     evaluatorNoRunner = new ScheduleEvaluatorImpl(queueStore, scheduleStore, 'UTC', 999_999)
   })
 
-  it('calls sensorRunner.run(slug) and does NOT call queueStore.enqueue for kind:script (SENSOR-06)', async () => {
+  it('calls sensorRunner.run(slug, headId) and does NOT call queueStore.enqueue for kind:script (SENSOR-06)', async () => {
     const schedule = makeSchedule({ kind: 'script', taskName: 'weather', cron: '*/5 * * * *' })
     vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
 
@@ -401,7 +401,19 @@ describe('ScheduleEvaluatorImpl — kind:script dispatch', () => {
     // give the fire-and-forget promise a chance to run
     await new Promise(r => setTimeout(r, 10))
     expect(sensorRunner.run).toHaveBeenCalledOnce()
-    expect(sensorRunner.run).toHaveBeenCalledWith('weather')
+    // SENSOR-16: runner receives both slug AND headId
+    expect(sensorRunner.run).toHaveBeenCalledWith('weather', 'default')
+  })
+
+  it('(SENSOR-16) passes schedule.headId to sensorRunner.run for kind:script', async () => {
+    const schedule = makeSchedule({ kind: 'script', taskName: 'humidity', cron: '*/10 * * * *', headId: 'zoey' })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluatorWithRunner.tick()
+
+    await new Promise(r => setTimeout(r, 10))
+    expect(sensorRunner.run).toHaveBeenCalledOnce()
+    expect(sensorRunner.run).toHaveBeenCalledWith('humidity', 'zoey')
   })
 
   it('advances nextRun for a cron kind:script schedule', () => {
