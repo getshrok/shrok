@@ -3,12 +3,14 @@ import type { DashboardEventBus } from '../dashboard/events.js'
 
 export interface StewardRun {
   id: string
+  headId: string
   stewards: Array<{ name: string; ran: boolean; fired: boolean }>
   createdAt: string
 }
 
 interface StewardRunRow {
   id: string
+  head_id: string
   stewards: string
   created_at: string
 }
@@ -16,6 +18,7 @@ interface StewardRunRow {
 function rowToRun(row: StewardRunRow): StewardRun {
   return {
     id: row.id,
+    headId: row.head_id,
     stewards: JSON.parse(row.stewards) as Array<{ name: string; ran: boolean; fired: boolean }>,
     createdAt: row.created_at,
   }
@@ -27,8 +30,8 @@ export class StewardRunStore {
 
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
     this.stmtInsert = db.prepare(`
-      INSERT INTO steward_runs (id, stewards, created_at)
-      VALUES (@id, @stewards, @created_at)
+      INSERT INTO steward_runs (id, stewards, created_at, head_id)
+      VALUES (@id, @stewards, @created_at, @head_id)
     `)
 
     this.stmtGetAll = db.prepare(`
@@ -37,7 +40,7 @@ export class StewardRunStore {
   }
 
   append(run: StewardRun): void {
-    this.stmtInsert.run({ id: run.id, stewards: JSON.stringify(run.stewards), created_at: run.createdAt })
+    this.stmtInsert.run({ id: run.id, stewards: JSON.stringify(run.stewards), created_at: run.createdAt, head_id: run.headId })
     this.eventBus?.emit('dashboard', { type: 'steward_run_added', payload: run })
   }
 
@@ -45,9 +48,14 @@ export class StewardRunStore {
     return (this.stmtGetAll.all() as unknown as StewardRunRow[]).map(rowToRun)
   }
 
-  /** Returns the N most recent steward runs, newest first. */
-  getRecent(limit: number): StewardRun[] {
-    return (this.db.prepare('SELECT * FROM steward_runs ORDER BY created_at DESC LIMIT ?').all(limit) as unknown as StewardRunRow[]).map(rowToRun)
+  /** Returns the N most recent steward runs, newest first.
+   *  When headId is provided, only runs belonging to that head are returned.
+   *  When omitted, runs across all heads are returned (backward-compatible). */
+  getRecent(limit: number, headId?: string): StewardRun[] {
+    const rows = headId !== undefined
+      ? this.db.prepare('SELECT * FROM steward_runs WHERE head_id = ? ORDER BY created_at DESC LIMIT ?').all(headId, limit) as unknown as StewardRunRow[]
+      : this.db.prepare('SELECT * FROM steward_runs ORDER BY created_at DESC LIMIT ?').all(limit) as unknown as StewardRunRow[]
+    return rows.map(rowToRun)
   }
 
   clear(): void {
