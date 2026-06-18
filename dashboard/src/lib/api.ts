@@ -308,7 +308,7 @@ export const api = {
   schedules: {
     list: () =>
       request<{ schedules: Schedule[] }>('/api/schedules'),
-    create: (body: { headId: string; taskName?: string; kind?: 'task' | 'reminder'; cron?: string; runAt?: string; conditions?: string; agentContext?: string; relayGuidance?: string; requiresAck?: boolean; nagIntervalMinutes?: number; startAt?: string; deliverToHeadIds?: string[] }) =>
+    create: (body: { headId: string; taskName?: string; kind?: 'task' | 'reminder' | 'script'; cron?: string; runAt?: string; conditions?: string; agentContext?: string; relayGuidance?: string; requiresAck?: boolean; nagIntervalMinutes?: number; startAt?: string; deliverToHeadIds?: string[] }) =>
       request<{ schedule: Schedule }>('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

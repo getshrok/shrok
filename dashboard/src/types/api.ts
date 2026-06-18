@@ -260,7 +260,7 @@ export interface Schedule {
   id: string
   headId: string
   taskName: string | null
-  kind: 'task' | 'reminder'
+  kind: 'task' | 'reminder' | 'script'
   cron: string | null
   runAt: string | null
   enabled: boolean
