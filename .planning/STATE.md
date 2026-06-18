@@ -40,6 +40,7 @@ Last activity: 2026-06-18
 | 260607-mp4 | Chunk long Telegram messages under the 4096-char limit (source-split, per-chunk HTML, sequential send) (issue #20) | 2026-06-07 | db4da23 |  | [260607-mp4-fix-issue-20-chunk-long-telegram-message](./quick/260607-mp4-fix-issue-20-chunk-long-telegram-message/) |
 | 260607-mz8 | Fix long-message silent-drop in Slack (block-aware: 3000/2000/10-field/50-block) + WhatsApp (chunker @65k) adapters — audit sibling of #20 | 2026-06-07 | 616d04e | Verified (plan-check + 255 channel tests + tsc; commits clean) | [260607-mz8-fix-long-message-silent-drop-in-slack-bl](./quick/260607-mz8-fix-long-message-silent-drop-in-slack-bl/) |
 | 260608-6ny | Rename model-tier vocabulary to dumb/smart/genius + expose model arg on head spawn_agent (issue #31) | 2026-06-08 | 7d5915c | Verified (tsc clean + 242 targeted tests green; backward-compat shim tested) | [260608-6ny-rename-model-tier-vocabulary-to-dumb-sma](./quick/260608-6ny-rename-model-tier-vocabulary-to-dumb-sma/) |
+| 260618-aqe | Configurable self-hosted STT endpoint (sttBaseUrl) mirroring ttsBaseUrl; single voiceOpenaiFallback toggle governs OpenAI fallback for both STT+TTS; voice runs with no OpenAI key | 2026-06-18 | 533d4e4 | Verified (tsc clean + 171 voice/config/ingestion tests green; dashboard/dist untouched) | [260618-aqe-add-configurable-self-hosted-stt-endpoin](./quick/260618-aqe-add-configurable-self-hosted-stt-endpoin/) |
 
 ## Project Reference
 
