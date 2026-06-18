@@ -84,7 +84,6 @@ export interface DashboardServerOptions {
   }
   sensors?: {
     workspacePath: string
-    sensorRunner: import('../sensors/runner.js').SensorRunner
   }
   unifiedLoader?: UnifiedLoader
   db?: DatabaseSync

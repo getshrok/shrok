@@ -3,7 +3,6 @@ import type { Request, Response } from 'express'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { requireAuth } from '../auth.js'
-import type { SensorRunner } from '../../sensors/runner.js'
 
 // Path-traversal mitigation (T-49-01-TRAVERSAL): validate slug BEFORE any path.join.
 // Mirrors the guard in src/sensors/runner.ts — lowercase alphanumeric + hyphens only.
@@ -11,9 +10,8 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
 
 export function createSensorsRouter(opts: {
   workspacePath: string
-  sensorRunner: SensorRunner
 }): Router {
-  const { workspacePath, sensorRunner } = opts
+  const { workspacePath } = opts
   const sensorsDir = path.join(workspacePath, 'sensors')
   const ambientDir = path.join(workspacePath, 'ambient')
   const router = Router()
@@ -70,11 +68,10 @@ export function createSensorsRouter(opts: {
     fs.mkdirSync(scriptDir, { recursive: true })
     fs.writeFileSync(scriptPath, content, 'utf8')
 
-    // Fire-and-forget — NEVER await. runSensor always resolves; errors go to
-    // ambient/<slug>.md per Phase 48 design. Awaiting would delay the HTTP
-    // response by up to SENSOR_TIMEOUT_MS (30s). (T-49-01-CODEEXEC is accepted.)
-    void sensorRunner.run(slug)
-
+    // Creating (or overwriting) a sensor never runs it — a sensor runs ONLY when a
+    // schedule fires it. Scheduling a cron sensor sets nextRun=now (see the schedule
+    // route + create_schedule tool), so it produces ambient output right after it's
+    // scheduled. To preview a script before scheduling, run it directly with `node`.
     res.json({ slug })
   })
 

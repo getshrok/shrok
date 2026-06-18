@@ -251,7 +251,7 @@ export default function SensorsPage() {
 
             {saveMutation.isSuccess && (
               <div className="text-xs text-zinc-500">
-                Saved and run — check sensor output for errors
+                Saved. Saving doesn't run a sensor — schedule it on the Schedules page and it'll run within 60 seconds.
               </div>
             )}
             {saveMutation.isError && (

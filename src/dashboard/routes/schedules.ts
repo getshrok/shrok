@@ -177,6 +177,16 @@ export function createSchedulesRouter(
       nextRun = d.toISOString()  // D-10: override cron-computed nextRun with start date
     }
 
+    // Immediate first run for cron sensors — mirrors the create_schedule tool
+    // (registry.ts): fire on the next tick, then follow the cron cadence (the
+    // scheduler recomputes nextRun from cron after each fire). A sensor exists to
+    // produce ambient output, so it should start right after it's scheduled instead
+    // of waiting for the first cron boundary. Skipped when an explicit startAt was
+    // given (the operator asked for a specific start).
+    if (kind === 'script' && typeof cron === 'string' && cron && !(typeof startAt === 'string' && startAt)) {
+      nextRun = new Date().toISOString()
+    }
+
     try {
       // Plan 35-03 D-11: headId comes from the validated req body — schedule
       // belongs to the head the client picked.

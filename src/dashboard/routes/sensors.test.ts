@@ -5,7 +5,6 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import * as net from 'node:net'
 import type { Server } from 'node:http'
-import type { SensorRunner } from '../../sensors/runner.js'
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -24,17 +23,10 @@ async function getFreePort(): Promise<number> {
 
 describe('createSensorsRouter', () => {
   // Import lazily to allow test to fail in RED phase with missing module
-  let createSensorsRouter: (opts: { workspacePath: string; sensorRunner: SensorRunner }) => import('express').Router
+  let createSensorsRouter: (opts: { workspacePath: string }) => import('express').Router
   let tmpDir: string
   let server: Server | null = null
   let port = 0
-  let runCalls: string[] = []
-
-  const sensorRunner: SensorRunner = {
-    run: async (slug: string): Promise<void> => {
-      runCalls.push(slug)
-    },
-  }
 
   beforeEach(async () => {
     // Dynamic import so tests fail cleanly if module doesn't exist
@@ -42,7 +34,6 @@ describe('createSensorsRouter', () => {
     createSensorsRouter = mod.createSensorsRouter
 
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sensors-route-test-'))
-    runCalls = []
 
     const app = express()
     app.use(express.json())
@@ -51,7 +42,7 @@ describe('createSensorsRouter', () => {
       res.locals['authenticated'] = true
       next()
     })
-    app.use('/api/sensors', createSensorsRouter({ workspacePath: tmpDir, sensorRunner }))
+    app.use('/api/sensors', createSensorsRouter({ workspacePath: tmpDir }))
 
     port = await getFreePort()
     await new Promise<void>((resolve, reject) => {
@@ -92,7 +83,7 @@ describe('createSensorsRouter', () => {
 
   // ─── PUT /:slug ───────────────────────────────────────────────────────────
 
-  it('SENSOR-PUT-01: writes sensor.mjs to disk and calls sensorRunner.run once', async () => {
+  it('SENSOR-PUT-01: writes sensor.mjs to disk and does NOT run the sensor', async () => {
     const content = 'process.stdout.write("weather data")'
     const res = await fetch(`http://127.0.0.1:${port}/api/sensors/weather`, {
       method: 'PUT',
@@ -108,11 +99,12 @@ describe('createSensorsRouter', () => {
     expect(fs.existsSync(scriptPath)).toBe(true)
     expect(fs.readFileSync(scriptPath, 'utf8')).toBe(content)
 
-    // Runner must have been called exactly once
-    expect(runCalls).toEqual(['weather'])
+    // Creating a sensor must NOT run it — a sensor runs only when a schedule fires it.
+    // So no ambient output is produced as a side effect of the PUT.
+    expect(fs.existsSync(path.join(tmpDir, 'ambient', 'weather.md'))).toBe(false)
   })
 
-  it('SENSOR-PUT-02: PUT a second time overwrites the existing file', async () => {
+  it('SENSOR-PUT-02: PUT a second time overwrites the existing file (still no run)', async () => {
     const first = 'process.stdout.write("v1")'
     const second = 'process.stdout.write("v2")'
     await fetch(`http://127.0.0.1:${port}/api/sensors/weather`, {
@@ -127,8 +119,8 @@ describe('createSensorsRouter', () => {
     })
     const scriptPath = path.join(tmpDir, 'sensors', 'weather', 'sensor.mjs')
     expect(fs.readFileSync(scriptPath, 'utf8')).toBe(second)
-    // Runner called twice (once per PUT)
-    expect(runCalls).toEqual(['weather', 'weather'])
+    // Overwriting still doesn't run the sensor — no ambient side effect.
+    expect(fs.existsSync(path.join(tmpDir, 'ambient', 'weather.md'))).toBe(false)
   })
 
   it('SENSOR-PUT-03: missing content body → 400', async () => {
@@ -245,7 +237,7 @@ describe('createSensorsRouter', () => {
     const unauthApp = express()
     unauthApp.use(express.json())
     // No res.locals.authenticated = true middleware here
-    unauthApp.use('/api/sensors', createSensorsRouter({ workspacePath: tmpDir, sensorRunner }))
+    unauthApp.use('/api/sensors', createSensorsRouter({ workspacePath: tmpDir }))
 
     const unauthPort = await getFreePort()
     let unauthServer: Server | null = null

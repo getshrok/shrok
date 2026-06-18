@@ -28,21 +28,35 @@ Each sensor's latest output appears in the prompt under a heading derived from i
   `⚠ Sensor failed on last run: <message>` — so a broken sensor surfaces rather than silently
   going stale.
 
+## What makes a sensor run
+
+**Creating a sensor never runs it. Scheduling a sensor is what runs it.** Writing (or editing)
+`sensor.mjs` — whether with file tools, the dashboard Sensors page, or by hand — only puts the
+script on disk; no ambient output is produced until a schedule fires it. So a brand-new sensor's
+`ambient/<slug>.md` stays empty until you schedule it (or you run the script manually to preview).
+
+This is deliberate and consistent across every path: file tools, dashboard, and the
+`create_schedule` tool all behave the same way — the sensor runs when, and only when, a schedule
+fires. Scheduling a sensor on a **cron** sets its first `nextRun` to *now*, so it produces ambient
+output on the next scheduler tick (within ~a minute) rather than waiting for the first cron
+boundary — that's how you get output "right away" after a fresh sensor: schedule it.
+
 ## Creating a sensor
 
 1. **Write the script** with file tools at `$SHROK_WORKSPACE_PATH/sensors/<slug>/sensor.mjs`.
    Print a concise current snapshot to stdout.
 2. **Test it** by running it directly and eyeballing the output:
-   `node "$SHROK_WORKSPACE_PATH/sensors/<slug>/sensor.mjs"`.
-3. **Schedule it** so it refreshes on a cadence — use `create_schedule` with `kind:"script"` and
-   the slug as `taskName`:
+   `node "$SHROK_WORKSPACE_PATH/sensors/<slug>/sensor.mjs"`. (This is the only way to see output
+   before it's scheduled — creating the sensor does not run it.)
+3. **Schedule it** — this is what actually makes it run. Use `create_schedule` with `kind:"script"`
+   and the slug as `taskName`:
 
    ```
    create_schedule({ taskName: "home-status", kind: "script", cron: "*/15 * * * *" })
    ```
 
-   The first run fires almost immediately (so ambient output appears right away), then it follows
-   the cron cadence. Allowed cron shapes are the same as any schedule: every N minutes
+   On a cron, the first run fires almost immediately (`nextRun` is set to now, so ambient output
+   appears within ~a minute), then it follows the cron cadence. Allowed cron shapes are the same as any schedule: every N minutes
    (`*/N * * * *`, N ∈ {5,10,15,30,45,60}), hourly (`M * * * *`), daily (`M H * * *`), weekdays
    (`M H * * 1-5`), weekly (`M H * * D`), every N days (`0 H */N * *`, N ∈ {1..7}), monthly
    (`M H D * *`), yearly (`M H D Mo *`).

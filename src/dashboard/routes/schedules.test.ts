@@ -151,6 +151,38 @@ describe('POST /api/schedules kind validation', () => {
     expect(schedule.taskName).toBe('weather')
   })
 
+  // Immediate-first-run: a cron sensor scheduled via the dashboard gets nextRun=now
+  // (mirrors the create_schedule tool) so it produces ambient output on the next tick
+  // instead of waiting for the first cron boundary. Without this the dashboard and the
+  // tool disagree, and a dashboard-created sensor is silent until its first cron hit.
+  it("Test G2: kind='script' with cron → nextRun is now (immediate first run)", async () => {
+    const before = Date.now()
+    const r = await post({ taskName: 'weather', kind: 'script', cron: '*/30 * * * *', headId: 'default' })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { nextRun: string | null } }).schedule
+    expect(schedule.nextRun).not.toBeNull()
+    const next = new Date(schedule.nextRun as string).getTime()
+    // nextRun should be ~now (not the next :30 cron boundary, which is minutes away).
+    expect(next).toBeGreaterThanOrEqual(before - 1000)
+    expect(next).toBeLessThanOrEqual(Date.now() + 1000)
+  })
+
+  // A non-sensor (task) cron schedule keeps the normal next-cron-boundary behavior —
+  // the immediate-first-run override is sensor-only. Compare against the deterministic
+  // computed boundary rather than a "far from now" heuristic (which flakes if a */30
+  // boundary happens to be imminent).
+  it("Test G3: kind='task' with cron → nextRun is the next cron boundary, not now", async () => {
+    const { nextRunAfter } = await import('../../scheduler/cron.js')
+    const r = await post({ taskName: 'existing-task', kind: 'task', cron: '*/30 * * * *', headId: 'default' })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { nextRun: string | null } }).schedule
+    expect(schedule.nextRun).not.toBeNull()
+    // Route uses 'UTC' (see createSchedulesRouter above). The computed boundary and the
+    // route's computation happen within the same second, so allow a small tolerance.
+    const expected = nextRunAfter('*/30 * * * *', new Date(), 'UTC').getTime()
+    expect(Math.abs(new Date(schedule.nextRun as string).getTime() - expected)).toBeLessThan(2000)
+  })
+
   // WR-01: script schedules require a taskName (sensor slug) — a missing slug is rejected
   // up front rather than persisted as an inoperable row.
   it("Test H: kind='script' without taskName → 400", async () => {
