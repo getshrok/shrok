@@ -1,85 +1,376 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { runSensor, SENSOR_OUTPUT_CAP } from './runner.js'
+import { PRIORITY } from '../types/core.js'
+import type { QueueEvent } from '../types/core.js'
+import type { SensorEventSink } from './runner.js'
 
-describe('runSensor', () => {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function makeSink(): SensorEventSink & { enqueue: ReturnType<typeof vi.fn> } {
+  return { enqueue: vi.fn() }
+}
+
+/** Write a tiny inline sensor script that logs a JSON string to stdout. */
+function writeScript(dir: string, name: string, content: string): string {
+  const p = path.join(dir, name)
+  fs.writeFileSync(p, content)
+  return p
+}
+
+describe('runSensor — dual-sink, head-scoped', () => {
   let tmpDir: string
-  let ambientDir: string
+  let ambientBaseDir: string
+  const headId = 'ashley'
+  const slug = 'weather'
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-test-'))
-    ambientDir = path.join(tmpDir, 'ambient')
+    ambientBaseDir = path.join(tmpDir, 'ambient')
   })
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('success: writes script stdout to ambient/<slug>.md', async () => {
-    const script = path.join(tmpDir, 's.mjs')
-    fs.writeFileSync(script, 'process.stdout.write("ok")')
-    await runSensor('weather', script, ambientDir)
-    const content = fs.readFileSync(path.join(ambientDir, 'weather.md'), 'utf8')
-    expect(content).toBe('ok')
+  // ── Helper to get expected output path ─────────────────────────────────────
+  function outputPath(): string {
+    return path.join(ambientBaseDir, headId, `${slug}.md`)
+  }
+
+  // ── Both-fields payload ────────────────────────────────────────────────────
+
+  it('both-fields: writes ambient file AND enqueues sensor_event', async () => {
+    const script = writeScript(tmpDir, 'both.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "72F sunny", event: { text: "storm approaching" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    // Ambient written
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toBe('72F sunny')
+
+    // Enqueue called once
+    expect(sink.enqueue).toHaveBeenCalledOnce()
+    const [event, priority, enqueuedHeadId] = sink.enqueue.mock.calls[0] as [QueueEvent, number, string]
+    expect(event.type).toBe('sensor_event')
+    if (event.type === 'sensor_event') {
+      expect(event.slug).toBe(slug)
+      expect(event.text).toBe('storm approaching')
+      expect(typeof event.id).toBe('string')
+      expect(typeof event.createdAt).toBe('string')
+    }
+    expect(priority).toBe(PRIORITY.SENSOR_EVENT)
+    expect(enqueuedHeadId).toBe(headId)
   })
 
-  it('output-cap: truncates stdout to SENSOR_OUTPUT_CAP bytes', async () => {
-    const script = path.join(tmpDir, 'big.mjs')
-    const bigOutput = 'x'.repeat(SENSOR_OUTPUT_CAP + 500)
-    fs.writeFileSync(script, `process.stdout.write(${JSON.stringify(bigOutput)})`)
-    await runSensor('weather', script, ambientDir)
-    const content = fs.readFileSync(path.join(ambientDir, 'weather.md'), 'utf8')
-    expect(content.length).toBe(SENSOR_OUTPUT_CAP)
+  // ── Ambient-only payload — SENSOR-06: must NOT enqueue ────────────────────
+
+  it('ambient-only: writes file, does NOT call enqueue (SENSOR-06)', async () => {
+    const script = writeScript(tmpDir, 'ambient-only.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "72F" }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toBe('72F')
+    expect(sink.enqueue).not.toHaveBeenCalled()
   })
 
-  it('non-zero exit: writes ⚠ Sensor failed message', async () => {
-    const script = path.join(tmpDir, 'fail.mjs')
-    fs.writeFileSync(script, 'process.stderr.write("something went wrong"); process.exit(1)')
-    await runSensor('weather', script, ambientDir)
-    const content = fs.readFileSync(path.join(ambientDir, 'weather.md'), 'utf8')
-    expect(content).toContain('⚠ Sensor failed on last run:')
-    expect(content).toContain('something went wrong')
+  // ── Event-only payload — file NOT written, enqueue called ─────────────────
+
+  it('event-only: enqueues event, ambient file NOT written (D-05 leave-stale)', async () => {
+    const script = writeScript(tmpDir, 'event-only.mjs',
+      `process.stdout.write(JSON.stringify({ event: { text: "storm" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    // File must not exist
+    expect(fs.existsSync(outputPath())).toBe(false)
+    // Enqueue must be called once
+    expect(sink.enqueue).toHaveBeenCalledOnce()
+    const [event] = sink.enqueue.mock.calls[0] as [QueueEvent]
+    expect(event.type).toBe('sensor_event')
+    if (event.type === 'sensor_event') {
+      expect(event.text).toBe('storm')
+    }
   })
+
+  // ── Empty-string ambient: writes EMPTY file (retract / clear ambient block) ─
+
+  it('empty-string ambient: writes empty file (retraction)', async () => {
+    const script = writeScript(tmpDir, 'empty-ambient.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "" }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toBe('')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── Omitted ambient key: file left stale (D-05) ──────────────────────────
+
+  it('omitted ambient key: does not write file (leave-stale, D-05)', async () => {
+    const script = writeScript(tmpDir, 'no-ambient.mjs',
+      `process.stdout.write(JSON.stringify({}))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    // Neither the file nor the dir should be created
+    expect(fs.existsSync(outputPath())).toBe(false)
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── Empty {} quiet tick — neither sink touched ────────────────────────────
+
+  it('empty {}: neither sink touched, no write, no enqueue', async () => {
+    const script = writeScript(tmpDir, 'quiet.mjs',
+      `process.stdout.write('{}')`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    expect(fs.existsSync(outputPath())).toBe(false)
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── Malformed JSON → failure marker ──────────────────────────────────────
+
+  it('malformed JSON: writes failure marker to head-scoped path, no enqueue', async () => {
+    const script = writeScript(tmpDir, 'notjson.mjs',
+      `process.stdout.write("Weather: 72F")`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── Non-object JSON (array, number, null) → failure marker ───────────────
+
+  it('JSON array stdout: writes failure marker, no enqueue', async () => {
+    const script = writeScript(tmpDir, 'array.mjs',
+      `process.stdout.write('["a","b"]')`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('JSON number stdout: writes failure marker, no enqueue', async () => {
+    const script = writeScript(tmpDir, 'number.mjs',
+      `process.stdout.write('42')`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('JSON null stdout: writes failure marker, no enqueue', async () => {
+    const script = writeScript(tmpDir, 'null.mjs',
+      `process.stdout.write('null')`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── Malformed event (no text): ambient still written, enqueue NOT called ──
+
+  it('event without text: ambient written (if present), enqueue NOT called (type-guard)', async () => {
+    const script = writeScript(tmpDir, 'bad-event.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "hot", event: {} }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toBe('hot')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('event as string (not object): ambient written, enqueue NOT called', async () => {
+    const script = writeScript(tmpDir, 'str-event.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "cool", event: "bad" }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toBe('cool')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── Process failure → failure marker at head-scoped path ─────────────────
+
+  it('process failure: failure marker at ambient/<headId>/<slug>.md, no enqueue', async () => {
+    const script = writeScript(tmpDir, 'fail.mjs',
+      `process.stderr.write("something went wrong"); process.exit(1)`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
+    expect(body).toContain('something went wrong')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+
+    // Path must be head-scoped
+    const headDir = path.join(ambientBaseDir, headId)
+    expect(fs.existsSync(headDir)).toBe(true)
+    expect(fs.existsSync(path.join(headDir, `${slug}.md`))).toBe(true)
+  })
+
+  // ── Timeout path ─────────────────────────────────────────────────────────
 
   it('timeout: writes ⚠ error and resolves (does not hang)', async () => {
-    const script = path.join(tmpDir, 'hang.mjs')
-    fs.writeFileSync(script, 'setInterval(() => {}, 1000)')
-    // Inject a very small timeout so the test doesn't actually wait 30s
-    await runSensor('weather', script, ambientDir, 200)
-    const content = fs.readFileSync(path.join(ambientDir, 'weather.md'), 'utf8')
-    expect(content).toContain('⚠ Sensor failed on last run:')
-  }, 5000) // must complete in < 5s to prove the promise resolves
+    const script = writeScript(tmpDir, 'hang.mjs', 'setInterval(() => {}, 1000)')
+    const sink = makeSink()
 
-  it('dir auto-create: creates ambient/ if absent', async () => {
-    expect(fs.existsSync(ambientDir)).toBe(false)
-    const script = path.join(tmpDir, 's.mjs')
-    fs.writeFileSync(script, 'process.stdout.write("hello")')
-    await runSensor('weather', script, ambientDir)
-    expect(fs.existsSync(ambientDir)).toBe(true)
-    expect(fs.existsSync(path.join(ambientDir, 'weather.md'))).toBe(true)
+    await runSensor(slug, headId, script, ambientBaseDir, sink, 200)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  }, 5000)
+
+  // ── Invalid headId → synchronous throw ────────────────────────────────────
+
+  it('invalid headId (empty): throws synchronously before any I/O', async () => {
+    const sink = makeSink()
+    await expect(
+      runSensor(slug, '', '/some/script.mjs', ambientBaseDir, sink)
+    ).rejects.toThrow('Invalid head id: ')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+    expect(fs.existsSync(ambientBaseDir)).toBe(false)
   })
+
+  it('invalid headId (contains /): throws synchronously before any I/O', async () => {
+    const sink = makeSink()
+    await expect(
+      runSensor(slug, 'a/b', '/some/script.mjs', ambientBaseDir, sink)
+    ).rejects.toThrow('Invalid head id: a/b')
+  })
+
+  it('invalid headId (contains ..): throws synchronously before any I/O', async () => {
+    const sink = makeSink()
+    await expect(
+      runSensor(slug, '..evil', '/some/script.mjs', ambientBaseDir, sink)
+    ).rejects.toThrow('Invalid head id: ..evil')
+  })
+
+  it('invalid headId (contains .): throws synchronously before any I/O', async () => {
+    const sink = makeSink()
+    await expect(
+      runSensor(slug, '.hidden', '/some/script.mjs', ambientBaseDir, sink)
+    ).rejects.toThrow('Invalid head id: .hidden')
+  })
+
+  // ── Invalid slug ──────────────────────────────────────────────────────────
+
+  it('invalid slug: throws synchronously before any I/O', async () => {
+    const sink = makeSink()
+    await expect(
+      runSensor('../evil', headId, '/some/script.mjs', ambientBaseDir, sink)
+    ).rejects.toThrow('Invalid sensor slug: ../evil')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── Promise always resolves (never rejects) except for sync guards ─────────
 
   it('never rejects: bogus scriptPath → error file written, promise resolves', async () => {
+    const sink = makeSink()
     await expect(
-      runSensor('weather', '/nonexistent/sensor.mjs', ambientDir)
+      runSensor(slug, headId, '/nonexistent/sensor.mjs', ambientBaseDir, sink)
     ).resolves.toBeUndefined()
-    const content = fs.readFileSync(path.join(ambientDir, 'weather.md'), 'utf8')
-    expect(content).toContain('⚠ Sensor failed on last run:')
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
   })
 
-  it('invalid slug: throws synchronously before building any path', async () => {
-    await expect(
-      runSensor('../evil', '/some/script.mjs', ambientDir)
-    ).rejects.toThrow('Invalid sensor slug: ../evil')
-    // Must NOT have written anything to the ambient dir
-    expect(fs.existsSync(path.join(ambientDir, '..', 'evil.md'))).toBe(false)
+  // ── Output cap still applies to ambient body ──────────────────────────────
+
+  it('output-cap: ambient body truncated to SENSOR_OUTPUT_CAP bytes', async () => {
+    const bigBody = 'x'.repeat(SENSOR_OUTPUT_CAP + 500)
+    const script = writeScript(tmpDir, 'big.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: ${JSON.stringify(bigBody)} }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body.length).toBe(SENSOR_OUTPUT_CAP)
+    expect(sink.enqueue).not.toHaveBeenCalled()
   })
 
-  it('invalid slug with slash: throws before path construction', async () => {
+  // ── Dir auto-create ───────────────────────────────────────────────────────
+
+  it('dir auto-create: creates ambient/<headId>/ if absent', async () => {
+    expect(fs.existsSync(ambientBaseDir)).toBe(false)
+    const script = writeScript(tmpDir, 'hello.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "hello" }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const headDir = path.join(ambientBaseDir, headId)
+    expect(fs.existsSync(headDir)).toBe(true)
+    expect(fs.existsSync(path.join(headDir, `${slug}.md`))).toBe(true)
+  })
+
+  // ── Enqueue throw: failure marker written, promise still resolves ─────────
+
+  it('enqueue throws: writes failure marker instead of rejecting', async () => {
+    const script = writeScript(tmpDir, 'ev.mjs',
+      `process.stdout.write(JSON.stringify({ event: { text: "alert" } }))`)
+    const sink = makeSink()
+    sink.enqueue.mockImplementation(() => { throw new Error('queue full') })
+
     await expect(
-      runSensor('a/b', '/some/script.mjs', ambientDir)
-    ).rejects.toThrow('Invalid sensor slug: a/b')
+      runSensor(slug, headId, script, ambientBaseDir, sink)
+    ).resolves.toBeUndefined()
+
+    // Should have written a failure marker
+    const body = fs.readFileSync(outputPath(), 'utf8')
+    expect(body).toContain('⚠ Sensor failed on last run:')
+  })
+
+  // ── Enqueue arg assertions ─────────────────────────────────────────────────
+
+  it('sensor_event payload has correct type, slug, text fields', async () => {
+    const script = writeScript(tmpDir, 'payload.mjs',
+      `process.stdout.write(JSON.stringify({ event: { text: "temperature: 22C" } }))`)
+    const sink = makeSink()
+
+    await runSensor('humidity', headId, script, ambientBaseDir, sink)
+
+    expect(sink.enqueue).toHaveBeenCalledOnce()
+    const [event, priority, enqueuedHeadId] = sink.enqueue.mock.calls[0] as [QueueEvent, number, string]
+    expect(event.type).toBe('sensor_event')
+    if (event.type === 'sensor_event') {
+      expect(event.slug).toBe('humidity')
+      expect(event.text).toBe('temperature: 22C')
+    }
+    expect(priority).toBe(15)
+    expect(enqueuedHeadId).toBe(headId)
   })
 })
