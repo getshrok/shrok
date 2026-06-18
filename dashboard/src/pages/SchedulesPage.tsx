@@ -1072,11 +1072,360 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
   )
 }
 
+// ─── Sensor schedule row ──────────────────────────────────────────────────────
+
+function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState('')
+  const [editConditions, setEditConditions] = useState('')
+
+  const toggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => api.schedules.update(schedule.id, { enabled }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['schedules'] }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.schedules.delete(schedule.id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['schedules'] }),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string }) =>
+      api.schedules.update(schedule.id, update),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
+  })
+
+  function startEdit() {
+    setEditValue(schedule.cron !== null ? schedule.cron : (schedule.runAt ? toDatetimeLocalInTz(schedule.runAt, tz) : ''))
+    setEditConditions(schedule.conditions ?? '')
+    setEditing(true)
+  }
+
+  function commitEdit() {
+    const trimmed = editValue.trim()
+    if (!trimmed) { setEditing(false); return }
+    const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
+    if (schedule.cron !== null) {
+      if (trimmed === schedule.cron && conditionsUnchanged) { setEditing(false); return }
+      updateMutation.mutate({ cron: trimmed, conditions: editConditions })
+      return
+    }
+    const runAtUtc = datetimeLocalToUtc(trimmed, tz)
+    if (!runAtUtc) return
+    const runAtUnchanged = runAtUtc === schedule.runAt
+    if (runAtUnchanged && conditionsUnchanged) { setEditing(false); return }
+    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions })
+  }
+
+  const scheduleLabel = schedule.cron
+    ? formatCron(schedule.cron)
+    : schedule.runAt
+      ? `Once at ${formatInTz(schedule.runAt, tz, { style: 'full' })}`
+      : '—'
+
+  return (
+    <div className="flex items-center gap-4 px-4 py-3 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/30 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-zinc-100 truncate">
+          {schedule.taskName ?? '—'}
+        </div>
+        <div className="text-xs text-zinc-500 mt-0.5">{scheduleLabel}</div>
+        {schedule.conditions && (
+          <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
+        )}
+      </div>
+      <div className="shrink-0">
+        <span
+          className="inline-block px-2 py-0.5 rounded text-xs font-medium text-zinc-400"
+          style={{ backgroundColor: '#3f3f46', borderLeft: '2px solid #71717a' }}
+        >
+          SCRIPT
+        </span>
+      </div>
+      <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
+        <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
+        <div>Last: <span className="text-zinc-400">{formatRelTime(schedule.lastRun)}</span></div>
+      </div>
+      <button
+        onClick={() => toggleMutation.mutate(!schedule.enabled)}
+        disabled={toggleMutation.isPending}
+        title={schedule.enabled ? 'Disable' : 'Enable'}
+        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+          schedule.enabled ? 'bg-emerald-600' : 'bg-zinc-700'
+        } disabled:opacity-50`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+          schedule.enabled ? 'translate-x-[18px]' : 'translate-x-0'
+        }`} />
+      </button>
+      <button
+        onClick={startEdit}
+        title="Edit schedule"
+        className="text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+      >
+        <Pencil size={13} />
+      </button>
+      <button
+        onClick={() => { if (window.confirm(`Delete sensor schedule "${schedule.taskName ?? schedule.id}"?`)) deleteMutation.mutate() }}
+        disabled={deleteMutation.isPending}
+        title="Delete"
+        className="text-zinc-500 hover:text-red-400 transition-colors shrink-0 disabled:opacity-50"
+      >
+        <Trash2 size={13} />
+      </button>
+
+      {editing && createPortal(
+        <>
+          <div className="fixed inset-0 z-50 bg-black/70" onClick={() => setEditing(false)} />
+          <div className="fixed z-50 flex items-center justify-center" style={{ inset: 0 }}>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-5 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-zinc-100 mb-3">Edit sensor schedule</h3>
+              <div className="space-y-3">
+                <div>
+                  {schedule.cron !== null ? (
+                    <CronPicker value={editValue} onChange={setEditValue} />
+                  ) : (
+                    <>
+                      <label className="text-xs text-zinc-500 mb-1 block">Run at</label>
+                      <input
+                        autoFocus
+                        type="datetime-local"
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+                      />
+                    </>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
+                  <textarea
+                    rows={2}
+                    value={editConditions}
+                    onChange={e => setEditConditions(e.target.value)}
+                    placeholder="e.g. Only run between 9am and 5pm"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+                  />
+                </div>
+                {updateMutation.isError && (
+                  <div className="text-xs text-red-400">{(updateMutation.error as Error).message}</div>
+                )}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={commitEdit}
+                    disabled={updateMutation.isPending}
+                    className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {updateMutation.isPending ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  )
+}
+
+// ─── Add sensor schedule form ──────────────────────────────────────────────────
+
+function AddSensorScheduleForm({
+  sensors,
+  loading,
+  onDone,
+  tz,
+}: {
+  sensors: Array<{ slug: string }>
+  loading: boolean
+  onDone: () => void
+  tz: string
+}) {
+  const qc = useQueryClient()
+  const [targetSlug, setTargetSlug] = useState<string>('')
+  const [headId, setHeadId] = useState<string>('')
+  const [type, setType] = useState<'repeating' | 'once'>('repeating')
+  const [cron, setCron] = useState('*/30 * * * *')
+  const [runAt, setRunAt] = useState('')
+  const [startAt, setStartAt] = useState('')
+  const [conditions, setConditions] = useState('')
+  const [error, setError] = useState('')
+
+  const headsQuery = useQuery({
+    queryKey: ['heads'],
+    queryFn: api.heads.list,
+  })
+
+  // Seed targetSlug once sensor list arrives
+  useEffect(() => {
+    if (targetSlug) return
+    if (sensors.length > 0) setTargetSlug(sensors[0]!.slug)
+  }, [sensors, targetSlug])
+
+  // Seed headId from localStorage 'active-head' (hidden plumbing — server requires it)
+  useEffect(() => {
+    if (headId) return
+    const heads = headsQuery.data?.heads ?? []
+    if (heads.length === 0) return
+    const stored = readActiveHeadFromStorage()
+    if (stored && heads.some(h => h.id === stored)) {
+      setHeadId(stored)
+    } else {
+      setHeadId(heads[0]!.id)
+    }
+  }, [headsQuery.data, headId])
+
+  const createMutation = useMutation({
+    mutationFn: () => {
+      if (!headId) throw new Error('No head configured — create a head first')
+      if (!targetSlug) throw new Error('Pick a sensor')
+      if (type === 'once' && !runAt) throw new Error('Pick a date and time for the schedule')
+      return api.schedules.create({
+        headId,
+        taskName: targetSlug,
+        kind: 'script',
+        ...(type === 'repeating' ? { cron } : { runAt: datetimeLocalToUtc(runAt, tz) }),
+        ...(conditions ? { conditions } : {}),
+        ...(type === 'repeating' && startAt ? { startAt: datetimeLocalToUtc(startAt, tz) } : {}),
+      })
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['schedules'] })
+      setStartAt('')
+      onDone()
+    },
+    onError: (err: Error) => setError(err.message),
+  })
+
+  return (
+    <form
+      onSubmit={e => { e.preventDefault(); setError(''); createMutation.mutate() }}
+      className="p-4 border-t border-zinc-700 space-y-3"
+    >
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex-1 min-w-40">
+          <label className="text-xs text-zinc-500 mb-1 block">Sensor</label>
+          <select
+            value={targetSlug}
+            onChange={e => setTargetSlug(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+            required
+          >
+            {sensors.length === 0
+              ? <option disabled value="">No sensors yet — create one on the Sensors page</option>
+              : sensors.map(s => (
+                  <option key={s.slug} value={s.slug}>{s.slug}</option>
+                ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Type</label>
+          <div className="flex gap-1">
+            {(['repeating', 'once'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  type === t ? 'bg-zinc-600 text-zinc-100' : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {t === 'repeating' ? 'Repeating' : 'One-time'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {type === 'repeating' ? (
+        <CronPicker value={cron} onChange={setCron} />
+      ) : (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Run at</label>
+          <input
+            type="datetime-local"
+            value={runAt}
+            onChange={e => setRunAt(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          />
+          <div className="text-[11px] text-zinc-500 mt-0.5">Times are in the workspace timezone ({tz})</div>
+        </div>
+      )}
+
+      {type === 'repeating' && (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Start date (optional)</label>
+          <input
+            type="datetime-local"
+            value={startAt}
+            onChange={e => setStartAt(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          />
+          <div className="text-[11px] text-zinc-500 mt-0.5">
+            First fire at this time, then repeating. Times are in the workspace timezone ({tz}).
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="text-xs text-zinc-500 mb-1 block">Run conditions</label>
+        <textarea
+          rows={2}
+          value={conditions}
+          onChange={e => setConditions(e.target.value)}
+          placeholder="e.g. Only run between 9am and 5pm"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+        />
+      </div>
+
+      {startAt && new Date(startAt) <= new Date() && (
+        <div className="text-xs text-red-400">Start date must be in the future.</div>
+      )}
+
+      {error && <div className="text-xs text-red-400">{error}</div>}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={
+            createMutation.isPending
+            || loading
+            || !headId
+            || !targetSlug
+            || (type === 'once' && !runAt)
+            || (startAt !== '' && new Date(startAt) <= new Date())
+          }
+          className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          {createMutation.isPending ? 'Adding…' : 'Add sensor schedule'}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="px-3 py-1.5 text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SchedulesPage() {
   const [showForm, setShowForm] = useState(false)
   const [showReminderForm, setShowReminderForm] = useState(false)
+  const [showSensorForm, setShowSensorForm] = useState(false)
   const tz = useConfigTimezone()
 
   const schedulesQuery = useQuery({
@@ -1090,9 +1439,16 @@ export default function SchedulesPage() {
     queryFn: api.tasks.list,
   })
 
+  const sensorsQuery = useQuery({
+    queryKey: ['sensors'],
+    queryFn: api.sensors.list,
+  })
+  const sensors = sensorsQuery.data?.sensors ?? []
+
   const allSchedules = schedulesQuery.data?.schedules ?? []
-  const taskSchedules = allSchedules.filter(s => s.kind !== 'reminder')
+  const taskSchedules = allSchedules.filter(s => s.kind !== 'reminder' && s.kind !== 'script')
   const reminderSchedules = allSchedules.filter(s => s.kind === 'reminder')
+  const sensorSchedules = allSchedules.filter(s => s.kind === 'script')
   const tasks = tasksQuery.data?.tasks ?? []
 
   return (
@@ -1162,6 +1518,40 @@ export default function SchedulesPage() {
           {reminderSchedules.map(s => <ReminderRow key={s.id} schedule={s} tz={tz} />)}
           {showReminderForm && (
             <AddReminderForm onDone={() => setShowReminderForm(false)} tz={tz} />
+          )}
+        </div>
+
+        {/* ── Sensor Schedules ── */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-100">Sensor Schedules</h2>
+            <p className="text-sm text-zinc-500 mt-0.5">Scheduled sensor script runs</p>
+          </div>
+          <button
+            onClick={() => setShowSensorForm(f => !f)}
+            className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm font-medium transition-colors"
+          >
+            {showSensorForm ? 'Cancel' : '+ New sensor schedule'}
+          </button>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+          {schedulesQuery.isLoading && (
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading…</div>
+          )}
+          {!schedulesQuery.isLoading && !schedulesQuery.isError && sensorSchedules.length === 0 && !showSensorForm && (
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">
+              No sensor schedules. Create a sensor first, then schedule it here.
+            </div>
+          )}
+          {sensorSchedules.map(s => <SensorScheduleRow key={s.id} schedule={s} tz={tz} />)}
+          {showSensorForm && (
+            <AddSensorScheduleForm
+              sensors={sensors}
+              loading={sensorsQuery.isLoading}
+              onDone={() => setShowSensorForm(false)}
+              tz={tz}
+            />
           )}
         </div>
 
