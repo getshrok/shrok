@@ -463,8 +463,9 @@ describe('ContextAssemblerImpl — scanAmbient injection (Phase 48, SENSOR-10/12
   }
 
   it('injects ## Weather block AFTER Current time: (uncached region, T-48-08)', async () => {
-    const ambientDir = path.join(tmpDir, 'ambient')
-    fs.mkdirSync(ambientDir)
+    // Per-head layout: ambient/<headId>/<slug>.md — assembler defaults headId='default'
+    const ambientDir = path.join(tmpDir, 'ambient', 'default')
+    fs.mkdirSync(ambientDir, { recursive: true })
     fs.writeFileSync(path.join(ambientDir, 'weather.md'), 'Sunny')
 
     const assembler = makeAssemblerWithWorkspace(tmpDir)
@@ -497,5 +498,49 @@ describe('ContextAssemblerImpl — scanAmbient injection (Phase 48, SENSOR-10/12
 
     expect(systemPrompt).not.toContain('legacy text from AMBIENT.md')
     expect(systemPrompt).not.toContain('## Ambient Context')
+  })
+
+  it("injects only the assembling head's ambient block, not another head's (SENSOR-14 isolation)", async () => {
+    // Head 'ashley' has a weather sensor; head 'zoey' has a news sensor.
+    fs.mkdirSync(path.join(tmpDir, 'ambient', 'ashley'), { recursive: true })
+    fs.writeFileSync(path.join(tmpDir, 'ambient', 'ashley', 'weather.md'), 'Storm incoming')
+    fs.mkdirSync(path.join(tmpDir, 'ambient', 'zoey'), { recursive: true })
+    fs.writeFileSync(path.join(tmpDir, 'ambient', 'zoey', 'news.md'), 'Tech news')
+
+    // Assembler for 'ashley' — explicit headId arg (9th ctor arg)
+    const ashleyAssembler = new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      makeMessageStore(),
+      makeAgentStore(),
+      makeSkillLoader(),
+      { ...makeMinimalConfig(), workspacePath: tmpDir },
+      makeMcpRegistry(),
+      () => new Date('2026-06-17T12:00:00Z'),
+      undefined, // topicMemory
+      undefined, // router
+      'ashley',  // headId
+    )
+    const { systemPrompt: ashleyPrompt } = await ashleyAssembler.assemble(makeScheduleTrigger())
+
+    expect(ashleyPrompt).toContain('Storm incoming')
+    expect(ashleyPrompt).not.toContain('Tech news')
+
+    // Assembler for 'zoey' should see only zoey's block
+    const zoeyAssembler = new ContextAssemblerImpl(
+      makeIdentityLoader(),
+      makeMessageStore(),
+      makeAgentStore(),
+      makeSkillLoader(),
+      { ...makeMinimalConfig(), workspacePath: tmpDir },
+      makeMcpRegistry(),
+      () => new Date('2026-06-17T12:00:00Z'),
+      undefined, // topicMemory
+      undefined, // router
+      'zoey',    // headId
+    )
+    const { systemPrompt: zoeyPrompt } = await zoeyAssembler.assemble(makeScheduleTrigger())
+
+    expect(zoeyPrompt).toContain('Tech news')
+    expect(zoeyPrompt).not.toContain('Storm incoming')
   })
 })

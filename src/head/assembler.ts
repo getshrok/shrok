@@ -142,11 +142,11 @@ export class ContextAssemblerImpl implements ContextAssembler {
       systemPrompt += `\n\n${scheduleBlock}`
     }
 
-    // Fresh ambient scan from ambient/*.md — placed AFTER "Current time:" so it
-    // lands in the uncached region (T-48-08 mitigation; SENSOR-10).
+    // Fresh ambient scan from ambient/<headId>/*.md — placed AFTER "Current time:" so it
+    // lands in the uncached region (T-48-08 mitigation; SENSOR-10/14).
     if (this.config.workspacePath) {
       const resolvedWorkspace = this.config.workspacePath.replace(/^~/, os.homedir())
-      const ambientBlock = scanAmbient(resolvedWorkspace)
+      const ambientBlock = scanAmbient(resolvedWorkspace, this.headId)
       if (ambientBlock) systemPrompt += `\n\n${ambientBlock}`
     }
 

@@ -76,10 +76,10 @@ export function buildSystemPrompt(deps: ToolSurfaceDeps, _skill: Skill | null): 
 
   prompt += `\n\nCurrent time: ${formatIanaTimeLine(new Date(), deps.timezone)}`
 
-  // Fresh ambient scan from ambient/*.md — placed AFTER "Current time:" so it
-  // lands in the uncached region (SENSOR-10; parity with the head's assembler).
+  // Fresh ambient scan from ambient/<headId>/*.md — placed AFTER "Current time:" so it
+  // lands in the uncached region (SENSOR-10/14; parity with the head's assembler).
   if (deps.workspacePath) {
-    const ambientBlock = scanAmbient(deps.workspacePath)
+    const ambientBlock = scanAmbient(deps.workspacePath, deps.headId)
     if (ambientBlock) prompt += `\n\n${ambientBlock}`
   }
 

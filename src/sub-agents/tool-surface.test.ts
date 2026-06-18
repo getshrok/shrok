@@ -124,3 +124,83 @@ describe('tool-surface ISO-01 enforcement', () => {
     expect(source).not.toMatch(/\.subSkills/)
   })
 })
+
+// ─── SENSOR-14: per-head ambient scoping in buildSystemPrompt ─────────────────
+
+describe('tool-surface buildSystemPrompt — per-head ambient scoping (SENSOR-14)', () => {
+  let tmp: string
+  let skillsDir: string
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tool-surface-ambient-'))
+    skillsDir = path.join(tmp, 'skills')
+    fs.mkdirSync(skillsDir, { recursive: true })
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  })
+
+  function makeMinimalDeps(overrides: Partial<import('./tool-surface.js').ToolSurfaceDeps> = {}): import('./tool-surface.js').ToolSurfaceDeps {
+    const db = initDb(':memory:')
+    runMigrations(db, MIGRATIONS_DIR)
+    const usageStore = new UsageStore(db, 'UTC')
+    const identityLoader: IdentityLoader = {
+      loadSystemPrompt: vi.fn().mockReturnValue(''),
+      listFiles: vi.fn().mockReturnValue([]),
+      readFile: vi.fn().mockReturnValue(null),
+    }
+    const agentIdentityLoader: IdentityLoader = {
+      loadSystemPrompt: vi.fn().mockReturnValue(''),
+      listFiles: vi.fn().mockReturnValue([]),
+      readFile: vi.fn().mockReturnValue(null),
+    }
+    const mcpRegistry: McpRegistry = {
+      listCapabilities: vi.fn().mockReturnValue([]),
+      loadTools: vi.fn().mockResolvedValue([]),
+    }
+    const skillsLoader = new FileSystemKindLoader({ root: skillsDir, kind: 'skill', filename: 'SKILL.md' })
+    return {
+      skillLoader: skillsLoader as unknown as import('../types/skill.js').SkillLoader,
+      headId: 'default',
+      skillsDir,
+      workspacePath: tmp,
+      identityLoader,
+      agentIdentityLoader,
+      toolRegistry: new AgentToolRegistryImpl(),
+      mcpRegistry,
+      usageStore,
+      scheduleStore: null,
+      noteStore: null,
+      appState: null,
+      agentDefaults: { env: null, allowedTools: null },
+      envOverrides: {},
+      nestedAgentSpawningEnabled: false,
+      toolOutputMaxChars: 0,
+      timezone: 'UTC',
+      ...overrides,
+    }
+  }
+
+  it("injects the spawning head's ambient block but NOT another head's block (D-04)", () => {
+    // Head 'ashley' has a weather sensor; head 'zoey' has a news sensor
+    fs.mkdirSync(path.join(tmp, 'ambient', 'ashley'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, 'ambient', 'ashley', 'weather.md'), 'Fog rolling in')
+    fs.mkdirSync(path.join(tmp, 'ambient', 'zoey'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, 'ambient', 'zoey', 'news.md'), 'Market up 2%')
+
+    const ashleyPrompt = buildSystemPrompt(makeMinimalDeps({ headId: 'ashley' }), null)
+    expect(ashleyPrompt).toContain('Fog rolling in')
+    expect(ashleyPrompt).not.toContain('Market up 2%')
+
+    const zoeyPrompt = buildSystemPrompt(makeMinimalDeps({ headId: 'zoey' }), null)
+    expect(zoeyPrompt).toContain('Market up 2%')
+    expect(zoeyPrompt).not.toContain('Fog rolling in')
+  })
+
+  it("produces no ambient block when the head's ambient dir is absent", () => {
+    // No ambient/ dir at all
+    const prompt = buildSystemPrompt(makeMinimalDeps({ headId: 'nonexistent' }), null)
+    expect(prompt).not.toContain('## ')
+  })
+})

@@ -1137,7 +1137,7 @@ export class ActivationLoop {
           recentHistory: recentMsgs
             .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
           ambientContext: this.opts.config.workspacePath
-            ? scanAmbient(this.opts.config.workspacePath.replace(/^~/, os.homedir()))
+            ? scanAmbient(this.opts.config.workspacePath.replace(/^~/, os.homedir()), this.opts.headId)
             : '',
           currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
           ...(schedule.conditions ? { conditions: schedule.conditions } : {}),
@@ -1214,7 +1214,7 @@ export class ActivationLoop {
         recentHistory: recentMsgs
           .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
         ambientContext: this.opts.config.workspacePath
-          ? scanAmbient(this.opts.config.workspacePath.replace(/^~/, os.homedir()))
+          ? scanAmbient(this.opts.config.workspacePath.replace(/^~/, os.homedir()), this.opts.headId)
           : '',
         currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
         ...(schedule?.conditions ? { conditions: schedule.conditions } : {}),
