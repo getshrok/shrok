@@ -36,7 +36,6 @@ import { resolveAllowlist } from './sub-agents/tool-access.js'
 import {
   HEAD_RUNNABLE_TOOL_NAMES,
   getOptionalTool,
-  buildNoteTools,
   buildReminderTools,
   buildScheduleTools,
 } from './sub-agents/registry.js'
@@ -285,8 +284,8 @@ export function buildSystem(deps: SystemDeps): System {
   const tz = config.timezone
   const headId = deps.headId ?? 'default'
   const headRunnableDefs = [
-    // Note tools
-    ...buildNoteTools(stores.notes).map(e => e.definition),
+    // Note tools are DISABLED (operator preference; see NOTE_TOOL_NAMES in registry.ts) —
+    // intentionally not materialized, so they're never offered in the head tool picker.
     // Reminder tools
     ...buildReminderTools(stores.schedules, tz, headId).map(e => e.definition),
     // Schedule tools

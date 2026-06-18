@@ -798,11 +798,14 @@ export function buildScheduleTools(
     {
       definition: {
         name: 'create_schedule',
-        description: 'Create a new schedule targeting a task. The task must already exist.',
+        description: 'Create a new schedule. By default (kind:"task") it targets a task, which must already exist. ' +
+          'Set kind:"script" to schedule a SENSOR instead — then taskName is the sensor slug (the directory name under sensors/), ' +
+          'and a cron (or runAt) is required so the sensor refreshes on a cadence.',
         inputSchema: {
           type: 'object',
           properties: {
-            taskName: { type: 'string', description: 'Task name.' },
+            taskName: { type: 'string', description: 'Task name — or, when kind is "script", the sensor slug (the sensors/<slug>/ directory name; lowercase letters, digits, and hyphens).' },
+            kind: { type: 'string', enum: ['task', 'script'], description: 'What this schedule runs. "task" (default) runs a task; "script" runs a sensor identified by taskName. Omit for tasks.' },
             cronTimezone: {
               type: 'string',
               description: `Timezone the cron expression is relative to (workspace default: ${timezone}). Omit to use the workspace default. Must be a valid IANA timezone string (e.g. "America/New_York", "Europe/London", "Asia/Tokyo").`,
@@ -817,8 +820,15 @@ export function buildScheduleTools(
       },
       execute: async (input, _ctx) => {
         const taskName = input['taskName'] as string
+        const kind: 'task' | 'script' = input['kind'] === 'script' ? 'script' : 'task'
 
-        if (unifiedLoader) {
+        if (kind === 'script') {
+          // Sensor schedule: taskName is the sensor slug. Validate slug shape only — mirrors the
+          // dashboard/runner (sensor existence is deliberately not validated; SENSOR-05).
+          if (!/^[a-z0-9][a-z0-9-]*$/.test(taskName)) {
+            return JSON.stringify({ error: true, message: `Invalid sensor slug '${taskName}'. Slugs are lowercase letters, digits, and hyphens (e.g. "home-status"). Create the sensor at sensors/<slug>/sensor.mjs first.` })
+          }
+        } else if (unifiedLoader) {
           const loaded = unifiedLoader.loadByName(taskName)
           if (!loaded) {
             return JSON.stringify({ error: true, message: `Unknown task '${taskName}'. Create the task first before scheduling it.` })
@@ -877,10 +887,20 @@ export function buildScheduleTools(
           runAtIso = parsedRunAt.toISOString()
           nextRun = runAtIso
         }
+        // A sensor (kind:'script') is only useful if it refreshes — require a trigger.
+        if (kind === 'script' && cronArg === undefined && runAtArg === undefined) {
+          return JSON.stringify({ error: true, message: `A sensor schedule needs a cadence: provide a cron (e.g. "*/15 * * * *") or a one-time runAt. Without one the sensor would never run.` })
+        }
+        // Immediate first run for sensors on a cron: fire on the next tick, then follow the
+        // cron cadence (the scheduler recomputes nextRun from cron after each fire). Gives the
+        // operator ambient output right away instead of waiting for the first cron occurrence.
+        if (kind === 'script' && cronArg !== undefined && runAtArg === undefined) {
+          nextRun = new Date().toISOString()
+        }
         const conditionsArg = input['conditions'] as string | undefined
         const agentContextArg = input['agentContext'] as string | undefined
         // Phase 35 D-09: headId comes from the factory closure (per-head tool registry).
-        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, headId, taskName, kind: 'task' }
+        const createOpts: import('../db/schedules.js').CreateScheduleOptions = { id, headId, taskName, kind }
         if (cronArg !== undefined) createOpts.cron = cronArg
         if (runAtIso !== undefined) createOpts.runAt = runAtIso
         if (nextRun !== undefined) createOpts.nextRun = nextRun
@@ -1362,10 +1382,13 @@ export function getOptionalTool(name: string): AgentToolEntry | undefined {
 /** Sorted list of optional tool names — used by the dashboard skill/task editor to populate the allowed-tools picker. */
 export const OPTIONAL_TOOL_NAMES: readonly string[] = [...OPTIONAL_TOOLS.keys()].sort()
 
-/** Tool names produced by buildNoteTools — always agent-assignable when noteStore is present. */
-export const NOTE_TOOL_NAMES: readonly string[] = [
-  'write_note', 'read_note', 'list_notes', 'search_notes', 'delete_note',
-]
+/** Note tools are DISABLED (operator preference — superseded by an external notes app
+ *  that shrok is given access to). Emptying this list drops them from AGENT_TOOL_NAMES
+ *  and HEAD_RUNNABLE_TOOL_NAMES (so neither dashboard picker offers them); the runtime
+ *  builders are also no longer wired in (see tool-surface.ts / system.ts). buildNoteTools
+ *  and NoteStore remain defined but dormant, so re-enabling is just restoring this list
+ *  and the two builder call sites. */
+export const NOTE_TOOL_NAMES: readonly string[] = []
 
 /** Tool names produced by buildReminderTools — always agent-assignable when scheduleStore is present. */
 export const REMINDER_TOOL_NAMES: readonly string[] = [

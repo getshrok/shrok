@@ -166,8 +166,11 @@ describe('HeadToolExecutor — dispatch to agent-registry tools (Phase 47)', () 
     expect(reminder.agentContext).toBe('test reminder from head')
   })
 
-  // ── Test 3: write_note → list_notes round-trip ─────────────────────────────
-  it('dispatches write_note and list_notes — note round-trips through the global pool (D-10)', async () => {
+  // ── Test 3: note tools are DISABLED — not head-dispatchable ────────────────
+  // Note tools were disabled (operator preference; see NOTE_TOOL_NAMES in registry.ts).
+  // Even with a NoteStore wired (it still backs the dashboard's read-only view), the head
+  // must NOT be able to dispatch write_note/list_notes — they are no longer in the map.
+  it('does NOT dispatch write_note/list_notes — note tools are disabled (NOTE_TOOL_NAMES empty)', async () => {
     const db = initDb(':memory:')
     runMigrations(db, MIGRATIONS_DIR)
     const noteStore = new NoteStore(db)
@@ -186,23 +189,20 @@ describe('HeadToolExecutor — dispatch to agent-registry tools (Phase 47)', () 
       timezone: 'UTC',
     })
 
-    // Write a note
+    // write_note is not a known head tool → handled as an unknown tool, never executed
     const writeResult = await executor.execute({
       id: 'tc-note-write',
       name: 'write_note',
       input: { title: 'head-note-title', content: 'head-note-content' },
     })
-    const writeParsed = JSON.parse(writeResult.content as string) as Record<string, unknown>
-    expect(writeParsed['error']).toBeUndefined()
+    expect(writeResult.content as string).toContain('Unknown tool')
 
-    // List notes — the written note should be in the global pool
     const listResult = await executor.execute({
       id: 'tc-note-list',
       name: 'list_notes',
       input: {},
     })
-    const listContent = listResult.content as string
-    expect(listContent).toContain('head-note-title')
+    expect(listResult.content as string).toContain('Unknown tool')
   })
 
   // ── Test 4: bash — runs command in daemon cwd (D-08) ──────────────────────

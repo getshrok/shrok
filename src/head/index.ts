@@ -17,7 +17,6 @@ import {
   VIEW_IMAGE_DEF, executeViewImage,
   HEAD_RUNNABLE_TOOL_NAMES,
   getOptionalTool,
-  buildNoteTools,
   buildReminderTools,
   buildScheduleTools,
 } from '../sub-agents/registry.js'
@@ -239,12 +238,9 @@ function buildHeadToolMap(opts: HeadToolExecutorOptions): Map<string, AgentToolE
     // note/reminder/schedule names are not in OPTIONAL_TOOLS — handled by builders below
   }
 
-  // Note tools — always available when noteStore is present
-  if (opts.noteStore !== undefined) {
-    for (const entry of buildNoteTools(opts.noteStore)) {
-      map.set(entry.definition.name, entry)
-    }
-  }
+  // Note tools are DISABLED (operator preference; see NOTE_TOOL_NAMES in registry.ts) —
+  // intentionally not registered as head-dispatchable, so the head can neither be offered
+  // nor execute them. NoteStore stays wired for the dashboard's read-only view only.
 
   // Reminder and schedule tools — available when scheduleStore is present
   if (opts.scheduleStore !== undefined) {

@@ -142,14 +142,15 @@ describe('GET /api/tools — tagged registry (D-08, TOOLCFG-08)', () => {
     expect(HEAD_RUNNABLE_TOOL_NAMES).toContain('delete_schedule')
   })
 
-  it('all NOTE tool names appear with the agent layer', async () => {
+  it('note tools are DISABLED — absent from the registry', async () => {
+    // Note tools were disabled (operator preference; see NOTE_TOOL_NAMES in registry.ts).
+    // NOTE_TOOL_NAMES is now empty, and none of the legacy names should surface.
+    expect(NOTE_TOOL_NAMES).toEqual([])
     await start()
     const body = await getTools()
-    const byName = new Map(body.tools.map(t => [t.name, t]))
-    for (const name of NOTE_TOOL_NAMES) {
-      const entry = byName.get(name)
-      expect(entry, `${name} missing from registry`).toBeDefined()
-      expect(entry!.layers, `${name} not tagged as agent`).toContain('agent')
+    const names = new Set(body.tools.map(t => t.name))
+    for (const legacy of ['write_note', 'read_note', 'list_notes', 'search_notes', 'delete_note']) {
+      expect(names.has(legacy), `${legacy} should be absent`).toBe(false)
     }
   })
 
@@ -200,15 +201,6 @@ describe('GET /api/tools — tagged registry (D-08, TOOLCFG-08)', () => {
     expect(readFile).toBeDefined()
     expect(readFile!.layers).toContain('head')
     expect(readFile!.layers).toContain('agent')
-  })
-
-  it('write_note is dual — carries both head and agent layers (Phase 47 retag)', async () => {
-    await start()
-    const body = await getTools()
-    const writNote = body.tools.find(t => t.name === 'write_note')
-    expect(writNote).toBeDefined()
-    expect(writNote!.layers).toContain('head')
-    expect(writNote!.layers).toContain('agent')
   })
 
   it('create_reminder is dual — carries both head and agent layers (Phase 47 retag)', async () => {

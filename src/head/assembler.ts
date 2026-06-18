@@ -495,11 +495,6 @@ async function buildCapabilitiesBlock(mcpRegistry: McpRegistry): Promise<string>
   lines.push('- `list_reminders`: List all active reminders.')
   lines.push('- `create_reminder`: Create a reminder that fires a notification at a specified time.')
   lines.push('- `cancel_reminder`: Cancel a reminder by ID.')
-  lines.push('- `write_note`: Save a note for later recall (facts, commands, references).')
-  lines.push('- `read_note`: Read a specific note by ID.')
-  lines.push('- `list_notes`: List all saved notes.')
-  lines.push('- `search_notes`: Search notes by keyword.')
-  lines.push('- `delete_note`: Delete a note by ID.')
 
   // MCP tools from any user-configured capabilities
   for (const capability of mcpRegistry.listCapabilities()) {

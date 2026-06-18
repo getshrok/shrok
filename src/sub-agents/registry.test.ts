@@ -246,6 +246,71 @@ describe('Past-time guard (Task 2)', () => {
   })
 })
 
+// ─── create_schedule kind:'script' (sensor scheduling) ───────────────────────
+
+describe('create_schedule kind:script (sensor scheduling)', () => {
+  const ctx = makeCtx()
+
+  function makeCapturingStore() {
+    const created: Array<Record<string, unknown>> = []
+    const base = makeScheduleStore() as unknown as Record<string, unknown>
+    const store = {
+      ...base,
+      create: (opts: Record<string, unknown>) => { created.push(opts); return { ...opts } },
+    }
+    return { store: store as unknown as import('../db/schedules.js').ScheduleStore, created }
+  }
+
+  it('creates a kind:script schedule from a bare slug, bypassing the task loader', async () => {
+    const { store, created } = makeCapturingStore()
+    // A loader that throws if consulted — proves script kind never hits task validation.
+    const loader = { loadByName: () => { throw new Error('loader must not be called for script kind') } } as unknown as import('../skills/unified.js').UnifiedLoader
+    const tools = buildScheduleTools(store, TIMEZONE, loader, 'default')
+    const createSchedule = tools.find(t => t.definition.name === 'create_schedule')!
+
+    const res = JSON.parse(await createSchedule.execute({ taskName: 'home-status', kind: 'script', cron: '*/15 * * * *' }, ctx) as string)
+    expect(res.error).toBeUndefined()
+    expect(created).toHaveLength(1)
+    const opts = created[0]!
+    expect(opts['kind']).toBe('script')
+    expect(opts['taskName']).toBe('home-status')
+    // Immediate first run seeded to ~now (not the next cron occurrence 15 min out).
+    expect(opts['nextRun']).toBeDefined()
+    expect(new Date(opts['nextRun'] as string).getTime()).toBeLessThanOrEqual(Date.now() + 1000)
+  })
+
+  it('rejects an invalid sensor slug and does not create', async () => {
+    const { store, created } = makeCapturingStore()
+    const tools = buildScheduleTools(store, TIMEZONE, null, 'default')
+    const createSchedule = tools.find(t => t.definition.name === 'create_schedule')!
+
+    const res = JSON.parse(await createSchedule.execute({ taskName: 'Home Status', kind: 'script', cron: '*/15 * * * *' }, ctx) as string)
+    expect(res.error).toBe(true)
+    expect(created).toHaveLength(0)
+  })
+
+  it('rejects a script schedule with neither cron nor runAt', async () => {
+    const { store, created } = makeCapturingStore()
+    const tools = buildScheduleTools(store, TIMEZONE, null, 'default')
+    const createSchedule = tools.find(t => t.definition.name === 'create_schedule')!
+
+    const res = JSON.parse(await createSchedule.execute({ taskName: 'home-status', kind: 'script' }, ctx) as string)
+    expect(res.error).toBe(true)
+    expect(created).toHaveLength(0)
+  })
+
+  it('defaults to kind:task and still validates task existence', async () => {
+    const { store, created } = makeCapturingStore()
+    const loader = { loadByName: (_n: string) => null } as unknown as import('../skills/unified.js').UnifiedLoader
+    const tools = buildScheduleTools(store, TIMEZONE, loader, 'default')
+    const createSchedule = tools.find(t => t.definition.name === 'create_schedule')!
+
+    const res = JSON.parse(await createSchedule.execute({ taskName: 'no-such-task', cron: '*/15 * * * *' }, ctx) as string)
+    expect(res.error).toBe(true)
+    expect(created).toHaveLength(0)
+  })
+})
+
 // ─── Task 2: get_usage echoes since in canonical local format ─────────────────
 
 describe('get_usage echoes since in canonical local format (Task 2)', () => {

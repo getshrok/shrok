@@ -28,7 +28,6 @@ import {
   AgentToolRegistryImpl,
   HEAD_RUNNABLE_TOOL_NAMES,
   getOptionalTool,
-  buildNoteTools,
   buildReminderTools,
   buildScheduleTools,
 } from '../sub-agents/registry.js'
@@ -36,7 +35,6 @@ import { FileSystemKindLoader } from '../skills/loader.js'
 import { UnifiedLoader } from '../skills/unified.js'
 import { initDb } from '../db/index.js'
 import { runMigrations } from '../db/migrate.js'
-import { NoteStore } from '../db/notes.js'
 import { ScheduleStore } from '../db/schedules.js'
 import { UsageStore } from '../db/usage.js'
 import type { SkillLoader } from '../types/skill.js'
@@ -55,13 +53,12 @@ function materializeWidenedPool(opts?: { tmpDir?: string }): ToolDefinition[] {
   const tmpDir = opts?.tmpDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'enforce-pool-'))
   const db = initDb(':memory:')
   runMigrations(db, MIGRATIONS_DIR)
-  const noteStore = new NoteStore(db)
   const schedulesDir = path.join(tmpDir, 'schedules')
   const scheduleStore = new ScheduleStore(schedulesDir)
 
   const headRunnableDefs: ToolDefinition[] = [
-    // Note tools
-    ...buildNoteTools(noteStore).map(e => e.definition),
+    // Note tools are DISABLED (see NOTE_TOOL_NAMES in registry.ts) — not materialized,
+    // matching production headRunnableDefs in system.ts.
     // Reminder tools
     ...buildReminderTools(scheduleStore, 'UTC', 'default').map(e => e.definition),
     // Schedule tools
@@ -154,7 +151,7 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../config.json'),
     'utf8'
   )
-  const BASE_25_TOOLS = (JSON.parse(configRaw) as { workerDefaults?: { allowedTools?: string[] } })
+  const BASE_AGENT_TOOLS = (JSON.parse(configRaw) as { workerDefaults?: { allowedTools?: string[] } })
     .workerDefaults?.allowedTools ?? []
 
   beforeEach(() => {
@@ -218,8 +215,8 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
   }
 
   it('per-head agent override = [bash] → bash present, web_search absent', async () => {
-    // resolveAllowlist(['bash'], BASE_25_TOOLS) = ['bash'] — per-head override wins
-    const resolvedAllowlist = resolveAllowlist(['bash'], BASE_25_TOOLS)
+    // resolveAllowlist(['bash'], BASE_AGENT_TOOLS) = ['bash'] — per-head override wins
+    const resolvedAllowlist = resolveAllowlist(['bash'], BASE_AGENT_TOOLS)
     expect(resolvedAllowlist).toEqual(['bash'])
     const deps = makeDeps({
       agentDefaults: { env: null, allowedTools: resolvedAllowlist },
@@ -258,7 +255,7 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     // gated by nestedAgentSpawningEnabled + the depth cap — NOT by allowedTools.
     // Even an empty override ([] = "every agent-registry tool off") must NOT strip
     // them. (They are removable per-head via the HEAD override, not the AGENT one.)
-    const resolvedAllowlist = resolveAllowlist([], BASE_25_TOOLS)
+    const resolvedAllowlist = resolveAllowlist([], BASE_AGENT_TOOLS)
     expect(resolvedAllowlist).toEqual([])
     const deps = makeDeps({
       agentDefaults: { env: null, allowedTools: resolvedAllowlist },
@@ -281,15 +278,15 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
     expect(names).not.toContain('web_search')
   })
 
-  it('no-config agent layer: global = BASE_25_TOOLS → resolves to that array; bash and read_file present', async () => {
+  it('no-config agent layer: global = BASE_AGENT_TOOLS → resolves to that array; bash and read_file present', async () => {
     // Production flow: resolveAllowlist(undefined, workerDefaults.allowedTools) where
     // workerDefaults.allowedTools is the 25-tool array from base config.json (TOOLCFG-07).
     // Note: in the test, noteStore=null and scheduleStore=null, so note/reminder/schedule
     // tools are not assembled even if in the allowlist. This test asserts the registry tools
     // that ARE available (bash, read_file, web_search) to confirm the allowlist threads correctly.
-    const resolvedAllowlist = resolveAllowlist(undefined, BASE_25_TOOLS)
-    expect(resolvedAllowlist).toEqual(BASE_25_TOOLS)
-    expect(resolvedAllowlist.length).toBe(25)
+    const resolvedAllowlist = resolveAllowlist(undefined, BASE_AGENT_TOOLS)
+    expect(resolvedAllowlist).toEqual(BASE_AGENT_TOOLS)
+    expect(resolvedAllowlist.length).toBe(20)
     const deps = makeDeps({
       agentDefaults: { env: null, allowedTools: resolvedAllowlist },
     })
@@ -299,12 +296,12 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
       skill: null,
     })
     const names = toolEntries.map(e => e.definition.name)
-    // Core registry tools from BASE_25_TOOLS that assembleTools can fulfill without stores
+    // Core registry tools from BASE_AGENT_TOOLS that assembleTools can fulfill without stores
     expect(names).toContain('bash')
     expect(names).toContain('read_file')
     expect(names).toContain('web_search')
     expect(names).toContain('web_fetch')
-    // The resolved allowlist drives restriction — tools not in BASE_25_TOOLS are absent
+    // The resolved allowlist drives restriction — tools not in BASE_AGENT_TOOLS are absent
     // (get_usage is NOT in the 25-tool agent set — it is a head tool, TOOLCFG-07)
     expect(names).not.toContain('get_usage')
   })
@@ -314,7 +311,7 @@ describe('AGENT tool threading (TOOLCFG-06/07) — two-state', () => {
 //
 // Three contracts pinned:
 //  (a) defaults-unchanged: unconfigured head + widened pool still yields exactly 10 (D-02)
-//  (b) pool-contains-defs: widened pool has create_reminder/write_note/create_schedule (D-13)
+//  (b) pool-contains-defs: widened pool has create_reminder/create_schedule (D-13)
 //  (c) allowlist-still-filters: Phase 46 filter narrows the wider pool to the override subset
 
 describe('Phase 47 widened-pool guarantees (TOOLCFG-10)', () => {
@@ -352,16 +349,18 @@ describe('Phase 47 widened-pool guarantees (TOOLCFG-10)', () => {
     expect(names).not.toContain('create_reminder')
   })
 
-  it('(b) pool-contains-defs: widened pool materializes create_reminder, write_note, create_schedule', () => {
+  it('(b) pool-contains-defs: widened pool materializes create_reminder, create_schedule', () => {
     // Proves WARNING-1 materialization worked — the dynamic builders were called and
     // their defs were included in the widened pool (not filtered out before they landed).
     const widenedPool = materializeWidenedPool({ tmpDir })
     const poolNames = widenedPool.map(t => t.name)
 
-    // Must contain the three builder-derived defs that validate D-13 materialization
+    // Must contain the builder-derived defs that validate D-13 materialization.
+    // (Note tools are DISABLED — see NOTE_TOOL_NAMES in registry.ts — so write_note
+    // is intentionally NOT materialized.)
     expect(poolNames).toContain('create_reminder')
-    expect(poolNames).toContain('write_note')
     expect(poolNames).toContain('create_schedule')
+    expect(poolNames).not.toContain('write_note')
     // Also spot-check an OPTIONAL tool
     expect(poolNames).toContain('bash')
     expect(poolNames).toContain('read_file')

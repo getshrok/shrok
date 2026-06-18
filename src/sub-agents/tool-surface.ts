@@ -12,7 +12,7 @@ import type { AppStateStore } from '../db/app_state.js'
 import { log } from '../logger.js'
 import { formatIanaTimeLine } from '../util/time.js'
 import { buildScopedEnv } from './env.js'
-import { getOptionalTools, buildScopedBashTools, buildUsageTool, buildScheduleTools, buildReminderTools, buildNoteTools } from './registry.js'
+import { getOptionalTools, buildScopedBashTools, buildUsageTool, buildScheduleTools, buildReminderTools } from './registry.js'
 import { truncateToolOutput } from './output-cap.js'
 import { scanAmbient } from '../sensors/scan.js'
 
@@ -260,7 +260,9 @@ export async function assembleTools(
   const reminderTools = deps.scheduleStore
     ? buildReminderTools(deps.scheduleStore, deps.timezone, deps.headId)
     : []
-  const noteTools = deps.noteStore ? buildNoteTools(deps.noteStore) : []
+  // Note tools are DISABLED (operator preference; see NOTE_TOOL_NAMES in registry.ts).
+  // Builder intentionally not called — leaving this empty drops note tools from every agent surface.
+  const noteTools: typeof scheduleTools = []
 
   if (allowedTools) {
     // Skill declares an explicit tool allowlist — applies to optional, MCP, and skill tools.
