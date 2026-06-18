@@ -342,7 +342,7 @@ export type DashboardEvent =
   | { type: 'memory_retrieval'; payload: { text: string; eventId?: string; tokens: number }; headId: string }
 ```
 
-Note: `steward_run_added` can carry `headId` as a top-level field on the event OR rely on `payload.headId` (since `StewardRun` itself gains `headId`). Use a top-level `headId: string` for consistency with the other three — matching the `message_added` pattern and simplifying `streamFilter.ts` narrowing.
+Note: `steward_run_added` does NOT get a top-level `headId`. Its head context travels INSIDE the payload as `payload.headId` (the `StewardRun.headId` field added in Plan 01, wave 1). The emit `{ type:'steward_run_added', payload: run }` stays unchanged. Only `agent_status_changed`, `agent_message_added`, and `memory_retrieval` gain a top-level `headId: string` (their emit sites have headId in scope at emit and are updated in this wave). `streamFilter.ts` narrows per-type: top-level `event.headId` for those three, `(event.payload as StewardRun).headId` for `steward_run_added`.
 
 ---
 

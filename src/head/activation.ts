@@ -202,9 +202,11 @@ export class ActivationLoop {
   }
 
   announceOnline(): void {
-    const channel = this.opts.appState.getLastActiveChannel(this.opts.headId)
-      || this.opts.channelRouter.getFirstChannel()
-    if (!channel) return
+    // Startup greeting is dashboard-ONLY: route it to this head's dashboard
+    // channel so a restart never speaks through a voice satellite or pings a
+    // chat adapter (Discord/Telegram/etc.) unsolicited. The dashboard reads
+    // from the DB via SSE, so it surfaces the greeting without any push.
+    const channel = `dashboard:${this.opts.headId}`
     // Inject a system message so the head announces it just came online.
     this.opts.queueStore.enqueue(
       { type: 'user_message', id: generateId('qe'), channel, text: systemTrigger('greeting', undefined, 'Send a brief greeting to the user.'), createdAt: new Date().toISOString() },
