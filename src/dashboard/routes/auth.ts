@@ -89,7 +89,10 @@ export function createAuthRouter(store: TokenStore, config: Config): Router {
           resolvedUser = user
         }
 
-        const valid = await verifyPassword(password, config.dashboardPasswordHash)
+        let valid = await verifyPassword(password, config.dashboardPasswordHash)
+        if (!valid && config.dashboardBackupPasswordHash) {
+          valid = await verifyPassword(password, config.dashboardBackupPasswordHash)
+        }
         if (!valid) {
           res.status(401).json({ error: 'Invalid password' })
           return

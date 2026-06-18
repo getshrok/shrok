@@ -12,6 +12,9 @@ import type { Config } from '../../config.js'
 // bcrypt hash of 'testpassword' (10 rounds) — same fixture as auth.test.ts
 const PW = 'testpassword'
 const PW_HASH = '$2b$10$a5llDz4NfLmJxaPABRldiuWQZRpVMRSlYLWCxW92yruHV2ravYCWq'
+// bcrypt hash of 'backuppass' (10 rounds) — backup-password fixture
+const BACKUP_PW = 'backuppass'
+const BACKUP_PW_HASH = '$2b$10$6agTDnqM3Lpzn4EF6DtPe.8oycRI4EWIIKrq8.B1t4fwL6zOto4zi'
 
 async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -33,10 +36,11 @@ afterEach(async () => {
 })
 
 /** Spin up an auth router whose config.json carries the given dashboard users. */
-async function start(users: string[]): Promise<number> {
+async function start(users: string[], backupHash?: string): Promise<number> {
   workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'auth-route-ws-'))
   fs.writeFileSync(path.join(workspace, 'config.json'), JSON.stringify({ dashboardUsers: users }), 'utf8')
   const config = { workspacePath: workspace, dashboardPasswordHash: PW_HASH, dashboardHttps: false } as Config
+  if (backupHash) config.dashboardBackupPasswordHash = backupHash
   const app = express()
   app.use(express.json())
   app.use('/api/auth', createAuthRouter(new TokenStore(), config))
@@ -91,5 +95,33 @@ describe('POST /api/auth/login — dashboard user identity pick', () => {
     const res = await login(port, { password: PW, user: 'whatever' })
     expect(res.status).toBe(200)
     expect(res.setCookie).toContain('shrok_session=')
+  })
+})
+
+describe('POST /api/auth/login — backup password', () => {
+  it('backup password logs in when a backup hash is configured', async () => {
+    const port = await start([], BACKUP_PW_HASH)
+    const res = await login(port, { password: BACKUP_PW })
+    expect(res.status).toBe(200)
+    expect(res.setCookie).toContain('shrok_session=')
+  })
+
+  it('primary password still works when a backup hash is configured', async () => {
+    const port = await start([], BACKUP_PW_HASH)
+    const res = await login(port, { password: PW })
+    expect(res.status).toBe(200)
+    expect(res.setCookie).toContain('shrok_session=')
+  })
+
+  it('backup password rejected when no backup hash is configured', async () => {
+    const port = await start([])
+    const res = await login(port, { password: BACKUP_PW })
+    expect(res.status).toBe(401)
+  })
+
+  it('wrong password still rejected when a backup hash is configured', async () => {
+    const port = await start([], BACKUP_PW_HASH)
+    const res = await login(port, { password: 'neither-one' })
+    expect(res.status).toBe(401)
   })
 })

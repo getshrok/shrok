@@ -307,6 +307,11 @@ const ConfigSchema = z.object({
   dashboardPort: z.coerce.number().default(8888),
   dashboardHost: z.string().default('127.0.0.1'),
   dashboardPasswordHash: z.string().optional(),
+  // Optional backup login password (bcrypt hash). config.json-only — never read
+  // from env and never written by the Settings API. Drop a hash here by hand to
+  // get a second working password without changing the primary one. Accepts the
+  // same login as dashboardPasswordHash.
+  dashboardBackupPasswordHash: z.string().optional(),
   dashboardHttps: z.coerce.boolean().default(false),
   // Operator-managed login identities shown as a forced pick at dashboard login.
   // The chosen name is bound to the session and prepended to dashboard messages
@@ -543,6 +548,7 @@ const SECRET_FIELDS = [
   'slackAppToken',
   'webhookSecret',
   'dashboardPasswordHash',
+  'dashboardBackupPasswordHash',
 ] as const satisfies ReadonlyArray<keyof Config>
 
 /** Extract populated secret string values from a Config for log redaction registration. */
