@@ -32,8 +32,8 @@ Plans:
 
 **Requirements**: SENSOR-13, SENSOR-14 (implements SENSOR-F-01), SENSOR-15, SENSOR-16
 **Depends on:** Phase 48 (Sensor Backend), Phase 49 (Sensors Dashboard)
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 - [x] 51-01-PLAN.md — Contract layer: sensor_event QueueEvent type + PRIORITY.SENSOR_EVENT(15) + head-scoped scanAmbient signature
-- [ ] 51-02-PLAN.md — Runner dual-sink (JSON parse, ambient/<headId>/<slug>.md write, sensor_event enqueue) + scheduler/index headId threading
+- [x] 51-02-PLAN.md — Runner dual-sink (JSON parse, ambient/<headId>/<slug>.md write, sensor_event enqueue) + scheduler/index headId threading
 - [ ] 51-03-PLAN.md — injectSensorEvent push injection + activation/assembler/deriveQueryText cases + all four scanAmbient call sites head-scoped
 - [ ] 51-04-PLAN.md — SKILL.md rewrite + create_schedule description + per-head dashboard DELETE + live weather sensor migration
