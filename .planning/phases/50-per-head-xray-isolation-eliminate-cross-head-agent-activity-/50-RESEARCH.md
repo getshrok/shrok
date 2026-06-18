@@ -630,21 +630,26 @@ this.opts.events?.emit('dashboard', {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three questions below were resolved during planning. The chosen answers are inline under each. Executors: follow these — do not re-derive.
 
 1. **`api.stewardRuns.list()` — return all or paginated?**
    - What we know: current route returns `getAll()` (no limit). The CONTEXT.md says to add `?head=` but doesn't specify a limit for the steward runs backfill.
    - What's unclear: should the route switch from `getAll()` to `getRecent(N, head)` and use a specific limit, or return all per-head rows?
    - Recommendation: mirror the xray approach — use `getRecent(60, head)` matching the existing `getRecent(60)` in the activity route, or match the `stewardRuns.getRecent(60)` already called in `activity.ts`. The planner should decide.
+   - **RESOLVED:** Use `getRecent(60, head)` — reuse the existing limit of 60 (mirrors the `stewardRuns.getRecent(60)` already called in `activity.ts`); introduce no new limit constant. The route switches from `getAll()` to the head-filtered `getRecent`. (Per Plan 50-03 Task 1.)
 
 2. **`['stewardRuns']` cache — head-key or reset?**
    - What we know: `stewardRunsQuery` uses `queryKey: ['stewardRuns']` and `queryFn: api.stewardRuns.list`. The live accumulator appends to this same key.
    - What's unclear: whether to head-key the backfill cache (`['stewardRuns', selectedHead]`) or keep it flat and add only a reset effect.
    - Recommendation: head-key it (`['stewardRuns', selectedHead]`) for consistency with the other surfaces, so head-switch is a cache-miss that auto-triggers a fresh backfill fetch. The reset effect then clears the live accumulator only.
+   - **RESOLVED:** Head-key it as `['stewardRuns', selectedHead]` so a head switch is a cache miss that auto-refetches the new head's backfill; a co-located reset effect clears the live accumulator on `[selectedHead]`. (Per Plan 50-04 Task 3; live-write side keyed `['stewardRuns', event.headId]` in Plan 50-04 Task 2.)
 
 3. **`['activity']` invalidations in `useStream.ts` — remove or leave?**
    - What we know: these invalidations are dead (no subscriber). They add noise.
    - Recommendation: remove them as part of this phase (they're associated with the leaky events being fixed). Low risk — no subscriber means no regression.
+   - **RESOLVED:** Remove all three dead `invalidateQueries(['activity'])` calls in `useStream.ts` (lines 54, 58, 86). No `useQuery` subscriber exists, so there is no regression. (Per Plan 50-04 Task 2.)
 
 ---
 
