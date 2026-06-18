@@ -217,7 +217,7 @@ export class LocalAgentRunner implements AgentRunner {
     const task = this.runLoop(agentId, effectiveOptions, toolEntries, skill, emitter, failedMcpCapabilities).catch(err => {
       // Last-resort — runLoop has its own error handling; this catches any escape
       log.error(`[agent:${agentId}] Unhandled escape:`, err)
-      try { this.agentStore.fail(agentId, (err as Error).message) } catch { /* ignore */ }
+      try { this.agentStore.fail(agentId, (err as Error).message, this.headId) } catch { /* ignore */ }
       // Notify the head so the user is told about the failure
       try {
         this.queueStore.enqueue({
@@ -258,7 +258,7 @@ export class LocalAgentRunner implements AgentRunner {
     if (state?.status === 'completed') {
       // Continuation: transition back to running and restart the loop.
       // Update workStart so the next completion only summarizes new work.
-      this.agentStore.resume(agentId)
+      this.agentStore.resume(agentId, this.headId)
       this.agentStore.updateWorkStart(agentId, state.history?.length ?? 0)
       this.inboxStore.write(agentId, 'signal', message)
       await this.resumeSuspended(agentId, state)
@@ -307,7 +307,7 @@ export class LocalAgentRunner implements AgentRunner {
     // Agent is not running in-process — retract directly if suspended
     const state = this.agentStore.get(agentId)
     if (state?.status === 'suspended') {
-      this.agentStore.updateStatus(agentId, 'retracted')
+      this.agentStore.updateStatus(agentId, 'retracted', this.headId)
       this.inboxStore.deleteForAgent(agentId)
     }
   }
@@ -442,7 +442,7 @@ export class LocalAgentRunner implements AgentRunner {
 
     const task = this.runLoopFrom(agentId, options, toolEntries, systemPrompt, history, emitter, true).catch(err => {
       log.error(`[agent:${agentId}] Unhandled escape (resume):`, err)
-      try { this.agentStore.fail(agentId, (err as Error).message) } catch { /* ignore */ }
+      try { this.agentStore.fail(agentId, (err as Error).message, this.headId) } catch { /* ignore */ }
     }).finally(() => {
       this.emitters.delete(agentId)
       this.tasks.delete(agentId)
@@ -641,12 +641,12 @@ export class LocalAgentRunner implements AgentRunner {
         // and by then the tool or subsequent LLM call may have thrown.
         const pendingRetract = this.inboxStore.poll(agentId).some(m => m.type === 'retract')
         if (pendingRetract) {
-          this.agentStore.updateStatus(agentId, 'retracted')
+          this.agentStore.updateStatus(agentId, 'retracted', this.headId)
           log.info(`[agent:${agentId}] Retract honoured after error — marking as retracted, not failed`)
           return
         }
 
-        this.agentStore.fail(agentId, (err as Error).message)
+        this.agentStore.fail(agentId, (err as Error).message, this.headId)
         if (options.parentAgentId) {
           this.inboxStore.write(options.parentAgentId, 'sub_agent_failed',
             JSON.stringify({ subWorkerId: agentId, error: (err as Error).message }))
@@ -705,7 +705,7 @@ export class LocalAgentRunner implements AgentRunner {
       for (const msg of inbox) {
         if (msg.type === 'retract') {
           this.inboxStore.markProcessed(msg.id)
-          this.agentStore.updateStatus(agentId, 'retracted')
+          this.agentStore.updateStatus(agentId, 'retracted', this.headId)
           return
         }
 
@@ -729,7 +729,7 @@ export class LocalAgentRunner implements AgentRunner {
               content: msg.payload ?? '',
               createdAt: now(),
             } satisfies TextMessage)
-            this.agentStore.resume(agentId)
+            this.agentStore.resume(agentId, this.headId)
             isSuspended = false
           }
           // If not suspended, the signal arrived after the agent already resumed — discard it.
@@ -1013,7 +1013,7 @@ export class LocalAgentRunner implements AgentRunner {
     options: SpawnOptions,
     history: Message[],
   ): void {
-    this.agentStore.complete(agentId, output)
+    this.agentStore.complete(agentId, output, this.headId)
     if (options.parentAgentId) {
       this.inboxStore.write(options.parentAgentId, 'sub_agent_completed',
         JSON.stringify({ subWorkerId: agentId, output }))
@@ -1041,7 +1041,7 @@ export class LocalAgentRunner implements AgentRunner {
       this.completeAgent(agentId, question, options, history)
       return 'completed'
     }
-    this.agentStore.suspend(agentId, question)
+    this.agentStore.suspend(agentId, question, this.headId)
     if (options.parentAgentId) {
       this.inboxStore.write(options.parentAgentId, 'sub_agent_question',
         JSON.stringify({ subWorkerId: agentId, question }))
@@ -1074,7 +1074,7 @@ export class LocalAgentRunner implements AgentRunner {
       timezone: this.timezone,
       suspend: () => { state.suspended = true },
       complete: (output: string) => {
-        this.agentStore.complete(agentId, output)
+        this.agentStore.complete(agentId, output, this.headId)
         const deliverySet = [...new Set([this.headId, ...(options.deliverToHeadIds ?? [])])]
         for (const targetHeadId of deliverySet) {
           this.queueStore.enqueue({
