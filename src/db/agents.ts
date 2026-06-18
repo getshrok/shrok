@@ -1,7 +1,7 @@
 import { type DatabaseSync, type StatementSync, transaction } from './index.js'
 import type { Message, TextMessage } from '../types/core.js'
 import type { AgentState, AgentStatus, SpawnOptions } from '../types/agent.js'
-import type { DashboardEventBus } from '../dashboard/events.js'
+import type { DashboardEvent, DashboardEventBus } from '../dashboard/events.js'
 
 /** Number of distinct color slots available to active agents. Matches dashboard Okabe-Ito palette length. */
 export const AGENT_COLOR_SLOT_COUNT = 7
@@ -227,7 +227,7 @@ export class AgentStore {
 
   updateStatus(id: string, status: AgentStatus, headId?: string): void {
     this.stmtUpdateStatus.run(status, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status }, ...(headId !== undefined ? { headId } : {}) })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status }, ...(headId !== undefined ? { headId } : {}) } as DashboardEvent)
   }
 
   updateStatusText(id: string, statusText: string): void {
@@ -240,27 +240,27 @@ export class AgentStore {
 
   suspend(id: string, question: string, headId?: string): void {
     this.stmtSuspend.run(question, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'suspended' }, ...(headId !== undefined ? { headId } : {}) })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'suspended' }, ...(headId !== undefined ? { headId } : {}) } as DashboardEvent)
   }
 
   resume(id: string, headId?: string): void {
     this.stmtResume.run(id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'running' }, ...(headId !== undefined ? { headId } : {}) })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'running' }, ...(headId !== undefined ? { headId } : {}) } as DashboardEvent)
   }
 
   /** Emit an SSE event for a new message appended to an agent's in-progress history. */
   emitMessageAdded(agentId: string, message: Message, trigger?: string, headId?: string): void {
-    this.eventBus?.emit('dashboard', { type: 'agent_message_added', payload: { agentId, message, trigger: trigger ?? 'manual' }, ...(headId !== undefined ? { headId } : {}) })
+    this.eventBus?.emit('dashboard', { type: 'agent_message_added', payload: { agentId, message, trigger: trigger ?? 'manual' }, ...(headId !== undefined ? { headId } : {}) } as DashboardEvent)
   }
 
   complete(id: string, output: string, headId?: string): void {
     this.stmtComplete.run(output, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'completed' }, ...(headId !== undefined ? { headId } : {}) })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'completed' }, ...(headId !== undefined ? { headId } : {}) } as DashboardEvent)
   }
 
   fail(id: string, error: string, headId?: string): void {
     this.stmtFail.run(error, id)
-    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'failed' }, ...(headId !== undefined ? { headId } : {}) })
+    this.eventBus?.emit('dashboard', { type: 'agent_status_changed', payload: { id, status: 'failed' }, ...(headId !== undefined ? { headId } : {}) } as DashboardEvent)
   }
 
   getActive(): AgentState[] {

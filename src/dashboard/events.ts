@@ -5,15 +5,15 @@ import type { StewardRun } from '../db/steward_runs.js'
 
 export type DashboardEvent =
   | { type: 'message_added'; payload: Message; headId: string }
-  | { type: 'agent_status_changed'; payload: { id: string; status: AgentStatus } }
-  | { type: 'agent_message_added'; payload: { agentId: string; message: Message; trigger: string } }
+  | { type: 'agent_status_changed'; payload: { id: string; status: AgentStatus }; headId: string }
+  | { type: 'agent_message_added'; payload: { agentId: string; message: Message; trigger: string }; headId: string }
   | { type: 'steward_run_added'; payload: StewardRun }
   | { type: 'usage_updated' }
   | { type: 'assistant_name_changed'; payload: { name: string } }
   | { type: 'typing'; headId: string }
   | { type: 'theme_changed'; payload: { accentColor: string; logoUrl: string } }
   | { type: 'thresholds_changed' }
-  | { type: 'memory_retrieval'; payload: { text: string; eventId?: string; tokens: number } }
+  | { type: 'memory_retrieval'; payload: { text: string; eventId?: string; tokens: number }; headId: string }
 
 export class DashboardEventBus extends EventEmitter {
   emit(event: 'dashboard', data: DashboardEvent): boolean {

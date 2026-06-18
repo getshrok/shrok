@@ -309,8 +309,8 @@ async function main() {
     const orphanedAgents = headAgents.getByStatus('running')
     for (const t of orphanedAgents) {
       const pendingRetract = headSystem.stores.agentInbox.poll(t.id).some(m => m.type === 'retract')
-      if (pendingRetract) { headAgents.updateStatus(t.id, 'retracted'); continue }
-      headAgents.fail(t.id, 'process restarted mid-execution')
+      if (pendingRetract) { headAgents.updateStatus(t.id, 'retracted', head.id); continue }
+      headAgents.fail(t.id, 'process restarted mid-execution', head.id)
       headQueue.enqueue({
         type: 'agent_failed', id: generateId('qe'), agentId: t.id,
         error: 'process restarted mid-execution', createdAt: new Date().toISOString(),

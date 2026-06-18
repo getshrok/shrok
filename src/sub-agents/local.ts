@@ -882,7 +882,7 @@ export class LocalAgentRunner implements AgentRunner {
         appendMessage: async (msg) => {
           history.push(msg)
           this.agentStore.appendMessages(agentId, [msg])
-          this.agentStore.emitMessageAdded(agentId, msg, options.trigger)
+          this.agentStore.emitMessageAdded(agentId, msg, options.trigger, this.headId)
           // Auto-inject MEMORY.md when agent reads a SKILL.md inside the skills dir.
           if (msg.kind === 'tool_result') {
             injectSkillMemory(this.skillsDir, msg as ToolResultMessage, history, this.toolOutputMaxChars)

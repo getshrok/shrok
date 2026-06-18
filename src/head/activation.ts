@@ -775,7 +775,7 @@ export class ActivationLoop {
       if (debugChannel && visibility.memoryRetrievals) {
         await this.opts.channelRouter.sendDebug(debugChannel, `\`\`\`\n[memory retrieved]\n${context.memoryBlock}\n\`\`\``)
       }
-      this.opts.events?.emit('dashboard', { type: 'memory_retrieval', payload: { text: context.memoryBlock, eventId: event.id, tokens: estimateStringTokens(context.memoryBlock) } })
+      this.opts.events?.emit('dashboard', { type: 'memory_retrieval', payload: { text: context.memoryBlock, eventId: event.id, tokens: estimateStringTokens(context.memoryBlock) }, headId: this.opts.headId })
     }
 
     const eventAttachments = event.type === 'user_message' && event.attachments?.length
@@ -1058,6 +1058,7 @@ export class ActivationLoop {
             id: generateId('jr'),
             stewards: results,
             createdAt: new Date().toISOString(),
+            headId: this.opts.headId,
           })
         })
       }
