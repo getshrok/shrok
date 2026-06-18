@@ -62,8 +62,9 @@ export function createAgentsRouter(agents: AgentStore, agentRunner?: AgentRunner
 
   // Xray: flatten recent agent tool calls/results for the head timeline
   const AGENT_MGMT_TOOLS = new Set(['spawn_agent', 'message_agent', 'cancel_agent'])
-  router.get('/xray-history', requireAuth, (_req: Request, res: Response): void => {
-    const recent = agents.getRecent(50)
+  router.get('/xray-history', requireAuth, (req: Request, res: Response): void => {
+    const head = typeof req.query['head'] === 'string' ? req.query['head'] : undefined
+    const recent = agents.getRecent(50, head)
     const messages: Array<{ agentId: string; message: import('../../types/core.js').Message }> = []
 
     for (const agent of recent) {

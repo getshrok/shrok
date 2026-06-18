@@ -25,11 +25,12 @@ export function createActivityRouter(
 ): Router {
   const router = Router()
 
-  router.get('/', requireAuth, (_req: Request, res: Response): void => {
+  router.get('/', requireAuth, (req: Request, res: Response): void => {
+    const head = typeof req.query['head'] === 'string' ? req.query['head'] : undefined
     const entries: ActivityEntry[] = []
 
     // Recent non-injected text messages
-    for (const msg of messages.getRecentText('default', 60)) {
+    for (const msg of messages.getRecentText(head ?? 'default', 60)) {
       if (msg.kind !== 'text') continue
       entries.push(withDetail(
         {
@@ -43,7 +44,7 @@ export function createActivityRouter(
     }
 
     // Recent agents
-    for (const agent of agents.getRecent(40)) {
+    for (const agent of agents.getRecent(40, head)) {
       const label = agent.skillName ? ` (${agent.skillName})` : ''
       if (agent.status === 'completed') {
         entries.push(withDetail(
@@ -63,7 +64,7 @@ export function createActivityRouter(
     }
 
     // Recent steward runs — only those where at least one steward fired
-    for (const run of stewardRuns.getRecent(60)) {
+    for (const run of stewardRuns.getRecent(60, head)) {
       const fired = run.stewards.filter(j => j.fired)
       if (fired.length === 0) continue
       const names = fired
