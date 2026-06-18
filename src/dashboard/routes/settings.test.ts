@@ -7,6 +7,7 @@ import * as net from 'node:net'
 import type { Server } from 'node:http'
 import { createSettingsRouter } from './settings.js'
 import type { Config } from '../../config.js'
+import { HEAD_TOOL_NAMES } from '../../head/index.js'
 
 async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -318,10 +319,10 @@ describe('GET /api/settings — config-derived defaults', () => {
     expect(b['agentToolDefault']).toEqual(effectiveSubset)
     // null head config is coalesced to HEAD_TOOL_NAMES (two-state: never returns null)
     expect(Array.isArray(b['headToolDefault'])).toBe(true)
-    expect((b['headToolDefault'] as string[]).length).toBe(10)
+    expect((b['headToolDefault'] as string[]).length).toBe(HEAD_TOOL_NAMES.length)
   })
 
-  it('GET with empty config returns concrete 10-element head default (not null)', async () => {
+  it('GET with empty config returns the concrete head default set (not null)', async () => {
     // Fresh install: headToolDefaults.allowedTools defaults to HEAD_TOOL_NAMES (46-05)
     // The GET surface must return the concrete array, never null.
     await startWithConfig(makeTestConfig({
@@ -330,7 +331,7 @@ describe('GET /api/settings — config-derived defaults', () => {
     const b = await getBody()
     expect(b['headToolDefault']).not.toBeNull()
     expect(Array.isArray(b['headToolDefault'])).toBe(true)
-    expect((b['headToolDefault'] as string[]).length).toBe(10)
+    expect((b['headToolDefault'] as string[]).length).toBe(HEAD_TOOL_NAMES.length)
   })
 })
 

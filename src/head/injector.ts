@@ -136,6 +136,7 @@ export function formatWorkForSummary(messages: Message[], caps: WorkSummaryCaps 
 export interface Injector {
   injectAgentEvent(event: QueueEvent & { type: 'agent_completed' | 'agent_question' | 'agent_failed' | 'agent_response' }, workSummaryOverride?: string): void
   injectWebhookEvent(event: QueueEvent & { type: 'webhook' }): void
+  injectHeadMessage(event: QueueEvent & { type: 'head_message' }): void
 }
 
 export class InjectorImpl implements Injector {
@@ -271,6 +272,32 @@ export class InjectorImpl implements Injector {
       createdAt: now(),
       role: 'assistant',
       content: eventContent,
+      injected: true,
+    }
+
+    const triggerMsg: TextMessage = {
+      kind: 'text',
+      id: generateId('msg'),
+      createdAt: now(),
+      role: 'user',
+      content: systemTrigger('respond'),
+      injected: true,
+    }
+
+    this.messages.append(eventMsg, this.headId)
+    this.messages.append(triggerMsg, this.headId)
+  }
+
+  /** A message relayed from another head (e.g. via message_head). Surfaced as a
+   *  system-event attributed to the sender, plus a respond trigger so this head
+   *  delivers it to its person on its own channel. Mirrors injectWebhookEvent. */
+  injectHeadMessage(event: QueueEvent & { type: 'head_message' }): void {
+    const eventMsg: TextMessage = {
+      kind: 'text',
+      id: generateId('msg'),
+      createdAt: now(),
+      role: 'assistant',
+      content: systemEvent('head-message', { from: event.fromHeadName }, event.text),
       injected: true,
     }
 

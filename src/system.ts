@@ -30,7 +30,7 @@ import { LocalAgentRunner } from './sub-agents/local.js'
 import { FileSystemIdentityLoader } from './identity/loader.js'
 import { InjectorImpl } from './head/injector.js'
 import { ContextAssemblerImpl } from './head/assembler.js'
-import { HEAD_TOOLS, HEAD_TOOL_NAMES, buildHeadSpawnAgentDef } from './head/index.js'
+import { HEAD_TOOLS, HEAD_TOOL_NAMES, buildHeadSpawnAgentDef, buildMessageHeadDef } from './head/index.js'
 import { ActivationLoop } from './head/activation.js'
 import { resolveAllowlist } from './sub-agents/tool-access.js'
 import {
@@ -113,6 +113,10 @@ export interface SystemDeps {
   headId?: string
   /** Issue #12: per-head custom system-prompt addition, appended in the assembler's cached prefix. */
   customPrompt?: string
+  /** Roster of all heads {id, displayName} for the message_head cross-head relay tool.
+   *  Snapshot at startup (named heads require a restart to reconfigure). When absent or
+   *  with fewer than two entries, message_head has no valid recipients. */
+  headRoster?: ReadonlyArray<{ id: string; displayName: string }>
   /** Phase 46 (TOOLCFG-05): per-head head-tool allowlist override.
    *  key-absent = inherit global headToolDefaults.allowedTools (defaults to HEAD_TOOL_NAMES);
    *  array = only those tools (empty array = no tools). Legacy null tolerated (falls through). */
@@ -308,7 +312,11 @@ export function buildSystem(deps: SystemDeps): System {
   const effectiveHeadTools = (deps.headTools !== undefined
     ? deps.headTools
     : [...HEAD_TOOLS, ...headRunnableDefs].filter(t => resolvedHeadTools.includes(t.name))
-  ).map(t => t.name === 'spawn_agent' ? buildHeadSpawnAgentDef(agentModelDynamic) : t)
+  ).map(t => {
+    if (t.name === 'spawn_agent') return buildHeadSpawnAgentDef(agentModelDynamic)
+    if (t.name === 'message_head') return buildMessageHeadDef(deps.headRoster ?? [], deps.headId ?? 'default')
+    return t
+  })
 
   // ── Agent Runner ────────────────────────────────────────────────────────
   const agentContextComposer = deps.agentContextComposer ?? config.agentContextComposer
@@ -435,6 +443,10 @@ export function buildSystem(deps: SystemDeps): System {
     scheduleStore: stores.schedules,
     noteStore: stores.notes,  // Phase 47 D-07: mirrors LocalAgentRunner wiring at line ~293
     timezone: config.timezone,
+    // Cross-head relay (message_head): all heads' stores share the same db + wake
+    // hook, so this head's queue can enqueue onto another head's id and wake it.
+    queueStore: stores.queue,
+    ...(deps.headRoster !== undefined ? { headRoster: deps.headRoster } : {}),
     ...(deps.spawnAgentNote !== undefined ? { spawnAgentNote: deps.spawnAgentNote } : {}),
     ...(deps.ringRunner ? { ringRunner: deps.ringRunner } : {}),
   }

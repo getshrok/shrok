@@ -77,6 +77,10 @@ export const HeadConfigSchema = z.object({
   id: z.string().min(1),
   channels: z.array(ChannelConfigSchema),
   customPrompt: z.string().optional(),
+  /** Human-friendly name for this head's person (e.g. "Zoey"). Used to address
+   *  the head in cross-head relays (message_head) and for attribution. Falls back
+   *  to `id` when absent. */
+  displayName: z.string().optional(),
   // Per-head tool override fields (TOOLCFG-03, TOOLCFG-04).
   // key-absent = inherit global default, null = all tools, array = only those tools.
   headToolsOverride: z.array(z.string()).nullable().optional(),
@@ -90,6 +94,8 @@ export interface ResolvedHead {
   id: string
   channels: ChannelConfig[]
   customPrompt?: string
+  /** Human-friendly name for cross-head relay addressing/attribution; falls back to `id`. */
+  displayName?: string
   // Per-head tool allowlist overrides (TOOLCFG-03, TOOLCFG-04).
   // key-absent = inherit global default, null = all tools, array = only those tools.
   headToolsOverride?: string[] | null
@@ -607,6 +613,7 @@ export function resolveHeads(config: Config): ResolvedHead[] {
       id: h.id,
       channels: h.channels,
       ...(h.customPrompt !== undefined ? { customPrompt: h.customPrompt } : {}),
+      ...(h.displayName !== undefined ? { displayName: h.displayName } : {}),
       // Carry per-head tool overrides forward only when the key is present.
       // Absent key = inherit global — must NOT become present-as-undefined
       // (exactOptionalPropertyTypes: the three states must stay distinct).

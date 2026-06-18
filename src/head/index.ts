@@ -2,6 +2,8 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import type { ToolCall, ToolResult } from '../types/core.js'
+import { PRIORITY } from '../types/core.js'
+import { generateId, now } from '../llm/util.js'
 import type { ToolDefinition } from '../types/llm.js'
 import type { AgentRunner } from '../types/agent.js'
 import type { Memory } from '../memory/index.js'
@@ -64,6 +66,36 @@ export function buildHeadSpawnAgentDef(agentModelDynamic: boolean): ToolDefiniti
   }
 }
 
+/**
+ * Build the head's message_head tool definition. `head` accepts a recipient's
+ * display name; the description lists the OTHER heads (every head except `selfId`)
+ * so the model knows who it can relay to. With fewer than two heads there are no
+ * valid recipients and the description says so.
+ */
+export function buildMessageHeadDef(
+  roster: ReadonlyArray<{ id: string; displayName: string }>,
+  selfId: string,
+): ToolDefinition {
+  const others = roster.filter(h => h.id !== selfId)
+  const recipientList = others.length > 0
+    ? others.map(h => `"${h.displayName}"`).join(', ')
+    : 'none configured'
+  return {
+    name: 'message_head',
+    description:
+      'Relay a message to another person through their own line to you. Use this when the user asks you to tell / let / notify / pass something along to someone else (e.g. "let Zoey know dinner moved to 7pm"). The recipient is notified on their own channel, attributed to the person who asked. ' +
+      `Valid recipients (by name): ${recipientList}.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        head: { type: 'string', description: 'The recipient\'s name, e.g. "Zoey".' },
+        message: { type: 'string', description: 'What to relay, in your own words.' },
+      },
+      required: ['head', 'message'],
+    },
+  }
+}
+
 export const HEAD_TOOLS: ToolDefinition[] = [
   // Static default uses the non-dynamic variant (default config agentModel is a
   // fixed tier). system.ts swaps in the dynamic variant when agentModel === 'dynamic'.
@@ -80,6 +112,10 @@ export const HEAD_TOOLS: ToolDefinition[] = [
       required: ['agentId', 'message'],
     },
   },
+  // Static fallback definition so the name propagates to HEAD_TOOL_NAMES (and thus
+  // the allowlist default + Settings registry). system.ts swaps in the per-head
+  // buildMessageHeadDef(roster, selfId) variant which lists actual recipients.
+  buildMessageHeadDef([], ''),
   {
     name: 'cancel_agent',
     description: 'Terminate a running or suspended agent.',
@@ -218,6 +254,13 @@ export interface HeadToolExecutorOptions {
    *  Optional so existing callers without a store remain tsc-clean.
    *  Mirrored from the scheduleStore? optional pattern. */
   noteStore?: import('../db/notes.js').NoteStore
+  /** Shared queue store for cross-head relay (message_head). All heads' stores wrap
+   *  the same db + wake hook, so enqueuing with another head's id wakes that head's
+   *  loop. Optional so existing test callers stay tsc-clean (mirrors scheduleStore?). */
+  queueStore?: import('../db/queue.js').QueueStore
+  /** Roster of all heads {id, displayName} for resolving message_head recipients
+   *  and the sender's own display name. Optional (single-head installs omit it). */
+  headRoster?: ReadonlyArray<{ id: string; displayName: string }>
 }
 
 /** Tools the head can dispatch to agent-registry executors (Phase 47, D-04).
@@ -381,6 +424,37 @@ export class HeadToolExecutor implements ToolExecutor {
         // work to THIS activation's channel, not the one it was first spawned from.
         await this.opts.agentRunner.update(agentId, message, this.opts.onVerbose)
         return JSON.stringify({ ok: true })
+      }
+
+      case 'message_head': {
+        const roster = this.opts.headRoster ?? []
+        const others = roster.filter(h => h.id !== this.opts.headId)
+        if (!this.opts.queueStore || others.length === 0) {
+          return JSON.stringify({ error: true, message: 'There are no other people to relay to.' })
+        }
+        const target = (input['head'] as string | undefined)?.trim() ?? ''
+        const message = (input['message'] as string | undefined) ?? ''
+        const norm = target.toLowerCase()
+        const match = others.find(h => h.displayName.toLowerCase() === norm)
+          ?? others.find(h => h.id.toLowerCase() === norm)
+        if (!match) {
+          const valid = others.map(h => h.displayName).join(', ')
+          return JSON.stringify({ error: true, message: `No recipient named "${target}". Valid recipients: ${valid}.` })
+        }
+        const selfName = roster.find(h => h.id === this.opts.headId)?.displayName ?? this.opts.headId
+        this.opts.queueStore.enqueue(
+          {
+            type: 'head_message',
+            id: generateId('qe'),
+            fromHeadId: this.opts.headId,
+            fromHeadName: selfName,
+            text: message,
+            createdAt: now(),
+          },
+          PRIORITY.HEAD_MESSAGE,
+          match.id,
+        )
+        return JSON.stringify({ ok: true, relayedTo: match.displayName })
       }
 
       case 'cancel_agent': {

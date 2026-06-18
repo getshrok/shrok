@@ -144,12 +144,26 @@ export type QueueEvent =
       payload: unknown
       createdAt: string
     }
+  | {
+      /** A message relayed from one head to another (e.g. "let Zoey know dinner
+       *  moved to 7pm"). The receiving head delivers it to its person, attributed
+       *  to the sender. fromHeadName is the sender's display name for attribution. */
+      type: 'head_message'
+      id: string
+      fromHeadId: string
+      fromHeadName: string
+      text: string
+      createdAt: string
+    }
 
 export type QueueEventType = QueueEvent['type']
 
 /** Higher number = processed first. */
 export const PRIORITY = {
   USER_MESSAGE: 100,
+  // A message relayed from another head: a person is waiting on the other side,
+  // so above agent events — but a direct user_message to THIS head still wins.
+  HEAD_MESSAGE: 70,
   AGENT_QUESTION: 50,
   AGENT_COMPLETED: 30,
   AGENT_FAILED: 30,

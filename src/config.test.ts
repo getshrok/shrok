@@ -527,6 +527,22 @@ describe('Phase 31 resolveHeads()', () => {
     expect(heads).toHaveLength(1)
     expect('customPrompt' in (heads[0] ?? {})).toBe(false)
   })
+
+  it('resolveHeads preserves displayName when a config head has one', () => {
+    const cfg = makeConfig({
+      heads: [{ id: 'zoey-head', channels: [], displayName: 'Zoey' }],
+    })
+    const heads = resolveHeads(cfg)
+    expect(heads[0]?.displayName).toBe('Zoey')
+  })
+
+  it('resolveHeads omits displayName key when a config head lacks it', () => {
+    const cfg = makeConfig({
+      heads: [{ id: 'work', channels: [] }],
+    })
+    const heads = resolveHeads(cfg)
+    expect('displayName' in (heads[0] ?? {})).toBe(false)
+  })
 })
 
 // ─── Phase 40: home-assistant channel vendor ───────────────────────────────
@@ -814,13 +830,13 @@ describe('Phase 46 ConfigSchema headToolDefaults', () => {
     expect(cfg.headToolDefaults.allowedTools).toEqual(['spawn_agent'])
   })
 
-  it('headToolDefaults defaults to the 10 HEAD_TOOL_NAMES when absent from config.json (TOOLCFG-01/07)', () => {
+  it('headToolDefaults defaults to the full HEAD_TOOL_NAMES set when absent from config.json (TOOLCFG-01/07)', () => {
     fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
     const cfg = loadConfig()
-    // The default must be the concrete 10 head-tool names — not null (TOOLCFG-07 / D-06)
+    // The default must be the concrete head-tool names — not null (TOOLCFG-07 / D-06)
     expect(Array.isArray(cfg.headToolDefaults.allowedTools)).toBe(true)
     expect(cfg.headToolDefaults.allowedTools).toHaveLength(HEAD_TOOLS.length)
-    expect(cfg.headToolDefaults.allowedTools).toHaveLength(10)
+    expect(cfg.headToolDefaults.allowedTools).toHaveLength(11)
     // Spot-check two well-known head tools
     expect(cfg.headToolDefaults.allowedTools).toContain('spawn_agent')
     expect(cfg.headToolDefaults.allowedTools).toContain('ring_device')

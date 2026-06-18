@@ -82,10 +82,10 @@ describe('HEAD tool filtering (TOOLCFG-05/07) — two-state', () => {
     // This is what buildSystem computes for a no-config head (TOOLCFG-07).
     const resolved = resolveAllowlist(undefined, HEAD_TOOL_NAMES)
     expect(resolved).toEqual(HEAD_TOOL_NAMES)
-    expect(resolved.length).toBe(10)
+    expect(resolved.length).toBe(HEAD_TOOL_NAMES.length)
     const effective = HEAD_TOOLS.filter(t => resolved.includes(t.name))
-    // All 10 HEAD_TOOLS offered (same as the pre-feature default)
-    expect(effective.length).toBe(10)
+    // All HEAD_TOOLS offered (same as the pre-feature default)
+    expect(effective.length).toBe(HEAD_TOOLS.length)
     const names = effective.map(t => t.name)
     // Core orchestration tools fully present — no guardrail (TOOLCFG-07)
     expect(names).toContain('spawn_agent')
@@ -337,8 +337,8 @@ describe('Phase 47 widened-pool guarantees (TOOLCFG-10)', () => {
     const resolved = resolveAllowlist(undefined, HEAD_TOOL_NAMES)
     const effective = widenedPool.filter(t => resolved.includes(t.name))
 
-    // Result must be exactly the 10 HEAD_TOOL_NAMES — nothing extra added
-    expect(effective.length).toBe(10)
+    // Result must be exactly the HEAD_TOOL_NAMES — nothing extra added
+    expect(effective.length).toBe(HEAD_TOOL_NAMES.length)
     const names = effective.map(t => t.name)
     expect(names).toContain('spawn_agent')
     expect(names).toContain('message_agent')

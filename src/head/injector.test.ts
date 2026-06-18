@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { formatWorkForSummary } from './injector.js'
-import type { Message } from '../types/core.js'
+import { formatWorkForSummary, InjectorImpl } from './injector.js'
+import type { Message, QueueEvent, TextMessage } from '../types/core.js'
+import type { MessageStore } from '../db/messages.js'
 
 function text(content: string): Message {
   return { id: 'm', role: 'assistant', kind: 'text', content, createdAt: '' } as Message
@@ -95,5 +96,43 @@ describe('formatWorkForSummary', () => {
     // "failures preserved" note only appears when successes were evicted to
     // make room — here every entry is a failure, so no note.
     expect(out).toContain('earlier entries elided')
+  })
+})
+
+describe('InjectorImpl.injectHeadMessage', () => {
+  function captureStore(): { store: MessageStore; appended: Array<{ msg: TextMessage; headId: string }> } {
+    const appended: Array<{ msg: TextMessage; headId: string }> = []
+    const store = {
+      append: (msg: TextMessage, headId: string) => { appended.push({ msg, headId }) },
+    } as unknown as MessageStore
+    return { store, appended }
+  }
+
+  const event: QueueEvent & { type: 'head_message' } = {
+    type: 'head_message',
+    id: 'qe_1',
+    fromHeadId: 'ashley',
+    fromHeadName: 'Ashley',
+    text: 'dinner moved to 7pm',
+    createdAt: '',
+  }
+
+  it('appends a head-message system-event (attributed, injected) and a respond trigger', () => {
+    const { store, appended } = captureStore()
+    new InjectorImpl(store, 'zoey').injectHeadMessage(event)
+
+    expect(appended).toHaveLength(2)
+    // Both land on the receiving head and are injected (user-invisible).
+    expect(appended.every(a => a.headId === 'zoey')).toBe(true)
+    expect(appended.every(a => a.msg.injected === true)).toBe(true)
+
+    const [evt, trigger] = appended
+    expect(evt!.msg.role).toBe('assistant')
+    expect(evt!.msg.content).toContain('<system-event type="head-message"')
+    expect(evt!.msg.content).toContain('from="Ashley"')
+    expect(evt!.msg.content).toContain('dinner moved to 7pm')
+
+    expect(trigger!.msg.role).toBe('user')
+    expect(trigger!.msg.content).toContain('<system-trigger type="respond"')
   })
 })

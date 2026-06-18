@@ -38,6 +38,17 @@ function scheduleTrigger(taskName: string): QueueEvent {
   }
 }
 
+function headMessage(text = 'dinner moved to 7pm'): QueueEvent {
+  return {
+    type: 'head_message',
+    id: generateId('ev'),
+    fromHeadId: 'ashley',
+    fromHeadName: 'Ashley',
+    text,
+    createdAt: new Date().toISOString(),
+  }
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('QueueStore.requeueStale', () => {
@@ -127,6 +138,30 @@ describe('QueueStore.enqueue head_id threading (ADPT-01)', () => {
     // Neither head sees the other's event
     expect(queue.claimNext('work')).toBeNull()
     expect(queue.claimNext('personal')).toBeNull()
+  })
+})
+
+describe('QueueStore cross-head relay (head_message)', () => {
+  it('a head_message enqueued onto another head is claimable only by that head', () => {
+    const queue = new QueueStore(freshDb())
+    const ev = headMessage()
+    queue.enqueue(ev, PRIORITY.HEAD_MESSAGE, 'zoey')
+
+    // The sender's head does not see it
+    expect(queue.claimNext('ashley')).toBeNull()
+
+    // The target head does, with the relay payload intact
+    const claimed = queue.claimNext('zoey')
+    expect(claimed?.event.id).toBe(ev.id)
+    expect(claimed?.event.type).toBe('head_message')
+    expect((claimed?.event as Extract<QueueEvent, { type: 'head_message' }>).fromHeadName).toBe('Ashley')
+  })
+
+  it('the wake hook fires with the TARGET head id, not the sender', () => {
+    const seen: string[] = []
+    const queue = new QueueStore(freshDb(), (headId) => seen.push(headId))
+    queue.enqueue(headMessage(), PRIORITY.HEAD_MESSAGE, 'zoey')
+    expect(seen).toEqual(['zoey'])
   })
 })
 

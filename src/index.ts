@@ -244,6 +244,11 @@ async function main() {
   const isMultiHead = (config.heads?.length ?? 0) > 0
   log.info(`[startup] Resolved ${resolvedHeads.length} head(s): ${resolvedHeads.map(h => h.id).join(', ')}`)
 
+  // Roster for the cross-head relay tool (message_head). Snapshot at startup —
+  // named heads already require a restart to reconfigure (see note below). Falls
+  // back to id when a head has no displayName.
+  const headRoster = resolvedHeads.map(h => ({ id: h.id, displayName: h.displayName ?? h.id }))
+
   // ── Per-head systems ───────────────────────────────────────────────────────
   interface HeadSystem {
     head: ResolvedHead
@@ -316,6 +321,7 @@ async function main() {
       headId: head.id,
       onEnqueue: notifyHead,
       ringRunner,
+      headRoster,
       ...(head.customPrompt !== undefined ? { customPrompt: head.customPrompt } : {}),
       // Phase 46 (TOOLCFG-05, TOOLCFG-06): per-head tool allowlist overrides.
       ...(head.headToolsOverride !== undefined ? { headToolsOverride: head.headToolsOverride } : {}),

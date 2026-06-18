@@ -1329,6 +1329,9 @@ export class ActivationLoop {
       case 'webhook':
         this.opts.injector.injectWebhookEvent(event)
         break
+      case 'head_message':
+        this.opts.injector.injectHeadMessage(event)
+        break
     }
   }
 
@@ -1456,6 +1459,8 @@ function formatInjectedEvent(event: QueueEvent): string {
       return systemEvent('schedule-trigger', { scheduleId: event.scheduleId ?? '', taskName: event.taskName ?? '' })
     case 'webhook':
       return systemEvent('webhook', { source: event.source ?? '', event: event.event ?? '' })
+    case 'head_message':
+      return systemEvent('head-message', { from: event.fromHeadName }, event.text.slice(0, 300))
     default:
       return JSON.stringify(event).slice(0, 150)
   }

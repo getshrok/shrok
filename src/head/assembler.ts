@@ -75,6 +75,9 @@ export function deriveQueryText(
     case 'reminder_trigger':
       return trigger.message
 
+    case 'head_message':
+      return `${trigger.fromHeadName}: ${trigger.text}`
+
   }
 }
 
