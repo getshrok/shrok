@@ -35,13 +35,26 @@ export function shouldDeliverStreamEvent(
   if (!perHeadTypes.has(event.type)) return true
   if (selectedHead === null) return true
 
-  // Resolve headId per type — steward_run_added carries it on the payload;
-  // the other five per-head types carry it at the top level of the event.
+  // steward_run_added carries headId inside the StewardRun payload (not at
+  // the top level of the event — there is no top-level headId on this member).
   if (event.type === 'steward_run_added') {
     return (event.payload as StewardRun).headId === selectedHead
   }
 
-  // message_added, typing, agent_message_added, agent_status_changed, memory_retrieval
-  // all carry headId at the top level — TypeScript narrows correctly here.
-  return event.headId === selectedHead
+  // The remaining per-head types (message_added, typing, agent_message_added,
+  // agent_status_changed, memory_retrieval) all carry headId at the top level.
+  // TypeScript cannot infer this from the Set.has() check alone, so we narrow
+  // via the type union members that have a top-level headId field.
+  if (
+    event.type === 'message_added' ||
+    event.type === 'typing' ||
+    event.type === 'agent_message_added' ||
+    event.type === 'agent_status_changed' ||
+    event.type === 'memory_retrieval'
+  ) {
+    return event.headId === selectedHead
+  }
+
+  // Unreachable — all perHeadTypes members are handled above. Fail-closed.
+  return false
 }

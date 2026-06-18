@@ -51,11 +51,9 @@ export function useStream(currentHeadId: string) {
             messages: [...(old?.messages ?? []), event.payload],
           }),
         )
-        void qc.invalidateQueries({ queryKey: ['activity'] })
       }
       if (event.type === 'agent_status_changed') {
-        void qc.invalidateQueries({ queryKey: ['agents'] })
-        void qc.invalidateQueries({ queryKey: ['activity'] })
+        void qc.invalidateQueries({ queryKey: ['agents', event.headId] })
       }
       if (event.type === 'agent_message_added') {
         const { agentId, message, trigger } = event.payload
@@ -70,7 +68,7 @@ export function useStream(currentHeadId: string) {
         // (skip text messages — agent thinking/responses are noise, head relays the result)
         if (trigger === 'manual' && (message.kind === 'tool_call' || message.kind === 'tool_result')) {
           qc.setQueryData(
-            ['xray-messages'],
+            ['xray-messages', event.headId],
             (old: Array<{ agentId: string; message: Message }> | undefined) =>
               [...(old ?? []), { agentId, message }],
           )
@@ -78,12 +76,11 @@ export function useStream(currentHeadId: string) {
       }
       if (event.type === 'steward_run_added') {
         qc.setQueryData(
-          ['stewardRuns'],
+          ['stewardRuns', event.payload.headId],
           (old: { stewardRuns: StewardRun[] } | undefined) => ({
             stewardRuns: [...(old?.stewardRuns ?? []), event.payload],
           }),
         )
-        void qc.invalidateQueries({ queryKey: ['activity'] })
       }
       if (event.type === 'usage_updated') {
         void qc.invalidateQueries({ queryKey: ['usage'] })
@@ -118,7 +115,7 @@ export function useStream(currentHeadId: string) {
       if (event.type === 'memory_retrieval') {
         const { text, eventId, tokens } = event.payload
         qc.setQueryData(
-          ['memory-retrievals'],
+          ['memory-retrievals', event.headId],
           (old: Array<{ text: string; eventId?: string; tokens: number }> | undefined) =>
             [...(old ?? []), { text, eventId, tokens }],
         )
