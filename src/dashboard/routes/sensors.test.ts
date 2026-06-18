@@ -261,6 +261,162 @@ describe('createSensorsRouter', () => {
     expect(res.status).toBe(400)
   })
 
+  // ─── File routes ────────────────────────────────────────────────────────────
+
+  // Helper: create a sensor (marker) then write a sibling file directly to disk.
+  function seedSensor(slug: string, siblings: Record<string, string | Buffer> = {}): string {
+    const dir = path.join(tmpDir, 'sensors', slug)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'sensor.mjs'), 'process.stdout.write("hi")')
+    for (const [name, body] of Object.entries(siblings)) {
+      fs.writeFileSync(path.join(dir, name), body)
+    }
+    return dir
+  }
+
+  it('SENSOR-FILES-01: GET /:slug/files lists marker + siblings, sorted, isProtected on sensor.mjs', async () => {
+    seedSensor('relay', { 'relay-lib.mjs': 'export const x = 1', 'state.json': '{}' })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { files: Array<{ name: string; size: number; isProtected: boolean }> }
+    // Marker first, then alphabetical
+    expect(body.files.map(f => f.name)).toEqual(['sensor.mjs', 'relay-lib.mjs', 'state.json'])
+    expect(body.files.find(f => f.name === 'sensor.mjs')?.isProtected).toBe(true)
+    expect(body.files.find(f => f.name === 'relay-lib.mjs')?.isProtected).toBe(false)
+  })
+
+  it('SENSOR-FILES-02: GET /:slug includes a files array', async () => {
+    seedSensor('relay', { 'relay-lib.mjs': 'export const x = 1' })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { slug: string; content: string; files: Array<{ name: string }> }
+    expect(body.content).toBe('process.stdout.write("hi")')
+    expect(body.files.map(f => f.name)).toEqual(['sensor.mjs', 'relay-lib.mjs'])
+  })
+
+  it('SENSOR-FILES-03: GET /:slug/files/:filename reads a text file', async () => {
+    seedSensor('relay', { 'relay-lib.mjs': 'export const lib = true' })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/relay-lib.mjs`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { content: string; binary: boolean; size: number }
+    expect(body.content).toBe('export const lib = true')
+    expect(body.binary).toBe(false)
+  })
+
+  it('SENSOR-FILES-04: reading a binary file → {binary:true}', async () => {
+    seedSensor('relay', { 'blob.bin': Buffer.from([1, 2, 0, 3, 4]) })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/blob.bin`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { binary?: boolean }
+    expect(body.binary).toBe(true)
+  })
+
+  it('SENSOR-FILES-05: reading a >2MB file → {tooLarge:true}', async () => {
+    seedSensor('relay', { 'big.txt': 'x'.repeat(2 * 1024 * 1024 + 1) })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/big.txt`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { tooLarge?: boolean }
+    expect(body.tooLarge).toBe(true)
+  })
+
+  it('SENSOR-FILES-06: PUT /:slug/files/:filename creates a new file', async () => {
+    seedSensor('relay')
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/helper.mjs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'export const h = 1' }),
+    })
+    expect(res.status).toBe(200)
+    const filePath = path.join(tmpDir, 'sensors', 'relay', 'helper.mjs')
+    expect(fs.readFileSync(filePath, 'utf8')).toBe('export const h = 1')
+  })
+
+  it('SENSOR-FILES-07: PUT overwrites an existing file', async () => {
+    seedSensor('relay', { 'helper.mjs': 'old' })
+    await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/helper.mjs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'new' }),
+    })
+    const filePath = path.join(tmpDir, 'sensors', 'relay', 'helper.mjs')
+    expect(fs.readFileSync(filePath, 'utf8')).toBe('new')
+  })
+
+  it('SENSOR-FILES-08: PUT non-string content → 400', async () => {
+    seedSensor('relay')
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/helper.mjs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 42 }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('SENSOR-FILES-09: DELETE removes a sibling file', async () => {
+    seedSensor('relay', { 'helper.mjs': 'x' })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/helper.mjs`, {
+      method: 'DELETE',
+    })
+    expect(res.status).toBe(200)
+    expect(fs.existsSync(path.join(tmpDir, 'sensors', 'relay', 'helper.mjs'))).toBe(false)
+    // Marker survives
+    expect(fs.existsSync(path.join(tmpDir, 'sensors', 'relay', 'sensor.mjs'))).toBe(true)
+  })
+
+  it('SENSOR-FILES-10: DELETE sensor.mjs (marker) → 400 and file survives', async () => {
+    seedSensor('relay')
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/sensor.mjs`, {
+      method: 'DELETE',
+    })
+    expect(res.status).toBe(400)
+    expect(fs.existsSync(path.join(tmpDir, 'sensors', 'relay', 'sensor.mjs'))).toBe(true)
+  })
+
+  it('SENSOR-FILES-11: rename a sibling file', async () => {
+    seedSensor('relay', { 'old.mjs': 'x' })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/old.mjs/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'new.mjs' }),
+    })
+    expect(res.status).toBe(200)
+    const dir = path.join(tmpDir, 'sensors', 'relay')
+    expect(fs.existsSync(path.join(dir, 'old.mjs'))).toBe(false)
+    expect(fs.readFileSync(path.join(dir, 'new.mjs'), 'utf8')).toBe('x')
+  })
+
+  it('SENSOR-FILES-12: rename sensor.mjs (marker) → 400', async () => {
+    seedSensor('relay')
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/sensor.mjs/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: 'other.mjs' }),
+    })
+    expect(res.status).toBe(400)
+    expect(fs.existsSync(path.join(tmpDir, 'sensors', 'relay', 'sensor.mjs'))).toBe(true)
+  })
+
+  it('SENSOR-FILES-13: rename to an invalid filename → 400', async () => {
+    seedSensor('relay', { 'old.mjs': 'x' })
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/old.mjs/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: '../evil' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('SENSOR-FILES-14: invalid filename (traversal) on GET file → 400', async () => {
+    seedSensor('relay')
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/relay/files/..%2F..%2Fetc`)
+    expect(res.status).toBe(400)
+  })
+
+  it('SENSOR-FILES-15: GET /:slug/files for a nonexistent sensor → 404', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/nope/files`)
+    expect(res.status).toBe(404)
+  })
+
   // ─── Auth guard ───────────────────────────────────────────────────────────
 
   it('SENSOR-AUTH-01: without auth middleware, GET / returns 401', async () => {

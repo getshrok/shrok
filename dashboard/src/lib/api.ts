@@ -239,7 +239,7 @@ export const api = {
     list: () =>
       request<{ sensors: Array<{ slug: string }> }>('/api/sensors'),
     get: (slug: string) =>
-      request<{ slug: string; content: string }>(encSensorPath(slug)),
+      request<{ slug: string; content: string; files: SkillFile[] }>(encSensorPath(slug)),
     save: (slug: string, content: string) =>
       request<{ slug: string }>(encSensorPath(slug), {
         method: 'PUT',
@@ -248,6 +248,26 @@ export const api = {
       }),
     delete: (slug: string) =>
       request<{ ok: true }>(encSensorPath(slug), { method: 'DELETE' }),
+    listFiles: (slug: string) =>
+      request<{ files: SkillFile[] }>(`${encSensorPath(slug)}/files`),
+    readFile: (slug: string, filename: string) =>
+      request<ReadFileResult>(`${encSensorPath(slug)}/files/${encodeURIComponent(filename)}`),
+    writeFile: (slug: string, filename: string, content: string) =>
+      request<{ ok: boolean }>(`${encSensorPath(slug)}/files/${encodeURIComponent(filename)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      }),
+    deleteFile: (slug: string, filename: string) =>
+      request<{ ok: boolean }>(`${encSensorPath(slug)}/files/${encodeURIComponent(filename)}`, {
+        method: 'DELETE',
+      }),
+    renameFile: (slug: string, oldFilename: string, newName: string) =>
+      request<{ ok: boolean }>(`${encSensorPath(slug)}/files/${encodeURIComponent(oldFilename)}/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newName }),
+      }),
   },
   evals: {
     list: () =>
