@@ -800,12 +800,16 @@ export function buildScheduleTools(
         name: 'create_schedule',
         description: 'Create a new schedule. By default (kind:"task") it targets a task, which must already exist. ' +
           'Set kind:"script" to schedule a SENSOR instead — then taskName is the sensor slug (the directory name under sensors/), ' +
-          'and a cron (or runAt) is required so the sensor refreshes on a cadence.',
+          'and a cron (or runAt) is required so the sensor refreshes on a cadence. ' +
+          'A sensor emits a JSON payload {ambient?, event?}: the "ambient" string is written to the owning head\'s per-head ambient file ' +
+          'and injected passively into that head\'s prompts; a well-formed "event":{text} actively wakes the schedule\'s head through the ' +
+          'activation loop so it can act on the observation. The schedule\'s headId is the sensor\'s mandatory target head — ' +
+          'one sensor targets exactly one head.',
         inputSchema: {
           type: 'object',
           properties: {
-            taskName: { type: 'string', description: 'Task name — or, when kind is "script", the sensor slug (the sensors/<slug>/ directory name; lowercase letters, digits, and hyphens).' },
-            kind: { type: 'string', enum: ['task', 'script'], description: 'What this schedule runs. "task" (default) runs a task; "script" runs a sensor identified by taskName. Omit for tasks.' },
+            taskName: { type: 'string', description: 'Task name — or, when kind is "script", the sensor slug (the sensors/<slug>/ directory name; lowercase letters, digits, and hyphens). The schedule\'s headId becomes the sensor\'s mandatory target head.' },
+            kind: { type: 'string', enum: ['task', 'script'], description: 'What this schedule runs. "task" (default) runs a task; "script" runs a sensor identified by taskName. Sensor scripts must emit a JSON payload {ambient?, event?} — see the sensors skill for the full contract.' },
             cronTimezone: {
               type: 'string',
               description: `Timezone the cron expression is relative to (workspace default: ${timezone}). Omit to use the workspace default. Must be a valid IANA timezone string (e.g. "America/New_York", "Europe/London", "Asia/Tokyo").`,
