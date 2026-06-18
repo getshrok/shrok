@@ -45,8 +45,8 @@
 **Context:** Phases 48–49 shipped sensors as a single passive sink (stdout body → global `ambient/<slug>.md` → every head's prompt, bypassing the activation loop). Phase 51 reworks the primitive so one scheduled run can route its observation to **two head-scoped sinks**: a passive per-head ambient block (pull) and/or an active event that wakes the bound head (push). No back-compat is preserved — sensors shipped hours earlier and have no external users. These requirements **redefine** the contract of SENSOR-06/07/08/10/11 (see Traceability notes) and **implement** the previously-deferred SENSOR-F-01.
 
 - [ ] **SENSOR-13**: A sensor script's stdout is exactly **one structured JSON object** `{ ambient?: string, event?: {...} }`. Both fields are optional — emitting neither is a valid quiet/no-op tick. Non-conforming or unparseable stdout is a **sensor error** (fail loud), handled by the SENSOR-08 failure path (error marker written to the sensor's ambient file). This **supersedes** SENSOR-07's "stdout is plain body text".
-- [ ] **SENSOR-14**: The `ambient` field is **head-scoped**: written to `ambient/<headId>/<slug>.md` and injected **only into the owning head's** turns. All three ambient read sites (head assembler, proactive/activation scheduler, sub-agent tool-surface) scan only the current head's directory. This **implements SENSOR-F-01** and **supersedes** the global flat `ambient/<slug>.md` of SENSOR-10/11.
-- [ ] **SENSOR-15**: The `event` field enqueues a **new `sensor_event` priority-queue type** that flows through the existing activation loop and **causes the bound head to take a turn**, framed honestly as a sensor observation the head decides whether to act on / surface. This **extends** SENSOR-06 — the event path now *enters* the activation loop the ambient path still bypasses.
+- [x] **SENSOR-14**: The `ambient` field is **head-scoped**: written to `ambient/<headId>/<slug>.md` and injected **only into the owning head's** turns. All three ambient read sites (head assembler, proactive/activation scheduler, sub-agent tool-surface) scan only the current head's directory. This **implements SENSOR-F-01** and **supersedes** the global flat `ambient/<slug>.md` of SENSOR-10/11.
+- [x] **SENSOR-15**: The `event` field enqueues a **new `sensor_event` priority-queue type** that flows through the existing activation loop and **causes the bound head to take a turn**, framed honestly as a sensor observation the head decides whether to act on / surface. This **extends** SENSOR-06 — the event path now *enters* the activation loop the ambient path still bypasses.
 - [ ] **SENSOR-16**: A sensor's **target head is mandatory**, taken from its schedule's existing `headId` field (same model as scheduling a task). The event fires to that head; the ambient file lands under that head's directory. No per-event head field — one sensor is bound to exactly one head.
 
 **Non-goals (Phase 51):** No runner-level dedup/cooldown/edge-detection machinery — sensor scripts self-watermark (own `state.json`/timestamp in the sensor dir), exactly like the email-check pattern. The runner stays stateless about what counts as "new".
@@ -86,6 +86,6 @@ Which phases cover which requirements. Filled during roadmap creation.
 | SENSOR-11 | Phase 48 | Complete (head-scoped by Phase 51 / SENSOR-14) |
 | SENSOR-12 | Phase 48 | Complete |
 | SENSOR-13 | Phase 51 | Pending |
-| SENSOR-14 | Phase 51 | Pending |
-| SENSOR-15 | Phase 51 | Pending |
+| SENSOR-14 | Phase 51 | Complete |
+| SENSOR-15 | Phase 51 | Complete |
 | SENSOR-16 | Phase 51 | Pending |
