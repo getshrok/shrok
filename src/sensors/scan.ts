@@ -14,15 +14,16 @@ export function slugToTitle(slug: string): string {
 // ─── scanAmbient ──────────────────────────────────────────────────────────────
 
 /**
- * Read every `*.md` file inside `{workspaceDir}/ambient/`, derive a heading
- * from each filename (`weather.md` → `## Weather`), and join the non-empty
- * blocks with `\n\n`.  Returns `''` if the directory does not exist yet — not
- * an error.
+ * Read every `*.md` file inside `{workspaceDir}/ambient/{headId}/`, derive a
+ * heading from each filename (`weather.md` → `## Weather`), and join the
+ * non-empty blocks with `\n\n`.  Returns `''` if the per-head directory does
+ * not exist yet — not an error.
  *
+ * Head scoping ensures that head A never sees head B's ambient content.
  * Callers must pass an already-resolved absolute path (no `~` expansion here).
  */
-export function scanAmbient(workspaceDir: string): string {
-  const dir = path.join(workspaceDir, 'ambient')
+export function scanAmbient(workspaceDir: string, headId: string): string {
+  const dir = path.join(workspaceDir, 'ambient', headId)
   let files: string[]
   try {
     files = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort()
