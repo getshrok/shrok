@@ -155,6 +155,21 @@ export type QueueEvent =
       text: string
       createdAt: string
     }
+  | {
+      /**
+       * Push sink for a sensor's JSON payload (`{ ambient?, event? }`).
+       * Enqueued for the sensor schedule's headId by the sensor runner (Plan 02)
+       * and injected into the model turn by the context injector (Plan 03).
+       * See SENSOR-15/16. Fields are minimal per D-02 (no severity/title/priority/headId).
+       */
+      type: 'sensor_event'
+      id: string
+      /** Which sensor reported — the schedule's taskName/slug. */
+      slug: string
+      /** The observation text (body of the sensor's JSON payload). */
+      text: string
+      createdAt: string
+    }
 
 export type QueueEventType = QueueEvent['type']
 
@@ -169,6 +184,11 @@ export const PRIORITY = {
   AGENT_FAILED: 30,
   AGENT_RESPONSE: 30,
   WEBHOOK: 20,
+  // A sensor observation is an environmental push (like a webhook) but operator-cadenced
+  // and is the active sibling of the passive ambient sink.  It ranks below a genuine
+  // third-party `webhook` (20) yet above scheduler-internal `schedule_trigger`/
+  // `reminder_trigger` (10), which themselves spawn/re-enqueue work.
+  SENSOR_EVENT: 15,
   SCHEDULE_TRIGGER: 10,
   REMINDER_TRIGGER: 10,
 } as const
