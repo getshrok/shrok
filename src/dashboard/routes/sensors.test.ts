@@ -155,17 +155,17 @@ describe('createSensorsRouter', () => {
 
   // ─── DELETE /:slug ────────────────────────────────────────────────────────
 
-  it('SENSOR-DELETE-01: removes script dir AND ambient md file', async () => {
+  it('SENSOR-DELETE-01: removes script dir AND per-head ambient md file', async () => {
     // Create sensor via PUT
     await fetch(`http://127.0.0.1:${port}/api/sensors/weather`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: 'process.stdout.write("hi")' }),
     })
-    // Pre-create the ambient file (as the runner would after a real run)
-    const ambientDir = path.join(tmpDir, 'ambient')
-    fs.mkdirSync(ambientDir, { recursive: true })
-    fs.writeFileSync(path.join(ambientDir, 'weather.md'), 'weather data', 'utf8')
+    // Pre-create the per-head ambient file (as the runner would after a real run under the new layout)
+    const headDir = path.join(tmpDir, 'ambient', 'ashley')
+    fs.mkdirSync(headDir, { recursive: true })
+    fs.writeFileSync(path.join(headDir, 'weather.md'), 'weather data', 'utf8')
 
     const res = await fetch(`http://127.0.0.1:${port}/api/sensors/weather`, {
       method: 'DELETE',
@@ -178,8 +178,39 @@ describe('createSensorsRouter', () => {
     const scriptDir = path.join(tmpDir, 'sensors', 'weather')
     expect(fs.existsSync(scriptDir)).toBe(false)
 
-    // Ambient file must be gone
-    expect(fs.existsSync(path.join(ambientDir, 'weather.md'))).toBe(false)
+    // Per-head ambient file must be gone
+    expect(fs.existsSync(path.join(headDir, 'weather.md'))).toBe(false)
+  })
+
+  it('SENSOR-DELETE-03: DELETE removes ambient/<slug>.md from every head dir and leaves unrelated files intact', async () => {
+    // Create sensor via PUT
+    await fetch(`http://127.0.0.1:${port}/api/sensors/weather`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'process.stdout.write("hi")' }),
+    })
+    // Pre-create per-head ambient files — two heads both have a weather.md
+    const headA = path.join(tmpDir, 'ambient', 'headA')
+    const headB = path.join(tmpDir, 'ambient', 'headB')
+    fs.mkdirSync(headA, { recursive: true })
+    fs.mkdirSync(headB, { recursive: true })
+    fs.writeFileSync(path.join(headA, 'weather.md'), 'data-a', 'utf8')
+    fs.writeFileSync(path.join(headB, 'weather.md'), 'data-b', 'utf8')
+    // Unrelated ambient file in headA must survive the DELETE
+    fs.writeFileSync(path.join(headA, 'other.md'), 'other data', 'utf8')
+
+    const res = await fetch(`http://127.0.0.1:${port}/api/sensors/weather`, {
+      method: 'DELETE',
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as { ok: boolean }
+    expect(body.ok).toBe(true)
+
+    // Both head-scoped weather.md files must be gone
+    expect(fs.existsSync(path.join(headA, 'weather.md'))).toBe(false)
+    expect(fs.existsSync(path.join(headB, 'weather.md'))).toBe(false)
+    // Unrelated ambient file in headA must survive
+    expect(fs.existsSync(path.join(headA, 'other.md'))).toBe(true)
   })
 
   it('SENSOR-DELETE-02: DELETE when ambient file absent does NOT throw', async () => {

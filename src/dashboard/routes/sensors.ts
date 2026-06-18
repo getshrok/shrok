@@ -87,8 +87,23 @@ export function createSensorsRouter(opts: {
 
     // Remove the sensor script directory (recursive, force so ENOENT is swallowed).
     fs.rmSync(path.join(sensorsDir, slug), { recursive: true, force: true })
-    // Remove the ambient output file (force:true swallows ENOENT — T-49-01-DELETE-ENOENT).
-    fs.rmSync(path.join(ambientDir, `${slug}.md`), { force: true })
+    // Remove the per-head ambient output file across all head subdirectories.
+    // The route has no headId in scope and a slug is globally unique on disk (one sensors/<slug>/
+    // dir), so sweep ambient/<head>/<slug>.md across every head subdir.
+    // force:true on each rmSync swallows ENOENT (T-51-04-DELALL).
+    // SLUG_RE was already validated above — no attacker-controlled path segment below this line.
+    // Head subdir names come from readdirSync (existing on-disk dirs the runner created),
+    // not from the request — no attacker-controlled traversal (T-51-04-PT).
+    try {
+      const headEntries = fs.readdirSync(ambientDir, { withFileTypes: true })
+      for (const entry of headEntries) {
+        if (entry.isDirectory()) {
+          fs.rmSync(path.join(ambientDir, entry.name, `${slug}.md`), { force: true })
+        }
+      }
+    } catch {
+      // ambient/ dir absent — nothing to remove (swallow ENOENT).
+    }
 
     res.json({ ok: true })
   })
