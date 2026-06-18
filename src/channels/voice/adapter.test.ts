@@ -362,6 +362,87 @@ describe('VoiceChannelAdapter', () => {
   })
 })
 
+// ─── sttProviders routing ─────────────────────────────────────────────────────
+
+describe('VoiceChannelAdapter — sttProviders routing', () => {
+  it('uses the provided sttProviders primary when set (not the constructor openai arg)', async () => {
+    const httpServer = new MockHttpServer() as unknown as import('node:http').Server
+    // Constructor openai client — should NOT be called for STT when sttProviders is passed
+    const constructorTranscribe = vi.fn(async () => ({ text: 'from constructor' }))
+    const constructorClient = {
+      audio: { transcriptions: { create: constructorTranscribe } },
+    } as unknown as import('openai').default
+
+    // sttProviders primary client
+    const primaryTranscribe = vi.fn(async () => ({ text: 'from stt primary' }))
+    const primaryClient = {
+      audio: { transcriptions: { create: primaryTranscribe } },
+    } as unknown as import('openai').default
+
+    const messages: import('../../types/channel.js').InboundMessage[] = []
+    const adapter = new VoiceChannelAdapter(httpServer, constructorClient, {
+      sttProviders: [{ client: primaryClient, label: 'self-hosted' }],
+    })
+    adapter.onMessage(m => messages.push(m))
+    await adapter.start()
+    triggerUpgrade(httpServer as unknown as MockHttpServer)
+    const ws = getActiveSocket(adapter)
+    const wav = buildWav(32000, 16000)  // 0.5s — above gate
+
+    ws.emit('message', wav, true)
+    await new Promise(r => setImmediate(r))
+
+    // sttProviders primary must be called
+    expect(primaryTranscribe).toHaveBeenCalledTimes(1)
+    // Constructor openai arg must NOT be called for STT
+    expect(constructorTranscribe).not.toHaveBeenCalled()
+    expect(messages).toEqual([{ channel: 'voice', text: 'from stt primary' }])
+  })
+
+  it('falls back to second sttProvider when primary throws', async () => {
+    const httpServer = new MockHttpServer() as unknown as import('node:http').Server
+    const constructorClient = {
+      audio: { transcriptions: { create: vi.fn(async () => ({ text: 'constructor' })) } },
+    } as unknown as import('openai').default
+
+    const primaryTranscribe = vi.fn(async () => { throw new Error('dead box') })
+    const primaryClient = { audio: { transcriptions: { create: primaryTranscribe } } } as unknown as import('openai').default
+
+    const fallbackTranscribe = vi.fn(async () => ({ text: 'from fallback' }))
+    const fallbackClient = { audio: { transcriptions: { create: fallbackTranscribe } } } as unknown as import('openai').default
+
+    const messages: import('../../types/channel.js').InboundMessage[] = []
+    const adapter = new VoiceChannelAdapter(httpServer, constructorClient, {
+      sttProviders: [
+        { client: primaryClient, label: 'self-hosted' },
+        { client: fallbackClient, label: 'openai' },
+      ],
+    })
+    adapter.onMessage(m => messages.push(m))
+    await adapter.start()
+    triggerUpgrade(httpServer as unknown as MockHttpServer)
+    const ws = getActiveSocket(adapter)
+    ws.emit('message', buildWav(32000, 16000), true)
+    await new Promise(r => setImmediate(r))
+
+    expect(primaryTranscribe).toHaveBeenCalledTimes(1)
+    expect(fallbackTranscribe).toHaveBeenCalledTimes(1)
+    expect(messages).toEqual([{ channel: 'voice', text: 'from fallback' }])
+  })
+
+  it('defaults to legacy single-openai-client behavior when sttProviders is omitted', async () => {
+    // No sttProviders option — adapter should use the constructor openai arg
+    const { adapter, httpServer, messages, transcribe } = await setupAdapter('legacy behavior')
+    triggerUpgrade(httpServer as unknown as MockHttpServer)
+    const ws = getActiveSocket(adapter)
+    ws.emit('message', buildWav(32000, 16000), true)
+    await new Promise(r => setImmediate(r))
+
+    expect(transcribe).toHaveBeenCalledTimes(1)
+    expect(messages).toEqual([{ channel: 'voice', text: 'legacy behavior' }])
+  })
+})
+
 // ─── resolveHeadFromUrl — pure unit tests ─────────────────────────────────────
 
 describe('resolveHeadFromUrl', () => {

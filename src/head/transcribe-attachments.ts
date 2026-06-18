@@ -6,13 +6,12 @@
 // Design rules (Phase me4):
 //  - Never mutates the input message
 //  - Never throws — all errors degrade to today's path (attachment kept, no transcript)
-//  - When openai is null (OPENAI_API_KEY not set), returns the message unchanged
+//  - When sttProviders is empty (no key and no sttBaseUrl), returns the message unchanged
 //  - ALL original attachments are always kept on the returned message
 //  - Transcript lines are prepended to existing typed text so the model sees them first
 
 import * as fs from 'node:fs'
-import type OpenAI from 'openai'
-import { transcribeAudio } from '../channels/voice/stt.js'
+import { transcribeWithFallback, type SttProvider } from '../channels/voice/stt.js'
 import { log } from '../logger.js'
 import type { InboundMessage } from '../types/channel.js'
 import type { Attachment } from '../types/core.js'
@@ -39,17 +38,18 @@ async function loadAudioBuffer(att: Attachment): Promise<Buffer | null> {
  * Transcribe all audio attachments on an inbound message and inject the
  * transcripts into the message text as `[voice transcript] ...` lines.
  *
- * @param msg     The inbound message (never mutated)
- * @param openai  Authenticated OpenAI client, or null when OPENAI_API_KEY is not set
- * @returns       A new InboundMessage — original if no transcription occurred, or
- *                a clone with `text` updated and `attachments` preserved exactly
+ * @param msg          The inbound message (never mutated)
+ * @param sttProviders Ordered STT provider list (primary first). Empty = no transcription
+ *                     (fast-path: message returned unchanged, same as the old openai=null path)
+ * @returns            A new InboundMessage — original if no transcription occurred, or
+ *                     a clone with `text` updated and `attachments` preserved exactly
  */
 export async function transcribeInboundAudio(
   msg: InboundMessage,
-  openai: OpenAI | null,
+  sttProviders: SttProvider[],
 ): Promise<InboundMessage> {
-  // Fast path: no API key or no audio attachments — return the message unchanged
-  if (openai === null) return msg
+  // Fast path: no providers or no audio attachments — return the message unchanged
+  if (sttProviders.length === 0) return msg
 
   const hasAudio = msg.attachments?.some(a => a.type === 'audio') ?? false
   if (!hasAudio) return msg
@@ -84,7 +84,7 @@ export async function transcribeInboundAudio(
 
     let transcript: string
     try {
-      transcript = await transcribeAudio(buf, att.filename ?? att.mediaType, openai)
+      transcript = await transcribeWithFallback(buf, att.filename ?? att.mediaType, sttProviders)
     } catch (err) {
       log.warn(
         `[transcribeInboundAudio] Whisper transcription failed` +

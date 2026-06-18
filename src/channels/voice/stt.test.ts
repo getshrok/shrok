@@ -1,6 +1,6 @@
 // src/channels/voice/stt.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { transcribeWav, transcribeAudio, TooShortError, InvalidWavError, MIN_WAV_DURATION_SECONDS } from './stt.js'
+import { transcribeWav, transcribeAudio, transcribeWithFallback, transcribeWavWithFallback, TooShortError, InvalidWavError, MIN_WAV_DURATION_SECONDS } from './stt.js'
 
 // Same WAV helper as wav.test.ts, inlined (duplicate-by-design until a shared helper is needed)
 function buildWav(byteRate: number, dataBytes: number): Buffer {
@@ -144,5 +144,110 @@ describe('transcribeAudio', () => {
     // Must NOT throw TooShortError or InvalidWavError — those are transcribeWav-only
     await expect(transcribeAudio(buf, 'audio/ogg', client)).resolves.toBe('transcribed')
     expect(create).toHaveBeenCalledTimes(1)
+  })
+
+  it('(g) passes a custom model string to the SDK when provided', async () => {
+    const buf = Buffer.from('fake-ogg-bytes')
+    const { client, create } = makeMockOpenAI('ok')
+    await transcribeAudio(buf, 'audio/ogg', client, 'large-v3')
+    const params = create.mock.calls[0]![0] as { file: File; model: string }
+    expect(params.model).toBe('large-v3')
+  })
+})
+
+// ─── Helper: make a mock that rejects ────────────────────────────────────────
+function makeMockOpenAIThrows(err: Error) {
+  const create = vi.fn(async () => { throw err })
+  return {
+    create,
+    client: { audio: { transcriptions: { create } } } as unknown as import('openai').default,
+  }
+}
+
+describe('transcribeWithFallback', () => {
+  it('returns transcript from primary without calling fallback when primary succeeds', async () => {
+    const buf = Buffer.from('fake-bytes')
+    const { client: primary, create: primaryCreate } = makeMockOpenAI('from primary')
+    const { client: fallback, create: fallbackCreate } = makeMockOpenAI('from fallback')
+    const result = await transcribeWithFallback(buf, 'audio/ogg', [
+      { client: primary, label: 'primary' },
+      { client: fallback, label: 'fallback' },
+    ])
+    expect(result).toBe('from primary')
+    expect(primaryCreate).toHaveBeenCalledTimes(1)
+    expect(fallbackCreate).not.toHaveBeenCalled()
+  })
+
+  it('calls fallback when primary throws and returns fallback transcript', async () => {
+    const buf = Buffer.from('fake-bytes')
+    const { client: primary } = makeMockOpenAIThrows(new Error('connection refused'))
+    const { client: fallback, create: fallbackCreate } = makeMockOpenAI('from fallback')
+    const result = await transcribeWithFallback(buf, 'audio/ogg', [
+      { client: primary, label: 'primary' },
+      { client: fallback, label: 'fallback' },
+    ])
+    expect(result).toBe('from fallback')
+    expect(fallbackCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-throws last error when primary throws and no fallback is provided', async () => {
+    const buf = Buffer.from('fake-bytes')
+    const err = new Error('box is off')
+    const { client: primary } = makeMockOpenAIThrows(err)
+    await expect(transcribeWithFallback(buf, 'audio/ogg', [
+      { client: primary, label: 'primary' },
+    ])).rejects.toBe(err)
+  })
+
+  it('throws when providers list is empty', async () => {
+    const buf = Buffer.from('fake-bytes')
+    await expect(transcribeWithFallback(buf, 'audio/ogg', [])).rejects.toThrow('no STT providers configured')
+  })
+})
+
+describe('transcribeWavWithFallback', () => {
+  it('runs duration gate BEFORE any provider: throws TooShortError for sub-500ms WAV without calling any provider', async () => {
+    const wav = buildWav(32000, 8000)  // 0.25s
+    const { client, create } = makeMockOpenAI('should not be called')
+    await expect(transcribeWavWithFallback(wav, [{ client, label: 'openai' }])).rejects.toBeInstanceOf(TooShortError)
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('runs duration gate BEFORE any provider: throws InvalidWavError for malformed WAV without calling any provider', async () => {
+    const notWav = Buffer.from('XXXX'.repeat(20))
+    const { client, create } = makeMockOpenAI('should not be called')
+    await expect(transcribeWavWithFallback(notWav, [{ client, label: 'openai' }])).rejects.toBeInstanceOf(InvalidWavError)
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('succeeds with primary when WAV passes the gate', async () => {
+    const wav = buildWav(32000, 16000)  // 0.5s — passes the gate
+    const { client, create } = makeMockOpenAI('hello from wav')
+    const result = await transcribeWavWithFallback(wav, [{ client, label: 'openai' }])
+    expect(result).toBe('hello from wav')
+    expect(create).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses fallback when primary throws (after gate passes)', async () => {
+    const wav = buildWav(32000, 16000)  // 0.5s — passes the gate
+    const { client: primary } = makeMockOpenAIThrows(new Error('dead box'))
+    const { client: fallback, create: fallbackCreate } = makeMockOpenAI('from fallback')
+    const result = await transcribeWavWithFallback(wav, [
+      { client: primary, label: 'self-hosted' },
+      { client: fallback, label: 'openai' },
+    ])
+    expect(result).toBe('from fallback')
+    expect(fallbackCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('TooShortError does NOT trigger fallback (gate runs before any provider)', async () => {
+    const wav = buildWav(32000, 8000)  // 0.25s — too short
+    const { client: fallback, create: fallbackCreate } = makeMockOpenAI('from fallback')
+    await expect(transcribeWavWithFallback(wav, [
+      { client: { audio: { transcriptions: { create: vi.fn(async () => { throw new Error('primary fail') }) } } } as unknown as import('openai').default, label: 'primary' },
+      { client: fallback, label: 'fallback' },
+    ])).rejects.toBeInstanceOf(TooShortError)
+    // Fallback must NOT be called — gate threw before any provider
+    expect(fallbackCreate).not.toHaveBeenCalled()
   })
 })

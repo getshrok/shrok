@@ -4,6 +4,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { transcribeInboundAudio } from './transcribe-attachments.js'
+import type { SttProvider } from '../channels/voice/stt.js'
 import type { InboundMessage } from '../types/channel.js'
 import type { Attachment } from '../types/core.js'
 
@@ -23,6 +24,11 @@ function makeMockOpenAIThrows(err: Error) {
     create,
     client: { audio: { transcriptions: { create } } } as unknown as import('openai').default,
   }
+}
+
+/** Convenience wrapper: single-provider list (mirrors old single-client usage). */
+function singleProvider(client: import('openai').default, label = 'openai'): SttProvider[] {
+  return [{ client, label }]
 }
 
 // ─── Temp file helpers ─────────────────────────────────────────────────────────
@@ -46,7 +52,7 @@ afterEach(() => {
 // ─── Test cases ────────────────────────────────────────────────────────────────
 
 describe('transcribeInboundAudio', () => {
-  it('(1) openai=null → returned message identical (text + attachments unchanged)', async () => {
+  it('(1) empty providers → returned message identical (text + attachments unchanged)', async () => {
     const audioPath = writeTmpAudio(Buffer.from('fake-audio'))
     const att: Attachment = { type: 'audio', mediaType: 'audio/ogg', path: audioPath }
     const msg: InboundMessage = {
@@ -54,7 +60,7 @@ describe('transcribeInboundAudio', () => {
       text: 'existing text',
       attachments: [att],
     }
-    const result = await transcribeInboundAudio(msg, null)
+    const result = await transcribeInboundAudio(msg, [])
     expect(result.text).toBe('existing text')
     expect(result.attachments).toEqual([att])
   })
@@ -64,7 +70,7 @@ describe('transcribeInboundAudio', () => {
     const att: Attachment = { type: 'audio', mediaType: 'audio/ogg', path: audioPath }
     const msg: InboundMessage = { channel: 'discord', text: '', attachments: [att] }
     const { client } = makeMockOpenAI('hello from voice')
-    const result = await transcribeInboundAudio(msg, client)
+    const result = await transcribeInboundAudio(msg, singleProvider(client))
     expect(result.text).toContain('[voice transcript] hello from voice')
     // Attachment must be kept
     expect(result.attachments).toEqual([att])
@@ -75,7 +81,7 @@ describe('transcribeInboundAudio', () => {
     const att: Attachment = { type: 'audio', mediaType: 'audio/ogg', path: audioPath }
     const msg: InboundMessage = { channel: 'discord', text: 'check this out', attachments: [att] }
     const { client } = makeMockOpenAI('audio transcript here')
-    const result = await transcribeInboundAudio(msg, client)
+    const result = await transcribeInboundAudio(msg, singleProvider(client))
     // Transcript line first, then blank line, then original typed text
     expect(result.text).toContain('[voice transcript] audio transcript here')
     expect(result.text).toContain('check this out')
@@ -90,7 +96,7 @@ describe('transcribeInboundAudio', () => {
     const att: Attachment = { type: 'audio', mediaType: 'audio/ogg', path: audioPath }
     const msg: InboundMessage = { channel: 'discord', text: 'user typed', attachments: [att] }
     const { client } = makeMockOpenAIThrows(new Error('sdk-failure'))
-    const result = await transcribeInboundAudio(msg, client)
+    const result = await transcribeInboundAudio(msg, singleProvider(client))
     // Must not throw
     expect(result.attachments).toEqual([att])
     // No transcript injected
@@ -104,7 +110,7 @@ describe('transcribeInboundAudio', () => {
     const att: Attachment = { type: 'audio', mediaType: 'audio/ogg', path: audioPath }
     const msg: InboundMessage = { channel: 'discord', text: '', attachments: [att] }
     const { client } = makeMockOpenAI('   ')  // whitespace-only → trim → empty
-    const result = await transcribeInboundAudio(msg, client)
+    const result = await transcribeInboundAudio(msg, singleProvider(client))
     expect(result.text).not.toContain('[voice transcript]')
     expect(result.attachments).toEqual([att])
   })
@@ -121,7 +127,7 @@ describe('transcribeInboundAudio', () => {
       return { text: `transcript-${callCount}` }
     })
     const client = { audio: { transcriptions: { create } } } as unknown as import('openai').default
-    const result = await transcribeInboundAudio(msg, client)
+    const result = await transcribeInboundAudio(msg, singleProvider(client))
     expect(result.text).toContain('[voice transcript] transcript-1')
     expect(result.text).toContain('[voice transcript] transcript-2')
     // Order: transcript-1 before transcript-2
@@ -136,7 +142,7 @@ describe('transcribeInboundAudio', () => {
     const audioAtt: Attachment = { type: 'audio', mediaType: 'audio/ogg', path: audioPath }
     const msg: InboundMessage = { channel: 'discord', text: '', attachments: [imgAtt, audioAtt] }
     const { client } = makeMockOpenAI('voice content')
-    const result = await transcribeInboundAudio(msg, client)
+    const result = await transcribeInboundAudio(msg, singleProvider(client))
     expect(result.text).toContain('[voice transcript] voice content')
     // Both attachments kept (image AND audio)
     expect(result.attachments).toEqual([imgAtt, audioAtt])

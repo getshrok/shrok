@@ -70,6 +70,7 @@ import { ZohoCliqStateStore } from './db/zoho_cliq_state.js'
 import { DashboardChannelAdapter } from './channels/dashboard/adapter.js'
 import { VoiceChannelAdapter } from './channels/voice/adapter.js'
 import { TTS_MODEL, TTS_VOICE, createSelfHostedTtsFetch, type TtsProvider } from './channels/voice/tts.js'
+import type { SttProvider } from './channels/voice/stt.js'
 import { HomeAssistantChannelAdapter } from './channels/home-assistant/adapter.js'
 import { ScheduleEvaluatorImpl } from './scheduler/index.js'
 import { runSensor } from './sensors/runner.js'
@@ -91,6 +92,35 @@ import { applyTimezoneEnv } from './timezone-env.js'
 import { createRingStateStore } from './ring/store.js'
 import { RingRunner, callHaMediaStop } from './ring/runner.js'
 import { initRingTool } from './ring/tool.js'
+
+/**
+ * Build an ordered STT provider list from config.
+ *
+ * When `sttBaseUrl` is set: primary = self-hosted, OpenAI appended only when
+ * `voiceOpenaiFallback` is true and a client exists.
+ * When `sttBaseUrl` is NOT set: OpenAI is used directly (legacy, no fallback logic needed
+ * because there is no self-hosted primary to fall back from). Empty list when no key and
+ * no sttBaseUrl → callers degrade gracefully (no transcription).
+ */
+function buildSttProviders(
+  sttBaseUrl: string | undefined,
+  openaiClient: OpenAI | null,
+  voiceOpenaiFallback: boolean,
+): SttProvider[] {
+  const providers: SttProvider[] = []
+  if (sttBaseUrl) {
+    providers.push({
+      client: new OpenAI({ baseURL: sttBaseUrl, apiKey: 'unused' }),
+      label: 'self-hosted',
+    })
+    if (voiceOpenaiFallback && openaiClient) {
+      providers.push({ client: openaiClient, label: 'openai' })
+    }
+  } else if (openaiClient) {
+    providers.push({ client: openaiClient, label: 'openai' })
+  }
+  return providers
+}
 
 async function main() {
   // Set SHROK_ROOT so agents can find the install directory (e.g. to run npm scripts)
@@ -252,10 +282,14 @@ async function main() {
   // into an array typed to match DashboardServerOptions.homeAssistantAdapters?
   const haAdapters: HomeAssistantChannelAdapter[] = []
 
-  // Phase me4: shared OpenAI client for inbound audio transcription at the headRouteMessage
-  // seam. Constructed once (outside the per-head loop) — all heads share the same API key.
-  // null when OPENAI_API_KEY is not set → transcribeInboundAudio returns msg unchanged.
-  const ingestionOpenAI = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null
+  // Phase me4 / STT: shared STT provider list for inbound audio transcription at the
+  // headRouteMessage seam. Built once (outside the per-head loop) — all heads share it.
+  // Ordered: self-hosted primary (when sttBaseUrl is set), then OpenAI fallback (when
+  // voiceOpenaiFallback is true and a key exists). When sttBaseUrl is NOT set, OpenAI
+  // is used directly (legacy behavior). Empty list → transcribeInboundAudio returns msg
+  // unchanged (same as old openai=null fast path).
+  const openaiIngestionClient = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null
+  const ingestionSttProviders: SttProvider[] = buildSttProviders(config.sttBaseUrl, openaiIngestionClient, config.voiceOpenaiFallback)
 
   // Phase 45 (RING-02, RING-10, RING-11): instantiate the global ring delivery layer.
   // ringStore and ringRunner are singletons across all heads. The haAdapters resolver closure
@@ -343,7 +377,7 @@ async function main() {
         })
         return
       }
-      const routed = await transcribeInboundAudio(msg, ingestionOpenAI)
+      const routed = await transcribeInboundAudio(msg, ingestionSttProviders)
       headQueue.enqueue(
         { type: 'user_message', id: generateId('qe'), channel: routed.channel,
           text: buildPrefixedText(routed.text, msg.senderName),
@@ -528,26 +562,30 @@ async function main() {
   await dashboard.start()
   log.info(`[startup] Dashboard listening on port ${config.dashboardPort}`)
 
-  // ── Voice channel (optional — only if OPENAI_API_KEY is configured) ────────
+  // ── Voice channel (optional — starts when any voice endpoint is configured) ──
   // Phase 19 D-01: attach AFTER dashboard.start() resolves so getHttpServer()
-  // returns a live http.Server. Gated on openaiApiKey — without it, Whisper/TTS
-  // calls cannot succeed, so skip startup rather than fail at first voice turn.
-  if (config.openaiApiKey) {
+  // returns a live http.Server. Gate relaxed: voice starts when sttBaseUrl OR
+  // ttsBaseUrl OR openaiApiKey is configured — a fully self-hosted install (no
+  // OpenAI key) can run voice with Whisper+Chatterbox on a tailnet 4090 box.
+  if (config.openaiApiKey || config.sttBaseUrl || config.ttsBaseUrl) {
     const httpServer = dashboard.getHttpServer()
     if (httpServer) {
-      const voiceOpenai = new OpenAI({ apiKey: config.openaiApiKey })
+      const openaiVoiceClient = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null
       const knownHeadIds = new Set(headSystems.map(h => h.head.id))
 
+      // STT providers — split from TTS so repointing STT does not disturb TTS.
+      const voiceSttProviders = buildSttProviders(config.sttBaseUrl, openaiVoiceClient, config.voiceOpenaiFallback)
+      if (config.sttBaseUrl) {
+        const fallbackMsg = config.voiceOpenaiFallback && openaiVoiceClient ? '; fallback: OpenAI' : ' (no OpenAI fallback)'
+        log.info(`[startup] STT primary: self-hosted ${config.sttBaseUrl}${fallbackMsg}`)
+      }
+
       // TTS providers, in priority order. When a self-hosted endpoint is configured
-      // (config.ttsBaseUrl), it is the PRIMARY synthesizer and OpenAI is the FALLBACK
-      // used only when the self-hosted box is unreachable (it may be powered off). The
-      // self-hosted client fails fast on CONNECTION (short connect timeout → prompt
-      // fallback when the box is off) but tolerates a SLOW RESPONSE: the model returns
-      // the whole clip before headers and synthesis scales with text length, so a long
-      // reply legitimately takes >5s. Backing the client with an undici dispatcher
-      // separates those two budgets (see createSelfHostedTtsFetch) — a single SDK
-      // timeout low enough for fast failover would spuriously abort long synthesis and
-      // fall back to the paid provider. STT (Whisper) always uses `voiceOpenai`.
+      // (config.ttsBaseUrl), it is the PRIMARY synthesizer. OpenAI is the FALLBACK only
+      // when voiceOpenaiFallback is true AND a key exists (so fallback-disabled installs
+      // and no-key installs never incur paid TTS calls). The self-hosted client uses an
+      // undici dispatcher (fast connect-fail, slow-response-tolerant) so synthesis
+      // latency on a healthy box does not spuriously trigger fallback.
       const ttsProviders: TtsProvider[] = []
       if (config.ttsBaseUrl) {
         const selfHostedTts = new OpenAI({
@@ -564,37 +602,65 @@ async function main() {
           responseFormat: config.ttsResponseFormat,
           label: 'self-hosted',
         })
+        if (config.voiceOpenaiFallback && openaiVoiceClient) {
+          ttsProviders.push({
+            client: openaiVoiceClient,
+            model: TTS_MODEL,
+            voice: TTS_VOICE,
+            responseFormat: 'mp3',
+            label: 'openai',
+          })
+          log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice}); fallback: OpenAI`)
+        } else {
+          log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice}); no OpenAI fallback`)
+        }
+      } else if (openaiVoiceClient) {
+        ttsProviders.push({
+          client: openaiVoiceClient,
+          model: TTS_MODEL,
+          voice: TTS_VOICE,
+          responseFormat: 'mp3',
+          label: 'openai',
+        })
       }
-      ttsProviders.push({
-        client: voiceOpenai,
-        model: TTS_MODEL,
-        voice: TTS_VOICE,
-        responseFormat: 'mp3',
-        label: 'openai',
-      })
-      if (config.ttsBaseUrl) {
-        log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice}); fallback: OpenAI`)
+      // If ttsProviders is empty (no ttsBaseUrl AND no OpenAI client), voice runs
+      // STT-only — send() will throw inside streamTts, but STT inbound still works.
+      if (ttsProviders.length === 0) {
+        log.info('[startup] Voice: TTS unavailable (no ttsBaseUrl and no OPENAI_API_KEY) — STT inbound only')
       }
 
-      const voiceAdapter = new VoiceChannelAdapter(httpServer, voiceOpenai, {
-        defaultHeadId: primary.head.id,
-        knownHeadIds,
-        routeFor: (headId) => (headSystems.find(h => h.head.id === headId) ?? primary).routeMessage,
-        ttsProviders,
-        // Attribute spoken turns to the logged-in dashboard user (the voice WS carries
-        // the same session cookie) so transcripts get the `[Name]:` sender prefix.
-        resolveSenderName: (req) => dashboard.resolveSessionUser(req.headers.cookie),
-      })
-      voiceAdapter.onMessage(primary.routeMessage)   // harmless fallback; routeFor takes precedence
-      for (const h of headSystems) h.channelRouter.register(voiceAdapter)
-      await voiceAdapter.start()
-      channelAdapters.push(voiceAdapter)
-      log.info('[startup] Voice WebSocket adapter ready at /api/voice/ws')
+      // The VoiceChannelAdapter constructor still requires a non-null openai positional
+      // arg (backward compat). When no OpenAI key is set, pass the self-hosted STT
+      // client as the positional arg — it is only used as the STT default when
+      // sttProviders is omitted, and we always pass sttProviders explicitly.
+      const adapterPositionalClient = openaiVoiceClient
+        ?? (voiceSttProviders[0]?.client)
+        ?? (ttsProviders[0]?.client)
+      if (!adapterPositionalClient) {
+        // Should not reach here given the gate condition above, but guard defensively.
+        log.warn('[startup] Voice adapter skipped: could not construct any voice client')
+      } else {
+        const voiceAdapter = new VoiceChannelAdapter(httpServer, adapterPositionalClient, {
+          defaultHeadId: primary.head.id,
+          knownHeadIds,
+          routeFor: (headId) => (headSystems.find(h => h.head.id === headId) ?? primary).routeMessage,
+          ttsProviders,
+          sttProviders: voiceSttProviders,
+          // Attribute spoken turns to the logged-in dashboard user (the voice WS carries
+          // the same session cookie) so transcripts get the `[Name]:` sender prefix.
+          resolveSenderName: (req) => dashboard.resolveSessionUser(req.headers.cookie),
+        })
+        voiceAdapter.onMessage(primary.routeMessage)   // harmless fallback; routeFor takes precedence
+        for (const h of headSystems) h.channelRouter.register(voiceAdapter)
+        await voiceAdapter.start()
+        channelAdapters.push(voiceAdapter)
+        log.info('[startup] Voice WebSocket adapter ready at /api/voice/ws')
+      }
     } else {
       log.warn('[startup] Voice adapter skipped: dashboard.getHttpServer() returned null')
     }
   } else {
-    log.debug('[startup] Voice adapter skipped: OPENAI_API_KEY not set')
+    log.debug('[startup] Voice adapter skipped: no OPENAI_API_KEY, sttBaseUrl, or ttsBaseUrl configured')
   }
 
   // Wire session revocation so ~changedashboardpassword invalidates all sessions

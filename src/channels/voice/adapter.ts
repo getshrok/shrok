@@ -6,7 +6,7 @@ import type OpenAI from 'openai'
 import type { Attachment } from '../../types/core.js'
 import type { ChannelAdapter, InboundMessage } from '../../types/channel.js'
 import { log } from '../../logger.js'
-import { transcribeWav, TooShortError, InvalidWavError } from './stt.js'
+import { transcribeWavWithFallback, TooShortError, InvalidWavError, type SttProvider } from './stt.js'
 import { streamTts, isAbortError, TTS_MODEL, TTS_VOICE, type TtsProvider } from './tts.js'
 
 /** Hard ceiling on a single binary WAV frame. 10 MB = ~5 min of 16 kHz mono PCM,
@@ -46,6 +46,11 @@ export interface VoiceChannelAdapterOpts {
    *  fallbacks (e.g. OpenAI). When omitted, defaults to OpenAI-only using the
    *  `openai` client (legacy behavior). */
   ttsProviders?: TtsProvider[]
+  /** Ordered STT providers: [0] is primary (e.g. self-hosted Whisper), later ones are
+   *  fallbacks (e.g. OpenAI). When omitted, defaults to OpenAI-only using the
+   *  `openai` constructor arg (legacy behavior). Splitting this from ttsProviders lets
+   *  you repoint STT without disturbing TTS. */
+  sttProviders?: SttProvider[]
   /** Resolve the logged-in dashboard user's display name from the WS upgrade request
    *  (it carries the same session cookie as the rest of the dashboard). Used to prefix
    *  spoken messages with `[Name]:` so the head can tell who's talking — matching the
@@ -68,6 +73,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
   private ttsAbortController: AbortController | null = null
   private upgradeListener: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null = null
   private readonly ttsProviders: TtsProvider[]
+  private readonly sttProviders: SttProvider[]
   private readonly resolveSenderName: ((req: IncomingMessage) => string | undefined) | null
 
   constructor(private httpServer: Server, private openai: OpenAI, opts?: VoiceChannelAdapterOpts) {
@@ -81,6 +87,10 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     this.ttsProviders = opts?.ttsProviders ?? [
       { client: openai, model: TTS_MODEL, voice: TTS_VOICE, responseFormat: 'mp3', label: 'openai' },
     ]
+    // STT is split from TTS so repointing STT does not disturb TTS.
+    // When sttProviders is omitted, fall back to the legacy single-client behavior
+    // using the `openai` constructor arg.
+    this.sttProviders = opts?.sttProviders ?? [{ client: openai, label: 'openai' }]
     this.resolveSenderName = opts?.resolveSenderName ?? null
   }
 
@@ -217,7 +227,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
       return
     }
     try {
-      const transcript = await transcribeWav(buf, this.openai)
+      const transcript = await transcribeWavWithFallback(buf, this.sttProviders)
       if (!transcript) {
         log.debug('[voice] whisper returned empty transcript, dropping')
         return

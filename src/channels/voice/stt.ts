@@ -1,5 +1,6 @@
 // src/channels/voice/stt.ts
 import type OpenAI from 'openai'
+import { log } from '../../logger.js'
 import { parseWavDuration } from './wav.js'
 
 /** Thrown when a WAV clip is rejected by the 500ms duration gate (D-05). */
@@ -79,15 +80,81 @@ function resolveAudioFile(nameOrMediaType: string): { name: string; mimeType: st
  *                         or a MIME type (e.g. 'audio/ogg'). Used to derive the File
  *                         name+type so Whisper selects the correct decoder.
  * @param openai      Authenticated OpenAI client
+ * @param model       Whisper model to request (defaults to 'whisper-1')
  */
-export async function transcribeAudio(buf: Buffer, nameOrMediaType: string, openai: OpenAI): Promise<string> {
+export async function transcribeAudio(
+  buf: Buffer,
+  nameOrMediaType: string,
+  openai: OpenAI,
+  model = 'whisper-1',
+): Promise<string> {
   const { name, mimeType } = resolveAudioFile(nameOrMediaType)
   const file = new File([buf], name, { type: mimeType })
   const result = await openai.audio.transcriptions.create({
     file,
-    model: 'whisper-1',
+    model,
   })
   return (result.text ?? '').trim()
+}
+
+/**
+ * One STT transcription backend. `transcribeWithFallback` is given an ORDERED list
+ * of these: `providers[0]` is the primary (e.g. the self-hosted Whisper endpoint) and
+ * any later provider is a fallback (e.g. OpenAI) used only when an earlier one fails.
+ */
+export interface SttProvider {
+  client: OpenAI
+  /** Human-readable label for logs, e.g. 'self-hosted' or 'openai'. */
+  label: string
+}
+
+/**
+ * Transcribe audio with primary → fallback provider selection.
+ *
+ * Tries each provider in order. Returns the first successful transcript. On a thrown
+ * error from provider i, logs a warn (mirroring the TTS provider wording) and tries
+ * the next. If all providers throw, re-throws the last error (caller degrades).
+ *
+ * STT calls are short (no streaming half-send concern), so a simple try/catch loop
+ * is the clean analog to the TTS provider loop.
+ */
+export async function transcribeWithFallback(
+  buf: Buffer,
+  nameOrMediaType: string,
+  providers: SttProvider[],
+): Promise<string> {
+  if (providers.length === 0) throw new Error('transcribeWithFallback: no STT providers configured')
+  let lastErr: unknown = null
+  for (let i = 0; i < providers.length; i++) {
+    const p = providers[i]!
+    try {
+      return await transcribeAudio(buf, nameOrMediaType, p.client)
+    } catch (err) {
+      lastErr = err
+      const more = i < providers.length - 1
+      log.warn(`[voice] STT provider "${p.label}" failed${more ? ', falling back to next' : ''}: ${(err as Error).message}`)
+    }
+  }
+  throw lastErr ?? new Error('STT: all providers failed')
+}
+
+/**
+ * Transcribe a WAV buffer with primary → fallback provider selection.
+ *
+ * Runs the 0.5s duration gate (TooShortError / InvalidWavError) BEFORE any provider
+ * is tried — gate failures propagate immediately and do NOT trigger fallback (they are
+ * local rejects, not network failures). After passing the gate, delegates to
+ * `transcribeWithFallback`.
+ */
+export async function transcribeWavWithFallback(
+  buf: Buffer,
+  providers: SttProvider[],
+): Promise<string> {
+  const duration = parseWavDuration(buf)
+  if (duration === null) throw new InvalidWavError()
+  if (duration < MIN_WAV_DURATION_SECONDS) throw new TooShortError(duration)
+
+  return transcribeWithFallback(buf, 'audio/wav', providers)
 }
 
 /**

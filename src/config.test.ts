@@ -992,3 +992,55 @@ describe('normalizeLegacyModelConfig — loadConfig integration', () => {
     expect(cfg.agentModel).toBe('genius')
   })
 })
+
+// ─── Self-hosted STT config keys (sttBaseUrl, voiceOpenaiFallback) ────────────
+
+describe('self-hosted STT config keys', () => {
+  let tmpConfigPath: string
+
+  beforeEach(() => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'shrok-config-test-stt-'))
+    tmpConfigPath = path.join(tmp, 'config.json')
+    process.env['USER_CONFIG_PATH'] = tmpConfigPath
+  })
+
+  afterEach(() => {
+    delete process.env['USER_CONFIG_PATH']
+  })
+
+  it('sttBaseUrl is exposed when set in config.json', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ sttBaseUrl: 'http://x/v1' }))
+    const cfg = loadConfig()
+    expect(cfg.sttBaseUrl).toBe('http://x/v1')
+  })
+
+  it('sttBaseUrl is undefined when absent', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    expect(cfg.sttBaseUrl).toBeUndefined()
+  })
+
+  it('voiceOpenaiFallback defaults to true when absent', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
+    const cfg = loadConfig()
+    expect(cfg.voiceOpenaiFallback).toBe(true)
+  })
+
+  it('voiceOpenaiFallback can be set to false', () => {
+    fs.writeFileSync(tmpConfigPath, JSON.stringify({ voiceOpenaiFallback: false }))
+    const cfg = loadConfig()
+    expect(cfg.voiceOpenaiFallback).toBe(false)
+  })
+
+  it('sttBaseUrl is NOT in ENV_KEY_ALLOWLIST (config.json-only behavioral setting)', () => {
+    const allowlistArr = ENV_KEY_ALLOWLIST as readonly string[]
+    expect(allowlistArr).not.toContain('sttBaseUrl')
+    expect(allowlistArr).not.toContain('STT_BASE_URL')
+  })
+
+  it('voiceOpenaiFallback is NOT in ENV_KEY_ALLOWLIST (config.json-only behavioral setting)', () => {
+    const allowlistArr = ENV_KEY_ALLOWLIST as readonly string[]
+    expect(allowlistArr).not.toContain('voiceOpenaiFallback')
+    expect(allowlistArr).not.toContain('VOICE_OPENAI_FALLBACK')
+  })
+})
