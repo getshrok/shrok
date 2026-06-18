@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: Ambient Context (Sensors)
-status: milestone_complete
-last_updated: 2026-06-18T08:32:18.274Z
+status: completed
+last_updated: "2026-06-18T09:23:34.908Z"
 last_activity: 2026-06-18
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 2
   total_plans: 6
   completed_plans: 6
-  percent: 40
-stopped_at: Milestone complete (Phase 49 was final phase)
+  percent: 33
 ---
 
 # Project State
@@ -86,6 +85,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 - Phase 46 added: v1.8 Tool Access Control — single phase covering the entire milestone; config schema extensions (global + per-head tool allowlists, tri-state), head-tool enforcement at activation.ts:844, agent-tool threading from spawning head into assembleTools(), dashboard Settings UI (global allowlists) + per-head management UI (per-head overrides with explicit inherit-global state).
 - Phase 47 added: v1.9 Head Runs Agent Tools — single phase; dispatch fallthrough from HeadToolExecutor into agent registry executors, candidate-def widening, '/api/tools' retag, AGENTS.md delegation reframe.
 - Phases 48–49 added: v1.10 Ambient Context (Sensors) — Phase 48 is the backend vertical slice (sensor entity, `kind:'script'` schedule, child-process runner, ambient/<slug>.md output, ambient folder scan replacing old AMBIENT.md, cache-split injection fix); Phase 49 is the dashboard Sensors section CRUD + Schedules UI wiring.
+- Phase 50 added: Per-head xray isolation — eliminate cross-head agent-activity bleed in the dashboard timeline. Reverses the deferred "accepted cross-head leakage (T-33-09)" decision. Two paths: (1) backfill — `/api/agents/xray-history` scoped via `?head=` → `getRecent(50, head)`, frontend passes `selectedHead` + keys `['xray-backfill', selectedHead]`; (2) live — add `head_id` to the `agent_message_added` SSE event payload (`src/dashboard/events.ts` + emit site `src/db/agents.ts`), `useStream` filters live xray accumulation by current head, `['xray-messages']` buffer reset/keyed on head switch. Plus removal of the T-33-09 deferral language in `streamFilter.ts` and tests on all three behaviors. Motivation: Ashley opened the dashboard and saw Zoey's overnight agent activity in Ashley's head view (data is correctly per-head in the DB; leak is purely in the dashboard xray timeline).
 
 ### Key Architecture Decisions (v1.10 — locked in design session)
 
