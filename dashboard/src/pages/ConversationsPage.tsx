@@ -1,5 +1,5 @@
 import React from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -495,6 +495,7 @@ export default function ConversationsPage() {
   // live updates into the correct ['messages', headId] cache entry.
   useStream(selectedHead)
 
+  const qc = useQueryClient()
   const { isDeveloper } = useMode()
   const assistantName = useAssistantName()
   const { state: voiceState, voiceActive, toggleVoice, errorMessage: voiceError, ttsViaFallback } = useVoice(selectedHead)
@@ -520,14 +521,14 @@ export default function ConversationsPage() {
     staleTime: Infinity,
   })
   const { data: xrayLive } = useQuery<Array<{ agentId: string; message: Message }>>({
-    queryKey: ['xray-messages'],
+    queryKey: ['xray-messages', selectedHead],
     initialData: [],
     staleTime: Infinity,
     enabled: visibility.agentWork,
   })
 
   const { data: memoryRetrievals } = useQuery<Array<{ text: string; eventId?: string; tokens?: number }>>({
-    queryKey: ['memory-retrievals'],
+    queryKey: ['memory-retrievals', selectedHead],
     initialData: [],
     staleTime: Infinity,
     enabled: visibility.memoryRetrievals,
@@ -578,6 +579,22 @@ export default function ConversationsPage() {
   useEffect(() => {
     setKnownAgents(new Map())
   }, [selectedHead])
+
+  // D-03: clear live accumulators on head switch so stale items from the previous
+  // head don't linger while the new head's backfill loads. Head-keyed cache keys
+  // force a cache miss (fresh backfill fetch) automatically; these effects wipe the
+  // live-stream accumulator for the newly-selected head before items arrive.
+  useEffect(() => {
+    qc.setQueryData(['xray-messages', selectedHead], [])
+  }, [selectedHead, qc])
+
+  useEffect(() => {
+    qc.setQueryData(['memory-retrievals', selectedHead], [])
+  }, [selectedHead, qc])
+
+  useEffect(() => {
+    qc.setQueryData(['stewardRuns', selectedHead], { stewardRuns: [] })
+  }, [selectedHead, qc])
 
   // Accumulate agents as they appear (keeps completed ones as greyed pills)
   useEffect(() => {
