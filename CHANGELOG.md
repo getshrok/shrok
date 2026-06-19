@@ -4,7 +4,9 @@ All notable user-facing changes to this project are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0]
+## [0.5.0]
+
+## [0.4.0] — 2026-06-19
 
 ### Fixed
 - **Deleting a task or skill now fully removes it** — previously, deleting a task or skill from the dashboard only removed its marker file (`TASK.md`/`SKILL.md`), leaving the entry's directory and any sibling files (a `MEMORY.md`, helper scripts) orphaned on disk. Besides accumulating litter, this could leak stale state into a later re-create with the same name. Deletion now removes the whole entry directory, matching how sensors already behaved. (closes #41)
