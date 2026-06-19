@@ -3,7 +3,7 @@ import { isValidCadence, CADENCE_ERROR_MESSAGE } from './cadence.js'
 
 describe('isValidCadence', () => {
   describe('accepts: every N minutes', () => {
-    it.each([5, 10, 15, 30, 45, 60])('%i minutes: */%i * * * *', (n) => {
+    it.each([1, 5, 10, 15, 30, 45, 60])('%i minutes: */%i * * * *', (n) => {
       expect(isValidCadence(`*/${n} * * * *`)).toBe(true)
     })
   })
@@ -60,7 +60,7 @@ describe('isValidCadence', () => {
   })
 
   describe('rejects: */N with unsupported N', () => {
-    it.each(['*/1', '*/2', '*/3', '*/7', '*/20', '*/120'])('%s * * * *', (head) => {
+    it.each(['*/2', '*/3', '*/7', '*/20', '*/120'])('%s * * * *', (head) => {
       expect(isValidCadence(`${head} * * * *`)).toBe(false)
     })
   })

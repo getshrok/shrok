@@ -5,7 +5,7 @@ import { useState } from 'react'
 // there. No need to import from there (different workspace, different TS
 // project); the grammar is the contract.
 
-const ALLOWED_MINUTE_INTERVALS = [5, 10, 15, 30, 45, 60] as const
+const ALLOWED_MINUTE_INTERVALS = [1, 5, 10, 15, 30, 45, 60] as const
 const ALLOWED_DAY_INTERVALS = [1, 2, 3, 4, 5, 6, 7] as const
 
 type MinuteInterval = typeof ALLOWED_MINUTE_INTERVALS[number]
@@ -243,7 +243,7 @@ export default function CronPicker({ value, onChange }: CronPickerProps) {
               className={SELECT_CLASS}
             >
               {ALLOWED_MINUTE_INTERVALS.map(n => (
-                <option key={n} value={n}>{n} minutes</option>
+                <option key={n} value={n}>{n === 1 ? 'minute' : `${n} minutes`}</option>
               ))}
             </select>
           </div>

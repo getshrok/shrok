@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.5.0]
 
+### Added
+- **Schedule something every minute** — the dashboard cron picker and the scheduler now accept a 1-minute interval, alongside the existing 5/10/15/30/45/60-minute options, for fast-polling sensors or reminders. The option reads "every minute" rather than "every 1 minutes".
+
 ## [0.4.0] — 2026-06-19
 
 ### Fixed

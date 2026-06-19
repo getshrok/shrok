@@ -7,7 +7,7 @@
  * argument for nuance (D-05).
  *
  * Supported shapes (all others rejected):
- *   1. every N minutes:  * /N * * * *     N ∈ {5, 10, 15, 30, 45, 60}
+ *   1. every N minutes:  * /N * * * *     N ∈ {1, 5, 10, 15, 30, 45, 60}
  *   2. hourly:           M * * * *        M ∈ 0..59
  *   3. daily:            M H * * *        M ∈ 0..59, H ∈ 0..23
  *   4. weekdays (Mon–Fri): M H * * 1-5    M ∈ 0..59, H ∈ 0..23
@@ -17,7 +17,7 @@
  *   8. yearly:           M H D Mo *       Mo ∈ 1..12, D ∈ 1..28
  */
 
-const ALLOWED_MINUTE_INTERVALS = new Set([5, 10, 15, 30, 45, 60])
+const ALLOWED_MINUTE_INTERVALS = new Set([1, 5, 10, 15, 30, 45, 60])
 const ALLOWED_DAY_INTERVALS = new Set([1, 2, 3, 4, 5, 6, 7])
 
 function isIntInRange(token: string, min: number, max: number): boolean {
