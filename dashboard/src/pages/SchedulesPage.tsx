@@ -1137,10 +1137,11 @@ function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string })
       </div>
       <div className="shrink-0">
         <span
-          className="inline-block px-2 py-0.5 rounded text-xs font-medium text-zinc-400"
-          style={{ backgroundColor: '#3f3f46', borderLeft: '2px solid #71717a' }}
+          className="inline-block px-2 py-0.5 rounded text-xs font-medium text-zinc-300"
+          style={{ backgroundColor: headColor(schedule.headId), borderLeft: `2px solid ${headColorBorder(schedule.headId)}` }}
+          title={`Head: ${schedule.headId}`}
         >
-          SCRIPT
+          {schedule.headId}
         </span>
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
@@ -1324,6 +1325,21 @@ function AddSensorScheduleForm({
               ? <option disabled value="">No sensors yet — create one on the Sensors page</option>
               : sensors.map(s => (
                   <option key={s.slug} value={s.slug}>{s.slug}</option>
+                ))}
+          </select>
+        </div>
+        <div className="flex-1 min-w-40">
+          <label className="text-xs text-zinc-500 mb-1 block">Head</label>
+          <select
+            value={headId}
+            onChange={e => setHeadId(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+            required
+          >
+            {(headsQuery.data?.heads ?? []).length === 0
+              ? <option disabled value="">No heads configured</option>
+              : (headsQuery.data?.heads ?? []).map(h => (
+                  <option key={h.id} value={h.id}>{h.id}</option>
                 ))}
           </select>
         </div>
