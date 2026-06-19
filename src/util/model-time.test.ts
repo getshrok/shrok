@@ -148,6 +148,17 @@ describe('parseModelTime', () => {
     }
   })
 
+  // Regression: a wall-clock minute (or second) of exactly 24 must NOT be confused
+  // with the hour-"24"→"0" midnight normalisation. A buggy shared normaliser in the
+  // offset computation clobbered minute=24 → 0, skewing the offset by 24 minutes and
+  // raising a bogus spring-forward-gap error for ordinary non-DST times (CI flake when
+  // the runner clock hit :24). These are plain valid times and must round-trip cleanly.
+  it('parses minute=24 on a non-DST date without a false DST-gap error', () => {
+    const d = parseModelTime('2026-06-19 18:24', 'America/New_York')
+    // 18:24 EDT (UTC-4) = 22:24 UTC
+    expect(d.getTime()).toBe(Date.UTC(2026, 5, 19, 22, 24, 0))
+  })
+
   // DST: fall-back ambiguous — America/New_York 2026-11-01 01:30 occurs twice
   // First occurrence = before offset shift = EDT (UTC-4); second = after = EST (UTC-5)
   // parseModelTime must return the FIRST occurrence (earlier UTC = UTC-4)

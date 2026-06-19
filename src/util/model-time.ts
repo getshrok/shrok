@@ -202,17 +202,21 @@ function getOffsetMinutes(utcInstant: Date, zone: string): number {
 
   const get = (type: string): number => {
     const raw = parts.find(p => p.type === type)?.value ?? '0'
-    // Normalise the midnight "24" → "0" bug
-    const n = parseInt(raw === '24' ? '0' : raw, 10)
+    const n = parseInt(raw, 10)
     return isNaN(n) ? 0 : n
   }
 
   const ly = get('year')
   const lm = get('month')
   const ld = get('day')
-  const lh = get('hour')
+  let lh = get('hour')
   const lmin = get('minute')
   const ls = get('second')
+
+  // Some Node/Intl implementations emit "24" for midnight with hour12:false.
+  // Normalise ONLY the hour — applying this to minute/second would clobber a
+  // legitimate value of 24 (e.g. minute=24) to 0 and skew the computed offset.
+  if (lh === 24) lh = 0
 
   // Build the "local time treated as UTC"
   const localAsUtcMs = Date.UTC(ly, lm - 1, ld, lh, lmin, ls)
