@@ -180,6 +180,8 @@ Use `write-file-atomic` for all skill and identity file writes — plain `fs.wri
 
 Secrets and provider choices go in `.env`; behavioral settings go in `config.json`. `config.json` merges — the base repo `./config.json` is overlaid by `{workspacePath}/config.json`. `ENV_KEY_ALLOWLIST` in `src/config.ts` is the definitive list of keys that the settings API is allowed to write to `.env`.
 
+**`.env` holds SYSTEM credentials only — never a user's third-party account credentials.** The workspace `.env` is for the secrets shrok *itself* needs to run: LLM-provider API keys, channel bot tokens, the dashboard password hash, Home Assistant tokens, etc. (the `ENV_KEY_ALLOWLIST` set). Do **not** put a user's personal third-party-account credentials (e.g. their Zoho/Google/etc. OAuth client id, client secret, or refresh token) in `.env`. Those belong with the workspace artifact that consumes them — a **skill** stores them in its own credential store (e.g. `skills/zoho-calendar/.zoho-credentials.json`, mode 600), and anything else that needs that account (a sensor, a task) **reuses that skill's credential store rather than copying the secret elsewhere**. One authenticated source per account; never duplicate a user credential into `.env` or into a second artifact. (Rationale: `.env` is system config that gets backed up, logged around, and surfaced through the settings API allowlist; user account secrets must stay scoped to the single artifact the user authorized, so revoking/rotating is one place and a leak has one blast radius.)
+
 ## Real-time updates: SSE not WebSocket
 
 Server-to-client updates use SSE (`EventSource` at `/api/stream`), not WebSockets.
