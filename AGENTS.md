@@ -9,6 +9,7 @@ Shrok is a self-hosted personal AI agent that maintains a single persistent iden
 - When asked to fix an issue or make a change: edit, commit on `main`, and (only when the user asks to push) `git push origin main`. No `git checkout -b`, no `gh pr create`.
 - The only thing that legitimately spins off a branch is opening a GitHub PR — so don't open PRs by default. If a change genuinely warrants review, ask first.
 - GSD execution already commits to `main` (`branching_strategy: none`) and runs its worktrees ephemerally — leave that alone; the rule above is about not wrapping solo work in PR ceremony.
+- **When you push, push *everything*.** Before `git push origin main`, commit the whole working tree — run `git status` and `git add -A` so every change ships (a dashboard tweak, a scheduler fix, planning state), not just the files you were focused on. Stray uncommitted edits silently stay behind on your machine and never reach `main` or the deployed instances. The only things that should stay out are gitignored files and `dashboard/dist/` (CI writes that — see next bullet); never `git add dashboard/dist/`.
 - CI is still the sole writer of `dashboard/dist/` on `main` (see CI structure below) — that's unchanged.
 
 ## Project layout
