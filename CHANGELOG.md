@@ -4,7 +4,9 @@ All notable user-facing changes to this project are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0]
+## [0.4.0]
+
+## [0.3.0] — 2026-06-19
 
 ### Added
 - **Relay messages between heads** — when you run more than one head (e.g. a separate line for each person), you can now ask one head to pass a note to another: "let Zoey know dinner moved to 7pm." The recipient's head proactively delivers the message on its own channel, attributed to whoever asked ("Ashley wanted me to let you know…"). Recipients are addressed by a human-friendly name — give each head a `displayName` in `config.json` (falls back to the head id). It's a new `message_head` head tool, off by default and opt-in per head through the existing tool-allowlist controls in Settings; single-head installs are unaffected.
