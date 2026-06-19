@@ -174,17 +174,21 @@ export class FileSystemKindLoader implements SkillLoader {
     await fs.promises.rename(tempPath, targetPath)
   }
 
-  /** Delete an entry by name. No-op if not found. */
+  /**
+   * Delete an entry by name, removing its whole directory (marker file plus any
+   * sibling files like MEMORY.md or helper scripts). No-op if not found.
+   */
   async delete(name: string): Promise<void> {
     if (!safeSkillName(name)) {
       throw new Error(`Invalid skill name: ${JSON.stringify(name)}`)
     }
-    const dirFile = path.join(this.root, name, this.filename)
-    try {
-      await fs.promises.unlink(dirFile)
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
+    const skillDir = path.join(this.root, name)
+    const resolved = path.resolve(skillDir)
+    const base = path.resolve(this.root)
+    if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+      throw new Error('Skill path escapes skills directory')
     }
+    await fs.promises.rm(resolved, { recursive: true, force: true })
   }
 
   /** Watch the root directory for changes and call onChange with the affected entry name. */

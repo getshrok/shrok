@@ -231,6 +231,15 @@ New instructions.`
     expect(loader.load('to-delete')).toBeNull()
   })
 
+  it('delete removes the whole entry directory, including sibling files', async () => {
+    writeSkill('to-delete/SKILL.md', emailContent)
+    writeSkill('to-delete/MEMORY.md', '# Memory')
+    writeSkill('to-delete/helper.mjs', 'export const x = 1')
+    await loader.delete('to-delete')
+    expect(loader.load('to-delete')).toBeNull()
+    expect(fs.existsSync(path.join(tmpDir, 'to-delete'))).toBe(false)
+  })
+
   it('delete is a no-op for non-existent skill', async () => {
     // Should not throw
     await expect(loader.delete('does-not-exist')).resolves.not.toThrow()

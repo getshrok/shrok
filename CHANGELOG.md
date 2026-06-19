@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [0.4.0]
 
 ### Fixed
+- **Deleting a task or skill now fully removes it** — previously, deleting a task or skill from the dashboard only removed its marker file (`TASK.md`/`SKILL.md`), leaving the entry's directory and any sibling files (a `MEMORY.md`, helper scripts) orphaned on disk. Besides accumulating litter, this could leak stale state into a later re-create with the same name. Deletion now removes the whole entry directory, matching how sensors already behaved. (closes #41)
 - **A stuck channel can no longer hang startup** — if a channel's connection fails to come up during boot (e.g. a chat gateway that stalls on a rapid restart), shrok now gives each channel up to 30 seconds to start, then logs it and moves on instead of freezing the whole process. Previously one wedged channel could block the dashboard, scheduler, and the assistant itself from ever starting. The timeout is configurable via `channelStartTimeoutMs` in `config.json`. (closes #40)
 
 ## [0.3.0] — 2026-06-19
