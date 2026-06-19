@@ -155,7 +155,7 @@ export class ContextAssemblerImpl implements ContextAssembler {
     const baseSystemTokens = estimateStringTokens(systemPrompt)
     const outputReserve = this.config.llmMaxTokens
     const remaining = Math.max(0, this.config.contextWindowTokens - baseSystemTokens - outputReserve)
-    const memoryFraction = (this.config.memoryBudgetPercent ?? 40) / 100
+    const memoryFraction = (this.config.memoryBudgetPercent ?? 30) / 100
     const memoryBudget = Math.floor(remaining * memoryFraction)
     const historyBudget = remaining - memoryBudget
 

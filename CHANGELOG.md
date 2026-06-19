@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - **Schedule something every minute** — the dashboard cron picker and the scheduler now accept a 1-minute interval, alongside the existing 5/10/15/30/45/60-minute options, for fast-polling sensors or reminders. The option reads "every minute" rather than "every 1 minutes".
 
+### Changed
+- **More of the context window now goes to recent conversation** — the default split between conversation history and long-term memory is now 70% history / 30% memory (was 55% / 45%). In day-to-day use, keeping more of the active back-and-forth in context feels better while still leaving meaningful room for memory recall. Override with `memoryBudgetPercent` in `config.json` if you prefer stronger long-term recall. (closes #43)
+
 ## [0.4.0] — 2026-06-19
 
 ### Fixed

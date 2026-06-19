@@ -470,7 +470,7 @@ export class ActivationLoop {
         }),
         getHeadContextStats: () => {
           const all = this.opts.messages.getAll(this.opts.headId)
-          const memoryFraction = (this.opts.config.memoryBudgetPercent ?? 40) / 100
+          const memoryFraction = (this.opts.config.memoryBudgetPercent ?? 30) / 100
           const historyBudget = Math.floor(this.opts.config.contextWindowTokens * (1 - memoryFraction))
           const archivalThreshold = Math.floor(historyBudget * this.opts.config.archivalThresholdFraction)
           return {

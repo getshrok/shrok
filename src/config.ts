@@ -284,8 +284,9 @@ const ConfigSchema = z.object({
   // actually shapes per-turn behavior. Memory side is a CEILING the router rarely
   // hits (it pulls only what's relevant); history side is a real budget the head
   // fills up to. Raise % for stronger long-term recall at the cost of less recent
-  // chat in context; lower % to keep more verbatim recent history. Default 45%.
-  memoryBudgetPercent: z.coerce.number().min(0).max(100).default(45),
+  // chat in context; lower % to keep more verbatim recent history. Default 30%
+  // (70% history / 30% memory) — favors keeping recent back-and-forth in context.
+  memoryBudgetPercent: z.coerce.number().min(0).max(100).default(30),
   // Number of recent messages the query rewriter reads to resolve pronouns and references
   // before memory retrieval. 0 = disabled (raw trigger text used as-is). Default 6.
   memoryQueryContextTokens: z.coerce.number().min(0).max(50000).default(3000),
