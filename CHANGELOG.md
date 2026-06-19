@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **More of the context window now goes to recent conversation** — the default split between conversation history and long-term memory is now 70% history / 30% memory (was 55% / 45%). In day-to-day use, keeping more of the active back-and-forth in context feels better while still leaving meaningful room for memory recall. Override with `memoryBudgetPercent` in `config.json` if you prefer stronger long-term recall. (closes #43)
 - **The dashboard Sensors page now explains itself** — it gained a short description at the top of the list (like the Tasks and Skills pages already had) so landing on it isn't a mystery, and its styling was unified with those pages so all three look like one family.
 
+### Fixed
+- **The dashboard's cache metric is now correct** — the Usage page previously showed a "Cache Hit Rate" computed against the wrong token bucket, which overstated it (often ~50–60%). It's now labeled "Cache Reuse" and reports the true fraction of prompt tokens served from cache. (closes #44)
+
 ## [0.4.0] — 2026-06-19
 
 ### Fixed

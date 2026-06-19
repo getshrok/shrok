@@ -294,8 +294,18 @@ export default function UsagePage() {
   const summary: UsagePeriodSummary = data.periods[period]
   const totalTokens = summary.inputTokens + summary.outputTokens
   const periodLabel = PERIOD_LABELS[period]
-  const cacheHitPct = summary.cache && summary.cache.totalInputTokens > 0
-    ? (summary.cache.readTokens / summary.cache.totalInputTokens * 100).toFixed(0)
+  // Cache reuse = fraction of ALL prompt tokens served from cache.
+  // Anthropic usage buckets are non-overlapping:
+  //   total_input = cache_read + cache_creation + input_tokens
+  // where input_tokens is the post-breakpoint, uncacheable tail. The API's
+  // `totalInputTokens` is really just SUM(input_tokens) (the uncached portion),
+  // so the true denominator is all three buckets summed. (#44)
+  const cacheReusePct = summary.cache
+    ? (() => {
+        const c = summary.cache
+        const total = c.totalInputTokens + c.readTokens + c.writeTokens
+        return total > 0 ? (c.readTokens / total * 100).toFixed(0) : null
+      })()
     : null
 
   const modelEntries = Object.entries(summary.byModel).sort((a, b) => b[1].costUsd - a[1].costUsd)
@@ -338,10 +348,10 @@ export default function UsagePage() {
               sub={`${formatTokens(summary.inputTokens)} in / ${formatTokens(summary.outputTokens)} out`}
             />
           )}
-          {showDetails && cacheHitPct !== null && Number(cacheHitPct) > 0 && (
+          {showDetails && cacheReusePct !== null && Number(cacheReusePct) > 0 && (
             <StatCard
-              label="Cache Hit Rate"
-              value={`${cacheHitPct}%`}
+              label="Cache Reuse"
+              value={`${cacheReusePct}%`}
               sub={`${formatTokens(summary.cache!.readTokens)} cached reads`}
             />
           )}
