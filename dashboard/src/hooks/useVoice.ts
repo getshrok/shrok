@@ -218,6 +218,10 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
     const url = URL.createObjectURL(blob)
     bufUrlRef.current = url
     el.onended = () => {
+      // Observability (#42): the mic is DEAF between this pause/resume pair. On iOS
+      // (buffered path) anything the user says while the reply plays is captured by
+      // nothing and silently lost — the leading suspect for "my message disappeared".
+      console.info('[voice] reply playback ended — mic resuming (half-duplex window closed)')
       try { void vadRef.current?.start() } catch { /* noop */ }   // resume mic after the reply
       dispatch({ type: 'TTS_DONE' })
     }
@@ -226,6 +230,7 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
     // plays so the speaker output isn't picked up as "speech" and used to
     // barge-in — which was truncating the reply after a few words. The mic
     // resumes in onended (and in the catch below if playback never starts).
+    console.info('[voice] reply playback starting — mic paused (half-duplex; speech now is NOT captured)')
     try { void vadRef.current?.pause() } catch { /* noop */ }
     el.play().catch(() => {
       try { void vadRef.current?.start() } catch { /* noop */ }
@@ -386,10 +391,24 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
           dispatch({ type: 'SPEECH_START' })
         },
         onSpeechEnd: (audio: Float32Array) => {
+          // Observability (#42): never swallow a capture/send failure. If speech was
+          // captured but couldn't be sent (socket not open, or encodeWAV threw), the
+          // user must see it instead of the message silently vanishing. A successful
+          // send is logged so a console trace shows which turns actually left the phone.
           try {
             const wav = utils.encodeWAV(audio)
-            wsRef.current?.send(wav)
-          } catch { /* noop — if WS dropped, the close handler already dispatched ERROR */ }
+            const ws = wsRef.current
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+              console.warn('[voice] speech captured but WebSocket not open — audio dropped', { readyState: ws?.readyState })
+              signalError('Voice disconnected')
+            } else {
+              ws.send(wav)
+              console.info(`[voice] sent audio frame: ${wav.byteLength} bytes`)
+            }
+          } catch (err) {
+            console.error('[voice] failed to encode/send captured audio', err)
+            signalError('Voice error — please try again')
+          }
           dispatch({ type: 'SPEECH_END' })
         },
         onVADMisfire: () => {

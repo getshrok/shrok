@@ -6,7 +6,7 @@ import type OpenAI from 'openai'
 import type { Attachment } from '../../types/core.js'
 import type { ChannelAdapter, InboundMessage } from '../../types/channel.js'
 import { log } from '../../logger.js'
-import { transcribeWavWithFallback, TooShortError, InvalidWavError, type SttProvider } from './stt.js'
+import { transcribeWavWithFallback, TooShortError, InvalidWavError, MIN_WAV_DURATION_SECONDS, type SttProvider } from './stt.js'
 import { streamTts, isAbortError, TTS_MODEL, TTS_VOICE, type TtsProvider } from './tts.js'
 
 /** Hard ceiling on a single binary WAV frame. 10 MB = ~5 min of 16 kHz mono PCM,
@@ -226,12 +226,20 @@ export class VoiceChannelAdapter implements ChannelAdapter {
       log.warn(`[voice] dropping oversize WAV frame (${buf.length} bytes > ${MAX_WAV_BYTES})`)
       return
     }
+    // Observability (#42): log every received audio frame at info level. A turn that
+    // never produces this line means the audio never reached the server (client-side
+    // capture/send failure) — the single most useful signal for diagnosing a "message
+    // silently disappeared" report. The drop reasons below are also info-level so every
+    // outcome is visible at the default log level; message TEXT is never logged (only
+    // its length), so transcripts don't leak into system logs.
+    log.info(`[voice] audio frame received: ${buf.length} bytes`)
     try {
       const transcript = await transcribeWavWithFallback(buf, this.sttProviders)
       if (!transcript) {
-        log.debug('[voice] whisper returned empty transcript, dropping')
+        log.info('[voice] transcript empty — turn dropped (STT returned no text)')
         return
       }
+      log.info(`[voice] transcribed ${transcript.length} chars — routing turn`)
       // VOICE-IN-06: route as a normal user message — same path as typed input
       // Use the per-connection route (head-specific when routeFor is set), falling back to handler.
       // Carry the resolved sender name so the ingestion path prefixes `[Name]:` like other channels.
@@ -242,11 +250,11 @@ export class VoiceChannelAdapter implements ChannelAdapter {
       })
     } catch (err) {
       if (err instanceof TooShortError) {
-        log.debug(`[voice] clip too short (${err.durationSeconds.toFixed(3)}s) — dropped`)
+        log.info(`[voice] clip too short (${err.durationSeconds.toFixed(3)}s < ${MIN_WAV_DURATION_SECONDS}s) — turn dropped`)
         return
       }
       if (err instanceof InvalidWavError) {
-        log.debug('[voice] malformed WAV frame — dropped')
+        log.info('[voice] malformed WAV frame — turn dropped')
         return
       }
       log.error('[voice] whisper error:', (err as Error).message)
