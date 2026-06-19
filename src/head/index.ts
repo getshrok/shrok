@@ -287,7 +287,7 @@ function buildHeadToolMap(opts: HeadToolExecutorOptions): Map<string, AgentToolE
 
   // Reminder and schedule tools — available when scheduleStore is present
   if (opts.scheduleStore !== undefined) {
-    for (const entry of buildReminderTools(opts.scheduleStore, tz, opts.headId)) {
+    for (const entry of buildReminderTools(opts.scheduleStore, tz, opts.headId, opts.headRoster ?? [])) {
       map.set(entry.definition.name, entry)
     }
     for (const entry of buildScheduleTools(opts.scheduleStore, tz, opts.unifiedLoader ?? null, opts.headId)) {

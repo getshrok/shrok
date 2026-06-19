@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - **Schedule something every minute** — the dashboard cron picker and the scheduler now accept a 1-minute interval, alongside the existing 5/10/15/30/45/60-minute options, for fast-polling sensors or reminders. The option reads "every minute" rather than "every 1 minutes".
 - **A worked example sensor ships with Shrok** — like the example task, a commented, runnable `example-sensor` is now seeded into your workspace on first run as a template. It shows the sensor script contract end to end: the single-JSON-object output, the ambient (always-in-context) and event (wake-me) sinks, and the self-watermarking pattern for only reacting to changes. Schedule it to watch it work, then delete it.
+- **Reminders can be delivered on a different person's line** — when you have more than one assistant head, the head you ask to set a reminder no longer has to be the one that delivers it. You can now name which head should deliver it at fire time — e.g. set a reminder by voice and get reminded on your phone — instead of it always coming back on the head you asked. It still defaults to the asking head when you don't say otherwise. (closes #39)
 - **Sensors documentation** — sensors now have a proper write-up in the docs (overview + a full internals guide covering the script contract, the two sinks, scheduling, and self-watermarking), and a one-line mention in the README, so it's clear what they are and how to start using them.
 
 ### Changed

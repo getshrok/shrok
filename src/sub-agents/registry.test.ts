@@ -575,3 +575,87 @@ describe('Final disk-sweep sentinel: no Z"-suffixed quoted strings in descriptio
     expect(content).toContain('YYYY-MM-DD HH:MM')
   })
 })
+
+// ─── create_reminder head-targeting (issue #39) ──────────────────────────────
+
+describe('create_reminder: optional target head (#39)', () => {
+  const ctx = makeCtx()
+  const ROSTER = [
+    { id: 'default', displayName: 'Ashley' },
+    { id: 'zoey', displayName: 'Zoey' },
+  ]
+
+  // A schedule store that captures CreateScheduleOptions instead of throwing.
+  function makeCapturingStore() {
+    const created: Array<{ id: string; headId: string }> = []
+    const store = {
+      list: () => [],
+      create: (opts: { id: string; headId: string }) => { created.push(opts); return opts },
+      update: () => null,
+      get: () => null,
+      delete: () => {},
+      markFired: () => {},
+      advanceNextRun: () => {},
+      markSkipped: () => {},
+      deleteAllForHead: () => ({ schedules: 0, reminders: 0 }),
+      getDue: () => [],
+    }
+    return { store: store as unknown as import('../db/schedules.js').ScheduleStore, created }
+  }
+
+  function createReminderTool(roster: typeof ROSTER | [], storeOverride?: import('../db/schedules.js').ScheduleStore) {
+    const tools = buildReminderTools(storeOverride ?? makeScheduleStore(), TIMEZONE, 'default', roster)
+    return tools.find(t => t.definition.name === 'create_reminder')!
+  }
+
+  // ── Definition shape ──
+  it('exposes a head param listing other heads when a multi-head roster is present', () => {
+    const def = createReminderTool(ROSTER).definition
+    const props = (def.inputSchema as { properties: Record<string, { description?: string }> }).properties
+    expect(props.head).toBeDefined()
+    expect(props.head!.description).toContain('Zoey')
+    expect(props.head!.description).not.toContain('Ashley') // self is excluded
+  })
+
+  it('omits the head param entirely when there are no other heads', () => {
+    const single = createReminderTool([{ id: 'default', displayName: 'Ashley' }] as typeof ROSTER).definition
+    const empty = createReminderTool([]).definition
+    expect((single.inputSchema as { properties: Record<string, unknown> }).properties.head).toBeUndefined()
+    expect((empty.inputSchema as { properties: Record<string, unknown> }).properties.head).toBeUndefined()
+  })
+
+  // ── Execute / routing ──
+  const future = '2030-06-15 09:00'
+
+  it('stores the target head id when head names another person', async () => {
+    const { store, created } = makeCapturingStore()
+    const tool = createReminderTool(ROSTER, store)
+    const res = JSON.parse(await tool.execute({ message: 'm', triggerAt: future, head: 'Zoey' }, ctx) as string)
+    expect(res.ok).toBe(true)
+    expect(created).toHaveLength(1)
+    expect(created[0]!.headId).toBe('zoey')
+  })
+
+  it('resolves the head name case-insensitively', async () => {
+    const { store, created } = makeCapturingStore()
+    const tool = createReminderTool(ROSTER, store)
+    await tool.execute({ message: 'm', triggerAt: future, head: '  zOeY ' }, ctx)
+    expect(created[0]!.headId).toBe('zoey')
+  })
+
+  it('defaults to the creating head when head is omitted', async () => {
+    const { store, created } = makeCapturingStore()
+    const tool = createReminderTool(ROSTER, store)
+    await tool.execute({ message: 'm', triggerAt: future }, ctx)
+    expect(created[0]!.headId).toBe('default')
+  })
+
+  it('errors on an unknown head name and writes nothing', async () => {
+    const { store, created } = makeCapturingStore()
+    const tool = createReminderTool(ROSTER, store)
+    const res = JSON.parse(await tool.execute({ message: 'm', triggerAt: future, head: 'Nobody' }, ctx) as string)
+    expect(res.error).toBe(true)
+    expect(res.message).toContain('Zoey')
+    expect(created).toHaveLength(0)
+  })
+})

@@ -1005,7 +1005,12 @@ export function buildReminderTools(
   scheduleStore: ScheduleStore,
   timezone: string,
   headId: string,
+  roster: ReadonlyArray<{ id: string; displayName: string }> = [],
 ): AgentToolEntry[] {
+  // Other heads (people's lines) this head can deliver a reminder to. Empty for
+  // single-head installs (the common case) and for sub-agents (no roster passed),
+  // in which case the `head` param is omitted entirely and behavior is unchanged.
+  const others = roster.filter(h => h.id !== headId)
   return [
     {
       definition: {
@@ -1024,6 +1029,10 @@ export function buildReminderTools(
             createdAt: formatModelTime(new Date(s.createdAt), timezone),
             requiresAck: s.requiresAck,
             nagIntervalMinutes: s.nagIntervalMinutes,
+            // Whose line this reminder will be delivered on (list_reminders is unscoped
+            // across heads, so a cross-head reminder appears in both lists — this
+            // disambiguates where it lands).
+            target: roster.find(h => h.id === s.headId)?.displayName ?? s.headId,
           }))
         return JSON.stringify(items)
       },
@@ -1076,6 +1085,18 @@ export function buildReminderTools(
               type: 'integer',
               description: 'Days component of the nag cadence (non-negative integer, each = 1440 minutes). Only valid when requiresAck is true. Summed with nagMinutes and nagHours.',
             },
+            // Optional target head — only offered when there are other people's lines to
+            // deliver to. Omitted entirely for single-head installs / sub-agents.
+            ...(others.length > 0
+              ? {
+                  head: {
+                    type: 'string',
+                    description:
+                      'Whose line to deliver the reminder on. Omit to deliver on your own line (default). ' +
+                      `To deliver to a different person instead, set their name. Valid names: ${others.map(h => `"${h.displayName}"`).join(', ')}.`,
+                  },
+                }
+              : {}),
           },
           required: ['message'],
         },
@@ -1191,12 +1212,31 @@ export function buildReminderTools(
           triggerAt = parsedTrigger.toISOString()
         }
 
+        // Phase 35 D-09: headId defaults to the factory closure (the creating head).
+        // An explicit `head` arg is a deliberate create-time delivery override — it does
+        // NOT touch the D-10 invariant (update_schedule still cannot reassign a schedule's
+        // head; moving an existing reminder = delete + recreate). Resolution mirrors
+        // message_head (src/head/index.ts): case-insensitive displayName then id.
+        let targetHeadId = headId
+        const headArg = (input['head'] as string | undefined)?.trim()
+        if (headArg) {
+          const norm = headArg.toLowerCase()
+          const match = others.find(h => h.displayName.toLowerCase() === norm)
+            ?? others.find(h => h.id.toLowerCase() === norm)
+          if (!match) {
+            return JSON.stringify({
+              error: true,
+              message: `No person named "${headArg}". Valid names: ${others.map(h => h.displayName).join(', ')}.`,
+            })
+          }
+          targetHeadId = match.id
+        }
+
         const id = generateId('rem')
 
-        // Phase 35 D-09: headId comes from the factory closure (per-head tool registry).
         const createOpts: import('../db/schedules.js').CreateScheduleOptions = {
           id,
-          headId,
+          headId: targetHeadId,
           kind: 'reminder',
           agentContext: message,
           runAt: triggerAt ?? undefined,

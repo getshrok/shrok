@@ -308,7 +308,7 @@ export function buildSystem(deps: SystemDeps): System {
     // Note tools are DISABLED (operator preference; see NOTE_TOOL_NAMES in registry.ts) —
     // intentionally not materialized, so they're never offered in the head tool picker.
     // Reminder tools
-    ...buildReminderTools(stores.schedules, tz, headId).map(e => e.definition),
+    ...buildReminderTools(stores.schedules, tz, headId, deps.headRoster ?? []).map(e => e.definition),
     // Schedule tools
     ...buildScheduleTools(stores.schedules, tz, unifiedLoader ?? null, headId).map(e => e.definition),
     // Optional tools (filesystem/bash/web) — lookup from registry, filter undefined
