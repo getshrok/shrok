@@ -81,6 +81,21 @@ git pull --ff-only origin main
 
 If that's not feasible (your dist commit is buried under other commits), `git pull --rebase` will conflict on `dashboard/dist/index.html` and `dashboard/dist/assets/`. Resolve by keeping the version from your replayed commit (the incoming side — it matches the JS source files your commit staged). The remote's dist will be overwritten again by the next CI run anyway.
 
+## Versioning & releases
+
+Keep the version moving **forward** — never let `main` accumulate shipped features under a version that's already been tagged (the exact trap this section exists to prevent). Semantic Versioning, pre-1.0: bump the **minor** (`0.X.0`) for new features / notable user-facing changes, the **patch** (`0.X.Y`) for fix-only releases.
+
+- **Source of truth:** the root `package.json` `version` is authoritative — it's what the startup banner logs (`[startup] Shrok vX.Y.Z`) and is exported as `SHROK_VERSION` for the app (`src/index.ts`). **`dashboard/package.json` must carry the same version** — bump both together, always in lockstep.
+- **The in-flight version** is the top, **undated** `## [X.Y.Z]` section in `CHANGELOG.md` (see the Changelog section below). That header names the version you're *accruing toward*; `package.json` keeps showing the last *released* version until you cut the release.
+- **Cutting a release** — do this at a coherent shipping point (not every commit), but don't let it stagnate:
+  1. Bump **both** `package.json` and `dashboard/package.json` to `X.Y.Z`.
+  2. Commit: `chore: bump version to X.Y.Z` — **source only; never stage `dashboard/dist`** (CI rebuilds it; see CI structure).
+  3. In `CHANGELOG.md`, date the in-flight header (`## [X.Y.Z] — YYYY-MM-DD`) and open a fresh `## [next]` section above it.
+  4. Annotated tag: `git tag -a vX.Y.Z -m "vX.Y.Z"`.
+  5. Push the commit **and** the tag: `git push origin main --follow-tags`. ⚠️ A tag left only on your machine is the most common miss — `--follow-tags` (or an explicit `git push origin vX.Y.Z`) is required, or the release isn't really cut.
+- **Tag ⇄ `package.json` ⇄ changelog stay equal:** a `vX.Y.Z` tag must point at the commit that set `package.json` to `X.Y.Z` and dated `## [X.Y.Z]`. Never tag without bumping, or bump without tagging.
+- Existing tags: `v0.1.0`, `v0.2.0`. ⚠️ At time of writing `package.json` is still `0.2.0` while `CHANGELOG.md` has a full undated `## [0.3.0]` of already-shipped work — that's precisely the stagnation to avoid. Cut `0.3.0` (bump both + date + `git tag -a v0.3.0` + push `--follow-tags`) so the running version reflects what's actually on `main`.
+
 ## Changelog
 
 `CHANGELOG.md` is the user-facing record of what shipped. Update it **whenever a notable user-facing change** lands on `main` — bug fixes that close issues, new tools or skills, channel additions, behavior changes the user should know about. Internal refactors, planning-doc churn, CI noise, and internal scaffolding (phase numbers, planning-framework milestones, requirement IDs) do not belong there.
