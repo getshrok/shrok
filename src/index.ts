@@ -84,6 +84,7 @@ import type { ChannelAdapter, InboundMessage } from './types/channel.js'
 import { fileURLToPath } from 'node:url'
 import { setStewardWorkspaceDir } from './head/steward.js'
 import { buildPrefixedText } from './head/sender-prefix.js'
+import { withTimeout } from './util/with-timeout.js'
 import { transcribeInboundAudio } from './head/transcribe-attachments.js'
 import { setProactiveWorkspaceDir } from './scheduler/proactive.js'
 import { setMemoryPromptsWorkspaceDir } from './memory/prompts.js'
@@ -440,7 +441,11 @@ async function main() {
       try {
         adapter.onMessage(headRouteMessage)
         headRouter.register(adapter)
-        await adapter.start()
+        await withTimeout(
+          adapter.start(),
+          config.channelStartTimeoutMs,
+          `channel ${ch.id} (${ch.vendor}) start`,
+        )
         headChannelAdapters.push(adapter)
         log.info(`[startup] head=${head.id} channel=${ch.id} (${ch.vendor}) connected`)
       } catch (err) {

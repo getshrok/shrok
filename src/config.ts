@@ -176,6 +176,12 @@ const ConfigSchema = z.object({
   // Timeout (ms) for MCP stdio operations: connect, listTools, and tool calls.
   mcpTimeoutMs: z.coerce.number().default(30_000),
 
+  // Timeout (ms) for each channel adapter's start() during boot. A channel
+  // whose connect never settles logs and is skipped rather than wedging the
+  // whole startup (dashboard, scheduler, and activation loop are gated behind
+  // channel bring-up). See issue #40.
+  channelStartTimeoutMs: z.coerce.number().default(30_000),
+
   // Paths
   dbPath: z.string(),
   migrationsDir: z.string().default('./sql'),
