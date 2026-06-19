@@ -36,6 +36,12 @@ Reminders are simple time-based nudges — text messages that get delivered to y
 
 For things you really can't miss (a meeting, medication), you can mark a reminder as acknowledgment-required. It then keeps nagging on a configurable interval until you explicitly tell Shrok you've handled it. If you have a Home Assistant Voice device configured, you can also set audible alarms and timers that ring on the device speaker until you say "stop."
 
+## 📡 Sensors
+
+Sensors are small scripts that run on a schedule and feed their output straight into Shrok's awareness — no agent, no model call. They're how Shrok always knows things like the current weather, your calendar, or whether the front door is locked, without you having to ask. A sensor's latest reading is shown to Shrok every time it thinks, and a sensor can also nudge Shrok the moment something noteworthy changes.
+
+Unlike a task, a sensor never runs the model itself — it just produces a small piece of text, which keeps it cheap enough to run every few minutes. You write the script (or ask Shrok to) on the Sensors page, then put it on a schedule — creating one doesn't run it, scheduling it does. A worked `example-sensor` ships with Shrok to copy from. See the [sensors doc](internals/sensors.md) for the full contract.
+
 ## 🧠 Memory
 
 Shrok remembers all past conversations you've had with it, and passively pulls them from memory as needed when it responds. 

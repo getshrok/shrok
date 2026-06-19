@@ -17,6 +17,7 @@ Shrok is a self-hosted personal agent that is:
 - Always the same entity, no matter which app you talk to it from (Discord/Slack/Telegram/WhatsApp/Zoho Cliq, and its own web interface)
 - Designed for its capabilities to be extended through skills (curated repo at [getshrok/skills](https://github.com/getshrok/skills) to avoid malicious skills) 
 - Can be set to do anything on a smart schedule (it can decide when something is appropriate to run)
+- Stays aware of live state through sensors (small scripts that, on a schedule, keep things like weather or home status in its context and can nudge it when something changes)
 
 Check out [the full overview](docs/overview.md), [the cheatsheet](docs/cheatsheet.md), and [the rest of the docs](docs/).
 

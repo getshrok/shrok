@@ -300,50 +300,63 @@ export default function SensorsPage() {
   return (
     <div className="flex h-full overflow-hidden">
       {/* ── Left panel: sensor list ─────────────────────────────────────────── */}
-      <div className="w-56 shrink-0 border-r border-zinc-800 flex flex-col overflow-hidden">
-        <div className="px-3 py-3 border-b border-zinc-800 flex items-center justify-between">
-          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Sensors</span>
+      {/* Mirrors the shared KindEditorPage list pane (Tasks/Skills) so all three
+          read as the same UI family: h1 header, a description blurb, w-48 width,
+          and the same row styling. Sensors keep a bespoke page (no frontmatter /
+          metadata form to share) but match the look. */}
+      <div className="w-48 shrink-0 border-r border-zinc-800 flex flex-col overflow-y-auto">
+        <div className="px-4 pt-6 pb-3 border-b border-zinc-800 shrink-0 flex items-center justify-between">
+          <h1 className="text-lg font-semibold text-zinc-100">Sensors</h1>
           <button
-            onClick={() => { setShowNewForm(f => !f); setNewError('') }}
-            title={showNewForm ? 'Cancel' : 'New sensor'}
-            className="text-zinc-500 hover:text-zinc-200 transition-colors text-lg leading-none"
+            onClick={() => { setShowNewForm(true); setNewError(''); setSelectedSlug(null) }}
+            className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
           >
-            {showNewForm ? '×' : '+'}
+            + New
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="px-4 py-2 border-b border-zinc-800 shrink-0">
+          <p className="text-[11px] text-zinc-500 leading-snug">
+            Small scripts that run on a schedule and report what they observe — keeping live status (weather, calendar, host health) in the assistant's context, and nudging it when something noteworthy happens.
+          </p>
+        </div>
+
+        <nav className="flex-1 px-2 py-3">
           {listQuery.isLoading && (
-            <div className="px-3 py-4 text-xs text-zinc-500">Loading…</div>
+            <p className="px-2 py-1 text-xs text-zinc-500">Loading…</p>
           )}
           {listQuery.isError && (
-            <div className="px-3 py-4 text-xs text-red-400">Failed to load sensors</div>
+            <p className="px-2 py-1 text-xs text-red-400">Failed to load sensors</p>
           )}
           {!listQuery.isLoading && sensors.length === 0 && (
-            <div className="px-3 py-4 text-xs text-zinc-500">No sensors yet.</div>
+            <p className="px-2 py-1 text-xs text-zinc-500">No sensors yet</p>
           )}
-          {sensors.map(({ slug }) => (
-            <div
-              key={slug}
-              className={`group flex items-center gap-1 px-3 py-2 cursor-pointer transition-colors ${
-                selectedSlug === slug
-                  ? 'bg-zinc-800 text-zinc-100'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
-              }`}
-              onClick={() => selectSlug(slug)}
-            >
-              <span className="flex-1 text-sm truncate">{slug}</span>
-              <button
-                onClick={e => { e.stopPropagation(); handleDelete(slug) }}
-                disabled={deleteMutation.isPending}
-                title="Delete sensor"
-                className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-colors shrink-0 disabled:opacity-30"
+          {sensors.map(({ slug }) => {
+            const selected = selectedSlug === slug
+            return (
+              <div
+                key={slug}
+                role="button"
+                tabIndex={0}
+                onClick={() => selectSlug(slug)}
+                onKeyDown={e => e.key === 'Enter' && selectSlug(slug)}
+                className={`flex items-stretch rounded cursor-pointer transition-colors group ${selected ? 'bg-zinc-800' : 'hover:bg-zinc-800/60'}`}
               >
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
-        </div>
+                <div className={`flex-1 min-w-0 px-2 py-1.5 text-xs flex items-center ${selected ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                  <span className="font-medium break-words flex-1">{slug}</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleDelete(slug) }}
+                    disabled={deleteMutation.isPending}
+                    title="Delete sensor"
+                    className="shrink-0 ml-1 opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-colors disabled:opacity-30"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </nav>
       </div>
 
       {/* ── Right panel: editor or new-sensor form ──────────────────────────── */}

@@ -255,6 +255,23 @@ export function buildSystem(deps: SystemDeps): System {
       }
     }
   } catch { /* system tasks dir missing (e.g. test env) — skip seeding */ }
+
+  // Seed workspace with bundled sensors that aren't already present (mirrors tasks seeding).
+  // Sensors aren't loaded via a KindLoader — they're plain sensor.mjs scripts the scheduler
+  // runs — so this only stages the bundled example into the workspace on first run.
+  const sensorsPath = path.join(workspacePath, 'sensors')
+  fs.mkdirSync(sensorsPath, { recursive: true })
+  const systemSensorsPath = path.resolve(SRC_DIR, '../sensors')
+  try {
+    for (const entry of fs.readdirSync(systemSensorsPath, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const dest = path.join(sensorsPath, entry.name)
+      if (!fs.existsSync(dest)) {
+        fs.cpSync(path.join(systemSensorsPath, entry.name), dest, { recursive: true })
+      }
+    }
+  } catch { /* system sensors dir missing (e.g. test env) — skip seeding */ }
+
   const taskKindLoader = new FileSystemKindLoader({ root: tasksPath, kind: 'task', filename: 'TASK.md' })
   const unifiedLoader = new UnifiedLoader(skillKindLoader, taskKindLoader)
   unifiedLoader.warnCollisions()

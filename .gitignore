@@ -31,3 +31,6 @@ skills/*/MEMORY.md
 
 # ── Baseline job runtime state ───────────────────────────────────────────
 tasks/*/MEMORY.md
+# Sensors watermark their own state at runtime; the bundled example must ship
+# only its sensor.mjs, never a state.json from an in-place run.
+sensors/*/state.json
