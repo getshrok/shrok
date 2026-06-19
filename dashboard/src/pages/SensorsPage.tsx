@@ -561,7 +561,7 @@ export default function SensorsPage() {
           <div className="flex-1 flex items-center justify-center text-sm text-zinc-500">
             {sensors.length === 0
               ? 'Create your first sensor using the + button.'
-              : 'Select a sensor to edit.'}
+              : 'Select a sensor or create a new one.'}
           </div>
         )}
       </div>
