@@ -1827,3 +1827,41 @@ describe('head-spawn first message — task is not shown to the agent (issue #45
     expect(text).toContain('some supporting context')
   })
 })
+
+// ─── sensor sub-agent dispatch — must not pass a non-skill skillName (regression) ──
+//
+// The activation handler spawns sensor sub-agents with trigger:'sensor' and NO skillName.
+// It previously passed skillName:'sensor:<slug>' as a cosmetic label, but spawn() does
+// resolve-or-throw on skillName, and 'sensor:<slug>' resolves to nothing (a sensor is neither
+// a skill nor a task) — so the spawn threw and no sub-agent ever ran. The activation tests
+// mock spawn(), so they never exercised the throw; these run the REAL runner.
+describe('sensor sub-agent spawn (regression: no bogus skillName)', () => {
+  it('a trigger:sensor spawn with no skillName does not throw and the agent actually runs', async () => {
+    const db = freshDb()
+    const llmRouter = makeLLMRouter([makeEndTurnResponse()])
+    const { runner } = makeRunner(llmRouter, db)
+    // The regression: before the fix this rejected with "Unknown skill: 'sensor:<slug>'".
+    await expect(runner.spawn({
+      agentId: 'sensor-meeting-nag_abc123',
+      task: 'Create a reminder for the meeting.',
+      trigger: 'sensor',
+      headId: 'default',
+    })).resolves.toBe('sensor-meeting-nag_abc123')
+    await runner.awaitAll(2000)
+    // The agent reached the LLM — i.e. it ran, rather than the spawn aborting before any work.
+    expect(llmRouter.complete).toHaveBeenCalled()
+  })
+
+  it('spawn() still rejects an unresolvable skillName (the guard that bit the sensor path)', async () => {
+    const db = freshDb()
+    const llmRouter = makeLLMRouter([makeEndTurnResponse()])
+    const { runner } = makeRunner(llmRouter, db)
+    await expect(runner.spawn({
+      task: 'x',
+      name: 'bogus',
+      trigger: 'sensor',
+      skillName: 'sensor:meeting-nag',
+      headId: 'default',
+    })).rejects.toThrow(/Unknown skill/)
+  })
+})

@@ -1147,12 +1147,16 @@ export class ActivationLoop {
     const prompt = parts.join('\n\n')
 
     log.info(`[scheduler] sensor sub-agent dispatched for sensor:${slug}`)
+    // NB: do NOT pass skillName here. This spawn does not run a skill — the agent's
+    // instructions are `prompt`. skillName is a lookup key that spawn() resolves-or-throws,
+    // and `sensor:<slug>` resolves to nothing (a sensor is neither a skill nor a task), which
+    // previously aborted the spawn so no sub-agent ran. The "which sensor" dashboard label is
+    // already carried by agentId (generateAgentId(`sensor:${slug}`) → "sensor <slug>" pill).
     await this.opts.toolExecutorOpts.agentRunner.spawn({
       agentId,
       task: prompt,
       trigger: 'sensor',
       headId: this.opts.headId,
-      skillName: `sensor:${slug}`,   // D-08: dashboard xray label shows which sensor dispatched
     })
   }
 

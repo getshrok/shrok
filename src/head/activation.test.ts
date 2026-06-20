@@ -598,14 +598,19 @@ describe('handleSensorSubAgentTrigger — sensor sub-agent dispatch (SENSOR-19)'
     vi.clearAllMocks()
   })
 
-  it('spawns with trigger:sensor, skillName:sensor:<slug>, and task=event.prompt', async () => {
+  it('spawns with trigger:sensor, NO skillName, slug carried in agentId, task=event.prompt', async () => {
     fix = makeFixture()
     await fireSensor(fix.loop, sensorEvent('calendar', 'Create a reminder for 2pm meeting.'))
 
     expect(fix.agentRunner.spawn).toHaveBeenCalledOnce()
     const args = vi.mocked(fix.agentRunner.spawn).mock.calls[0]![0] as any
     expect(args.trigger).toBe('sensor')
-    expect(args.skillName).toBe('sensor:calendar')
+    // skillName must NOT be passed: 'sensor:<slug>' is not a real skill, and spawn() does
+    // resolve-or-throw on skillName — passing it aborted the spawn so no sub-agent ran.
+    // The "which sensor" label is carried by agentId instead.
+    expect(args.skillName).toBeUndefined()
+    expect(args.agentId).toContain('sensor')
+    expect(args.agentId).toContain('calendar')
     expect(args.task).toContain('Create a reminder for 2pm meeting.')
   })
 
