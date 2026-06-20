@@ -20,6 +20,124 @@ function writeScript(dir: string, name: string, content: string): string {
   return p
 }
 
+describe('runSensor — triple-sink (Phase 52)', () => {
+  let tmpDir: string
+  let ambientBaseDir: string
+  const headId = 'ashley'
+  const slug = 'weather'
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-test-phase52-'))
+    ambientBaseDir = path.join(tmpDir, 'ambient')
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  // ── headEvent key (renamed from event) — preserves Phase-51 behavior ────────
+
+  it('headEvent: enqueues sensor_event (rename preserves Phase-51 behavior)', async () => {
+    const script = writeScript(tmpDir, 'headEvent.mjs',
+      `process.stdout.write(JSON.stringify({ headEvent: { text: "storm approaching" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    expect(sink.enqueue).toHaveBeenCalledOnce()
+    const [event, priority, enqueuedHeadId] = sink.enqueue.mock.calls[0] as [QueueEvent, number, string]
+    expect(event.type).toBe('sensor_event')
+    if (event.type === 'sensor_event') {
+      expect(event.slug).toBe(slug)
+      expect(event.text).toBe('storm approaching')
+    }
+    expect(priority).toBe(PRIORITY.SENSOR_EVENT)
+    expect(enqueuedHeadId).toBe(headId)
+  })
+
+  // ── Old event key is dead — no back-compat ────────────────────────────────
+
+  it('old event key: enqueues NOTHING (no back-compat, D-02)', async () => {
+    const script = writeScript(tmpDir, 'old-event.mjs',
+      `process.stdout.write(JSON.stringify({ event: { text: "still using old key" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── subAgentEvent: { prompt } enqueues sensor_sub_agent_trigger ──────────
+
+  it('subAgentEvent: enqueues sensor_sub_agent_trigger at SENSOR_SUB_AGENT_TRIGGER priority', async () => {
+    const script = writeScript(tmpDir, 'subagent.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: { prompt: "do X" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    expect(sink.enqueue).toHaveBeenCalledOnce()
+    const [event, priority, enqueuedHeadId] = sink.enqueue.mock.calls[0] as [QueueEvent, number, string]
+    expect(event.type).toBe('sensor_sub_agent_trigger')
+    if (event.type === 'sensor_sub_agent_trigger') {
+      expect(event.slug).toBe(slug)
+      expect(event.prompt).toBe('do X')
+      expect(typeof event.id).toBe('string')
+      expect(typeof event.createdAt).toBe('string')
+    }
+    expect(priority).toBe(PRIORITY.SENSOR_SUB_AGENT_TRIGGER)
+    expect(enqueuedHeadId).toBe(headId)
+  })
+
+  // ── Malformed subAgentEvent: silently skipped ─────────────────────────────
+
+  it('subAgentEvent missing prompt: silently skipped, enqueue NOT called', async () => {
+    const script = writeScript(tmpDir, 'bad-subagent-no-prompt.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: {} }))`)
+    const sink = makeSink()
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('subAgentEvent as string (not object): silently skipped', async () => {
+    const script = writeScript(tmpDir, 'bad-subagent-string.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: "bad" }))`)
+    const sink = makeSink()
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('subAgentEvent as null: silently skipped', async () => {
+    const script = writeScript(tmpDir, 'bad-subagent-null.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: null }))`)
+    const sink = makeSink()
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+    expect(sink.enqueue).not.toHaveBeenCalled()
+  })
+
+  // ── All three sinks active simultaneously ─────────────────────────────────
+
+  it('all three sinks: ambient written AND enqueue called twice (headEvent + subAgentEvent)', async () => {
+    const script = writeScript(tmpDir, 'all-three.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "sunny", headEvent: { text: "alert" }, subAgentEvent: { prompt: "do work" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    // Ambient file written
+    const outputFilePath = path.join(ambientBaseDir, headId, `${slug}.md`)
+    const body = fs.readFileSync(outputFilePath, 'utf8')
+    expect(body).toBe('sunny')
+
+    // Enqueue called exactly twice
+    expect(sink.enqueue).toHaveBeenCalledTimes(2)
+    const calls = sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>
+    const types = calls.map(c => c[0].type)
+    expect(types).toContain('sensor_event')
+    expect(types).toContain('sensor_sub_agent_trigger')
+  })
+})
+
 describe('runSensor — dual-sink, head-scoped', () => {
   let tmpDir: string
   let ambientBaseDir: string
