@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { CADENCE_ERROR_MESSAGE } from '../scheduler/cadence.js'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
 import * as path from 'node:path'
 import * as url from 'node:url'
+import { HeadToolExecutor } from '../head/index.js'
+import { FileSystemIdentityLoader } from '../identity/loader.js'
 import { LocalAgentRunner } from './local.js'
 import { buildContextSnapshot } from './context.js'
 import { buildScopedEnv } from './env.js'
@@ -1863,5 +1867,89 @@ describe('sensor sub-agent spawn (regression: no bogus skillName)', () => {
       skillName: 'sensor:meeting-nag',
       headId: 'default',
     })).rejects.toThrow(/Unknown skill/)
+  })
+})
+
+// ─── issue #45 parity: message_agent delivers the verbatim context, never the label ──
+//
+// A head follow-up to an agent must deliver the verbatim conversation (`context`) and NOT
+// the head-authored intent label (`message`) — uniformly across running, completed, and
+// suspended agents. This mirrors the spawn_agent #45 treatment (b6cada7). We drive the head
+// dispatch (HeadToolExecutor) with a captured agentRunner.update and a per-state agentStore,
+// stewards disabled so delivery actually happens, and assert the delivered string.
+describe('message_agent — context is delivered, message is not (issue #45 parity)', () => {
+  const CONTEXT = 'Ashley: yes go ahead, the window seat one under $300'
+  const MESSAGE = 'PRESCRIBED_MESSAGE_marker'
+
+  function makeExecutor(state: { status: string; task?: string; pendingQuestion?: string }): {
+    executor: HeadToolExecutor
+    update: ReturnType<typeof vi.fn>
+    tmpDir: string
+  } {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'msg-agent-45-'))
+    const update = vi.fn().mockResolvedValue(undefined)
+    const agentRunner = {
+      spawn: vi.fn().mockResolvedValue('tent_1'),
+      update,
+      signal: vi.fn().mockResolvedValue(undefined),
+      retract: vi.fn().mockResolvedValue(undefined),
+      checkStatus: vi.fn().mockResolvedValue({ text: '', stale: false }),
+      awaitAll: vi.fn().mockResolvedValue(undefined),
+    }
+    const agentStore = {
+      get: vi.fn().mockReturnValue({ id: 't1', headId: 'default', ...state }),
+    }
+    const memory = {
+      chunk: vi.fn(), retrieve: vi.fn().mockResolvedValue([]), compact: vi.fn(),
+      getTopics: vi.fn().mockResolvedValue([]), deleteTopic: vi.fn(),
+    }
+    const usageStore = { record: vi.fn() }
+    const skillLoader = {
+      load: vi.fn(), listAll: vi.fn().mockReturnValue([]), write: vi.fn(), delete: vi.fn(), watch: vi.fn(),
+    }
+    // Casts: these mocks implement only the surface the message_agent dispatch touches.
+    const executor = new HeadToolExecutor({
+      headId: 'default',
+      agentRunner: agentRunner as never,
+      agentStore: agentStore as never,
+      skillLoader: skillLoader as never,
+      topicMemory: memory as never,
+      usageStore: usageStore as never,
+      identityDir: tmpDir,
+      identityLoader: new FileSystemIdentityLoader(tmpDir, tmpDir),
+      messages: { getAll: () => [], getRecent: () => [], getRecentText: () => [] } as never,
+      // Stewards OFF so delivery happens; agentContinuation ON so a completed agent isn't rejected.
+      agentContinuationEnabled: true,
+    })
+    return { executor, update, tmpDir }
+  }
+
+  async function dispatchAndGetDelivered(state: { status: string; task?: string; pendingQuestion?: string }): Promise<string> {
+    const { executor, update, tmpDir } = makeExecutor(state)
+    try {
+      const result = await executor.execute({
+        id: 'tc1',
+        name: 'message_agent',
+        input: { agentId: 't1', message: MESSAGE, context: CONTEXT },
+      })
+      expect(JSON.parse(result.content as string)).toMatchObject({ ok: true })
+      expect(update).toHaveBeenCalledTimes(1)
+      return update.mock.calls[0]![1] as string
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
+  }
+
+  it.each([
+    ['running', { status: 'running', task: 'book a flight' }],
+    ['completed', { status: 'completed', task: 'book a flight' }],
+    ['suspended', { status: 'suspended', pendingQuestion: 'which seat?' }],
+  ] as const)('%s agent: delivers the wrapped verbatim context and never the message label', async (_label, state) => {
+    const delivered = await dispatchAndGetDelivered(state)
+    // (a) the verbatim context + the delivery wrapper text are present
+    expect(delivered).toContain('continue your work based on it')
+    expect(delivered).toContain('window seat one under $300')
+    // (b) the head-authored message label never reaches the agent
+    expect(delivered).not.toContain(MESSAGE)
   })
 })
