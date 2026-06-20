@@ -39,15 +39,19 @@ export interface SensorRunner {
 /**
  * Execute a sensor script as a child Node process.
  *
- * The script MUST write exactly one JSON object `{ ambient?, event? }` to stdout.
+ * The script MUST write exactly one JSON object
+ * `{ ambient?, headEvent?, subAgentEvent? }` to stdout.
  *
  * - `ambient` (string): written verbatim (truncated to SENSOR_OUTPUT_CAP) to
  *   `ambient/<headId>/<slug>.md` (per-head, not flat).
  *   Empty string CLEARS the block (retraction).  Omitted key LEAVES the file
  *   stale (D-05 — not an overwrite).
- * - `event` (object with `text: string`): enqueues a `sensor_event` for the
+ * - `headEvent` (object with `text: string`): enqueues a `sensor_event` for the
  *   schedule's headId at priority 15.  Ambient-only payloads do NOT enqueue
  *   (SENSOR-06 / Pitfall 6).
+ * - `subAgentEvent` (object with `prompt: string`): enqueues a
+ *   `sensor_sub_agent_trigger`, gated by the proactive steward, spawns a
+ *   background sub-agent. Never wakes the head. (SENSOR-17/19)
  * - Malformed / non-object stdout → failure marker, no enqueue.
  * - Process failure (nonzero / timeout / throw) → failure marker, no enqueue.
  *
@@ -127,9 +131,9 @@ export async function runSensor(
           return
         }
 
-        // ── Dual-sink dispatch ────────────────────────────────────────────
+        // ── Triple-sink dispatch ──────────────────────────────────────────
         const payload = parsed as Record<string, unknown>
-        const { ambient, event } = payload
+        const { ambient, headEvent, subAgentEvent } = payload
 
         // Ambient sink: write only when the key is present AND a string.
         // Empty string = retraction (writes empty file).
@@ -139,15 +143,15 @@ export async function runSensor(
           writeFileAtomicSync(outputPath, ambient.slice(0, SENSOR_OUTPUT_CAP), { mode: 0o644 })
         }
 
-        // Event sink: enqueue only when event is a non-null object with a string text.
-        // Absent, non-object, or missing-text event → skip (not an error).
+        // Head event sink: enqueue only when headEvent is a non-null object with a string text.
+        // Absent, non-object, or missing-text headEvent → skip (not an error).
         if (
-          event !== null &&
-          typeof event === 'object' &&
-          !Array.isArray(event) &&
-          typeof (event as Record<string, unknown>)['text'] === 'string'
+          headEvent !== null &&
+          typeof headEvent === 'object' &&
+          !Array.isArray(headEvent) &&
+          typeof (headEvent as Record<string, unknown>)['text'] === 'string'
         ) {
-          const text = (event as Record<string, unknown>)['text'] as string
+          const text = (headEvent as Record<string, unknown>)['text'] as string
           try {
             enqueue.enqueue(
               {
@@ -162,6 +166,32 @@ export async function runSensor(
             )
           } catch (enqueueErr) {
             writeFailure(`failed to enqueue sensor event: ${(enqueueErr as Error).message ?? String(enqueueErr)}`)
+          }
+        }
+
+        // Sub-agent event sink: enqueue only when subAgentEvent is a non-null object with a string prompt.
+        // Absent, non-object, or missing-prompt subAgentEvent → skip (not an error).
+        if (
+          subAgentEvent !== null &&
+          typeof subAgentEvent === 'object' &&
+          !Array.isArray(subAgentEvent) &&
+          typeof (subAgentEvent as Record<string, unknown>)['prompt'] === 'string'
+        ) {
+          const prompt = (subAgentEvent as Record<string, unknown>)['prompt'] as string
+          try {
+            enqueue.enqueue(
+              {
+                type: 'sensor_sub_agent_trigger',
+                id: generateId('qe'),
+                slug,
+                prompt,
+                createdAt: new Date().toISOString(),
+              },
+              PRIORITY.SENSOR_SUB_AGENT_TRIGGER,
+              headId,
+            )
+          } catch (enqueueErr) {
+            writeFailure(`failed to enqueue sensor sub-agent trigger: ${(enqueueErr as Error).message ?? String(enqueueErr)}`)
           }
         }
 

@@ -162,7 +162,7 @@ describe('runSensor — dual-sink, head-scoped', () => {
 
   it('both-fields: writes ambient file AND enqueues sensor_event', async () => {
     const script = writeScript(tmpDir, 'both.mjs',
-      `process.stdout.write(JSON.stringify({ ambient: "72F sunny", event: { text: "storm approaching" } }))`)
+      `process.stdout.write(JSON.stringify({ ambient: "72F sunny", headEvent: { text: "storm approaching" } }))`)
     const sink = makeSink()
 
     await runSensor(slug, headId, script, ambientBaseDir, sink)
@@ -201,9 +201,9 @@ describe('runSensor — dual-sink, head-scoped', () => {
 
   // ── Event-only payload — file NOT written, enqueue called ─────────────────
 
-  it('event-only: enqueues event, ambient file NOT written (D-05 leave-stale)', async () => {
+  it('headEvent-only: enqueues event, ambient file NOT written (D-05 leave-stale)', async () => {
     const script = writeScript(tmpDir, 'event-only.mjs',
-      `process.stdout.write(JSON.stringify({ event: { text: "storm" } }))`)
+      `process.stdout.write(JSON.stringify({ headEvent: { text: "storm" } }))`)
     const sink = makeSink()
 
     await runSensor(slug, headId, script, ambientBaseDir, sink)
@@ -314,9 +314,9 @@ describe('runSensor — dual-sink, head-scoped', () => {
 
   // ── Malformed event (no text): ambient still written, enqueue NOT called ──
 
-  it('event without text: ambient written (if present), enqueue NOT called (type-guard)', async () => {
+  it('headEvent without text: ambient written (if present), enqueue NOT called (type-guard)', async () => {
     const script = writeScript(tmpDir, 'bad-event.mjs',
-      `process.stdout.write(JSON.stringify({ ambient: "hot", event: {} }))`)
+      `process.stdout.write(JSON.stringify({ ambient: "hot", headEvent: {} }))`)
     const sink = makeSink()
 
     await runSensor(slug, headId, script, ambientBaseDir, sink)
@@ -326,9 +326,9 @@ describe('runSensor — dual-sink, head-scoped', () => {
     expect(sink.enqueue).not.toHaveBeenCalled()
   })
 
-  it('event as string (not object): ambient written, enqueue NOT called', async () => {
+  it('headEvent as string (not object): ambient written, enqueue NOT called', async () => {
     const script = writeScript(tmpDir, 'str-event.mjs',
-      `process.stdout.write(JSON.stringify({ ambient: "cool", event: "bad" }))`)
+      `process.stdout.write(JSON.stringify({ ambient: "cool", headEvent: "bad" }))`)
     const sink = makeSink()
 
     await runSensor(slug, headId, script, ambientBaseDir, sink)
@@ -459,7 +459,7 @@ describe('runSensor — dual-sink, head-scoped', () => {
 
   it('enqueue throws: writes failure marker instead of rejecting', async () => {
     const script = writeScript(tmpDir, 'ev.mjs',
-      `process.stdout.write(JSON.stringify({ event: { text: "alert" } }))`)
+      `process.stdout.write(JSON.stringify({ headEvent: { text: "alert" } }))`)
     const sink = makeSink()
     sink.enqueue.mockImplementation(() => { throw new Error('queue full') })
 
@@ -476,7 +476,7 @@ describe('runSensor — dual-sink, head-scoped', () => {
 
   it('sensor_event payload has correct type, slug, text fields', async () => {
     const script = writeScript(tmpDir, 'payload.mjs',
-      `process.stdout.write(JSON.stringify({ event: { text: "temperature: 22C" } }))`)
+      `process.stdout.write(JSON.stringify({ headEvent: { text: "temperature: 22C" } }))`)
     const sink = makeSink()
 
     await runSensor('humidity', headId, script, ambientBaseDir, sink)
