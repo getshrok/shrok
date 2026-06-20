@@ -20,7 +20,7 @@ export interface UsageEntry {
   cacheWriteTokens?: number
   /** Denormalized from the agents row so scheduled-task spend self-describes
    *  without needing the agents JOIN. See sql/026_usage_attribution.sql. */
-  trigger?: 'scheduled' | 'manual' | 'ad_hoc'
+  trigger?: 'scheduled' | 'manual' | 'ad_hoc' | 'sensor'
   /** Semantic "target name" — the skill-or-task name (NOT the slug label). */
   targetName?: string
 }

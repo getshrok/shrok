@@ -74,7 +74,7 @@ export interface ToolLoopOptions {
   sourceId: string | null
   /** Attribution: denormalized onto usage rows so scheduled-task spend self-describes
    *  without needing the agents JOIN (see sql/026_usage_attribution.sql). */
-  trigger?: 'scheduled' | 'manual' | 'ad_hoc'
+  trigger?: 'scheduled' | 'manual' | 'ad_hoc' | 'sensor'
   targetName?: string
   maxRounds?: number             // default: unlimited (loop steward is the stop mechanism)
   stewardModel?: string            // model for the loop steward (defaults to 'dumb')

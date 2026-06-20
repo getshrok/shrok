@@ -81,6 +81,12 @@ export function deriveQueryText(
     case 'sensor_event':
       return trigger.text
 
+    case 'sensor_sub_agent_trigger':
+      // This event type is handled by handleSensorSubAgentTrigger before reaching
+      // the head activation path — it should never be passed to deriveQueryText.
+      // Return the slug as fallback for observability.
+      return trigger.slug
+
   }
 }
 

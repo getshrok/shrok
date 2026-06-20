@@ -45,7 +45,7 @@ export interface AgentState {
   status: AgentStatus
   model: string
   task: string
-  trigger: 'manual' | 'scheduled' | 'ad_hoc'
+  trigger: 'manual' | 'scheduled' | 'ad_hoc' | 'sensor'
   /** Head this agent belongs to (Phase 34). Carried through the agents.head_id column. */
   headId: string
   /** Additional heads to deliver task completion to (Phase 44). Only populated on top-level

@@ -157,9 +157,9 @@ export type QueueEvent =
     }
   | {
       /**
-       * Push sink for a sensor's JSON payload (`{ ambient?, event? }`).
-       * Enqueued for the sensor schedule's headId by the sensor runner (Plan 02)
-       * and injected into the model turn by the context injector (Plan 03).
+       * Push sink for a sensor's JSON payload (`{ ambient?, headEvent? }`).
+       * Enqueued for the sensor schedule's headId by the sensor runner
+       * and injected into the model turn by the context injector.
        * See SENSOR-15/16. Fields are minimal per D-02 (no severity/title/priority/headId).
        */
       type: 'sensor_event'
@@ -168,6 +168,21 @@ export type QueueEvent =
       slug: string
       /** The observation text (body of the sensor's JSON payload). */
       text: string
+      createdAt: string
+    }
+  | {
+      /**
+       * Silent sub-agent dispatch sink (`subAgentEvent: { prompt }` in sensor payload).
+       * Enqueued by the sensor runner; handled by handleSensorSubAgentTrigger which
+       * gates via the proactive steward then spawns a background agent.
+       * Never reaches the head activation path. See SENSOR-17/19.
+       */
+      type: 'sensor_sub_agent_trigger'
+      id: string
+      /** Which sensor dispatched — used for skillName labeling (D-08). */
+      slug: string
+      /** The instruction for the spawned sub-agent (the subAgentEvent.prompt value). */
+      prompt: string
       createdAt: string
     }
 
@@ -189,6 +204,7 @@ export const PRIORITY = {
   // third-party `webhook` (20) yet above scheduler-internal `schedule_trigger`/
   // `reminder_trigger` (10), which themselves spawn/re-enqueue work.
   SENSOR_EVENT: 15,
+  SENSOR_SUB_AGENT_TRIGGER: 10,
   SCHEDULE_TRIGGER: 10,
   REMINDER_TRIGGER: 10,
 } as const
