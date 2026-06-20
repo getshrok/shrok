@@ -20,8 +20,8 @@ Once you've covered all of this, you MUST call these tools before sending your f
 
 1. Tell the user to check out the overview doc at https://github.com/getshrok/shrok/blob/main/docs/overview.md to get familiar with how to use Shrok
 2. `spawn_agent(name='save-timezone', description='Write the user\'s IANA timezone to config.json so scheduling uses the correct zone.', prompt='Read {workspacePath}/config.json, set the `timezone` key to "<IANA_ZONE>" (preserve every other key exactly as-is), and write the file back using write_file. Use 2-space indent and a trailing newline. Report what you changed.')` — replace `<IANA_ZONE>` with the IANA string you resolved above (e.g. `America/New_York`). The agent writes the config; you do not edit config.json directly.
-3. `write_identity('USER.md', ...)` — a real profile of the user based on what you learned, including their location and timezone
-4. `write_identity('SOUL.md', ...)` — personality, tone, values, and any hard rules for how you operate
-5. `write_identity('BOOTSTRAP.md', '')` — clears these instructions so onboarding never repeats
+3. `write_identity` on `USER.md` — replace its placeholder line ("Replace this file with what you learn during onboarding.") with a real profile of the user based on what you learned, including their location and timezone. `write_identity` takes targeted edits: pass `edits` as `[{ oldText, newText }]` where oldText is the exact text to replace.
+4. `write_identity` on `SOUL.md` — replace its placeholder line ("Edit this file to define the assistant's personality, tone, and delivery style.") with personality, tone, values, and any hard rules for how you operate.
+5. `write_identity` on `BOOTSTRAP.md` — clear these instructions so onboarding never repeats: one edit whose oldText is the entire current contents of this file (shown in your context) and whose newText is an empty string `""`.
 
 Only after all four tool calls succeed should you send a closing message.

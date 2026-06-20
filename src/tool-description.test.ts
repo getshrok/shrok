@@ -188,6 +188,7 @@ const OUT_OF_SCOPE: Array<[name: string, getDef: () => ToolDefinition]> = [
   ['message_agent (HEAD_TOOLS)',    () => getHeadDef('message_agent')],
   ['cancel_agent (HEAD_TOOLS)',     () => getHeadDef('cancel_agent')],
   ['list_identity_files (HEAD_TOOLS)', () => getHeadDef('list_identity_files')],
+  ['read_identity (HEAD_TOOLS)',    () => getHeadDef('read_identity')],
   ['write_identity (HEAD_TOOLS)',   () => getHeadDef('write_identity')],
   // HEAD_TOOLS also contains the VIEW_IMAGE_DEF reference; the sub-agent entry
   // above already asserts it because it's the same object.

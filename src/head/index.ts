@@ -15,6 +15,7 @@ import type { IdentityLoader } from '../identity/loader.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
 import { runResumeSteward, runMessageAgentSteward } from './steward.js'
+import { applyIdentityEdits } from './identity-edit.js'
 import {
   VIEW_IMAGE_DEF, executeViewImage,
   HEAD_RUNNABLE_TOOL_NAMES,
@@ -134,15 +135,37 @@ export const HEAD_TOOLS: ToolDefinition[] = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'write_identity',
-    description: 'Overwrite an existing identity file. Use list_identity_files to see which files exist — writing to a non-existent file is an error. Changes take effect on the next activation. USER.md stores facts about the user: preferences, personal details, people in their life, and anything they ask to be remembered. SOUL.md stores personality, tone, and the assistant\'s name.',
+    name: 'read_identity',
+    description: 'Get the current contents of an identity file before editing it with write_identity. All identity files are already loaded verbatim into your context at the start of every turn, so this points you to the in-context copy rather than re-sending the text — read it directly from your context.',
     inputSchema: {
       type: 'object',
       properties: {
         file: { type: 'string', description: 'Filename, e.g. USER.md' },
-        content: { type: 'string' },
       },
-      required: ['file', 'content'],
+      required: ['file'],
+    },
+  },
+  {
+    name: 'write_identity',
+    description: 'Edit an existing identity file with targeted replacements. Provide `edits` as a list of { oldText, newText } changes; each oldText must match the file EXACTLY ONCE — include enough surrounding context to be unique, or it is rejected. Copy oldText verbatim from the file as it appears in your context (every identity file is included in your context each turn — do not call anything to fetch it). To clear a file, use one edit whose oldText is its full current contents and whose newText is "". Use list_identity_files to see which files exist — editing a non-existent file is an error. Changes take effect on the next activation. USER.md stores facts about the user: preferences, personal details, people in their life, and anything they ask to be remembered. SOUL.md stores personality, tone, and the assistant\'s name.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Filename, e.g. USER.md' },
+        edits: {
+          type: 'array',
+          description: 'Replacements applied in order. Each replaces an exact oldText with newText.',
+          items: {
+            type: 'object',
+            properties: {
+              oldText: { type: 'string', description: 'Exact text to find and replace (must match the file exactly once).' },
+              newText: { type: 'string', description: 'Text to replace it with. Use "" to delete the matched text.' },
+            },
+            required: ['oldText', 'newText'],
+          },
+        },
+      },
+      required: ['file', 'edits'],
     },
   },
   VIEW_IMAGE_DEF,
@@ -187,7 +210,7 @@ export const HEAD_TOOLS: ToolDefinition[] = [
 ]
 
 /**
- * The names of the 10 head-executable tools — derived from HEAD_TOOLS so they
+ * The names of the head-executable tools — derived from HEAD_TOOLS so they
  * cannot drift. Used as the pre-feature default for the global head-tool layer
  * (TOOLCFG-01/07): a no-config install resolves the head to exactly these names.
  * Consumed by src/config.ts as `headToolDefaults.allowedTools` default and by
@@ -508,24 +531,59 @@ export class HeadToolExecutor implements ToolExecutor {
         return JSON.stringify(this.opts.identityLoader.listFiles())
       }
 
+      case 'read_identity': {
+        const file = input['file'] as string
+        const baseName = path.basename(file)
+        const knownFiles = this.opts.identityLoader.listFiles()
+        if (!knownFiles.includes(baseName)) {
+          return JSON.stringify({ error: true, message: `Identity file "${baseName}" does not exist. Use list_identity_files to see available files.` })
+        }
+        // Identity files are injected verbatim into the system prompt at the start of
+        // every turn, so the head already has the current contents in front of it.
+        // Rather than re-sending the body (which can grow large enough to truncate the
+        // history window), point the head at the copy it already holds. This still gives
+        // the head a real tool to reach for so it never spawns an agent just to "read".
+        const content = this.opts.identityLoader.readFile(baseName)
+        if (content === null) {
+          return JSON.stringify({ error: true, message: `Could not read identity file "${baseName}".` })
+        }
+        if (content.trim() === '') {
+          return `"${baseName}" is currently empty.`
+        }
+        return `The current contents of "${baseName}" are already included verbatim in your context — every identity file is loaded into your system prompt at the start of each turn. Read "${baseName}" directly from your context above; there is no need to fetch it separately before editing.`
+      }
+
       case 'write_identity': {
         const file = input['file'] as string
-        let content = input['content'] as string
+        const edits = input['edits'] as Array<{ oldText: string; newText: string }> | undefined
         const baseName = path.basename(file)
         const knownFiles = this.opts.identityLoader.listFiles()
         if (!knownFiles.includes(baseName)) {
           return JSON.stringify({ error: true, message: `Identity file "${baseName}" does not exist. Use list_identity_files to see available files.` })
         }
 
-        const filePath = path.join(this.opts.identityDir, baseName)
-        const tempPath = path.join(this.opts.identityDir, `.tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.md`)
-        await fs.promises.writeFile(tempPath, content, 'utf8')
-        await fs.promises.rename(tempPath, filePath)
-        if (baseName === 'SOUL.md' && this.opts.onIdentityChanged) {
-          this.opts.onIdentityChanged(baseName, content)
+        const current = this.opts.identityLoader.readFile(baseName)
+        if (current === null) {
+          return JSON.stringify({ error: true, message: `Could not read identity file "${baseName}".` })
         }
 
-        return JSON.stringify({ ok: true })
+        // Apply edits all-or-nothing to an in-memory copy; only write on full success.
+        let applied: { content: string; diff: string }
+        try {
+          applied = applyIdentityEdits(current, edits ?? [])
+        } catch (err) {
+          return JSON.stringify({ error: true, message: (err as Error).message })
+        }
+
+        const filePath = path.join(this.opts.identityDir, baseName)
+        const tempPath = path.join(this.opts.identityDir, `.tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.md`)
+        await fs.promises.writeFile(tempPath, applied.content, 'utf8')
+        await fs.promises.rename(tempPath, filePath)
+        if (baseName === 'SOUL.md' && this.opts.onIdentityChanged) {
+          this.opts.onIdentityChanged(baseName, applied.content)
+        }
+
+        return `Applied ${edits!.length} edit${edits!.length === 1 ? '' : 's'} to ${baseName}:\n${applied.diff}`
       }
 
       // ── Vision ──────────────────────────────────────────────────────────────

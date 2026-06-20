@@ -836,7 +836,7 @@ describe('Phase 46 ConfigSchema headToolDefaults', () => {
     // The default must be the concrete head-tool names — not null (TOOLCFG-07 / D-06)
     expect(Array.isArray(cfg.headToolDefaults.allowedTools)).toBe(true)
     expect(cfg.headToolDefaults.allowedTools).toHaveLength(HEAD_TOOLS.length)
-    expect(cfg.headToolDefaults.allowedTools).toHaveLength(11)
+    expect(cfg.headToolDefaults.allowedTools).toHaveLength(12)
     // Spot-check two well-known head tools
     expect(cfg.headToolDefaults.allowedTools).toContain('spawn_agent')
     expect(cfg.headToolDefaults.allowedTools).toContain('ring_device')
@@ -844,7 +844,7 @@ describe('Phase 46 ConfigSchema headToolDefaults', () => {
 
   it('headToolDefaults default is derived from HEAD_TOOL_NAMES — matches the source of truth', () => {
     // Asserts that the default is not a hand-maintained literal that can drift from HEAD_TOOLS.
-    // This test enforces TOOLCFG-07: "head default = 10 HEAD_TOOLS names derived from source".
+    // This test enforces TOOLCFG-07: "head default = the HEAD_TOOLS names derived from source".
     fs.writeFileSync(tmpConfigPath, JSON.stringify({}))
     const cfg = loadConfig()
     const defaults = cfg.headToolDefaults.allowedTools

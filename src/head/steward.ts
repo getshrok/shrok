@@ -263,7 +263,7 @@ const bootstrapSteward: Steward = async (ctx, router, model, usageStore, eventId
   if (!parsed.done) return null
   return {
     kind: 'nudge',
-    message: "Onboarding appears complete but you didn't finish the required steps. Call write_identity for 'USER.md' (user profile), write_identity for 'SOUL.md' (your personality and tone), and write_identity('BOOTSTRAP.md', '') to clear it. Important: USER.md and SOUL.md must not mention agents, sub-agents, spawning, or delegation — those are internal implementation details that do not belong in identity files. Do this silently — no message to the user until all three calls succeed.",
+    message: "Onboarding appears complete but you didn't finish the required steps. write_identity takes targeted edits (`edits: [{ oldText, newText }]`), not whole-file content. Call write_identity on 'USER.md' (edit its placeholder line into the user profile), write_identity on 'SOUL.md' (edit its placeholder line into your personality and tone), and write_identity on 'BOOTSTRAP.md' to clear it (one edit whose oldText is the file's entire current contents and whose newText is \"\"). Important: USER.md and SOUL.md must not mention agents, sub-agents, spawning, or delegation — those are internal implementation details that do not belong in identity files. Do this silently — no message to the user until all three calls succeed.",
   }
 }
 

@@ -299,7 +299,7 @@ describe('HeadToolExecutor', () => {
     const names = HEAD_TOOLS.map(t => t.name)
     const expected = [
       'spawn_agent', 'message_agent', 'cancel_agent',
-      'list_identity_files', 'write_identity',
+      'list_identity_files', 'read_identity', 'write_identity',
     ]
     for (const name of expected) {
       expect(names).toContain(name)
@@ -347,20 +347,99 @@ describe('HeadToolExecutor', () => {
     expect(parsed).toContain('PERSONA.md')
   })
 
-  it('write_identity writes file to identityDir when file exists', async () => {
-    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'original')
-    const result = await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'USER.md', content: 'hello world' } })
-    expect(JSON.parse(result.content)).toMatchObject({ ok: true })
-    const written = fs.readFileSync(path.join(tmpDir, 'USER.md'), 'utf8')
-    expect(written).toBe('hello world')
+  it('read_identity points to the in-context copy instead of returning the file body', async () => {
+    // Identity files are already injected verbatim into the system prompt every turn, so
+    // the tool redirects the head to that copy rather than duplicating the body — which
+    // could grow large enough to truncate the history window.
+    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'line one\nline two')
+    const result = await executor.execute({ id: 'tc1', name: 'read_identity', input: { file: 'USER.md' } })
+    expect(result.content).not.toContain('line two')
+    expect(result.content).toContain('USER.md')
+    expect(result.content.toLowerCase()).toContain('context')
+  })
+
+  it('read_identity reports an empty identity file as empty', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'EMPTY.md'), '   ')
+    const result = await executor.execute({ id: 'tc1', name: 'read_identity', input: { file: 'EMPTY.md' } })
+    expect(result.content.toLowerCase()).toContain('empty')
+  })
+
+  it('read_identity errors when file does not exist', async () => {
+    const result = await executor.execute({ id: 'tc1', name: 'read_identity', input: { file: 'NOPE.md' } })
+    const parsed = JSON.parse(result.content)
+    expect(parsed.error).toBe(true)
+    expect(parsed.message).toContain('NOPE.md')
+  })
+
+  it('write_identity applies a targeted edit and returns a diff (not the whole file)', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'alpha beta gamma')
+    const result = await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'USER.md', edits: [{ oldText: 'beta', newText: 'BETA' }] } })
+    expect(result.content).toContain('USER.md')
+    expect(result.content).toContain('BETA')
+    expect(result.content).not.toContain('{"ok"')
+    expect(fs.readFileSync(path.join(tmpDir, 'USER.md'), 'utf8')).toBe('alpha BETA gamma')
+  })
+
+  it('write_identity applies multiple edits in one call', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'first second third')
+    await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'USER.md', edits: [
+      { oldText: 'first', newText: '1st' },
+      { oldText: 'third', newText: '3rd' },
+    ] } })
+    expect(fs.readFileSync(path.join(tmpDir, 'USER.md'), 'utf8')).toBe('1st second 3rd')
+  })
+
+  it('write_identity errors when oldText is not found and leaves the file unchanged', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'untouched content')
+    const result = await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'USER.md', edits: [{ oldText: 'missing', newText: 'x' }] } })
+    expect(JSON.parse(result.content).error).toBe(true)
+    expect(fs.readFileSync(path.join(tmpDir, 'USER.md'), 'utf8')).toBe('untouched content')
+  })
+
+  it('write_identity errors on an ambiguous (multi-match) oldText and leaves the file unchanged', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'na na na')
+    const result = await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'USER.md', edits: [{ oldText: 'na', newText: 'NA' }] } })
+    expect(JSON.parse(result.content).error).toBe(true)
+    expect(fs.readFileSync(path.join(tmpDir, 'USER.md'), 'utf8')).toBe('na na na')
+  })
+
+  it('write_identity is all-or-nothing — a later failing edit reverts the whole call', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'valid anchor here')
+    const result = await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'USER.md', edits: [
+      { oldText: 'valid anchor', newText: 'CHANGED' },
+      { oldText: 'does-not-exist', newText: 'x' },
+    ] } })
+    expect(JSON.parse(result.content).error).toBe(true)
+    // The first (valid) edit must NOT have been persisted.
+    expect(fs.readFileSync(path.join(tmpDir, 'USER.md'), 'utf8')).toBe('valid anchor here')
+  })
+
+  it('write_identity clears a file via an edit whose newText is empty', async () => {
+    const body = '# Bootstrap\n\nrun onboarding then clear this'
+    fs.writeFileSync(path.join(tmpDir, 'BOOTSTRAP.md'), body)
+    await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'BOOTSTRAP.md', edits: [{ oldText: body, newText: '' }] } })
+    expect(fs.readFileSync(path.join(tmpDir, 'BOOTSTRAP.md'), 'utf8')).toBe('')
   })
 
   it('write_identity errors when file does not exist', async () => {
-    const result = await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'TRELLO.md', content: 'some config' } })
+    const result = await executor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'TRELLO.md', edits: [{ oldText: 'a', newText: 'b' }] } })
     const parsed = JSON.parse(result.content)
     expect(parsed.error).toBe(true)
     expect(parsed.message).toContain('TRELLO.md')
     expect(fs.existsSync(path.join(tmpDir, 'TRELLO.md'))).toBe(false)
+  })
+
+  it('write_identity fires onIdentityChanged for SOUL.md with the full post-edit content, not for USER.md', async () => {
+    const onIdentityChanged = vi.fn()
+    const hookExecutor = new HeadToolExecutor({ headId: 'default', agentRunner: runner, skillLoader, topicMemory: memory, usageStore, identityDir: tmpDir, identityLoader: new FileSystemIdentityLoader(tmpDir, tmpDir), messages: { getAll: () => [] } as unknown as MessageStore, onIdentityChanged })
+
+    fs.writeFileSync(path.join(tmpDir, 'USER.md'), 'profile alpha')
+    await hookExecutor.execute({ id: 'tc1', name: 'write_identity', input: { file: 'USER.md', edits: [{ oldText: 'alpha', newText: 'beta' }] } })
+    expect(onIdentityChanged).not.toHaveBeenCalled()
+
+    fs.writeFileSync(path.join(tmpDir, 'SOUL.md'), 'name: Old')
+    await hookExecutor.execute({ id: 'tc2', name: 'write_identity', input: { file: 'SOUL.md', edits: [{ oldText: 'Old', newText: 'New' }] } })
+    expect(onIdentityChanged).toHaveBeenCalledWith('SOUL.md', 'name: New')
   })
 })
 
