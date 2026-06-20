@@ -37,3 +37,13 @@ Plans:
 - [x] 51-02-PLAN.md — Runner dual-sink (JSON parse, ambient/<headId>/<slug>.md write, sensor_event enqueue) + scheduler/index headId threading
 - [x] 51-03-PLAN.md — injectSensorEvent push injection + activation/assembler/deriveQueryText cases + all four scanAmbient call sites head-scoped
 - [x] 51-04-PLAN.md — SKILL.md rewrite + create_schedule description + per-head dashboard DELETE + live weather sensor migration
+
+### Phase 52: Sensor sub-agent sink — third sink that spawns a steward-gated sub-agent
+
+**Goal:** Extend the sensor primitive (Phase 51's dual-sink `{ ambient?, event? }`) with a **third sink** so one sensor's structured JSON payload can also route to a **sub-agent event** carrying a prompt string. When emitted, it spawns a sub-agent **silently through the existing proactive-decision steward** (`src/scheduler/proactive.ts`) — bypassing the conversational head entirely (no head chatter) — by reusing the existing `kind:'task'` → `handleScheduleTrigger` (`src/head/activation.ts`) → `agentRunner.spawn` path with a synthetic, **schedule-less** trigger (no schedule row) carrying the prompt as its context. The steward gets a rephrased, **non-schedule-shaped** prompt variant for sensor-originated triggers (cron/lastRun/lastSkipped don't apply). The prompt is the universal interface — **no task-name field**; if a specific workspace task should run, the prompt itself says so. The two active sinks are **renamed for clarity**: the Phase-51 `event` (head-waking) sink becomes the **head event** sink, the new one the **sub-agent event** sink. **No back-compat** — the three workspace sensors (relay, calendar, example) are migrated. User-facing → CHANGELOG (Added) + minor version bump (both `package.json` files in lockstep).
+**Requirements**: SENSOR-17, SENSOR-18, SENSOR-19
+**Depends on:** Phase 51 (Sensor dual-sink rework)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 52 to break down)
