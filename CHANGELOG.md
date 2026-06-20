@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+### Added
+- **See where your context window goes** — Settings → Behavior now shows a live, multi-segment bar that breaks down how a turn's context window is allocated: identity files (their own segment, since they grow over time), the rest of the system prompt, memory, history, and the output reserve. It reflows as you drag the memory/history balance and the context-window ceiling, so you can feel the trade-offs, and it warns when the system prompt plus output reserve no longer leave room under the ceiling. Token counts are approximate.
+
+### Changed
+- **Default context window raised to 40,000 tokens** (was 30,000) — keeps a bit more recent conversation and retrieved memory in context per turn by default. Override with `contextWindowTokens` in `config.json` or Settings → Behavior.
+
 ### Fixed
 - **Delegated agents now act on what you actually said** — whether the assistant is starting a new background agent or continuing/resuming an existing one (including answering an agent's question), that agent now works from the real conversation that prompted it rather than a restated, sometimes over-specified version. The result is the agent picks the best way to do the job instead of being railroaded into a particular approach the assistant guessed at. (closes #45)
 

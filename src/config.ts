@@ -198,11 +198,12 @@ const ConfigSchema = z.object({
   // This is the dominant driver of time-to-first-token: prefill latency scales with how
   // many tokens are sent, so a smaller budget makes EVERY turn faster (sporadic or active,
   // cached or cold) at the cost of less retained conversation history and less retrieved
-  // memory per turn. Lowered to 30,000 as the default (was 100,000) because the larger
-  // budget dragged 20k–90k-token prefills through the head model on routine turns, which
-  // is the main source of perceived slowness. Raise it (Settings → Behavior, per instance)
-  // if a head feels like it's forgetting recent context or missing relevant memories.
-  contextWindowTokens: z.coerce.number().default(30_000),
+  // memory per turn. Default is 40,000 — a balance between retained context and prefill
+  // speed. (The original 100,000 default dragged 20k–90k-token prefills through the head
+  // model on routine turns, the main source of perceived slowness; 30,000 was leaner but
+  // a bit forgetful.) Raise it (Settings → Behavior, per instance) if a head feels like
+  // it's forgetting recent context or missing relevant memories, or lower it for speed.
+  contextWindowTokens: z.coerce.number().default(40_000),
   // Fraction of the context window at which archival triggers (0–1).
   archivalThresholdFraction: z.coerce.number().default(0.80),
   // Total token budget for a head activation's assembled context.

@@ -1,4 +1,4 @@
-import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, ReadFileResult, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, UsageThreshold, ThresholdWithSpend, HeadDTO, ChannelConfigMasked, ChannelConfigSubmit, ToolRegistryEntry } from '../types/api'
+import type { Message, StewardRun, UsageResponse, StatusResponse, ActivityEntry, TraceFile, MemoryTopic, MemoryChunk, MemoryRelation, IdentityFile, SkillInfo, SkillDetail, SkillFile, ReadFileResult, EvalScenarioInfo, EvalResult, EvalResultDetail, EvalRun, Schedule, SettingsData, ContextWindowData, UsageThreshold, ThresholdWithSpend, HeadDTO, ChannelConfigMasked, ChannelConfigSubmit, ToolRegistryEntry } from '../types/api'
 
 function encSkillPath(name: string, suffix = '') {
   return '/api/skills/' + name.split('/').map(encodeURIComponent).join('/') + suffix
@@ -361,5 +361,8 @@ export const api = {
           body: JSON.stringify({ provider, apiKey: apiKey || undefined }),
         },
       ),
+  },
+  contextWindow: {
+    get: () => request<ContextWindowData>('/api/context-window'),
   },
 }

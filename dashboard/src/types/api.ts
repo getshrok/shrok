@@ -378,6 +378,23 @@ export interface SettingsData {
   headToolDefault: string[]
 }
 
+/**
+ * Measured token sizes of the shared, structural system-prompt blocks the head
+ * assembles every turn. Drives the context-window budget bar in Settings.
+ * Approximate — tiktoken cl100k_base. The memory/history/output split is NOT
+ * here; the bar computes it client-side from the live Settings draft.
+ */
+export interface ContextWindowData {
+  approximate: boolean
+  tokenizer: string
+  /** Identity files (the part that grows over time), as its own bar segment. */
+  identityTokens: number
+  /** identity + capabilities + skills + environment, tokenized as one string. */
+  baseSystemTokens: number
+  blocks: { capabilities: number; skills: number; environment: number }
+  identityFiles: { name: string; tokens: number }[]
+}
+
 export type ThresholdAction = 'alert' | 'block'
 
 export interface UsageThreshold {

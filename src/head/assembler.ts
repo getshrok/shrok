@@ -461,7 +461,7 @@ function getSmartModel(config: Config): string {
   }
 }
 
-function buildEnvironmentBlock(config: Config): string {
+export function buildEnvironmentBlock(config: Config): string {
   const platform = process.platform  // 'linux', 'darwin', 'win32', ...
   const arch = os.arch()             // 'x64', 'arm64', ...
   const osLabel = platform === 'darwin' ? 'macOS' : platform === 'win32' ? 'Windows' : 'Linux'
@@ -474,7 +474,7 @@ Home: ${home}
 LLM: ${config.llmProvider} / ${model}`
 }
 
-function buildSkillsBlock(skillLoader: SkillLoader): string {
+export function buildSkillsBlock(skillLoader: SkillLoader): string {
   const skills = skillLoader.listAll()
   if (skills.length === 0) return ''
   const lines = skills.map(s => `- \`${s.name}\`: ${s.frontmatter.description}`)
@@ -485,7 +485,7 @@ function buildSkillsBlock(skillLoader: SkillLoader): string {
 let capabilitiesCache: { block: string; builtAt: number } | null = null
 const CAPABILITIES_TTL_MS = 60 * 60 * 1000
 
-async function buildCapabilitiesBlock(mcpRegistry: McpRegistry): Promise<string> {
+export async function buildCapabilitiesBlock(mcpRegistry: McpRegistry): Promise<string> {
   const now = Date.now()
   if (capabilitiesCache && now - capabilitiesCache.builtAt < CAPABILITIES_TTL_MS) {
     return capabilitiesCache.block

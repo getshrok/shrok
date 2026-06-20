@@ -35,6 +35,7 @@ import { createSchedulesRouter } from './routes/schedules.js'
 import { createToolsRouter } from './routes/tools.js'
 import { createMcpRouter } from './routes/mcp.js'
 import { createSettingsRouter } from './routes/settings.js'
+import { createContextWindowRouter } from './routes/context-window.js'
 import { createMediaRouter } from './routes/media.js'
 import { createDocsRouter } from './routes/docs.js'
 import { createAgentsRouter } from './routes/agents.js'
@@ -263,6 +264,18 @@ export class DashboardServer {
     }
     const envFilePath = process.env['SHROK_ENV_FILE'] ?? path.join(workspacePath, '.env')
     app.use('/api/settings', createSettingsRouter(workspacePath, envFilePath, config, this.opts.appState, this.opts.events))
+    // Context-window budget bar (dashboard Settings → Behavior). Measures the
+    // shared system-prompt blocks; the memory/history/output split is computed
+    // client-side from the live draft. Needs the identity loader to mean anything.
+    if (this.opts.identity) {
+      app.use('/api/context-window', createContextWindowRouter({
+        config,
+        workspacePath,
+        identityLoader: this.opts.identity.mainLoader,
+        ...(this.opts.skills ? { skillLoader: this.opts.skills.loader } : {}),
+        ...(this.opts.mcpRegistry ? { mcpRegistry: this.opts.mcpRegistry } : {}),
+      }))
+    }
     app.use('/api/media', createMediaRouter(path.join(workspacePath, 'media')))
     // Docs viewer: serve the repo's checked-in /docs tree to the dashboard.
     // Resolved from the compiled module location so it works in both native

@@ -4,6 +4,7 @@ import { api } from '../../lib/api'
 import type { SettingsTabProps } from './draft'
 import { Field } from './components'
 import { GlobalToolControl } from './ToolOverrideControl'
+import ContextWindowBar from './ContextWindowBar'
 
 export default function BehaviorTab({ d, set, isDeveloper, inputClass, selectClass }: SettingsTabProps) {
   const toolsQuery = useQuery({ queryKey: ['tools'], queryFn: api.tools.list, staleTime: Infinity })
@@ -13,6 +14,13 @@ export default function BehaviorTab({ d, set, isDeveloper, inputClass, selectCla
 
   return (
     <>
+      {/* Context window allocation — live readout of the knobs below */}
+      <ContextWindowBar
+        contextWindowTokens={d.contextWindowTokens}
+        llmMaxTokens={d.llmMaxTokens}
+        memoryBudgetPercent={d.memoryBudgetPercent}
+      />
+
       {/* Tool access */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-4">
         <div className="text-sm font-semibold text-zinc-300">Tool access</div>
