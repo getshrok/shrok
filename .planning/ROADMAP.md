@@ -43,14 +43,14 @@ Plans:
 **Goal:** Extend the sensor primitive (Phase 51's dual-sink `{ ambient?, event? }`) with a **third sink** so one sensor's structured JSON payload can also route to a **sub-agent event** carrying a prompt string. When emitted, it spawns a sub-agent **silently through the existing proactive-decision steward** (`src/scheduler/proactive.ts`) — bypassing the conversational head entirely (no head chatter) — by reusing the existing `kind:'task'` → `handleScheduleTrigger` (`src/head/activation.ts`) → `agentRunner.spawn` path with a synthetic, **schedule-less** trigger (no schedule row) carrying the prompt as its context. The steward gets a rephrased, **non-schedule-shaped** prompt variant for sensor-originated triggers (cron/lastRun/lastSkipped don't apply). The prompt is the universal interface — **no task-name field**; if a specific workspace task should run, the prompt itself says so. The two active sinks are **renamed for clarity**: the Phase-51 `event` (head-waking) sink becomes the **head event** sink, the new one the **sub-agent event** sink. **No back-compat** — the three workspace sensors (relay, calendar, example) are migrated. User-facing → CHANGELOG (Added) + minor version bump (both `package.json` files in lockstep).
 **Requirements**: SENSOR-17, SENSOR-18, SENSOR-19
 **Depends on:** Phase 51 (Sensor dual-sink rework)
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 **Wave 1**
 - [x] 52-01-PLAN.md — contract foundation: sensor_sub_agent_trigger queue type + PRIORITY, 'sensor' trigger enum, runner event→headEvent rename + subAgentEvent sink (SENSOR-17/18) + Wave-0 runner tests
 
 **Wave 2**
-- [ ] 52-02-PLAN.md — runSensorDispatchDecision + sensor-dispatch.md prompt + handleSensorSubAgentTrigger (steward-gated, head-bypassing spawn) (SENSOR-19) + proactive/activation tests
+- [x] 52-02-PLAN.md — runSensorDispatchDecision + sensor-dispatch.md prompt + handleSensorSubAgentTrigger (steward-gated, head-bypassing spawn) (SENSOR-19) + proactive/activation tests
 
 **Wave 3**
 - [ ] 52-03-PLAN.md — SKILL.md three-sink docs + workspace-sensor migration + CHANGELOG entry + cut v0.5.0 (SENSOR-18)
