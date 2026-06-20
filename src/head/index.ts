@@ -102,14 +102,15 @@ export const HEAD_TOOLS: ToolDefinition[] = [
   buildHeadSpawnAgentDef(false),
   {
     name: 'message_agent',
-    description: 'Send a message to an agent — works for running, paused, and completed agents. For running agents, delivers new context or instructions. For paused agents, provides the information they need and resumes them. For completed agents, resumes them with new instructions to continue where they left off.',
+    description: 'Continue an agent — works for running, paused, and completed agents. Your job is to RELAY, not to author: paste the conversation that prompted this follow-up VERBATIM into `context` — the new user turns, their reply to a paused agent\'s question, any added detail. The agent picks up from that conversation, so let it be the agent\'s prompt rather than restating it. `message` is just a short label of your intent.',
     inputSchema: {
       type: 'object',
       properties: {
         agentId: { type: 'string' },
-        message: { type: 'string' },
+        context: { type: 'string', description: 'The verbatim conversation turns that prompted this follow-up — what the agent actually works from. Paste the user\'s new message(s) / their reply VERBATIM: constraints, choices, corrections, referenced details, names, links, IDs. Quote the actual words; do not summarize. Bad: "user said go ahead". Good: "Ashley: yes go ahead, the window seat one under $300". Every paraphrase loses information the agent can\'t recover. REQUIRED.' },
+        message: { type: 'string', description: 'A short hint/label of your intent for this follow-up — not a script. The agent works from `context`, not this; keep it brief.' },
       },
-      required: ['agentId', 'message'],
+      required: ['agentId', 'context'],
     },
   },
   // Static fallback definition so the name propagates to HEAD_TOOL_NAMES (and thus
@@ -353,7 +354,10 @@ export class HeadToolExecutor implements ToolExecutor {
 
       case 'message_agent': {
         const agentId = input['agentId'] as string
-        const message = input['message'] as string
+        // `context` is the verbatim conversation the agent works from (delivered, judged
+        // by the stewards). `message` is a human-facing intent label only — never delivered
+        // to the agent, never judged (issue #45 parity with spawn_agent's task/context split).
+        const context = input['context'] as string
         if (this.opts.agentStore) {
           const state = this.opts.agentStore.get(agentId)
           if (state?.status === 'failed' || state?.status === 'retracted') {
@@ -370,7 +374,7 @@ export class HeadToolExecutor implements ToolExecutor {
               const recent = this.opts.messages.getRecentText(this.opts.headId, 4)
                 .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt }))
               const pass = await runMessageAgentSteward(
-                task, message, recent,
+                task, context, recent,
                 this.opts.llmRouter, this.opts.stewardModel,
                 this.opts.usageStore,
               )
@@ -389,7 +393,7 @@ export class HeadToolExecutor implements ToolExecutor {
                 .filter((m): m is TextMessage => m.kind === 'text' && !m.injected)
                 .map(m => ({ role: m.role, content: m.content, createdAt: m.createdAt }))
               const pass = await runResumeSteward(
-                question, message, recent,
+                question, context, recent,
                 this.opts.llmRouter, this.opts.stewardModel,
                 this.opts.usageStore,
               )
@@ -407,7 +411,7 @@ export class HeadToolExecutor implements ToolExecutor {
               const recent = this.opts.messages.getRecentText(this.opts.headId, 4)
                 .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt }))
               const pass = await runMessageAgentSteward(
-                task, message, recent,
+                task, context, recent,
                 this.opts.llmRouter, this.opts.stewardModel,
                 this.opts.usageStore,
               )
@@ -420,9 +424,13 @@ export class HeadToolExecutor implements ToolExecutor {
             }
           }
         }
+        // Deliver the verbatim conversation, wrapped — UNIFORM across running, completed,
+        // and suspended agents (no per-state special-casing). `message` is never part of
+        // the delivered string; the agent continues from `context` only (issue #45).
         // Pass the head's current xray callback so a continued agent streams its
         // work to THIS activation's channel, not the one it was first spawned from.
-        await this.opts.agentRunner.update(agentId, message, this.opts.onVerbose)
+        const delivered = `Here's the latest from the conversation — continue your work based on it:\n"""\n${context}\n"""`
+        await this.opts.agentRunner.update(agentId, delivered, this.opts.onVerbose)
         return JSON.stringify({ ok: true })
       }
 

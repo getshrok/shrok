@@ -320,19 +320,22 @@ describe('HeadToolExecutor', () => {
     expect(JSON.parse(result.content)).toMatchObject({ ok: true })
   })
 
-  it('message_agent calls runner.update and returns ok', async () => {
-    const result = await executor.execute({ id: 'tc1', name: 'message_agent', input: { agentId: 't1', message: 'new info' } })
+  it('message_agent calls runner.update with the wrapped verbatim context and returns ok', async () => {
+    // issue #45: the delivered string is the wrapped `context`, not `message`.
+    const result = await executor.execute({ id: 'tc1', name: 'message_agent', input: { agentId: 't1', message: 'intent label', context: 'new info' } })
     // third arg is the head's onVerbose (rebinds the agent's xray to the current
     // channel); this fixture has none, so it's undefined.
-    expect(runner.update).toHaveBeenCalledWith('t1', 'new info', undefined)
+    expect(runner.update).toHaveBeenCalledWith('t1', expect.stringContaining('new info'), undefined)
+    expect(runner.update).toHaveBeenCalledWith('t1', expect.stringContaining('continue your work based on it'), undefined)
+    expect(runner.update).not.toHaveBeenCalledWith('t1', expect.stringContaining('intent label'), undefined)
     expect(JSON.parse(result.content)).toMatchObject({ ok: true })
   })
 
   it('message_agent forwards the head onVerbose so a continued agent re-binds its xray channel', async () => {
     const onVerbose = vi.fn(async () => {})
     const verboseExecutor = new HeadToolExecutor({ headId: 'default', agentRunner: runner, skillLoader, topicMemory: memory, usageStore, identityDir: tmpDir, identityLoader: new FileSystemIdentityLoader(tmpDir, tmpDir), messages: { getAll: () => [] } as unknown as MessageStore, onVerbose })
-    await verboseExecutor.execute({ id: 'tc1', name: 'message_agent', input: { agentId: 't1', message: 'new info' } })
-    expect(runner.update).toHaveBeenCalledWith('t1', 'new info', onVerbose)
+    await verboseExecutor.execute({ id: 'tc1', name: 'message_agent', input: { agentId: 't1', message: 'intent label', context: 'new info' } })
+    expect(runner.update).toHaveBeenCalledWith('t1', expect.stringContaining('new info'), onVerbose)
   })
 
   it('list_identity_files returns .md files in identityDir', async () => {
