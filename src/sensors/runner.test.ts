@@ -89,6 +89,54 @@ describe('runSensor — triple-sink (Phase 52)', () => {
     expect(enqueuedHeadId).toBe(headId)
   })
 
+  // ── subAgentEvent.relayGuidance carried through to the event ──────────────
+
+  it('subAgentEvent with relayGuidance: carried onto the enqueued event', async () => {
+    const script = writeScript(tmpDir, 'subagent-guidance.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: { prompt: "do X", relayGuidance: "only relay on failure" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    expect(sink.enqueue).toHaveBeenCalledOnce()
+    const [event] = sink.enqueue.mock.calls[0] as [QueueEvent, number, string]
+    expect(event.type).toBe('sensor_sub_agent_trigger')
+    if (event.type === 'sensor_sub_agent_trigger') {
+      expect(event.prompt).toBe('do X')
+      expect(event.relayGuidance).toBe('only relay on failure')
+    }
+  })
+
+  it('subAgentEvent without relayGuidance: event omits the relayGuidance key', async () => {
+    const script = writeScript(tmpDir, 'subagent-no-guidance.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: { prompt: "do X" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    const [event] = sink.enqueue.mock.calls[0] as [QueueEvent, number, string]
+    expect(event.type).toBe('sensor_sub_agent_trigger')
+    if (event.type === 'sensor_sub_agent_trigger') {
+      expect(event.relayGuidance).toBeUndefined()
+    }
+  })
+
+  it('subAgentEvent with non-string relayGuidance: dropped, prompt still enqueued', async () => {
+    const script = writeScript(tmpDir, 'subagent-bad-guidance.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: { prompt: "do X", relayGuidance: 42 } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, headId, script, ambientBaseDir, sink)
+
+    expect(sink.enqueue).toHaveBeenCalledOnce()
+    const [event] = sink.enqueue.mock.calls[0] as [QueueEvent, number, string]
+    expect(event.type).toBe('sensor_sub_agent_trigger')
+    if (event.type === 'sensor_sub_agent_trigger') {
+      expect(event.prompt).toBe('do X')
+      expect(event.relayGuidance).toBeUndefined()
+    }
+  })
+
   // ── Malformed subAgentEvent: silently skipped ─────────────────────────────
 
   it('subAgentEvent missing prompt: silently skipped, enqueue NOT called', async () => {

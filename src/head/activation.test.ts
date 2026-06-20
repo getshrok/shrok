@@ -581,8 +581,8 @@ describe('handleScheduleTrigger — scanAmbient sentinel reaches ambientContext 
 
 // ─── Phase 52 SENSOR-19: handleSensorSubAgentTrigger ─────────────────────────
 
-function sensorEvent(slug: string, prompt: string): QueueEvent & { type: 'sensor_sub_agent_trigger' } {
-  return { type: 'sensor_sub_agent_trigger', id: 'qe_s1', slug, prompt, createdAt: new Date().toISOString() }
+function sensorEvent(slug: string, prompt: string, relayGuidance?: string): QueueEvent & { type: 'sensor_sub_agent_trigger' } {
+  return { type: 'sensor_sub_agent_trigger', id: 'qe_s1', slug, prompt, ...(relayGuidance ? { relayGuidance } : {}), createdAt: new Date().toISOString() }
 }
 
 async function fireSensor(loop: ActivationLoop, event: QueueEvent & { type: 'sensor_sub_agent_trigger' }): Promise<void> {
@@ -612,6 +612,17 @@ describe('handleSensorSubAgentTrigger — sensor sub-agent dispatch (SENSOR-19)'
     expect(args.agentId).toContain('sensor')
     expect(args.agentId).toContain('calendar')
     expect(args.task).toContain('Create a reminder for 2pm meeting.')
+    // No relayGuidance on the event → spawn arg is undefined (default relay rules).
+    expect(args.relayGuidance).toBeUndefined()
+  })
+
+  it('passes event.relayGuidance through to spawn when present', async () => {
+    fix = makeFixture()
+    await fireSensor(fix.loop, sensorEvent('meeting-nag', 'Create reminders.', 'only relay on failure'))
+
+    expect(fix.agentRunner.spawn).toHaveBeenCalledOnce()
+    const args = vi.mocked(fix.agentRunner.spawn).mock.calls[0]![0] as any
+    expect(args.relayGuidance).toBe('only relay on failure')
   })
 
   it('with proactiveEnabled:true and skip decision: agentRunner.spawn is NOT called', async () => {

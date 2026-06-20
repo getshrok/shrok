@@ -49,9 +49,11 @@ export interface SensorRunner {
  * - `headEvent` (object with `text: string`): enqueues a `sensor_event` for the
  *   schedule's headId at priority 15.  Ambient-only payloads do NOT enqueue
  *   (SENSOR-06 / Pitfall 6).
- * - `subAgentEvent` (object with `prompt: string`): enqueues a
- *   `sensor_sub_agent_trigger`, gated by the proactive steward, spawns a
- *   background sub-agent. Never wakes the head. (SENSOR-17/19)
+ * - `subAgentEvent` (object with `prompt: string`, optional `relayGuidance: string`):
+ *   enqueues a `sensor_sub_agent_trigger`, gated by the proactive steward, spawns a
+ *   background sub-agent. Never wakes the head. (SENSOR-17/19) An optional
+ *   `relayGuidance` string is carried through to the sub-agent so the relay steward
+ *   can bias its surface-vs-suppress decision on completion.
  * - Malformed / non-object stdout → failure marker, no enqueue.
  * - Process failure (nonzero / timeout / throw) → failure marker, no enqueue.
  *
@@ -177,7 +179,11 @@ export async function runSensor(
           !Array.isArray(subAgentEvent) &&
           typeof (subAgentEvent as Record<string, unknown>)['prompt'] === 'string'
         ) {
-          const prompt = (subAgentEvent as Record<string, unknown>)['prompt'] as string
+          const sae = subAgentEvent as Record<string, unknown>
+          const prompt = sae['prompt'] as string
+          const relayGuidance = typeof sae['relayGuidance'] === 'string' && sae['relayGuidance']
+            ? (sae['relayGuidance'] as string)
+            : undefined
           try {
             enqueue.enqueue(
               {
@@ -185,6 +191,7 @@ export async function runSensor(
                 id: generateId('qe'),
                 slug,
                 prompt,
+                ...(relayGuidance ? { relayGuidance } : {}),
                 createdAt: new Date().toISOString(),
               },
               PRIORITY.SENSOR_SUB_AGENT_TRIGGER,

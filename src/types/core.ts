@@ -183,6 +183,10 @@ export type QueueEvent =
       slug: string
       /** The instruction for the spawned sub-agent (the subAgentEvent.prompt value). */
       prompt: string
+      /** Optional relay-steward guidance from the sensor's subAgentEvent payload.
+       *  Carried to the spawned sub-agent's relayGuidance so the relay steward can bias
+       *  the surface-vs-suppress decision for this dispatch. Absent = default relay rules. */
+      relayGuidance?: string
       createdAt: string
     }
 

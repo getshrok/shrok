@@ -1157,6 +1157,7 @@ export class ActivationLoop {
       task: prompt,
       trigger: 'sensor',
       headId: this.opts.headId,
+      ...(event.relayGuidance ? { relayGuidance: event.relayGuidance } : {}),
     })
   }
 
