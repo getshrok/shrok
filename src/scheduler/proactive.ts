@@ -152,6 +152,56 @@ export async function runReminderDecision(
   }
 }
 
+// ─── Sensor Dispatch Decision ───────────────────────────────────────────────
+
+export interface SensorDispatchContext {
+  /** Sensor slug — used for logging and context in the steward prompt. */
+  slug: string
+  /** The subAgentEvent.prompt from the sensor payload — the instruction to execute. */
+  prompt: string
+  userMd: string
+  recentHistory: Array<{ role: string; content: string; createdAt?: string }>
+  ambientContext: string
+  currentTime: string
+}
+
+export async function runSensorDispatchDecision(
+  ctx: SensorDispatchContext,
+  router: LLMRouter,
+  model: string,
+  usageStore?: UsageStore,
+  eventId?: string,
+): Promise<ProactiveDecision> {
+  const prompt = interpolate(loadPrompt('sensor-dispatch'), {
+    CURRENT_TIME: ctx.currentTime,
+    SLUG: ctx.slug,
+    SENSOR_PROMPT: ctx.prompt,
+    USER_MD: ctx.userMd || '(empty)',
+    AMBIENT: ctx.ambientContext || '(none)',
+    HISTORY: formatTimestampedHistory(ctx.recentHistory),
+  })
+
+  try {
+    const response = await stewardComplete(
+      'steward-sensor-dispatch', router, model, prompt, 256,
+      usageStore, eventId, undefined,
+      { name: 'proactive_decision', schema: { type: 'object', properties: { action: { type: 'string', enum: ['run', 'skip'] }, reason: { type: 'string' }, context: { type: 'string' } }, required: ['action', 'reason'], additionalProperties: false } },
+    )
+    const parsed = extractJson(response.content) as { action?: string; reason?: string; context?: string }
+    if (parsed.action === 'skip' && parsed.reason) {
+      return { action: 'skip', reason: parsed.reason }
+    }
+    return {
+      action: 'run',
+      reason: parsed.reason ?? 'no reason to skip',
+      ...(parsed.context ? { context: parsed.context } : {}),
+    }
+  } catch (err) {
+    log.warn('[proactive:sensor] decision failed, defaulting to run:', (err as Error).message)
+    return RUN_DEFAULT
+  }
+}
+
 export async function runProactiveDecision(
   ctx: ProactiveContext,
   router: LLMRouter,

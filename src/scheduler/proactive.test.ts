@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { runProactiveDecision, runReminderDecision, type ProactiveContext, type ReminderDecisionContext } from './proactive.js'
+import { runProactiveDecision, runReminderDecision, runSensorDispatchDecision, type ProactiveContext, type ReminderDecisionContext, type SensorDispatchContext } from './proactive.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { UsageStore } from '../db/usage.js'
 
@@ -185,5 +185,60 @@ describe('runReminderDecision', () => {
     const call = vi.mocked(router.complete).mock.calls[0]!
     const promptContent = (call[1]![0] as { content: string }).content
     expect(promptContent).not.toContain('Run conditions:')
+  })
+})
+
+// ─── runSensorDispatchDecision ─────────────────────────────────────────────────
+
+function makeSensorContext(overrides: Partial<SensorDispatchContext> = {}): SensorDispatchContext {
+  return {
+    slug: 'calendar',
+    prompt: 'Create a reminder for the meeting in 10 minutes.',
+    userMd: 'Software engineer.',
+    recentHistory: [
+      { role: 'user', content: 'Good morning!' },
+      { role: 'assistant', content: 'Good morning! How can I help?' },
+    ],
+    ambientContext: '',
+    currentTime: '2026-06-20T09:00:00Z',
+    ...overrides,
+  }
+}
+
+describe('runSensorDispatchDecision', () => {
+  it('returns run when LLM says run', async () => {
+    const router = makeRouter('{"action": "run", "reason": "task is relevant"}')
+    const decision = await runSensorDispatchDecision(makeSensorContext(), router, 'dumb', makeUsageStore())
+    expect(decision.action).toBe('run')
+    expect(decision.reason).toBe('task is relevant')
+  })
+
+  it('returns skip when LLM says skip with reason', async () => {
+    const router = makeRouter('{"action": "skip", "reason": "user is in a meeting"}')
+    const decision = await runSensorDispatchDecision(makeSensorContext(), router, 'dumb', makeUsageStore())
+    expect(decision.action).toBe('skip')
+    expect(decision.reason).toBe('user is in a meeting')
+  })
+
+  it('defaults to run on LLM error (D-07 fail-open)', async () => {
+    const router = {
+      complete: vi.fn().mockRejectedValue(new Error('API timeout')),
+    } as unknown as LLMRouter
+    const decision = await runSensorDispatchDecision(makeSensorContext(), router, 'dumb', makeUsageStore())
+    expect(decision.action).toBe('run')
+    expect(decision.reason).toContain('defaulting to run')
+  })
+
+  it('defaults to run on malformed/non-JSON LLM content', async () => {
+    const router = makeRouter('I think we should run this sensor task')
+    const decision = await runSensorDispatchDecision(makeSensorContext(), router, 'dumb', makeUsageStore())
+    expect(decision.action).toBe('run')
+  })
+
+  it('threads the optional context field through when LLM returns it', async () => {
+    const router = makeRouter('{"action": "run", "reason": "ok", "context": "user has a meeting at 2pm"}')
+    const decision = await runSensorDispatchDecision(makeSensorContext(), router, 'dumb', makeUsageStore())
+    expect(decision.action).toBe('run')
+    expect(decision.context).toBe('user has a meeting at 2pm')
   })
 })
