@@ -57,7 +57,7 @@
 
 - [x] **SENSOR-17**: A sensor's structured JSON payload gains a **third optional sink — a sub-agent event carrying a prompt string**. When present, it spawns a sub-agent through the steward gate **without waking the conversational head**. The prompt is the universal interface: there is **no task-name field**; if a specific workspace task should run, the prompt says so. **Extends** SENSOR-13's payload contract (the payload is now `{ ambient?, event?, <sub-agent-event>? }`).
 - [x] **SENSOR-18**: The Phase-51 `event` (head-waking) sink is **renamed to the "head event" sink** and the new one is the **"sub-agent event" sink** — the two active sinks are named distinctly so a sensor author chooses head-wake vs. silent-sub-agent explicitly. **No back-compat**; the three existing workspace sensors (relay, calendar, example) are migrated to the new key names. **Supersedes** the SENSOR-15 `event` key name.
-- [ ] **SENSOR-19**: The sub-agent event routes through the **existing proactive-decision steward** (`src/scheduler/proactive.ts`, **reused — not duplicated**) using a **rephrased, non-schedule-shaped prompt variant** (cron/lastRun/lastSkipped don't apply to a sensor-originated trigger), and spawns silently via the **existing task-spawn path** (`handleScheduleTrigger` → `agentRunner.spawn`) with a **schedule-less synthetic trigger** (no schedule row). The head only learns of the result via the normal `agent_completed` path, subject to the existing relay/output steward.
+- [x] **SENSOR-19**: The sub-agent event routes through the **existing proactive-decision steward** (`src/scheduler/proactive.ts`, **reused — not duplicated**) using a **rephrased, non-schedule-shaped prompt variant** (cron/lastRun/lastSkipped don't apply to a sensor-originated trigger), and spawns silently via the **existing task-spawn path** (`handleScheduleTrigger` → `agentRunner.spawn`) with a **schedule-less synthetic trigger** (no schedule row). The head only learns of the result via the normal `agent_completed` path, subject to the existing relay/output steward.
 
 **Non-goals (Phase 52):** The motivating calendar→pre-meeting-nag-reminder sensor is a **separate later deliverable**, not this phase — its meeting-dedup (`already handled this meeting`) lives in that sensor's own `state.json`, not in the framework. The steward remains a "should this run now?" gate, **not** an exactly-once/dedup mechanism. No new sensor-side scheduling primitives — the sub-agent event reuses the `kind:'task'` spawn machinery as-is.
 
@@ -101,4 +101,4 @@ Which phases cover which requirements. Filled during roadmap creation.
 | SENSOR-16 | Phase 51 | Complete |
 | SENSOR-17 | Phase 52 | Complete |
 | SENSOR-18 | Phase 52 | Complete |
-| SENSOR-19 | Phase 52 | Pending |
+| SENSOR-19 | Phase 52 | Complete |
