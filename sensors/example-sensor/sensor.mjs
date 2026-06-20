@@ -8,9 +8,9 @@
 // ── The output contract ──────────────────────────────────────────────────────
 // The script must print EXACTLY ONE JSON object to stdout, on a single line:
 //
-//     { "ambient"?: string, "event"?: { "text": string } }
+//     { "ambient"?: string, "headEvent"?: { "text": string }, "subAgentEvent"?: { "prompt": string } }
 //
-// Both keys are optional. There are two "sinks" you can write to:
+// All keys are optional. There are three "sinks" you can write to:
 //
 //   • ambient (PULL / passive): the string is injected into the owning head's
 //     prompt EVERY turn, under a heading derived from the sensor's slug
@@ -18,10 +18,19 @@
 //     assistant should always be able to see. Omitting the key leaves the last
 //     value in place; emitting "" (empty string) retracts it.
 //
-//   • event (PUSH / active): { text } wakes the owning head right away with
+//   • headEvent (PUSH / active): { text } wakes the owning head right away with
 //     "Sensor `example-sensor` reported: <text>". Use it ONLY for noteworthy
 //     transitions — firing one every tick defeats the passive design and burns
 //     model turns. This example fires one only every 5th run, to demonstrate.
+//
+//   • subAgentEvent (DISPATCH / silent): { prompt } spawns a sub-agent silently
+//     with that prompt — no head wake, no user-facing message. The dispatch is
+//     gated by the proactive steward (defaults to run). Use for quiet background
+//     work (create a reminder, log something). This example fires one every 10th
+//     run, to demonstrate. Quick guide:
+//       ambient       → always-present snapshot ("what's the current state")
+//       headEvent     → wake the head to talk/judge
+//       subAgentEvent → get quiet work done without a message
 //
 // ── Rules to remember ────────────────────────────────────────────────────────
 //   • Runs as a Node ESM process. 30-SECOND timeout — be fast.
@@ -60,11 +69,17 @@ try {
     ambient: `Example sensor is alive. Last ran ${now} (run #${runs}).`,
   }
 
-  // Self-watermarking demo: only PUSH an event on a transition (here, every 5th
-  // run) instead of every tick. A real sensor would compare a fetched value to
-  // state — e.g. `if (alertId !== state.lastAlertId) payload.event = {...}`.
+  // Self-watermarking demo: only PUSH a headEvent on a transition (here, every
+  // 5th run) instead of every tick. A real sensor would compare a fetched value
+  // to state — e.g. `if (alertId !== state.lastAlertId) payload.headEvent = {...}`.
   if (runs % 5 === 0) {
-    payload.event = { text: `Example sensor has now run ${runs} times.` }
+    payload.headEvent = { text: `Example sensor has now run ${runs} times.` }
+  }
+
+  // subAgentEvent demo: silently dispatch a sub-agent on a separate watermark
+  // (every 10th run). No head wake, no message — the agent does the work quietly.
+  if (runs % 10 === 0) {
+    payload.subAgentEvent = { prompt: `Note in the journal that the example sensor has reached ${runs} runs.` }
   }
 
   saveState({ ...state, runs, lastRun: now })
