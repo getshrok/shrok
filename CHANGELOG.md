@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [next]
 
 ### Fixed
-- **Delegated agents now act on what you actually said** — when the assistant hands a task to a background agent, that agent now works from the real conversation that prompted it rather than a restated, sometimes over-specified version. The result is the agent picks the best way to do the job instead of being railroaded into a particular approach the assistant guessed at. (closes #45)
+- **Delegated agents now act on what you actually said** — whether the assistant is starting a new background agent or continuing/resuming an existing one (including answering an agent's question), that agent now works from the real conversation that prompted it rather than a restated, sometimes over-specified version. The result is the agent picks the best way to do the job instead of being railroaded into a particular approach the assistant guessed at. (closes #45)
 
 ## [0.5.0] — 2026-06-20
 

@@ -21,7 +21,7 @@ stopped_at: Milestone complete (Phase 52 was final phase)
 Phase: 52
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-06-20
+Last activity: 2026-06-20 - Completed quick task 260620-fdc: message_agent relay-not-author treatment (#45 parity)
 
 ### Quick Tasks Completed
 
@@ -42,6 +42,7 @@ Last activity: 2026-06-20
 | 260607-mz8 | Fix long-message silent-drop in Slack (block-aware: 3000/2000/10-field/50-block) + WhatsApp (chunker @65k) adapters — audit sibling of #20 | 2026-06-07 | 616d04e | Verified (plan-check + 255 channel tests + tsc; commits clean) | [260607-mz8-fix-long-message-silent-drop-in-slack-bl](./quick/260607-mz8-fix-long-message-silent-drop-in-slack-bl/) |
 | 260608-6ny | Rename model-tier vocabulary to dumb/smart/genius + expose model arg on head spawn_agent (issue #31) | 2026-06-08 | 7d5915c | Verified (tsc clean + 242 targeted tests green; backward-compat shim tested) | [260608-6ny-rename-model-tier-vocabulary-to-dumb-sma](./quick/260608-6ny-rename-model-tier-vocabulary-to-dumb-sma/) |
 | 260618-aqe | Configurable self-hosted STT endpoint (sttBaseUrl) mirroring ttsBaseUrl; single voiceOpenaiFallback toggle governs OpenAI fallback for both STT+TTS; voice runs with no OpenAI key | 2026-06-18 | 533d4e4 | Verified (tsc clean + 171 voice/config/ingestion tests green; dashboard/dist untouched) | [260618-aqe-add-configurable-self-hosted-stt-endpoin](./quick/260618-aqe-add-configurable-self-hosted-stt-endpoin/) |
+| 260620-fdc | Apply the #45 relay-not-author treatment to the message_agent head tool: required verbatim `context` (delivered, wrapped, uniform across running/completed/suspended), `message` reframed as a non-delivered intent label, both stewards judge `context`, SYSTEM.md reworded | 2026-06-20 | b75b47e | Verified (tsc clean + 151 head/agents tests green incl. 3 new parity cases; `message` kept required for strict #45 parity; dashboard/dist untouched) | [260620-fdc-apply-45-relay-not-author-treatment-to-t](./quick/260620-fdc-apply-45-relay-not-author-treatment-to-t/) |
 
 ## Project Reference
 
