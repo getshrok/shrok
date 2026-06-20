@@ -4,17 +4,21 @@ All notable user-facing changes to this project are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0]
+## [next]
+
+## [0.5.0] — 2026-06-20
 
 ### Added
 - **Schedule something every minute** — the dashboard cron picker and the scheduler now accept a 1-minute interval, alongside the existing 5/10/15/30/45/60-minute options, for fast-polling sensors or reminders. The option reads "every minute" rather than "every 1 minutes".
-- **A worked example sensor ships with Shrok** — like the example task, a commented, runnable `example-sensor` is now seeded into your workspace on first run as a template. It shows the sensor script contract end to end: the single-JSON-object output, the ambient (always-in-context) and event (wake-me) sinks, and the self-watermarking pattern for only reacting to changes. Schedule it to watch it work, then delete it.
+- **A worked example sensor ships with Shrok** — like the example task, a commented, runnable `example-sensor` is now seeded into your workspace on first run as a template. It shows the sensor script contract end to end: the single-JSON-object output, the ambient (always-in-context) and headEvent (wake-me) sinks, the subAgentEvent (silent dispatch) sink, and the self-watermarking pattern for only reacting to changes. Schedule it to watch it work, then delete it.
 - **Reminders can be delivered on a different person's line** — when you have more than one assistant head, the head you ask to set a reminder no longer has to be the one that delivers it. You can now name which head should deliver it at fire time — e.g. set a reminder by voice and get reminded on your phone — instead of it always coming back on the head you asked. It still defaults to the asking head when you don't say otherwise. (closes #39)
-- **Sensors documentation** — sensors now have a proper write-up in the docs (overview + a full internals guide covering the script contract, the two sinks, scheduling, and self-watermarking), and a one-line mention in the README, so it's clear what they are and how to start using them.
+- **Sensors documentation** — sensors now have a proper write-up in the docs (overview + a full internals guide covering the script contract, the three sinks, scheduling, and self-watermarking), and a one-line mention in the README, so it's clear what they are and how to start using them.
+- **Sensors can quietly dispatch a sub-agent** — a sensor script can now emit a `subAgentEvent: { prompt }` in its output payload to hand work to a background sub-agent without waking the assistant or sending any message. The prompt is passed directly to the spawned agent (e.g. "create a 10-minute reminder for the upcoming meeting"). The dispatch is gated by the proactive steward — the same "should it run right now?" judgment that runs before scheduled tasks — which defaults to running (the sensor has already decided something happened). On a steward skip, nothing runs. This is a third parallel output path alongside the existing ambient (always-in-context) and headEvent (wake-the-head) sinks.
 
 ### Changed
 - **More of the context window now goes to recent conversation** — the default split between conversation history and long-term memory is now 70% history / 30% memory (was 55% / 45%). In day-to-day use, keeping more of the active back-and-forth in context feels better while still leaving meaningful room for memory recall. Override with `memoryBudgetPercent` in `config.json` if you prefer stronger long-term recall. (closes #43)
 - **The dashboard Sensors page now explains itself** — it gained a short description at the top of the list (like the Tasks and Skills pages already had) so landing on it isn't a mystery, and its styling was unified with those pages so all three look like one family.
+- **Sensor authors now choose between two active sinks** — the old single `event` sink that woke the assistant has been renamed `headEvent` (wake-the-head, active conversation path) to make room for the new `subAgentEvent` (silent dispatch path). Existing sensors using `event` in their output must rename the key to `headEvent`; the runtime drops the old key silently (no back-compat). The `ambient` pull-sink and all scheduling are unchanged.
 
 ### Fixed
 - **The dashboard's cache metric is now correct** — the Usage page previously showed a "Cache Hit Rate" computed against the wrong token bucket, which overstated it (often ~50–60%). It's now labeled "Cache Reuse" and reports the true fraction of prompt tokens served from cache. (closes #44)
