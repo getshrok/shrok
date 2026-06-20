@@ -35,7 +35,7 @@ import type { DashboardEventBus } from '../dashboard/events.js'
 import { isDashboardChannelId } from '../channels/dashboard/adapter.js'
 import { estimateTokens, estimateStringTokens } from '../db/token.js'
 import { generateId, generateAgentId, now, LLMApiError } from '../llm/util.js'
-import { runProactiveDecision, runReminderDecision } from '../scheduler/proactive.js'
+import { runProactiveDecision, runReminderDecision, runSensorDispatchDecision, type SensorDispatchContext } from '../scheduler/proactive.js'
 import { formatIanaTimeLine } from '../util/time.js'
 import { ensureSkillDeps } from '../sub-agents/env.js'
 
@@ -520,6 +520,11 @@ export class ActivationLoop {
 
     if (event.type === 'schedule_trigger') {
       await this.handleScheduleTrigger(event)
+      return
+    }
+
+    if (event.type === 'sensor_sub_agent_trigger') {
+      await this.handleSensorSubAgentTrigger(event)
       return
     }
 
@@ -1091,6 +1096,61 @@ export class ActivationLoop {
     } finally {
       if (typingInterval !== null) clearInterval(typingInterval)
     }
+  }
+
+  private async handleSensorSubAgentTrigger(event: QueueEvent & { type: 'sensor_sub_agent_trigger' }): Promise<void> {
+    const { slug } = event
+    let proactiveContext: string | undefined
+
+    // Steward gate: same proactive config flags as task path (D-06)
+    if (this.opts.config.proactiveShadow || this.opts.config.proactiveEnabled) {
+      const recentMsgs = this.opts.messages.getRecentTextByTokens(
+        this.opts.headId, this.opts.config.stewardContextTokenBudget, estimateTokens,
+      ).reverse()
+      const { identityLoader } = this.opts.toolExecutorOpts
+
+      const ctx: SensorDispatchContext = {
+        slug,
+        prompt: event.prompt,
+        userMd: identityLoader.readFile('USER.md') ?? '',
+        recentHistory: recentMsgs
+          .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt })),
+        ambientContext: this.opts.config.workspacePath
+          ? scanAmbient(this.opts.config.workspacePath.replace(/^~/, os.homedir()), this.opts.headId)
+          : '',
+        currentTime: formatIanaTimeLine(new Date(), this.opts.config.timezone),
+      }
+
+      const decision = await runSensorDispatchDecision(
+        ctx, this.opts.llmRouter, this.opts.config.stewardModel, this.opts.usageStore, event.id,
+      )
+
+      if (this.opts.config.proactiveShadow) {
+        log.info(`[proactive:sensor:shadow] sensor:${slug}: ${decision.action} — ${decision.reason}`)
+      }
+
+      if (this.opts.config.proactiveEnabled && decision.action === 'skip') {
+        // No schedule row to markSkipped — just log and return (no dedup/cooldown on sensor triggers)
+        log.info(`[proactive:sensor] Skipped sensor:${slug}: ${decision.reason}`)
+        return
+      }
+
+      proactiveContext = decision.context
+    }
+
+    const agentId = generateAgentId(`sensor:${slug}`)
+    const parts = [event.prompt]
+    if (proactiveContext) parts.push(`Context from recent conversation: ${proactiveContext}`)
+    const prompt = parts.join('\n\n')
+
+    log.info(`[scheduler] sensor sub-agent dispatched for sensor:${slug}`)
+    await this.opts.toolExecutorOpts.agentRunner.spawn({
+      agentId,
+      task: prompt,
+      trigger: 'sensor',
+      headId: this.opts.headId,
+      skillName: `sensor:${slug}`,   // D-08: dashboard xray label shows which sensor dispatched
+    })
   }
 
   private async handleScheduleTrigger(event: QueueEvent & { type: 'schedule_trigger' }): Promise<void> {

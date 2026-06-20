@@ -30,6 +30,7 @@ vi.mock('../scheduler/proactive.js', async () => {
     ...actual,
     runProactiveDecision: vi.fn(),
     runReminderDecision: vi.fn(),
+    runSensorDispatchDecision: vi.fn(),
   }
 })
 
@@ -171,6 +172,7 @@ function makeFixture(opts: {
   // Default proactive decision: fire (no skip).
   const decision = opts.decision ?? { action: 'fire' as const, reason: 'ok' }
   vi.mocked(proactive.runProactiveDecision).mockResolvedValue(decision as any)
+  vi.mocked(proactive.runSensorDispatchDecision).mockResolvedValue({ action: 'run', reason: 'ok' } as any)
 
   const llmRouter = { complete: vi.fn() } as unknown as LLMRouter
   const channelRouter = { send: vi.fn(), sendTyping: vi.fn(), getFirstChannel: vi.fn().mockReturnValue('discord') } as unknown as ChannelRouter
@@ -577,3 +579,62 @@ describe('handleScheduleTrigger — scanAmbient sentinel reaches ambientContext 
   })
 })
 
+// ─── Phase 52 SENSOR-19: handleSensorSubAgentTrigger ─────────────────────────
+
+function sensorEvent(slug: string, prompt: string): QueueEvent & { type: 'sensor_sub_agent_trigger' } {
+  return { type: 'sensor_sub_agent_trigger', id: 'qe_s1', slug, prompt, createdAt: new Date().toISOString() }
+}
+
+async function fireSensor(loop: ActivationLoop, event: QueueEvent & { type: 'sensor_sub_agent_trigger' }): Promise<void> {
+  await (loop as unknown as { handleSensorSubAgentTrigger: (e: typeof event) => Promise<void> })
+    .handleSensorSubAgentTrigger(event)
+}
+
+describe('handleSensorSubAgentTrigger — sensor sub-agent dispatch (SENSOR-19)', () => {
+  let fix: Fixture
+
+  afterEach(() => {
+    if (fix?.tmpDir) fs.rmSync(fix.tmpDir, { recursive: true, force: true })
+    vi.clearAllMocks()
+  })
+
+  it('spawns with trigger:sensor, skillName:sensor:<slug>, and task=event.prompt', async () => {
+    fix = makeFixture()
+    await fireSensor(fix.loop, sensorEvent('calendar', 'Create a reminder for 2pm meeting.'))
+
+    expect(fix.agentRunner.spawn).toHaveBeenCalledOnce()
+    const args = vi.mocked(fix.agentRunner.spawn).mock.calls[0]![0] as any
+    expect(args.trigger).toBe('sensor')
+    expect(args.skillName).toBe('sensor:calendar')
+    expect(args.task).toContain('Create a reminder for 2pm meeting.')
+  })
+
+  it('with proactiveEnabled:true and skip decision: agentRunner.spawn is NOT called', async () => {
+    fix = makeFixture({ proactiveEnabled: true, decision: { action: 'skip', reason: 'user busy' } })
+    vi.mocked(proactive.runSensorDispatchDecision).mockResolvedValue({ action: 'skip', reason: 'user busy' } as any)
+    await fireSensor(fix.loop, sensorEvent('calendar', 'Create a reminder.'))
+
+    expect(fix.agentRunner.spawn).not.toHaveBeenCalled()
+    // Also: no schedule-store mutation (no markSkipped)
+    expect(fix.scheduleStore.markSkipped).not.toHaveBeenCalled()
+  })
+
+  it('with proactiveEnabled:false, spawns directly without calling runSensorDispatchDecision', async () => {
+    fix = makeFixture({ proactiveEnabled: false })
+    await fireSensor(fix.loop, sensorEvent('weather', 'Log current weather conditions.'))
+
+    expect(fix.agentRunner.spawn).toHaveBeenCalledOnce()
+    expect(proactive.runSensorDispatchDecision).not.toHaveBeenCalled()
+  })
+
+  it('early-returns without reaching head activation path (assembler.assemble never called)', async () => {
+    fix = makeFixture()
+    await fireSensor(fix.loop, sensorEvent('disk-space', 'Check disk usage and alert if over 90%.'))
+
+    // The handler must return before head activation — assembler must not be called
+    const assembler = (fix.loop as unknown as { opts: { assembler: ContextAssembler } }).opts.assembler
+    expect(assembler.assemble).not.toHaveBeenCalled()
+    // And spawn was called (handler ran to completion)
+    expect(fix.agentRunner.spawn).toHaveBeenCalledOnce()
+  })
+})
