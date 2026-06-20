@@ -110,7 +110,7 @@ export const HEAD_TOOLS: ToolDefinition[] = [
         context: { type: 'string', description: 'The verbatim conversation turns that prompted this follow-up — what the agent actually works from. Paste the user\'s new message(s) / their reply VERBATIM: constraints, choices, corrections, referenced details, names, links, IDs. Quote the actual words; do not summarize. Bad: "user said go ahead". Good: "Ashley: yes go ahead, the window seat one under $300". Every paraphrase loses information the agent can\'t recover. REQUIRED.' },
         message: { type: 'string', description: 'A short hint/label of your intent for this follow-up — not a script. The agent works from `context`, not this; keep it brief.' },
       },
-      required: ['agentId', 'context'],
+      required: ['agentId', 'message', 'context'],
     },
   },
   // Static fallback definition so the name propagates to HEAD_TOOL_NAMES (and thus
