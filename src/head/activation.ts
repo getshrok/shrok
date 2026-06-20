@@ -10,6 +10,7 @@ import type { LLMRouter } from '../types/llm.js'
 import type { Memory } from '../memory/index.js'
 import type { MessageStore } from '../db/messages.js'
 import type { AgentStore } from '../db/agents.js'
+import { isBackgroundTrigger } from '../types/agent.js'
 import type { QueueStore } from '../db/queue.js'
 import type { AppStateStore } from '../db/app_state.js'
 import type { UsageStore, UsageEntry } from '../db/usage.js'
@@ -655,16 +656,18 @@ export class ActivationLoop {
       if (ev.type === 'agent_completed') completedEvents.push(ev as QueueEvent & { type: 'agent_completed' })
     }
 
-    // Relay steward: for scheduled agent completions, decide if output warrants
-    // activation. Runs BEFORE injection — !relay suppresses the injection entirely
-    // (no retroactive delete needed).
+    // Relay steward: for background agent completions (scheduled + sensor sub-agent —
+    // Phase 52 D-09), decide if output warrants activation. Runs BEFORE injection —
+    // !relay suppresses the injection entirely (no retroactive delete needed). Sensor
+    // sub-agents are head-less by design, so their output is steward-gated exactly like
+    // scheduled tasks; skipping the gate here would leak head chatter (the phase anti-goal).
     const suppressedEventIds = new Set<string>()
     let primarySuppressed = false
     if (event.type !== 'user_message' && config.scheduledRelayStewardEnabled) {
       const { identityLoader, skillLoader } = this.opts.toolExecutorOpts
       for (const ce of completedEvents) {
         const a = this.opts.agentStore.get(ce.agentId)
-        if (a?.trigger !== 'scheduled') continue
+        if (!a || !isBackgroundTrigger(a.trigger)) continue
         const skill = a.skillName ? skillLoader.load(a.skillName) : null
         const relay = await runRelaySteward({
           output: ce.output,
@@ -678,7 +681,7 @@ export class ActivationLoop {
         if (!relay) {
           suppressedEventIds.add(ce.id)
           if (ce.id === event.id) primarySuppressed = true
-          log.info(`[activation] Relay steward suppressed scheduled agent_completed for ${ce.agentId} — no injection performed`)
+          log.info(`[activation] Relay steward suppressed background agent_completed (${a.trigger}) for ${ce.agentId} — no injection performed`)
         }
       }
     }

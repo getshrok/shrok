@@ -1,5 +1,6 @@
 import { type DatabaseSync, type StatementSync } from './index.js'
 import { periodStart, makeLocalYmdFormatter } from '../period.js'
+import { isBackgroundTrigger } from '../types/agent.js'
 
 export interface EventUsageSummary {
   inputTokens: number
@@ -337,13 +338,15 @@ export class UsageStore {
       })
     }
 
-    // Walk agent rows. scheduled + non-null target_name → per-target_name row;
-    // everything else → single manual_agents bucket.
+    // Walk agent rows. Background triggers (scheduled + sensor — Phase 52) with a non-null
+    // target_name → per-target_name row (sensor rows carry target_name 'sensor:<slug>', so
+    // each sensor gets its own attribution row — D-08); everything else → single
+    // manual_agents bucket.
     const scheduledBySkill = new Map<string, { input: number; output: number; cost: number }>()
     let manualInput = 0, manualOutput = 0, manualCost = 0
     let hasManual = false
     for (const r of agentRows) {
-      if (r.trigger === 'scheduled' && r.target_name) {
+      if (isBackgroundTrigger(r.trigger) && r.target_name) {
         const acc = scheduledBySkill.get(r.target_name) ?? { input: 0, output: 0, cost: 0 }
         acc.input += r.input
         acc.output += r.output

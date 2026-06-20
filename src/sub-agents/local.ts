@@ -3,6 +3,7 @@ import { log } from '../logger.js'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { AgentRunner, SpawnOptions, AgentContext, AgentToolEntry } from '../types/agent.js'
+import { isBackgroundTrigger } from '../types/agent.js'
 import type { Skill } from '../types/skill.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { Message, TextMessage, ToolCallMessage, ToolResultMessage, ToolCall, ToolResult } from '../types/core.js'
@@ -1035,9 +1036,12 @@ export class LocalAgentRunner implements AgentRunner {
   private suspendAsQuestion(
     agentId: string, question: string, options: SpawnOptions, history: Message[],
   ): 'completed' | 'suspended' {
-    // D-06: scheduled agents have no human attached — force completion instead of suspension.
-    // Returns 'completed' so the caller exits the loop rather than re-entering as suspended.
-    if (options.trigger === 'scheduled') {
+    // D-06: background agents (scheduled + sensor sub-agent — Phase 52) have no human
+    // attached — force completion instead of suspension. A suspend would enqueue an
+    // agent_question that wakes the head, which for a head-less sensor agent is the
+    // chatter the phase explicitly avoids. Returns 'completed' so the caller exits the
+    // loop rather than re-entering as suspended.
+    if (isBackgroundTrigger(options.trigger)) {
       this.completeAgent(agentId, question, options, history)
       return 'completed'
     }

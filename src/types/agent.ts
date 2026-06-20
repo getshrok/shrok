@@ -68,6 +68,17 @@ export interface AgentState {
   colorSlot?: number              // 0–6 slot index; omitted when DB value is NULL (D-05)
 }
 
+/** A "background" trigger spawns a head-less agent with no human attached: scheduled tasks
+ *  (Phase 44) and sensor sub-agent dispatches (Phase 52). Both must be treated identically at
+ *  every "is this a background agent?" decision site: gated by the relay/output steward at
+ *  completion (no head chatter — Phase 52 D-09), force-completed instead of suspended on
+ *  ask_user (no human to answer — D-06), and attributed per-target in usage (D-08). New
+ *  head-less triggers join here so a site can't silently miss one. Accepts a plain string so
+ *  callers holding a widened/coalesced trigger (e.g. usage rows that may be 'unknown') can use it. */
+export function isBackgroundTrigger(trigger: string | undefined): trigger is 'scheduled' | 'sensor' {
+  return trigger === 'scheduled' || trigger === 'sensor'
+}
+
 // ─── Spawn options ────────────────────────────────────────────────────────────
 
 export interface SpawnOptions {
