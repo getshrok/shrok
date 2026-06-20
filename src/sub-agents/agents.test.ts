@@ -1764,3 +1764,66 @@ describe('Phase 35: buildScheduleTools / buildReminderTools — factory headId i
     expect(Object.keys(props)).not.toContain('headId')
   })
 })
+
+// ─── issue #45: head spawns execute on the verbatim conversation, never the task ──
+//
+// A head spawn (trigger 'manual') must NOT inject the head's `task` into the agent's
+// working prompt — the agent works from `context` only, so an over-prescribed task can't
+// steer it. `task` survives elsewhere purely as a human-facing label. Non-manual spawns
+// (nested 'ad_hoc', 'scheduled', 'sensor') keep the original task-led first message.
+describe('head-spawn first message — task is not shown to the agent (issue #45)', () => {
+  function captureCalls(): { router: LLMRouter; calls: Message[][] } {
+    const calls: Message[][] = []
+    const router: LLMRouter = {
+      complete: vi.fn().mockImplementation(async (_tier: string, msgs: Message[]) => {
+        calls.push([...msgs])
+        return makeEndTurnResponse()
+      }),
+    }
+    return { router, calls }
+  }
+
+  // The agent's first user-role message in its very first LLM round is the assembled
+  // first message. (Later calls may be the completion steward — inspect calls[0] only.)
+  function firstUserText(calls: Message[][]): string {
+    const msgs = calls[0] ?? []
+    const m = msgs.find(x => x.kind === 'text' && (x as TextMessage).role === 'user') as TextMessage | undefined
+    return m?.content ?? ''
+  }
+
+  it("manual (head) spawn shows the verbatim context and NOT the head's task", async () => {
+    const db = freshDb()
+    const { router, calls } = captureCalls()
+    const { runner } = makeRunner(router, db)
+    await runner.spawn({
+      task: 'PRESCRIBED_TASK_marker — write to MEMORY.md the exact way I told you',
+      context: 'Ashley: just remind me next time the digest fires that nyseg is already handled',
+      name: 'nyseg-reminder',
+      trigger: 'manual',
+      headId: 'default',
+    })
+    await runner.awaitAll(2000)
+    const text = firstUserText(calls)
+    expect(text).toContain('Here is the conversation that prompted this work')
+    expect(text).toContain('just remind me next time the digest fires that nyseg is already handled')
+    expect(text).not.toContain('PRESCRIBED_TASK_marker')
+  })
+
+  it('non-manual spawn (e.g. nested ad_hoc) still leads with the task', async () => {
+    const db = freshDb()
+    const { router, calls } = captureCalls()
+    const { runner } = makeRunner(router, db)
+    await runner.spawn({
+      task: 'VISIBLE_TASK_marker — run the digest',
+      context: 'some supporting context',
+      name: 'digest',
+      trigger: 'ad_hoc',
+      headId: 'default',
+    })
+    await runner.awaitAll(2000)
+    const text = firstUserText(calls)
+    expect(text).toContain('VISIBLE_TASK_marker — run the digest')
+    expect(text).toContain('Relevant messages from the conversation')
+    expect(text).toContain('some supporting context')
+  })
+})

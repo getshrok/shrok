@@ -146,7 +146,7 @@ describe('buildHeadSpawnAgentDef — dynamic agent-model mode', () => {
     const required = (def.inputSchema as { required: string[] }).required
     expect(Object.keys(props)).not.toContain('model')
     expect(required).not.toContain('model')
-    expect(required).toEqual(['description', 'task', 'name'])
+    expect(required).toEqual(['description', 'task', 'name', 'context'])
   })
 
   it('includes `model` in properties AND required when dynamic', () => {

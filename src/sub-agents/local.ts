@@ -534,14 +534,21 @@ export class LocalAgentRunner implements AgentRunner {
     // Must stay before the first await (runLoopFrom) so it's set before any messages are appended.
     this.agentStore.updateWorkStart(agentId, history.length)
 
-    // Inject the head's task (+ verbatim context) as the agent's first message.
+    // Inject the agent's first message.
     // When agentContextComposer is on, relevant headHistory is prepended above.
     // When off, this message is the agent's only context — it must be self-contained.
-    // `context` holds conversation excerpts the head pasted verbatim; it follows the
-    // task so the ask leads and the raw material supports it.
-    const agentFirstMessage = options.context
-      ? `${options.task}\n\nRelevant messages from the conversation:\n"""\n${options.context}\n"""`
-      : options.task
+    // `context` holds conversation excerpts the head pasted verbatim.
+    //
+    // Head spawns (trigger 'manual') execute on the verbatim conversation ONLY — the head's
+    // `task` is a human-facing label (dashboard pill tooltip, DB, git commit, completion
+    // summaries) and is deliberately NOT shown to the agent, so an over-prescribed task can't
+    // steer the work (issue #45). Nested/scheduled/sensor spawns keep the task-led prompt.
+    // The last branch is a defensive fallback if a head spawn somehow arrives without context.
+    const agentFirstMessage = options.trigger === 'manual' && options.context
+      ? `Here is the conversation that prompted this work. Carry out what's being asked of you in it:\n"""\n${options.context}\n"""`
+      : options.context
+        ? `${options.task}\n\nRelevant messages from the conversation:\n"""\n${options.context}\n"""`
+        : options.task
     const last = history.length > 0 ? history[history.length - 1] : null
     if (last && last.kind === 'text' && last.role === 'user') {
       ;(last as TextMessage).content += `\n\n${agentFirstMessage}`
