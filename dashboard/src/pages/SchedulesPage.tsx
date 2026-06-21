@@ -1113,6 +1113,12 @@ function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string })
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [editConditions, setEditConditions] = useState('')
+  const [editDeliverToHeadIds, setEditDeliverToHeadIds] = useState<string[]>([])
+
+  const headsQuery = useQuery({
+    queryKey: ['heads'],
+    queryFn: api.heads.list,
+  })
 
   const toggleMutation = useMutation({
     mutationFn: (enabled: boolean) => api.schedules.update(schedule.id, { enabled }),
@@ -1125,7 +1131,7 @@ function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string })
   })
 
   const updateMutation = useMutation({
-    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string }) =>
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; deliverToHeadIds?: string[] }) =>
       api.schedules.update(schedule.id, update),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
   })
@@ -1133,6 +1139,7 @@ function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string })
   function startEdit() {
     setEditValue(schedule.cron !== null ? schedule.cron : (schedule.runAt ? toDatetimeLocalInTz(schedule.runAt, tz) : ''))
     setEditConditions(schedule.conditions ?? '')
+    setEditDeliverToHeadIds(schedule.deliverToHeadIds ?? [])
     setEditing(true)
   }
 
@@ -1140,16 +1147,19 @@ function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string })
     const trimmed = editValue.trim()
     if (!trimmed) { setEditing(false); return }
     const conditionsUnchanged = editConditions === (schedule.conditions ?? '')
+    const deliverUnchanged =
+      JSON.stringify([...editDeliverToHeadIds].sort()) ===
+      JSON.stringify([...(schedule.deliverToHeadIds ?? [])].sort())
     if (schedule.cron !== null) {
-      if (trimmed === schedule.cron && conditionsUnchanged) { setEditing(false); return }
-      updateMutation.mutate({ cron: trimmed, conditions: editConditions })
+      if (trimmed === schedule.cron && conditionsUnchanged && deliverUnchanged) { setEditing(false); return }
+      updateMutation.mutate({ cron: trimmed, conditions: editConditions, deliverToHeadIds: editDeliverToHeadIds })
       return
     }
     const runAtUtc = datetimeLocalToUtc(trimmed, tz)
     if (!runAtUtc) return
     const runAtUnchanged = runAtUtc === schedule.runAt
-    if (runAtUnchanged && conditionsUnchanged) { setEditing(false); return }
-    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions })
+    if (runAtUnchanged && conditionsUnchanged && deliverUnchanged) { setEditing(false); return }
+    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions, deliverToHeadIds: editDeliverToHeadIds })
   }
 
   const scheduleLabel = schedule.cron
@@ -1169,14 +1179,16 @@ function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string })
           <div className="text-xs text-zinc-600 mt-0.5 truncate">if: {schedule.conditions}</div>
         )}
       </div>
-      <div className="shrink-0">
-        <span
-          className="inline-block px-2 py-0.5 rounded text-xs font-medium text-zinc-300"
-          style={{ backgroundColor: headColor(schedule.headId), borderLeft: `2px solid ${headColorBorder(schedule.headId)}` }}
-          title={`Head: ${schedule.headId}`}
-        >
-          {schedule.headId}
-        </span>
+      <div className="min-w-24 shrink-0 text-xs flex flex-wrap gap-1">
+        {[schedule.headId, ...(schedule.deliverToHeadIds ?? [])].filter((v, i, a) => a.indexOf(v) === i).map(hid => (
+          <span key={hid}
+            className="inline-block px-2 py-0.5 rounded font-medium text-zinc-100 truncate max-w-full"
+            style={{ backgroundColor: headColor(hid), borderLeft: `2px solid ${headColorBorder(hid)}` }}
+            title={`Head: ${hid}`}
+          >
+            {hid}
+          </span>
+        ))}
       </div>
       <div className="text-right text-xs text-zinc-500 w-28 shrink-0">
         <div>Next: <span className="text-zinc-400">{formatRelTime(schedule.nextRun)}</span></div>
@@ -1244,6 +1256,23 @@ function SensorScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string })
                     className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
                   />
                 </div>
+                {(headsQuery.data?.heads ?? []).filter(h => h.id !== schedule.headId).length > 0 && (
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">Also deliver to</label>
+                    <select
+                      multiple
+                      value={editDeliverToHeadIds}
+                      onChange={e => setEditDeliverToHeadIds(Array.from(e.target.selectedOptions, o => o.value))}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+                      size={Math.min(4, Math.max(2, (headsQuery.data?.heads ?? []).filter(h => h.id !== schedule.headId).length))}
+                    >
+                      {(headsQuery.data?.heads ?? []).filter(h => h.id !== schedule.headId).map(h => (
+                        <option key={h.id} value={h.id}>{h.id}</option>
+                      ))}
+                    </select>
+                    <div className="text-[11px] text-zinc-500 mt-0.5">Hold Ctrl/Cmd to select multiple. Owner head always included.</div>
+                  </div>
+                )}
                 {updateMutation.isError && (
                   <div className="text-xs text-red-400">{(updateMutation.error as Error).message}</div>
                 )}
@@ -1288,6 +1317,7 @@ function AddSensorScheduleForm({
   const qc = useQueryClient()
   const [targetSlug, setTargetSlug] = useState<string>('')
   const [headId, setHeadId] = useState<string>('')
+  const [deliverToHeadIds, setDeliverToHeadIds] = useState<string[]>([])
   const [type, setType] = useState<'repeating' | 'once'>('repeating')
   const [cron, setCron] = useState('*/30 * * * *')
   const [runAt, setRunAt] = useState('')
@@ -1331,6 +1361,7 @@ function AddSensorScheduleForm({
         ...(type === 'repeating' ? { cron } : { runAt: datetimeLocalToUtc(runAt, tz) }),
         ...(conditions ? { conditions } : {}),
         ...(type === 'repeating' && startAt ? { startAt: datetimeLocalToUtc(startAt, tz) } : {}),
+        ...(deliverToHeadIds.length ? { deliverToHeadIds } : {}),
       })
     },
     onSuccess: () => {
@@ -1377,6 +1408,22 @@ function AddSensorScheduleForm({
                 ))}
           </select>
         </div>
+        {(headsQuery.data?.heads ?? []).filter(h => h.id !== headId).length > 0 && (
+          <div className="flex-1 min-w-40">
+            <label className="text-xs text-zinc-500 mb-1 block">Also deliver to</label>
+            <select
+              multiple
+              value={deliverToHeadIds}
+              onChange={e => setDeliverToHeadIds(Array.from(e.target.selectedOptions, o => o.value))}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+              size={Math.min(4, Math.max(2, (headsQuery.data?.heads ?? []).filter(h => h.id !== headId).length))}
+            >
+              {(headsQuery.data?.heads ?? []).filter(h => h.id !== headId).map(h => (
+                <option key={h.id} value={h.id}>{h.id}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="text-xs text-zinc-500 mb-1 block">Type</label>
           <div className="flex gap-1">

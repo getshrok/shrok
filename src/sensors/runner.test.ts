@@ -186,6 +186,169 @@ describe('runSensor — triple-sink (Phase 52)', () => {
   })
 })
 
+// ─── Multi-head fan-out tests ─────────────────────────────────────────────────
+
+describe('runSensor — multi-head fan-out', () => {
+  let tmpDir: string
+  let ambientBaseDir: string
+  const slug = 'weather'
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-test-fanout-'))
+    ambientBaseDir = path.join(tmpDir, 'ambient')
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  // ── owner + two extra heads: script runs ONCE, three ambient dirs written ──
+
+  it('owner + [bob, carol]: script executes ONCE; ambient identical in all three dirs', async () => {
+    // Use a side-effect file to prove the script itself is invoked only once.
+    // The counter file gets created on first run. If the script ran more than once,
+    // it would contain "2" etc.
+    const counterFile = path.join(tmpDir, 'execcount.txt')
+    const script = writeScript(tmpDir, 'fanout.mjs',
+      `import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+const n = existsSync(${JSON.stringify(counterFile)}) ? parseInt(readFileSync(${JSON.stringify(counterFile)},'utf8')) + 1 : 1;
+writeFileSync(${JSON.stringify(counterFile)}, String(n));
+process.stdout.write(JSON.stringify({ ambient: "sunny", headEvent: { text: "alert" }, subAgentEvent: { prompt: "do work" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, 'ashley', script, ambientBaseDir, sink, undefined, ['bob', 'carol'])
+
+    // Script ran exactly once
+    expect(fs.readFileSync(counterFile, 'utf8')).toBe('1')
+
+    // Ambient file written to all three head dirs with identical content
+    const ashleyBody = fs.readFileSync(path.join(ambientBaseDir, 'ashley', `${slug}.md`), 'utf8')
+    const bobBody = fs.readFileSync(path.join(ambientBaseDir, 'bob', `${slug}.md`), 'utf8')
+    const carolBody = fs.readFileSync(path.join(ambientBaseDir, 'carol', `${slug}.md`), 'utf8')
+    expect(ashleyBody).toBe('sunny')
+    expect(bobBody).toBe('sunny')
+    expect(carolBody).toBe('sunny')
+
+    // Exactly 3 sensor_event enqueue calls (one per head)
+    const eventCalls = (sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>)
+      .filter(c => c[0].type === 'sensor_event')
+    expect(eventCalls).toHaveLength(3)
+    const eventHeadIds = eventCalls.map(c => c[2])
+    expect(eventHeadIds.sort()).toEqual(['ashley', 'bob', 'carol'])
+
+    // Exactly ONE sensor_sub_agent_trigger, sent to owner (ashley), carrying [bob, carol]
+    const triggerCalls = (sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>)
+      .filter(c => c[0].type === 'sensor_sub_agent_trigger')
+    expect(triggerCalls).toHaveLength(1)
+    const [triggerEvent, , triggerHeadId] = triggerCalls[0] as [QueueEvent, number, string]
+    expect(triggerHeadId).toBe('ashley')
+    if (triggerEvent.type === 'sensor_sub_agent_trigger') {
+      expect(triggerEvent.deliverToHeadIds).toEqual(['bob', 'carol'])
+    }
+  })
+
+  // ── Dedupe: owner in deliverToHeadIds does not double-write ──────────────
+
+  it('dedupe: owner in deliverToHeadIds → ambient written to owner+bob only, 2 sensor_events', async () => {
+    const script = writeScript(tmpDir, 'dedup.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "rainy", headEvent: { text: "dedup" }, subAgentEvent: { prompt: "dedup work" } }))`)
+    const sink = makeSink()
+
+    // 'ashley' in both owner + extras — should only appear once in deliverySet
+    await runSensor(slug, 'ashley', script, ambientBaseDir, sink, undefined, ['ashley', 'bob'])
+
+    // Ambient written to ashley and bob only (not twice in ashley)
+    expect(fs.readFileSync(path.join(ambientBaseDir, 'ashley', `${slug}.md`), 'utf8')).toBe('rainy')
+    expect(fs.readFileSync(path.join(ambientBaseDir, 'bob', `${slug}.md`), 'utf8')).toBe('rainy')
+    // No third dir
+    const dirs = fs.readdirSync(ambientBaseDir)
+    expect(dirs.sort()).toEqual(['ashley', 'bob'])
+
+    // 2 sensor_events (ashley + bob), NOT 3
+    const eventCalls = (sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>)
+      .filter(c => c[0].type === 'sensor_event')
+    expect(eventCalls).toHaveLength(2)
+    const eventHeadIds = eventCalls.map(c => c[2]).sort()
+    expect(eventHeadIds).toEqual(['ashley', 'bob'])
+
+    // sub-agent trigger still carries the raw extra list (as passed, not deduped from owner)
+    const triggerCalls = (sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>)
+      .filter(c => c[0].type === 'sensor_sub_agent_trigger')
+    expect(triggerCalls).toHaveLength(1)
+    const [triggerEvent, , triggerHeadId] = triggerCalls[0] as [QueueEvent, number, string]
+    expect(triggerHeadId).toBe('ashley')
+    if (triggerEvent.type === 'sensor_sub_agent_trigger') {
+      expect(triggerEvent.deliverToHeadIds).toEqual(['ashley', 'bob'])
+    }
+  })
+
+  // ── No extra heads: owner-only behavior unchanged ─────────────────────────
+
+  it('empty deliverToHeadIds: owner-only — 1 ambient, 1 sensor_event, no deliverToHeadIds key on trigger', async () => {
+    const script = writeScript(tmpDir, 'noextra.mjs',
+      `process.stdout.write(JSON.stringify({ ambient: "clear", headEvent: { text: "clear" }, subAgentEvent: { prompt: "check sky" } }))`)
+    const sink = makeSink()
+
+    await runSensor(slug, 'ashley', script, ambientBaseDir, sink, undefined, [])
+
+    // Only owner dir
+    expect(fs.readFileSync(path.join(ambientBaseDir, 'ashley', `${slug}.md`), 'utf8')).toBe('clear')
+    expect(fs.readdirSync(ambientBaseDir)).toEqual(['ashley'])
+
+    // 1 sensor_event
+    const eventCalls = (sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>)
+      .filter(c => c[0].type === 'sensor_event')
+    expect(eventCalls).toHaveLength(1)
+    expect(eventCalls[0]![2]).toBe('ashley')
+
+    // sub-agent trigger has NO deliverToHeadIds key
+    const triggerCalls = (sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>)
+      .filter(c => c[0].type === 'sensor_sub_agent_trigger')
+    expect(triggerCalls).toHaveLength(1)
+    const [triggerEvent] = triggerCalls[0] as [QueueEvent, number, string]
+    if (triggerEvent.type === 'sensor_sub_agent_trigger') {
+      expect('deliverToHeadIds' in triggerEvent).toBe(false)
+    }
+  })
+
+  // ── deliverToHeadIds omitted (default): same as empty ────────────────────
+
+  it('deliverToHeadIds omitted (default param): owner-only, trigger has no deliverToHeadIds key', async () => {
+    const script = writeScript(tmpDir, 'default-param.mjs',
+      `process.stdout.write(JSON.stringify({ subAgentEvent: { prompt: "work" } }))`)
+    const sink = makeSink()
+
+    // No extra arg — exercises the default []
+    await runSensor(slug, 'ashley', script, ambientBaseDir, sink)
+
+    const triggerCalls = (sink.enqueue.mock.calls as Array<[QueueEvent, number, string]>)
+      .filter(c => c[0].type === 'sensor_sub_agent_trigger')
+    expect(triggerCalls).toHaveLength(1)
+    const [triggerEvent] = triggerCalls[0] as [QueueEvent, number, string]
+    if (triggerEvent.type === 'sensor_sub_agent_trigger') {
+      expect('deliverToHeadIds' in triggerEvent).toBe(false)
+    }
+  })
+
+  // ── Invalid extra head id: throws before any I/O ──────────────────────────
+
+  it('invalid extra head id (contains /): throws synchronously before any I/O', async () => {
+    const sink = makeSink()
+    await expect(
+      runSensor(slug, 'ashley', '/nonexistent.mjs', ambientBaseDir, sink, undefined, ['bob', 'evil/path'])
+    ).rejects.toThrow('Invalid head id: evil/path')
+    expect(sink.enqueue).not.toHaveBeenCalled()
+    expect(fs.existsSync(ambientBaseDir)).toBe(false)
+  })
+
+  it('invalid extra head id (empty string): throws synchronously', async () => {
+    const sink = makeSink()
+    await expect(
+      runSensor(slug, 'ashley', '/nonexistent.mjs', ambientBaseDir, sink, undefined, [''])
+    ).rejects.toThrow('Invalid head id: ')
+  })
+})
+
 describe('runSensor — dual-sink, head-scoped', () => {
   let tmpDir: string
   let ambientBaseDir: string

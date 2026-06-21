@@ -880,13 +880,14 @@ describe('deliverToHeadIds validation (Plan 44-03 D-08 / T-44-06 / T-44-07 / T-4
 
   // ── POST: reminder-reject (T-44-07) ─────────────────────────────────────────
 
-  it('POST reminder with deliverToHeadIds → 400 (task-only guard)', async () => {
+  it('POST reminder with deliverToHeadIds → 400 (reminder-only rejection)', async () => {
     const r = await post({
       kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
       headId: 'a', deliverToHeadIds: ['b'],
     })
     expect(r.status).toBe(400)
-    expect((r.data as { error: string }).error).toContain('deliverToHeadIds is only valid for task schedules')
+    // Message now references "reminder" (updated from the old "task schedules" wording)
+    expect((r.data as { error: string }).error).toContain('reminder')
   })
 
   // ── POST: unknown-head-404 (T-44-06 / D-11 admin-404) ───────────────────────
@@ -937,5 +938,66 @@ describe('deliverToHeadIds validation (Plan 44-03 D-08 / T-44-06 / T-44-07 / T-4
     const r = await patch(id, { headId: 'b' })
     expect(r.status).toBe(400)
     expect((r.data as { error: string }).error).toContain('headId cannot be reassigned')
+  })
+
+  // ── Sensor (kind:'script') deliverToHeadIds — new cases ──────────────────
+
+  it('POST script with deliverToHeadIds:[b] → 200 and schedule has deliverToHeadIds:[b]', async () => {
+    const r = await post({
+      kind: 'script', taskName: 'weather', cron: '*/5 * * * *',
+      headId: 'a', deliverToHeadIds: ['b'],
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { deliverToHeadIds: string[] } }).schedule
+    expect(schedule.deliverToHeadIds).toEqual(['b'])
+    const persisted = store.get((r.data as { schedule: { id: string } }).schedule.id)
+    expect(persisted?.deliverToHeadIds).toEqual(['b'])
+  })
+
+  it('POST script with deliverToHeadIds:[b,b] → 200 and stored set is deduped to [b]', async () => {
+    const r = await post({
+      kind: 'script', taskName: 'weather', cron: '*/5 * * * *',
+      headId: 'a', deliverToHeadIds: ['b', 'b'],
+    })
+    expect(r.status).toBe(200)
+    const schedule = (r.data as { schedule: { deliverToHeadIds: string[] } }).schedule
+    expect(schedule.deliverToHeadIds).toEqual(['b'])
+  })
+
+  it('POST reminder with deliverToHeadIds → 400 (reminder-only rejection, updated message)', async () => {
+    const r = await post({
+      kind: 'reminder', agentContext: 'Test', cron: '0 9 * * *',
+      headId: 'a', deliverToHeadIds: ['b'],
+    })
+    expect(r.status).toBe(400)
+    expect((r.data as { error: string }).error).toContain('reminder')
+  })
+
+  it('POST script with deliverToHeadIds:[zzz] (unknown head) → 404', async () => {
+    const r = await post({
+      kind: 'script', taskName: 'weather', cron: '*/5 * * * *',
+      headId: 'a', deliverToHeadIds: ['zzz'],
+    })
+    expect(r.status).toBe(404)
+    expect((r.data as { error: string }).error).toContain('zzz')
+  })
+
+  it('PATCH script schedule deliverToHeadIds → 200 with set present; PATCH with [] → 200 key absent', async () => {
+    const created = await post({
+      kind: 'script', taskName: 'weather', cron: '*/5 * * * *',
+      headId: 'a',
+    })
+    expect(created.status).toBe(200)
+    const id = (created.data as { schedule: { id: string } }).schedule.id
+
+    const addR = await patch(id, { deliverToHeadIds: ['b'] })
+    expect(addR.status).toBe(200)
+    const addedSchedule = (addR.data as { schedule: { deliverToHeadIds: string[] } }).schedule
+    expect(addedSchedule.deliverToHeadIds).toEqual(['b'])
+
+    const clearR = await patch(id, { deliverToHeadIds: [] })
+    expect(clearR.status).toBe(200)
+    const clearedSchedule = (clearR.data as { schedule: Record<string, unknown> }).schedule
+    expect('deliverToHeadIds' in clearedSchedule).toBe(false)
   })
 })
