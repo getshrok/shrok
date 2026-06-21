@@ -1524,7 +1524,7 @@ describe('phase 23: cronTimezone field', () => {
     const tools = buildScheduleTools(scheduleStore, 'America/New_York', unified, 'default')
     const create = tools.find(t => t.definition.name === 'create_schedule')!
     const keys = Object.keys(create.definition.inputSchema.properties as object)
-    expect(keys).toEqual(['taskName', 'kind', 'cronTimezone', 'cron', 'runAt', 'conditions', 'agentContext'])
+    expect(keys).toEqual(['taskName', 'kind', 'cronTimezone', 'cron', 'runAt', 'conditions', 'agentContext', 'endDate'])
   })
 
   it('create_schedule: cronTimezone description includes the workspace timezone dynamically', async () => {

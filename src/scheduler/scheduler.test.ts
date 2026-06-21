@@ -487,8 +487,8 @@ describe('ScheduleEvaluatorImpl — kind:script dispatch', () => {
     // give the fire-and-forget promise a chance to run
     await new Promise(r => setTimeout(r, 10))
     expect(sensorRunner.run).toHaveBeenCalledOnce()
-    // SENSOR-16: runner receives both slug AND headId
-    expect(sensorRunner.run).toHaveBeenCalledWith('weather', 'default')
+    // SENSOR-16: runner receives both slug AND headId (plus the fan-out delivery set, default [])
+    expect(sensorRunner.run).toHaveBeenCalledWith('weather', 'default', [])
   })
 
   it('(SENSOR-16) passes schedule.headId to sensorRunner.run for kind:script', async () => {
@@ -499,7 +499,7 @@ describe('ScheduleEvaluatorImpl — kind:script dispatch', () => {
 
     await new Promise(r => setTimeout(r, 10))
     expect(sensorRunner.run).toHaveBeenCalledOnce()
-    expect(sensorRunner.run).toHaveBeenCalledWith('humidity', 'zoey')
+    expect(sensorRunner.run).toHaveBeenCalledWith('humidity', 'zoey', [])
   })
 
   it('advances nextRun for a cron kind:script schedule', () => {
