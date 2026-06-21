@@ -13,7 +13,6 @@ import type { QueueStore } from '../db/queue.js'
 import type { UsageStore } from '../db/usage.js'
 import type { ScheduleStore } from '../db/schedules.js'
 import type { NoteStore } from '../db/notes.js'
-import { composeVerbatimContext } from './compose-context.js'
 import type { AppStateStore } from '../db/app_state.js'
 import type { SkillLoader } from '../types/skill.js'
 import type { McpRegistry } from '../mcp/registry.js'
@@ -483,54 +482,17 @@ export class LocalAgentRunner implements AgentRunner {
       } as TextMessage)
     }
 
-    // Verbatim context pass-through (issue #45): prepend the relevant conversation
-    // turns, selected VERBATIM from the real head history via composeVerbatimContext.
-    // Manual (head) spawns ALWAYS compose — that's the pass-through that makes the agent
-    // act on the user's actual words instead of the head's paraphrase. Nested/scheduled/
-    // sensor spawns only compose when the agentContextComposer flag is on (default off) —
-    // background paths stay lean and unchanged. When neither applies, the agent gets only
-    // its spawn prompt.
-    let composedEmpty = true
-    if (options.headHistory?.length && (options.trigger === 'manual' || this.agentContextComposer)) {
-      const knownTools = new Set(toolEntries.map(e => e.definition.name))
-      const composed = await composeVerbatimContext(
-        options.headHistory,
-        options.task,
-        this.llmRouter,
-        this.stewardModel ?? 'dumb',
-        this.usageStore,
-        knownTools,
-        this.snapshotTokenBudget,
-      )
-      history.push(...composed.messages)
-      composedEmpty = composed.empty
-    }
-
-    // Record where the agent's own work begins — after all prepended head history.
+    // Record where the agent's own work begins.
     // Must stay before the first await (runLoopFrom) so it's set before any messages are appended.
     this.agentStore.updateWorkStart(agentId, history.length)
 
-    // Inject the agent's first message.
-    //
-    // Head spawns (trigger 'manual') — FULL FACADE (issue #45): the verbatim conversation
-    // was just prepended above by the composer, so the agent works from the real turns, not
-    // from anything the head transcribed. The first message is a thin framing line pointing
-    // at that history; the head's `task` (a human-facing label) and pasted `context` are NOT
-    // the agent's content. Defensive fallback only: if the composer produced nothing
-    // (empty/absent headHistory, e.g. an eval harness that set only `context`), fall back to
-    // the head's pasted `context`, else the bare `task` so the agent gets something.
-    //
-    // Nested/scheduled/sensor spawns keep the task-led prompt (unchanged): `task` + any
-    // pasted `context`, else bare `task`.
-    const agentFirstMessage = options.trigger === 'manual'
-      ? (!composedEmpty
-          ? `Carry out what the conversation above is asking of you.`
-          : options.context
-            ? `Here is the conversation that prompted this work. Carry out what's being asked of you in it:\n"""\n${options.context}\n"""`
-            : options.task)
-      : options.context
-        ? `${options.task}\n\nRelevant messages from the conversation:\n"""\n${options.context}\n"""`
-        : options.task
+    // Inject the agent's first message. The head writes a rich all-in-one `task` that
+    // carries both what is wanted and the relevant context, so the agent receives it
+    // directly — no composer in between. `options.context`, when present, is a defensive
+    // fallback for any eval/nested caller that still sets it; it is appended after `task`.
+    const agentFirstMessage = options.context
+      ? `${options.task}\n\nRelevant messages from the conversation:\n"""\n${options.context}\n"""`
+      : options.task
     const last = history.length > 0 ? history[history.length - 1] : null
     if (last && last.kind === 'text' && last.role === 'user') {
       ;(last as TextMessage).content += `\n\n${agentFirstMessage}`

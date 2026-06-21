@@ -122,15 +122,15 @@ describe('in-scope tool schemas', () => {
   it('both spawn_agent variants are distinct schema objects', () => {
     // Guards against a future refactor that collapses the two spawn_agent
     // schemas into a single shared object — they must remain independent
-    // because their property shapes differ: both carry task/context/model,
-    // but only HEAD has `name`.
+    // because their property shapes differ: both carry `task`, but only HEAD
+    // has `name`.
     const subAgentSpawn = getSubAgentSpawnDef()
     const headSpawn = getHeadSpawnDef()
     expect(subAgentSpawn).not.toBe(headSpawn)
     // And their property shapes differ:
     const subKeys = Object.keys(getProps(subAgentSpawn))
     const headKeys = Object.keys(getProps(headSpawn))
-    expect(subKeys).toContain('task')      // both carry the restructured task/context args
+    expect(subKeys).toContain('task')      // both carry the task arg
     expect(headKeys).toContain('task')
     expect(headKeys).toContain('name')     // HEAD only
     expect(subKeys).not.toContain('name')
@@ -146,7 +146,7 @@ describe('buildHeadSpawnAgentDef — dynamic agent-model mode', () => {
     const required = (def.inputSchema as { required: string[] }).required
     expect(Object.keys(props)).not.toContain('model')
     expect(required).not.toContain('model')
-    expect(required).toEqual(['description', 'task', 'name', 'context'])
+    expect(required).toEqual(['description', 'task', 'name'])
   })
 
   it('includes `model` in properties AND required when dynamic', () => {

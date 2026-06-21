@@ -15,7 +15,6 @@ import type { IdentityLoader } from '../identity/loader.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
 import { runResumeSteward, runMessageAgentSteward } from './steward.js'
-import { composeVerbatimContext } from '../sub-agents/compose-context.js'
 import { applyIdentityEdits } from './identity-edit.js'
 import {
   VIEW_IMAGE_DEF, executeViewImage,
@@ -44,17 +43,16 @@ import { formatModelTime, parseModelTime } from '../util/model-time.js'
  * sneaks in when not dynamic (defense-in-depth).
  */
 export function buildHeadSpawnAgentDef(agentModelDynamic: boolean): ToolDefinition {
-  const baseDesc = 'Spawn an agent to handle a task asynchronously. Your job is to RELAY, not to author: state what the user wants in `task`, and paste the relevant conversation VERBATIM into `context` — the agent works from that conversation, so let it be the agent\'s prompt rather than writing a fresh one. Say what is wanted, not how to do it; the agent decides the approach.'
+  const baseDesc = 'Spawn an agent to handle a task asynchronously. Write a single all-in-one `task`: say what the user wants AND give the agent everything it needs to do it well. Say what is wanted, not how to do it — the agent is capable and decides the approach.'
   const tierDesc = ' Pick the worker tier per task via `model`: dumb for trivial single-fact lookups / web searches, smart for everyday work, genius for hard multi-step reasoning.'
   const ackDesc = ' Always include a brief acknowledgment in your response when calling this tool (e.g. "On it." or "Checking now.") — the user needs to know you\'re working on it, and the loop exits immediately after.'
 
   const properties: Record<string, unknown> = {
     description: { type: 'string', description: DESCRIPTION_PARAM_SPEC },
-    task: { type: 'string', description: 'What the user wants done — ideally in their own words. Treat this as a hint for the agent, not a command: the agent has the full conversation in `context` and decides for itself how to proceed, so it may follow your framing here or take a better route. Because of that, don\'t prescribe a method or spell out steps — just say what\'s wanted and let the agent work out the how. Keep it short; `context` is where the real detail lives.' },
-    context: { type: 'string', description: 'The conversation the agent works from — REQUIRED. Paste the user\'s request and every relevant surrounding turn VERBATIM: constraints, preferences, prior turns, referenced details, names, links, IDs. Quote the actual words; do not summarize. Bad: "user wants a flight to Boston". Good: "I need to get to Boston Thursday before 5pm, under $300, window seat". Every paraphrase loses information the agent can\'t recover. When unsure whether something is relevant, include it.' },
+    task: { type: 'string', description: 'The all-in-one request for the agent: what the user wants PLUS all the relevant detail, constraints, preferences, and context the agent needs. Give as much as helps — and relay things VERBATIM where it matters (the user\'s exact wording, names, IDs, links, exact values), since a paraphrase can lose information the agent can\'t recover. Say what is wanted, not how to do it: don\'t prescribe a method or spell out steps — the agent is capable and works out the how (and self-corrects if you over-prescribe). Good: "Book me a flight to Boston. The user said: \'I need to get to Boston Thursday before 5pm, under $300, window seat.\'"' },
     name: { type: 'string', description: 'Short human-readable name for this agent — 2-5 words describing what it\'s doing (e.g. "github-pr-123-review", "morning-email-triage", "fix-login-bug"). Used as the agent\'s ID prefix so you can identify it later. Multiple agents can run in parallel — be specific.' },
   }
-  const required = ['description', 'task', 'name', 'context']
+  const required = ['description', 'task', 'name']
 
   if (agentModelDynamic) {
     properties['model'] = { type: 'string', enum: ['dumb', 'smart', 'genius'], description: 'Worker capability tier for THIS task (required). dumb = trivial single-fact lookups / web searches only; smart = everyday work; genius = hard multi-step / reasoning-heavy work.' }
@@ -104,15 +102,14 @@ export const HEAD_TOOLS: ToolDefinition[] = [
   buildHeadSpawnAgentDef(false),
   {
     name: 'message_agent',
-    description: 'Continue an agent — works for running, paused, and completed agents. Your job is to RELAY, not to author: paste the conversation that prompted this follow-up VERBATIM into `context` — the new user turns, their reply to a paused agent\'s question, any added detail. The agent picks up from that conversation, so let it be the agent\'s prompt rather than restating it. `message` is just a short label of your intent.',
+    description: 'Continue an agent — works for running, paused, and completed agents. Write a single all-in-one `message`: the follow-up the agent should pick up from, including everything it needs.',
     inputSchema: {
       type: 'object',
       properties: {
         agentId: { type: 'string' },
-        context: { type: 'string', description: 'The verbatim conversation turns that prompted this follow-up — what the agent actually works from. Paste the user\'s new message(s) / their reply VERBATIM: constraints, choices, corrections, referenced details, names, links, IDs. Quote the actual words; do not summarize. Bad: "user said go ahead". Good: "Ashley: yes go ahead, the window seat one under $300". Every paraphrase loses information the agent can\'t recover. REQUIRED.' },
-        message: { type: 'string', description: 'A short hint/label of your intent for this follow-up — not a script. The agent works from `context`, not this; keep it brief.' },
+        message: { type: 'string', description: 'The all-in-one follow-up delivered to the agent: the new user turns, their reply to a paused agent\'s question, any added detail or corrections — plus whatever context helps the agent continue. Relay things VERBATIM where it matters (the user\'s exact wording, choices, names, IDs, links, exact values), since a paraphrase can lose information the agent can\'t recover. Good: "The user said: \'yes go ahead, the window seat one under $300\'."' },
       },
-      required: ['agentId', 'message', 'context'],
+      required: ['agentId', 'message'],
     },
   },
   // Static fallback definition so the name propagates to HEAD_TOOL_NAMES (and thus
@@ -240,10 +237,6 @@ export interface HeadToolExecutorOptions {
   messages: MessageStore
   /** Returns the current head conversation history for passing to spawned agents. */
   getHistory?: () => import('../types/core.js').Message[]
-  /** Returns the turns that arrived in THIS activation (the user's new message(s) /
-   *  their reply) — the "what's new" window message_agent composes verbatim context from
-   *  for a continuation. Wired in activation.ts as getSince(headId, activationStart). */
-  getRecentTurns?: () => import('../types/core.js').Message[]
   /** Token budget for the verbatim-context composer snapshot (issue #45 pass-through). */
   snapshotTokenBudget?: number
   /** Returns attachments from the triggering event message, if any. */
@@ -360,7 +353,6 @@ export class HeadToolExecutor implements ToolExecutor {
       case 'spawn_agent': {
         const spawnOpts: import('../types/agent.js').SpawnOptions = {
           task: input['task'] as string,
-          ...(input['context'] ? { context: input['context'] as string } : {}),
           name: input['name'] as string,
           trigger: 'manual',
           headId: this.opts.headId,                       // Phase 34 D-EXEC-OPTION: agent inherits the spawning head's identity
@@ -384,11 +376,9 @@ export class HeadToolExecutor implements ToolExecutor {
 
       case 'message_agent': {
         const agentId = input['agentId'] as string
-        // `context` is now only a DEFENSIVE FALLBACK for delivery — the agent normally
-        // receives verbatim turns the composer selects from the real conversation (below).
-        // The stewards still judge `context` (the head's stated follow-up). `message` is a
-        // human-facing intent label — never delivered to the agent (issue #45).
-        const context = input['context'] as string
+        // `message` is the all-in-one follow-up: the stewards judge it AND it is delivered
+        // to the agent directly (the head writes a rich message; no composer in between).
+        const message = input['message'] as string
         if (this.opts.agentStore) {
           const state = this.opts.agentStore.get(agentId)
           if (state?.status === 'failed' || state?.status === 'retracted') {
@@ -405,7 +395,7 @@ export class HeadToolExecutor implements ToolExecutor {
               const recent = this.opts.messages.getRecentText(this.opts.headId, 4)
                 .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt }))
               const pass = await runMessageAgentSteward(
-                task, context, recent,
+                task, message, recent,
                 this.opts.llmRouter, this.opts.stewardModel,
                 this.opts.usageStore,
               )
@@ -424,7 +414,7 @@ export class HeadToolExecutor implements ToolExecutor {
                 .filter((m): m is TextMessage => m.kind === 'text' && !m.injected)
                 .map(m => ({ role: m.role, content: m.content, createdAt: m.createdAt }))
               const pass = await runResumeSteward(
-                question, context, recent,
+                question, message, recent,
                 this.opts.llmRouter, this.opts.stewardModel,
                 this.opts.usageStore,
               )
@@ -442,7 +432,7 @@ export class HeadToolExecutor implements ToolExecutor {
               const recent = this.opts.messages.getRecentText(this.opts.headId, 4)
                 .map(m => ({ role: (m as TextMessage).role, content: (m as TextMessage).content, createdAt: m.createdAt }))
               const pass = await runMessageAgentSteward(
-                task, context, recent,
+                task, message, recent,
                 this.opts.llmRouter, this.opts.stewardModel,
                 this.opts.usageStore,
               )
@@ -455,32 +445,12 @@ export class HeadToolExecutor implements ToolExecutor {
             }
           }
         }
-        // Deliver the relevant NEW turns, selected VERBATIM from the real conversation —
-        // NOT the head's pasted `context` (issue #45 full facade). Compose over the turns
-        // that arrived in THIS activation (the user's follow-up / their reply), lensed on
-        // the agent's open thread (task + pending question) plus the head's intent label.
-        // `message` feeds the lens only; it is never delivered. Falls back to the head's
-        // pasted `context` if the composer is unavailable (no llmRouter, e.g. a test
-        // harness) or produces nothing. Delivery is UNIFORM across running/completed/
-        // suspended agents. The head's current xray callback streams a continued agent's
-        // work to THIS activation's channel, not the one it was first spawned from.
-        let deliveredBody = context
-        if (this.opts.llmRouter && this.opts.stewardModel) {
-          const turns = this.opts.getRecentTurns?.()
-            ?? this.opts.messages.getRecent(this.opts.headId, this.opts.snapshotTokenBudget ?? 8000)
-          if (turns.length > 0) {
-            const st = this.opts.agentStore?.get(agentId)
-            const signal = [st?.task, st?.pendingQuestion, input['message'] as string | undefined]
-              .filter((s): s is string => Boolean(s && s.trim()))
-              .join(' — ')
-            const composed = await composeVerbatimContext(
-              turns, signal, this.opts.llmRouter, this.opts.stewardModel,
-              this.opts.usageStore, new Set(), this.opts.snapshotTokenBudget ?? 60_000,
-            )
-            if (!composed.empty) deliveredBody = composed.text
-          }
-        }
-        const delivered = `Here's the latest from the conversation — continue your work based on it:\n"""\n${deliveredBody}\n"""`
+        // Deliver the head's all-in-one `message` directly to the agent. The head writes a
+        // rich follow-up (new turns / reply / added detail), so it becomes the agent's
+        // content as-is — no composer in between. Delivery is UNIFORM across running/
+        // completed/suspended agents. The head's current xray callback streams a continued
+        // agent's work to THIS activation's channel, not the one it was first spawned from.
+        const delivered = `Here's the latest from the conversation — continue your work based on it:\n"""\n${message}\n"""`
         await this.opts.agentRunner.update(agentId, delivered, this.opts.onVerbose)
         return JSON.stringify({ ok: true })
       }

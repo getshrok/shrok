@@ -1769,13 +1769,13 @@ describe('Phase 35: buildScheduleTools / buildReminderTools — factory headId i
   })
 })
 
-// ─── issue #45: head spawns execute on the verbatim conversation, never the task ──
+// ─── head spawns receive the all-in-one task directly ─────────────────────────
 //
-// A head spawn (trigger 'manual') must NOT inject the head's `task` into the agent's
-// working prompt — the agent works from `context` only, so an over-prescribed task can't
-// steer it. `task` survives elsewhere purely as a human-facing label. Non-manual spawns
-// (nested 'ad_hoc', 'scheduled', 'sensor') keep the original task-led first message.
-describe('head-spawn first message — task is not shown to the agent (issue #45)', () => {
+// The head writes a rich all-in-one `task` (what is wanted PLUS the relevant context),
+// and the agent receives it directly — no composer in between. `context`, when a caller
+// still sets it, is a defensive fallback appended after `task`. This holds for manual
+// (head) spawns and non-manual (nested 'ad_hoc', 'scheduled', 'sensor') spawns alike.
+describe('spawn first message — head task is delivered directly', () => {
   function captureCalls(): { router: LLMRouter; calls: Message[][] } {
     const calls: Message[][] = []
     const router: LLMRouter = {
@@ -1795,25 +1795,22 @@ describe('head-spawn first message — task is not shown to the agent (issue #45
     return m?.content ?? ''
   }
 
-  it("manual (head) spawn shows the verbatim context and NOT the head's task", async () => {
+  it('manual (head) spawn delivers the head task directly to the agent', async () => {
     const db = freshDb()
     const { router, calls } = captureCalls()
     const { runner } = makeRunner(router, db)
     await runner.spawn({
-      task: 'PRESCRIBED_TASK_marker — write to MEMORY.md the exact way I told you',
-      context: 'Ashley: just remind me next time the digest fires that nyseg is already handled',
+      task: 'TASK_marker — remind me next time the digest fires that nyseg is already handled',
       name: 'nyseg-reminder',
       trigger: 'manual',
       headId: 'default',
     })
     await runner.awaitAll(2000)
     const text = firstUserText(calls)
-    expect(text).toContain('Here is the conversation that prompted this work')
-    expect(text).toContain('just remind me next time the digest fires that nyseg is already handled')
-    expect(text).not.toContain('PRESCRIBED_TASK_marker')
+    expect(text).toContain('TASK_marker — remind me next time the digest fires that nyseg is already handled')
   })
 
-  it('non-manual spawn (e.g. nested ad_hoc) still leads with the task', async () => {
+  it('non-manual spawn (e.g. nested ad_hoc) also leads with the task, with context appended when present', async () => {
     const db = freshDb()
     const { router, calls } = captureCalls()
     const { runner } = makeRunner(router, db)
@@ -1870,23 +1867,21 @@ describe('sensor sub-agent spawn (regression: no bogus skillName)', () => {
   })
 })
 
-// ─── issue #45 parity: message_agent delivers the verbatim context, never the label ──
+// ─── message_agent delivers the head's all-in-one message directly ────────────
 //
-// A head follow-up to an agent must deliver the verbatim conversation (`context`) and NOT
-// the head-authored intent label (`message`) — uniformly across running, completed, and
-// suspended agents. This mirrors the spawn_agent #45 treatment (b6cada7). We drive the head
-// dispatch (HeadToolExecutor) with a captured agentRunner.update and a per-state agentStore,
-// stewards disabled so delivery actually happens, and assert the delivered string.
-describe('message_agent — context is delivered, message is not (issue #45 parity)', () => {
-  const CONTEXT = 'Ashley: yes go ahead, the window seat one under $300'
-  const MESSAGE = 'PRESCRIBED_MESSAGE_marker'
+// A head follow-up delivers the head-authored `message` directly (no composer in between),
+// uniformly across running, completed, and suspended agents. We drive the head dispatch
+// (HeadToolExecutor) with a captured agentRunner.update and a per-state agentStore, stewards
+// disabled so delivery actually happens, and assert the delivered string.
+describe('message_agent — the all-in-one message is delivered directly', () => {
+  const MESSAGE = 'Ashley: yes go ahead, the window seat one under $300'
 
   function makeExecutor(state: { status: string; task?: string; pendingQuestion?: string }): {
     executor: HeadToolExecutor
     update: ReturnType<typeof vi.fn>
     tmpDir: string
   } {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'msg-agent-45-'))
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'msg-agent-deliver-'))
     const update = vi.fn().mockResolvedValue(undefined)
     const agentRunner = {
       spawn: vi.fn().mockResolvedValue('tent_1'),
@@ -1930,7 +1925,7 @@ describe('message_agent — context is delivered, message is not (issue #45 pari
       const result = await executor.execute({
         id: 'tc1',
         name: 'message_agent',
-        input: { agentId: 't1', message: MESSAGE, context: CONTEXT },
+        input: { agentId: 't1', message: MESSAGE },
       })
       expect(JSON.parse(result.content as string)).toMatchObject({ ok: true })
       expect(update).toHaveBeenCalledTimes(1)
@@ -1944,116 +1939,10 @@ describe('message_agent — context is delivered, message is not (issue #45 pari
     ['running', { status: 'running', task: 'book a flight' }],
     ['completed', { status: 'completed', task: 'book a flight' }],
     ['suspended', { status: 'suspended', pendingQuestion: 'which seat?' }],
-  ] as const)('%s agent: delivers the wrapped verbatim context and never the message label', async (_label, state) => {
+  ] as const)('%s agent: delivers the wrapped all-in-one message', async (_label, state) => {
     const delivered = await dispatchAndGetDelivered(state)
-    // (a) the verbatim context + the delivery wrapper text are present
+    // the head's all-in-one message + the delivery wrapper text are present
     expect(delivered).toContain('continue your work based on it')
     expect(delivered).toContain('window seat one under $300')
-    // (b) the head-authored message label never reaches the agent
-    expect(delivered).not.toContain(MESSAGE)
-  })
-})
-
-// ─── issue #45: verbatim PASS-THROUGH via the composer (spawn + message_agent) ──
-//
-// The full facade: the agent works from the REAL conversation the server holds, selected
-// verbatim by the composer — not from anything the head transcribed. A composer-aware
-// router returns "[]" for the classify call (fail-open keep-all = prepend the real turns
-// verbatim) and end_turn otherwise.
-describe('verbatim pass-through composer (issue #45 full facade)', () => {
-  const COMPOSER_MARKER = 'assemble the EXACT context'
-
-  function composerAwareRouter(): { router: LLMRouter; calls: Array<{ system: string; msgs: Message[] }> } {
-    const calls: Array<{ system: string; msgs: Message[] }> = []
-    const router: LLMRouter = {
-      complete: vi.fn().mockImplementation(
-        async (_tier: string, msgs: Message[], _tools: unknown, opts?: { systemPrompt?: string }) => {
-          const system = opts?.systemPrompt ?? ''
-          calls.push({ system, msgs: [...msgs] })
-          // Composer classify call → "[]" keeps every turn verbatim (fail-open keep-all).
-          if (system.includes(COMPOSER_MARKER)) {
-            return { content: '[]', model: 'test', inputTokens: 1, outputTokens: 1, stopReason: 'end_turn' as const, toolCalls: [] }
-          }
-          return makeEndTurnResponse()
-        },
-      ),
-    }
-    return { router, calls }
-  }
-
-  it('manual spawn runs the agent on the verbatim head history, not the head task/context', async () => {
-    const db = freshDb()
-    const { router, calls } = composerAwareRouter()
-    const { runner } = makeRunner(router, db)
-    await runner.spawn({
-      task: 'PRESCRIBED_TASK_marker — do it exactly how I say',
-      name: 'flight',
-      trigger: 'manual',
-      headId: 'default',
-      headHistory: [makeText('h1', 'Ashley: book the Lisbon flight, aisle seat, under $850')],
-    })
-    await runner.awaitAll(2000)
-
-    // The agent's own LLM round is the call WITHOUT the composer system prompt.
-    const agentRound = calls.find(c => !c.system.includes(COMPOSER_MARKER))
-    expect(agentRound).toBeDefined()
-    const userText = agentRound!.msgs
-      .filter(m => m.kind === 'text' && (m as TextMessage).role === 'user')
-      .map(m => (m as TextMessage).content)
-      .join('\n')
-    // verbatim head history reached the agent…
-    expect(userText).toContain('book the Lisbon flight, aisle seat, under $850')
-    // …via the thin framing line, NOT the head's prescriptive task label
-    expect(userText).toContain('Carry out what the conversation above is asking of you')
-    expect(userText).not.toContain('PRESCRIBED_TASK_marker')
-    // the composer was actually invoked
-    expect(calls.some(c => c.system.includes(COMPOSER_MARKER))).toBe(true)
-  })
-
-  it('message_agent delivers composed verbatim recent turns, never the head paste or intent label', async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'msg-agent-compose-'))
-    try {
-      const { router } = composerAwareRouter()
-      const update = vi.fn().mockResolvedValue(undefined)
-      const agentRunner = {
-        spawn: vi.fn().mockResolvedValue('t1'), update,
-        signal: vi.fn().mockResolvedValue(undefined), retract: vi.fn().mockResolvedValue(undefined),
-        checkStatus: vi.fn().mockResolvedValue({ text: '', stale: false }), awaitAll: vi.fn().mockResolvedValue(undefined),
-      }
-      const agentStore = { get: vi.fn().mockReturnValue({ id: 't1', headId: 'default', status: 'running', task: 'book a flight' }) }
-      const memory = { chunk: vi.fn(), retrieve: vi.fn().mockResolvedValue([]), compact: vi.fn(), getTopics: vi.fn().mockResolvedValue([]), deleteTopic: vi.fn() }
-      const usageStore = { record: vi.fn() }
-      const skillLoader = { load: vi.fn(), listAll: vi.fn().mockReturnValue([]), write: vi.fn(), delete: vi.fn(), watch: vi.fn() }
-      const recentTurns: Message[] = [makeText('u1', 'actually make it under $250 and an aisle seat')]
-
-      const executor = new HeadToolExecutor({
-        headId: 'default',
-        agentRunner: agentRunner as never,
-        agentStore: agentStore as never,
-        skillLoader: skillLoader as never,
-        topicMemory: memory as never,
-        usageStore: usageStore as never,
-        identityDir: tmpDir,
-        identityLoader: new FileSystemIdentityLoader(tmpDir, tmpDir),
-        messages: { getAll: () => [], getRecent: () => [], getRecentText: () => [], getSince: () => [] } as never,
-        llmRouter: router,
-        stewardModel: 'dumb',
-        getRecentTurns: () => recentTurns,
-      })
-
-      const result = await executor.execute({
-        id: 'tc1', name: 'message_agent',
-        input: { agentId: 't1', message: 'INTENT_marker', context: 'HEAD_PASTED_context' },
-      })
-      expect(JSON.parse(result.content as string)).toMatchObject({ ok: true })
-      const delivered = update.mock.calls[0]![1] as string
-
-      expect(delivered).toContain('actually make it under $250 and an aisle seat')  // verbatim recent turn
-      expect(delivered).toContain('continue your work based on it')                 // wrapper
-      expect(delivered).not.toContain('HEAD_PASTED_context')                        // head paste not used
-      expect(delivered).not.toContain('INTENT_marker')                             // intent label never delivered
-    } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true })
-    }
   })
 })
