@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+## [0.7.0] — 2026-06-21
+
+### Changed
+- **Spawning and continuing agents is now a single all-in-one instruction** — when the assistant starts a background agent or continues one, it gives the agent one rich request in its own words (what you want plus any detail, constraints, and context that help) instead of splitting it across a separate "context" field. The result is simpler and trusts the agent to read the full request and pick the best way to do the job.
+
 ## [0.6.0] — 2026-06-21
 
 ### Added
