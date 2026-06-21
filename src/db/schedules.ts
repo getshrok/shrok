@@ -29,6 +29,8 @@ export interface Schedule {
    *  whether THIS scheduled task's output is surfaced (e.g. "always deliver" / "only ping
    *  on failure"). Only meaningful for kind:'task'. Absent = relay defaults apply. */
   relayGuidance?: string
+  /** ISO UTC cutoff — recurring schedule auto-disables once its next fire is on/after this. */
+  endDate: string | null
   createdAt: string
   updatedAt: string
 }
@@ -49,12 +51,13 @@ export interface CreateScheduleOptions {
   ackPending?: boolean
   deliverToHeadIds?: string[]
   relayGuidance?: string
+  endDate?: string
 }
 
 export type SchedulePatch = Partial<Pick<Schedule,
   'cron' | 'runAt' | 'enabled' | 'nextRun' | 'lastRun' | 'conditions' |
   'agentContext' | 'cronTimezone' | 'ackPending' | 'requiresAck' | 'nagIntervalMinutes' |
-  'deliverToHeadIds' | 'relayGuidance'
+  'deliverToHeadIds' | 'relayGuidance' | 'endDate'
 >>
 
 // ─── Lazy schedule migration (Phase 35 D-03, Phase 37 D-08) ──────────────────
@@ -77,6 +80,7 @@ function migrateLegacySchedule(raw: unknown): { migrated: boolean; data: Schedul
   if (!('requiresAck' in obj)) { obj['requiresAck'] = false; migrated = true }
   if (!('nagIntervalMinutes' in obj)) { obj['nagIntervalMinutes'] = null; migrated = true }
   if (!('ackPending' in obj)) { obj['ackPending'] = false; migrated = true }
+  if (!('endDate' in obj)) { obj['endDate'] = null; migrated = true }
   return { migrated, data: obj as unknown as Schedule }
 }
 
@@ -109,6 +113,7 @@ export class ScheduleStore {
       ackPending: options.ackPending ?? false,
       ...(options.deliverToHeadIds?.length ? { deliverToHeadIds: options.deliverToHeadIds } : {}),
       ...(options.relayGuidance ? { relayGuidance: options.relayGuidance } : {}),
+      endDate: options.endDate ?? null,
       createdAt: now,
       updatedAt: now,
     }
@@ -172,6 +177,7 @@ export class ScheduleStore {
         delete existing.relayGuidance
       }
     }
+    if (patch.endDate !== undefined) existing.endDate = patch.endDate
 
     existing.updatedAt = new Date().toISOString()
     this.store.save(existing)

@@ -363,6 +363,7 @@ describe('Output renderer: list_schedules (Task 3)', () => {
     requiresAck: false,
     nagIntervalMinutes: null,
     ackPending: false,
+    endDate: null,
     createdAt: isoNow,
     updatedAt: isoNow,
   }
@@ -432,6 +433,7 @@ describe('Output renderer: list_reminders (Task 3)', () => {
     requiresAck: true,
     nagIntervalMinutes: 60,
     ackPending: false,
+    endDate: null,
     createdAt: isoNow,
     updatedAt: isoNow,
   }

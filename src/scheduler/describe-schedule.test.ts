@@ -28,6 +28,7 @@ function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
     requiresAck: false,
     nagIntervalMinutes: null,
     ackPending: false,
+    endDate: null,
     createdAt: NOW.toISOString(),
     updatedAt: NOW.toISOString(),
     ...overrides,

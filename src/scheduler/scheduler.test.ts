@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextRunAfter, describeCron } from './cron.js'
 import { ScheduleEvaluatorImpl } from './index.js'
 import type { QueueStore } from '../db/queue.js'
@@ -83,6 +83,7 @@ function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
     requiresAck: false,
     nagIntervalMinutes: null,
     ackPending: false,
+    endDate: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -349,6 +350,91 @@ describe('ScheduleEvaluatorImpl', () => {
     // The cron path sets nextRun to the next cron occurrence (strictly after now)
     expect(new Date(nextRunIso).getTime()).toBeGreaterThan(Date.now())
     // Must NOT call update (no disable)
+    expect(scheduleStore.update).not.toHaveBeenCalled()
+  })
+})
+
+// ─── WL2-ENDDATE: endDate cutoff in the cron-advance branch ─────────────────
+
+describe('ScheduleEvaluatorImpl — endDate cutoff', () => {
+  let queueStore: QueueStore
+  let scheduleStore: ScheduleStore
+  let evaluator: ScheduleEvaluatorImpl
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    queueStore = {
+      enqueue: vi.fn(),
+      claimNext: vi.fn(),
+      ack: vi.fn(),
+      fail: vi.fn(),
+      requeueStale: vi.fn(),
+    } as unknown as QueueStore
+
+    scheduleStore = {
+      getDue: vi.fn().mockReturnValue([]),
+      markFired: vi.fn(),
+      advanceNextRun: vi.fn(),
+      create: vi.fn(),
+      get: vi.fn(),
+      list: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    } as unknown as ScheduleStore
+
+    evaluator = new ScheduleEvaluatorImpl(queueStore, scheduleStore, 'UTC', 999_999)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('(WL2-enddate-disable) due cron schedule whose nextRunAfter result is >= endDate calls update(enabled:false,nextRun:null) and NOT advanceNextRun', () => {
+    // Freeze time at 2026-01-01T10:00:00Z.
+    // nextRunAfter('*/5 * * * *', 2026-01-01T10:00:00Z, 'UTC') => 2026-01-01T10:05:00Z
+    // Set endDate to 2026-01-01T10:03:00Z (BEFORE the computed next run) → cutoff triggers.
+    vi.setSystemTime(new Date('2026-01-01T10:00:00Z'))
+
+    const schedule = makeSchedule({
+      id: 'sched-enddate-disable',
+      cron: '*/5 * * * *',
+      endDate: '2026-01-01T10:03:00Z',
+      nextRun: '2026-01-01T09:55:00Z',
+    })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluator.tick()
+
+    // The endDate cutoff branch must disable the schedule
+    expect(scheduleStore.update).toHaveBeenCalledOnce()
+    expect(scheduleStore.update).toHaveBeenCalledWith('sched-enddate-disable', { enabled: false, nextRun: null })
+    // advanceNextRun must NOT be called
+    expect(scheduleStore.advanceNextRun).not.toHaveBeenCalled()
+  })
+
+  it('(WL2-enddate-keep) due cron schedule whose nextRunAfter result is < endDate calls advanceNextRun as before and does NOT disable', () => {
+    // Freeze time at 2026-01-01T10:00:00Z.
+    // nextRunAfter('*/5 * * * *', 2026-01-01T10:00:00Z, 'UTC') => 2026-01-01T10:05:00Z
+    // Set endDate to 2026-01-01T11:00:00Z (AFTER the computed next run) → should advance normally.
+    vi.setSystemTime(new Date('2026-01-01T10:00:00Z'))
+
+    const schedule = makeSchedule({
+      id: 'sched-enddate-keep',
+      cron: '*/5 * * * *',
+      endDate: '2026-01-01T11:00:00Z',
+      nextRun: '2026-01-01T09:55:00Z',
+    })
+    vi.mocked(scheduleStore.getDue).mockReturnValue([schedule])
+
+    evaluator.tick()
+
+    // advanceNextRun must be called — not disabled
+    expect(scheduleStore.advanceNextRun).toHaveBeenCalledOnce()
+    const [id, nextRunIso] = vi.mocked(scheduleStore.advanceNextRun).mock.calls[0]!
+    expect(id).toBe('sched-enddate-keep')
+    // The computed next run must be 10:05 (before the endDate 11:00)
+    expect(nextRunIso).toBe('2026-01-01T10:05:00.000Z')
+    // update must NOT have been called with disable
     expect(scheduleStore.update).not.toHaveBeenCalled()
   })
 })

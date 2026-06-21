@@ -119,7 +119,17 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
         } else if (schedule.cron) {
           const tz = schedule.cronTimezone ?? this.timezone
           const next = nextRunAfter(schedule.cron, now, tz)
-          this.scheduleStore.advanceNextRun(schedule.id, next.toISOString())
+          const nextIso = next.toISOString()
+          // WL2-ENDDATE: if the next computed fire is on/after endDate, auto-disable
+          // instead of advancing. A recurring schedule whose endDate already passed
+          // disables on its first post-fire advance. One-time (runAt) schedules already
+          // disable after firing via the `else if (enqueued)` branch below, so no
+          // getDue() endDate guard is needed.
+          if (schedule.endDate && nextIso >= schedule.endDate) {
+            this.scheduleStore.update(schedule.id, { enabled: false, nextRun: null })
+          } else {
+            this.scheduleStore.advanceNextRun(schedule.id, nextIso)
+          }
         } else if (enqueued) {
           // Disable so the tick won't re-fire, but keep the row — activation
           // needs it to read agentContext and cron before deleting it after firing.

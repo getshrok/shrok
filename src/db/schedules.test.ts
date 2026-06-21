@@ -369,6 +369,7 @@ describe('ScheduleStore — headId', () => {
       requiresAck: true,
       nagIntervalMinutes: 30,
       ackPending: false,
+      endDate: null,
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     }
@@ -489,6 +490,7 @@ describe('ScheduleStore — headId', () => {
       requiresAck: true,
       nagIntervalMinutes: 15,
       ackPending: false,
+      endDate: null,
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     }
@@ -704,6 +706,81 @@ describe('ScheduleStore — headId', () => {
     expect(s!.nagIntervalMinutes).toBeNull()
     expect(s!.ackPending).toBe(false)
     expect(s!.nextRun).toBe(recomputedNextRun)
+  })
+
+  // ── WL2-ENDDATE: endDate round-trip, no-endDate defaults, legacy migration ──
+
+  it("create({ endDate }) round-trips through get()", () => {
+    const endDateIso = '2030-12-31T23:59:00Z'
+    store.create({
+      id: 'sched-enddate',
+      headId: 'default',
+      kind: 'task',
+      taskName: 'limited-run',
+      cron: '0 9 * * *',
+      endDate: endDateIso,
+    })
+    const s = store.get('sched-enddate')
+    expect(s).not.toBeNull()
+    expect(s!.endDate).toBe(endDateIso)
+
+    // Verify on-disk JSON contains the key
+    const raw = JSON.parse(fs.readFileSync(path.join(tmpDir, 'sched-enddate.json'), 'utf8'))
+    expect(raw.endDate).toBe(endDateIso)
+  })
+
+  it("create() without endDate yields endDate:null", () => {
+    store.create({
+      id: 'sched-no-enddate',
+      headId: 'default',
+      kind: 'task',
+      taskName: 'forever-run',
+      cron: '0 9 * * *',
+    })
+    const s = store.get('sched-no-enddate')
+    expect(s).not.toBeNull()
+    expect(s!.endDate).toBeNull()
+  })
+
+  it("first read of legacy JSON file lacking endDate loads as endDate:null after migration", () => {
+    const id = 'legacy-no-enddate'
+    const legacy = {
+      id,
+      headId: 'default',
+      taskName: 'old-forever-task',
+      kind: 'task',
+      cron: '0 9 * * *',
+      runAt: null,
+      enabled: true,
+      lastRun: null,
+      nextRun: '2026-01-01T09:00:00Z',
+      lastSkipped: null,
+      lastSkipReason: null,
+      conditions: null,
+      agentContext: null,
+      cronTimezone: null,
+      requiresAck: false,
+      nagIntervalMinutes: null,
+      ackPending: false,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      // endDate intentionally absent
+    }
+    const filePath = path.join(tmpDir, `${id}.json`)
+    fs.writeFileSync(filePath, JSON.stringify(legacy, null, 2) + '\n', 'utf8')
+
+    // Sanity: legacy file has no endDate field
+    const beforeRaw = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    expect('endDate' in beforeRaw).toBe(false)
+
+    // First read: triggers migration, returns endDate:null
+    const s = store.get(id)
+    expect(s).not.toBeNull()
+    expect(s!.endDate).toBeNull()
+
+    // After migration: file on disk has endDate:null stamped
+    const afterRaw = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    expect(afterRaw.endDate).toBeNull()
   })
 
   // ── renameTask — cascade taskName across matching schedule rows ──────────

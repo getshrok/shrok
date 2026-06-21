@@ -72,6 +72,7 @@ function makeReminder(overrides: Partial<Schedule> = {}): Schedule {
     requiresAck: true,
     nagIntervalMinutes: 60,
     ackPending: true,
+    endDate: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,

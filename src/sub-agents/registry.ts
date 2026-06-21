@@ -818,6 +818,7 @@ export function buildScheduleTools(
             runAt: { type: 'string', description: `One-time fire date and time in workspace-local format: \`YYYY-MM-DD HH:MM\` (24-hour, no Z, no offset, no timezone suffix — interpreted in the workspace timezone ${timezone}). Example: "2030-01-15 09:00". Only for one-time (non-cron) schedules.` },
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
+            endDate: { type: 'string', description: `Optional cutoff date and time in workspace-local format: \`YYYY-MM-DD HH:MM\` (24-hour, no Z, no offset, no timezone suffix — interpreted in the workspace timezone ${timezone}). After this time a recurring schedule stops firing. Example: "2030-06-01 00:00".` },
           },
           required: ['taskName'],
         },
@@ -911,6 +912,20 @@ export function buildScheduleTools(
         if (conditionsArg !== undefined) createOpts.conditions = conditionsArg
         if (agentContextArg !== undefined) createOpts.agentContext = agentContextArg
         if (cronTimezoneArg !== undefined) createOpts.cronTimezone = cronTimezoneArg
+        // WL2-ENDDATE: optional endDate for recurring schedules
+        if (input['endDate'] !== undefined) {
+          const endDateArg = input['endDate'] as string
+          let parsedEndDate: Date
+          try {
+            parsedEndDate = parseModelTime(endDateArg, effectiveTz)
+          } catch (e) {
+            return JSON.stringify({ error: true, message: (e as Error).message })
+          }
+          if (parsedEndDate.getTime() < Date.now() - 30_000) {
+            return JSON.stringify({ error: true, message: formatPastTimeError(parsedEndDate, new Date(), effectiveTz) })
+          }
+          createOpts.endDate = parsedEndDate.toISOString()
+        }
         return JSON.stringify(scheduleStore.create(createOpts))
       },
     },
@@ -928,6 +943,7 @@ export function buildScheduleTools(
             conditions: { type: 'string', description: "Optional conditions shown to the scheduler steward when deciding whether to run or skip this schedule (e.g. 'Only run between 9am and 5pm')." },
             agentContext: { type: 'string', description: "Optional extra context appended to the task agent's prompt when this schedule fires (e.g. 'User is traveling this week')." },
             cronTimezone: { type: 'string', description: `Timezone the cron expression is relative to (workspace default: ${timezone}). Omit to use the workspace default. Must be a valid IANA timezone string (e.g. "America/New_York").` },
+            endDate: { type: 'string', description: `Optional cutoff date and time in workspace-local format: \`YYYY-MM-DD HH:MM\` (24-hour, no Z, no offset, no timezone suffix — interpreted in the workspace timezone ${timezone}). After this time a recurring schedule stops firing. Example: "2030-06-01 00:00".` },
           },
           required: ['id'],
         },
@@ -976,6 +992,20 @@ export function buildScheduleTools(
         if (input['enabled'] !== undefined) patch.enabled = input['enabled'] as boolean
         if (input['conditions'] !== undefined) patch.conditions = input['conditions'] as string
         if (input['agentContext'] !== undefined) patch.agentContext = input['agentContext'] as string
+        // WL2-ENDDATE: optional endDate for update_schedule
+        if (input['endDate'] !== undefined) {
+          const endDateRaw = input['endDate'] as string
+          let parsedEndDate: Date
+          try {
+            parsedEndDate = parseModelTime(endDateRaw, timezone)
+          } catch (e) {
+            return JSON.stringify({ error: true, message: (e as Error).message })
+          }
+          if (parsedEndDate.getTime() < Date.now() - 30_000) {
+            return JSON.stringify({ error: true, message: formatPastTimeError(parsedEndDate, new Date(), timezone) })
+          }
+          patch.endDate = parsedEndDate.toISOString()
+        }
         const updated = scheduleStore.update(input['id'] as string, patch)
         if (!updated) {
           return JSON.stringify({ error: true, message: `Schedule '${input['id'] as string}' not found.` })

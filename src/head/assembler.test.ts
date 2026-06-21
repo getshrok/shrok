@@ -329,6 +329,7 @@ function makeSchedule(overrides: Partial<Schedule> = {}): Schedule {
     requiresAck: false,
     nagIntervalMinutes: null,
     ackPending: false,
+    endDate: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
