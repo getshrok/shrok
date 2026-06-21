@@ -21,7 +21,7 @@ stopped_at: Milestone complete (Phase 52 was final phase)
 Phase: 52
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-06-20 - Completed quick task 260620-fdc: message_agent relay-not-author treatment (#45 parity)
+Last activity: 2026-06-21 - Completed quick task 260620-wl2: optional endDate on schedules (recurring auto-disable at cutoff)
 
 ### Quick Tasks Completed
 
@@ -43,6 +43,7 @@ Last activity: 2026-06-20 - Completed quick task 260620-fdc: message_agent relay
 | 260608-6ny | Rename model-tier vocabulary to dumb/smart/genius + expose model arg on head spawn_agent (issue #31) | 2026-06-08 | 7d5915c | Verified (tsc clean + 242 targeted tests green; backward-compat shim tested) | [260608-6ny-rename-model-tier-vocabulary-to-dumb-sma](./quick/260608-6ny-rename-model-tier-vocabulary-to-dumb-sma/) |
 | 260618-aqe | Configurable self-hosted STT endpoint (sttBaseUrl) mirroring ttsBaseUrl; single voiceOpenaiFallback toggle governs OpenAI fallback for both STT+TTS; voice runs with no OpenAI key | 2026-06-18 | 533d4e4 | Verified (tsc clean + 171 voice/config/ingestion tests green; dashboard/dist untouched) | [260618-aqe-add-configurable-self-hosted-stt-endpoin](./quick/260618-aqe-add-configurable-self-hosted-stt-endpoin/) |
 | 260620-fdc | Apply the #45 relay-not-author treatment to the message_agent head tool: required verbatim `context` (delivered, wrapped, uniform across running/completed/suspended), `message` reframed as a non-delivered intent label, both stewards judge `context`, SYSTEM.md reworded | 2026-06-20 | b75b47e | Verified (tsc clean + 151 head/agents tests green incl. 3 new parity cases; `message` kept required for strict #45 parity; dashboard/dist untouched) | [260620-fdc-apply-45-relay-not-author-treatment-to-t](./quick/260620-fdc-apply-45-relay-not-author-treatment-to-t/) |
+| 260620-wl2 | Add optional endDate to schedules — a recurring schedule auto-disables once its next computed fire lands on/after the cutoff. Threaded model→scheduler→agent tools (create/update_schedule, parseModelTime past-guard)→dashboard API+UI; lazy migration for legacy files | 2026-06-21 | 6ba5fed | Verified (root+dashboard tsc clean + 116 schedule/scheduler/registry tests green incl. 2 new endDate cutoff cases; dashboard/dist untouched) | [260620-wl2-add-optional-end-date-to-schedules-so-re](./quick/260620-wl2-add-optional-end-date-to-schedules-so-re/) |
 
 ## Project Reference
 
