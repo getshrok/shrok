@@ -451,6 +451,7 @@ export function buildSystem(deps: SystemDeps): System {
     messages: stores.messages,
     llmRouter,
     stewardModel: config.stewardModel,
+    snapshotTokenBudget: config.snapshotTokenBudget,  // #45 message_agent verbatim composer
     resumeStewardContextTokens: config.resumeStewardContextTokens,
     resumeStewardEnabled: config.resumeStewardEnabled,
     agentContinuationEnabled: config.agentContinuationEnabled,

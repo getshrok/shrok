@@ -797,6 +797,9 @@ export class ActivationLoop {
       ...this.opts.toolExecutorOpts,
       agentStore: this.opts.agentStore,
       getHistory: () => context.history,
+      // The turns that arrived in THIS activation (the user's follow-up / reply) — the
+      // "what's new" window message_agent composes verbatim continuation context from.
+      getRecentTurns: () => this.opts.messages.getSince(this.opts.headId, activationStart),
       ...(onHeadTools ? { onDebug: onHeadTools } : {}),
       ...(onVerbose ? { onVerbose } : {}),
       ...(eventAttachments ? { getAttachments: () => eventAttachments } : {}),

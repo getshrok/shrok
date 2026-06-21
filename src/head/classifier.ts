@@ -9,7 +9,7 @@
  * dropped together to maintain history coherence.
  */
 
-import { generateId, extractJson } from '../llm/util.js'
+import { generateId } from '../llm/util.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { UsageStore } from '../db/usage.js'
 import type { Message, TextMessage, ToolCallMessage, ToolResultMessage } from '../types/core.js'
@@ -30,6 +30,20 @@ interface ClassifierEntry {
   id: string
   summary: string       // what the classifier sees
   originalIndices: number[]  // indices into the original message array
+}
+
+/**
+ * Parse a classifier/composer response into the expected top-level JSON ARRAY.
+ * The generic `extractJson` greedily matches the first `{`…last `}`, which mangles a
+ * bare multi-element array (the shape these prompts return) — so parse the array
+ * explicitly: prefer a ```json fence, then the first `[`…last `]`, then the raw body.
+ * Throws on unparseable input; callers catch and fail open (keep everything).
+ */
+function parseComposerArray(content: string): unknown {
+  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const body = (fenced?.[1] ?? content).trim()
+  const bracketed = body.match(/\[[\s\S]*\]/)
+  return JSON.parse(bracketed ? bracketed[0] : body)
 }
 
 // ─── Entry preparation ───────────────────────────────────────────────────────
@@ -173,7 +187,7 @@ export async function classifyMessages(
       }
 
       // Parse the response — expect a JSON array
-      const parsed = extractJson(response.content)
+      const parsed = parseComposerArray(response.content)
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
           if (item && typeof item.id === 'string' && typeof item.relevant === 'boolean') {
@@ -219,33 +233,46 @@ export interface ComposedEntry {
   id: string
   action: ComposerAction
   reason: string
-  extracted?: string
+  /** For action='extract': verbatim spans copied character-for-character from the
+   *  source message. The model never writes free text — it only quotes — and each
+   *  quote is verified against the source in code (see snapQuote + the stitch in
+   *  classifyAndCompose) so the assembled context is verbatim by construction. */
+  quotes?: string[]
 }
 
-const COMPOSER_SYSTEM = `You are a context relevance composer. For each message, decide how it relates to the given task.
+const COMPOSER_SYSTEM = `You assemble the EXACT context a sub-agent needs to carry out ONE delegated task, drawn from a conversation that interleaves several topics. The USER's own messages are the source of truth for intent; assistant turns are confirmations.
 
-Actions:
-- "keep" — message is fully relevant to this task, include as-is
-- "drop" — message is not relevant to this task at all
-- "extract" — message is PARTIALLY relevant. Extract ONLY the portion relevant to this task. The extracted text should be brief — just the relevant facts, not a full rewrite.
+For each message choose an action toward the delegated task:
+- "keep"  — the message is ENTIRELY about this task; include it unchanged.
+- "drop"  — the message is ENTIRELY about other topics, OR it is an assistant turn that merely restates asks already stated by the user (it adds nothing new for this task); exclude it.
+- "extract" — the message mixes this task with anything else. Return the on-task parts as "quotes": an array of spans copied EXACTLY, character-for-character, as contiguous substrings of that message. Never paraphrase, fix typos, shorten, or merge.
 
-Rules:
-- User identity, preferences, and personal context → keep
-- Messages entirely about unrelated tasks or other agents → drop
-- Messages that mention this task AND other unrelated tasks → extract (pull only this task's portion)
-- When uncertain between keep and extract, prefer keep
-- When uncertain between drop and keep, prefer keep
+Choose "extract" (not "keep") whenever a message contains this task's content AND any of:
+- another task/topic in the same sentence (e.g. "do X and also do Y"),
+- an unrelated aside, sign-off, or second request,
+- a tool result whose output mixes on-task hits with unrelated hits ("Unrelated…", other files/matches) — quote only the on-task lines/spans,
+- it is an ASSISTANT acknowledgement/confirmation that bundles several of the user's asks together in one sentence (assistant turns VERY OFTEN list this task alongside others — "X to A and Y to B, both after sign-off") — extract ONLY the clause confirming THIS task, or "drop" it if the user's own messages already carry that detail.
+Only "keep" when the WHOLE message is on-task.
 
-Respond with a JSON array. Each element:
-{"id": "<id>", "action": "keep|drop|extract", "reason": "<brief>", "extracted": "<relevant portion, only if action is extract>"}
+Fidelity rules (fidelity beats brevity — a dropped item is a serious failure, a stray off-task word is minor):
+- Capture EVERY constraint, choice, value, name, ID, link, secret, endpoint, date, number, negative/"DO NOT" instruction, and the go-ahead that pertains to this task. When unsure whether something is relevant, include it.
+- LATE CORRECTIONS are critical: later messages often override earlier ones (changed budget/seat/path/snapshot/slot/lifetime/quantity). Keep the corrected value; if it refers back ("not X, use Y"), keep enough to be unambiguous. A correction about ANOTHER task ("hold the budget spreadsheet") must NOT be included.
+- COREFERENCE: a decision like "go with option B" / "use the second one" / "that one" is meaningless without its antecedent — you MUST also include the earlier message/span that DEFINES it (e.g. the option list, even far back or inside a tool result).
+
+Respond ONLY with a JSON array. Each element:
+{"id":"<id>","action":"keep|drop|extract","quotes":["<verbatim substring>", ...]}
+("quotes" only for action="extract".)
 Return ONLY the JSON array, no other text.`
 
 /**
- * Three-way classification: KEEP, DROP, or EXTRACT (partial rewrite).
- * Used by the agent context composer to give agents only task-relevant context.
+ * Three-way classification: KEEP, DROP, or EXTRACT (verbatim-quote extraction).
+ * Used by the agent context composer to give agents only task-relevant context,
+ * VERBATIM. The model never writes prose — for EXTRACT it returns exact quotes,
+ * which are verified/snapped to real source substrings in code (see snapQuote and
+ * the stitch below), so the assembled context is verbatim by construction.
  *
  * Returns relevantIndices (which messages to include) and replacements
- * (message index → extracted text for EXTRACT'd messages).
+ * (message index → the joined verified verbatim spans for EXTRACT'd messages).
  */
 export async function classifyAndCompose(
   topic: string,
@@ -253,7 +280,10 @@ export async function classifyAndCompose(
   router: LLMRouter,
   model: string,
   usageStore?: UsageStore,
-  batchSize = 15,
+  // Single-pass by default: late corrections and their antecedents must be judged
+  // together (coreference + supersession break when split across batches). Typical
+  // head histories are tens of entries — one call. Very long histories still batch.
+  batchSize = 200,
 ): Promise<{
   relevantIndices: Set<number>
   replacements: Map<number, string>
@@ -265,7 +295,7 @@ export async function classifyAndCompose(
   for (let start = 0; start < entries.length; start += batchSize) {
     const batch = entries.slice(start, start + batchSize)
     const numbered = batch.map(e => `${e.id}: ${e.summary}`).join('\n\n')
-    const prompt = `Task: ${topic}\n\nMessages to classify:\n${numbered}`
+    const prompt = `Delegated task: ${topic}\n\nConversation messages:\n${numbered}`
 
     try {
       const response = await router.complete(
@@ -286,15 +316,18 @@ export async function classifyAndCompose(
         })
       }
 
-      const parsed = extractJson(response.content)
+      const parsed = parseComposerArray(response.content)
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
           if (item && typeof item.id === 'string' && typeof item.action === 'string') {
+            const quotes = Array.isArray(item.quotes)
+              ? item.quotes.filter((q: unknown): q is string => typeof q === 'string')
+              : undefined
             allClassifications.push({
               id: item.id,
               action: (item.action === 'drop' || item.action === 'extract') ? item.action : 'keep',
               reason: item.reason ?? '',
-              extracted: item.action === 'extract' ? (item.extracted ?? '') : undefined,
+              ...(item.action === 'extract' ? { quotes: quotes ?? [] } : {}),
             })
           }
         }
@@ -312,20 +345,65 @@ export async function classifyAndCompose(
   const replacements = new Map<number, string>()
   const classMap = new Map(allClassifications.map(c => [c.id, c]))
 
+  const keepWhole = (entry: ClassifierEntry) => {
+    for (const idx of entry.originalIndices) relevantIndices.add(idx)
+  }
+
   for (const entry of entries) {
     const c = classMap.get(entry.id)
+    // Missing classification or keep → include the whole entry verbatim (fail open).
     if (!c || c.action === 'keep') {
-      // Keep all original indices
-      for (const idx of entry.originalIndices) relevantIndices.add(idx)
-    } else if (c.action === 'extract' && c.extracted) {
-      // For EXTRACT: include only the first index and add to replacements.
-      // Tool pairs collapse to a single replaced message.
-      const firstIdx = entry.originalIndices[0]!
-      relevantIndices.add(firstIdx)
-      replacements.set(firstIdx, c.extracted)
+      keepWhole(entry)
+      continue
+    }
+    if (c.action === 'extract') {
+      const quotes = (c.quotes ?? []).map(q => q.trim()).filter(Boolean)
+      // Model said extract but gave nothing usable → fail open to keep-whole rather
+      // than silently dropping content (P1: never drop a relevant span).
+      if (quotes.length === 0) { keepWhole(entry); continue }
+
+      // Verification ladder against the EXACT source the model quoted from (entry.summary):
+      //   tier-1 exact substring  →  tier-2 whitespace-snap to a real source substring
+      //   →  tier-3 fail-safe: keep the WHOLE entry (never trust the model's bytes, never drop).
+      const verified: string[] = []
+      let failsafe = false
+      for (const q of quotes) {
+        const span = snapQuote(q, entry.summary)
+        if (span) verified.push(span)
+        else { failsafe = true; break }
+      }
+      if (failsafe || verified.length === 0) {
+        // tier-3: a quote couldn't be located even up-to-whitespace — keep whole.
+        keepWhole(entry)
+      } else {
+        // Tool pairs collapse to a single replaced message at the first index.
+        const firstIdx = entry.originalIndices[0]!
+        relevantIndices.add(firstIdx)
+        replacements.set(firstIdx, verified.join(' … '))
+      }
+      continue
     }
     // DROP: skip entirely
   }
 
   return { relevantIndices, replacements, classifications: allClassifications }
+}
+
+/**
+ * Locate a model-emitted quote as a VERBATIM span of the source, tolerating only
+ * whitespace reflow. Returns the exact source substring (never the model's bytes)
+ * or null if it can't be located up-to-whitespace.
+ *   tier-1: exact `includes` → return the quote as-is (it IS a source substring).
+ *   tier-2: build a regex from the quote with `\s+` for whitespace runs and match it
+ *           against the source → return the matched source substring.
+ * Port of snapQuote() from the context-passthrough research harness (M1b/M1c).
+ */
+export function snapQuote(quote: string, source: string): string | null {
+  if (source.includes(quote)) return quote
+  const esc = quote.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')
+  try {
+    const m = source.match(new RegExp(esc))
+    if (m) return m[0]
+  } catch { /* malformed regex — fall through to null (caller keeps whole) */ }
+  return null
 }

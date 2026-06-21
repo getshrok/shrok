@@ -15,6 +15,7 @@ import type { IdentityLoader } from '../identity/loader.js'
 import type { LLMRouter } from '../types/llm.js'
 import type { TextMessage } from '../types/core.js'
 import { runResumeSteward, runMessageAgentSteward } from './steward.js'
+import { composeVerbatimContext } from '../sub-agents/compose-context.js'
 import { applyIdentityEdits } from './identity-edit.js'
 import {
   VIEW_IMAGE_DEF, executeViewImage,
@@ -239,6 +240,12 @@ export interface HeadToolExecutorOptions {
   messages: MessageStore
   /** Returns the current head conversation history for passing to spawned agents. */
   getHistory?: () => import('../types/core.js').Message[]
+  /** Returns the turns that arrived in THIS activation (the user's new message(s) /
+   *  their reply) — the "what's new" window message_agent composes verbatim context from
+   *  for a continuation. Wired in activation.ts as getSince(headId, activationStart). */
+  getRecentTurns?: () => import('../types/core.js').Message[]
+  /** Token budget for the verbatim-context composer snapshot (issue #45 pass-through). */
+  snapshotTokenBudget?: number
   /** Returns attachments from the triggering event message, if any. */
   getAttachments?: () => import('../types/core.js').Attachment[]
   onDebug?: (msg: string) => Promise<void>
@@ -377,9 +384,10 @@ export class HeadToolExecutor implements ToolExecutor {
 
       case 'message_agent': {
         const agentId = input['agentId'] as string
-        // `context` is the verbatim conversation the agent works from (delivered, judged
-        // by the stewards). `message` is a human-facing intent label only — never delivered
-        // to the agent, never judged (issue #45 parity with spawn_agent's task/context split).
+        // `context` is now only a DEFENSIVE FALLBACK for delivery — the agent normally
+        // receives verbatim turns the composer selects from the real conversation (below).
+        // The stewards still judge `context` (the head's stated follow-up). `message` is a
+        // human-facing intent label — never delivered to the agent (issue #45).
         const context = input['context'] as string
         if (this.opts.agentStore) {
           const state = this.opts.agentStore.get(agentId)
@@ -447,12 +455,32 @@ export class HeadToolExecutor implements ToolExecutor {
             }
           }
         }
-        // Deliver the verbatim conversation, wrapped — UNIFORM across running, completed,
-        // and suspended agents (no per-state special-casing). `message` is never part of
-        // the delivered string; the agent continues from `context` only (issue #45).
-        // Pass the head's current xray callback so a continued agent streams its
+        // Deliver the relevant NEW turns, selected VERBATIM from the real conversation —
+        // NOT the head's pasted `context` (issue #45 full facade). Compose over the turns
+        // that arrived in THIS activation (the user's follow-up / their reply), lensed on
+        // the agent's open thread (task + pending question) plus the head's intent label.
+        // `message` feeds the lens only; it is never delivered. Falls back to the head's
+        // pasted `context` if the composer is unavailable (no llmRouter, e.g. a test
+        // harness) or produces nothing. Delivery is UNIFORM across running/completed/
+        // suspended agents. The head's current xray callback streams a continued agent's
         // work to THIS activation's channel, not the one it was first spawned from.
-        const delivered = `Here's the latest from the conversation — continue your work based on it:\n"""\n${context}\n"""`
+        let deliveredBody = context
+        if (this.opts.llmRouter && this.opts.stewardModel) {
+          const turns = this.opts.getRecentTurns?.()
+            ?? this.opts.messages.getRecent(this.opts.headId, this.opts.snapshotTokenBudget ?? 8000)
+          if (turns.length > 0) {
+            const st = this.opts.agentStore?.get(agentId)
+            const signal = [st?.task, st?.pendingQuestion, input['message'] as string | undefined]
+              .filter((s): s is string => Boolean(s && s.trim()))
+              .join(' — ')
+            const composed = await composeVerbatimContext(
+              turns, signal, this.opts.llmRouter, this.opts.stewardModel,
+              this.opts.usageStore, new Set(), this.opts.snapshotTokenBudget ?? 60_000,
+            )
+            if (!composed.empty) deliveredBody = composed.text
+          }
+        }
+        const delivered = `Here's the latest from the conversation — continue your work based on it:\n"""\n${deliveredBody}\n"""`
         await this.opts.agentRunner.update(agentId, delivered, this.opts.onVerbose)
         return JSON.stringify({ ok: true })
       }

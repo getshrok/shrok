@@ -13,7 +13,7 @@ import type { QueueStore } from '../db/queue.js'
 import type { UsageStore } from '../db/usage.js'
 import type { ScheduleStore } from '../db/schedules.js'
 import type { NoteStore } from '../db/notes.js'
-import { classifyAndCompose } from '../head/classifier.js'
+import { composeVerbatimContext } from './compose-context.js'
 import type { AppStateStore } from '../db/app_state.js'
 import type { SkillLoader } from '../types/skill.js'
 import type { McpRegistry } from '../mcp/registry.js'
@@ -25,7 +25,6 @@ import { AgentToolRegistryImpl, REPORT_STATUS_DEF, RESPOND_TO_MESSAGE_DEF } from
 import { commitWorkspace } from '../workspace/git.js'
 import { PRIORITY } from '../types/core.js'
 import { runCompletionSteward, runSpawnAgentSteward } from '../head/steward.js'
-import { adjustToolMessages, buildContextSnapshot } from './context.js'
 import { injectSkillMemory } from './skill-memory.js'
 import { truncateToolOutput } from './output-cap.js'
 import { maybeArchiveHistory } from './archival.js'
@@ -484,50 +483,27 @@ export class LocalAgentRunner implements AgentRunner {
       } as TextMessage)
     }
 
-    // Prepend head conversation history when the agent context composer is enabled.
-    // When off, agents get only their spawn prompt — cheapest path, zero cross-contamination.
-    // When on, agents get classified + selectively edited history relevant to their task.
-    if (options.headHistory && options.headHistory.length > 0 && this.agentContextComposer) {
+    // Verbatim context pass-through (issue #45): prepend the relevant conversation
+    // turns, selected VERBATIM from the real head history via composeVerbatimContext.
+    // Manual (head) spawns ALWAYS compose — that's the pass-through that makes the agent
+    // act on the user's actual words instead of the head's paraphrase. Nested/scheduled/
+    // sensor spawns only compose when the agentContextComposer flag is on (default off) —
+    // background paths stay lean and unchanged. When neither applies, the agent gets only
+    // its spawn prompt.
+    let composedEmpty = true
+    if (options.headHistory?.length && (options.trigger === 'manual' || this.agentContextComposer)) {
       const knownTools = new Set(toolEntries.map(e => e.definition.name))
-      // Strip injected user-role text messages (steward nudges, system triggers)
-      const filtered = options.headHistory.filter(
-        m => !(m.kind === 'text' && (m as TextMessage).role === 'user' && m.injected)
-      )
-      const adjusted = adjustToolMessages(filtered, knownTools)
-      const snapshot = buildContextSnapshot(adjusted, undefined, this.snapshotTokenBudget)
-
-      // Three-way classification: KEEP, DROP, or EXTRACT (partial rewrite).
-      // EXTRACT rewrites partially-relevant messages to contain only the relevant portion,
-      // solving the multi-task-in-one-message problem.
-      const { relevantIndices, replacements } = await classifyAndCompose(
+      const composed = await composeVerbatimContext(
+        options.headHistory,
         options.task,
-        snapshot,
         this.llmRouter,
         this.stewardModel ?? 'dumb',
         this.usageStore,
+        knownTools,
+        this.snapshotTokenBudget,
       )
-
-      for (let i = 0; i < snapshot.length; i++) {
-        if (!relevantIndices.has(i)) continue
-        const msg = snapshot[i]!
-        const replacement = replacements.get(i)
-        if (replacement) {
-          // EXTRACT'd message: replace content, preserve originating role.
-          // Tool pairs collapse to role: 'assistant' (content describes assistant actions).
-          const role = msg.kind === 'text'
-            ? (msg as TextMessage).role
-            : 'assistant'
-          history.push({
-            kind: 'text',
-            id: msg.id,
-            role,
-            content: replacement,
-            createdAt: msg.createdAt,
-          })
-        } else {
-          history.push(msg)
-        }
-      }
+      history.push(...composed.messages)
+      composedEmpty = composed.empty
     }
 
     // Record where the agent's own work begins — after all prepended head history.
@@ -535,17 +511,23 @@ export class LocalAgentRunner implements AgentRunner {
     this.agentStore.updateWorkStart(agentId, history.length)
 
     // Inject the agent's first message.
-    // When agentContextComposer is on, relevant headHistory is prepended above.
-    // When off, this message is the agent's only context — it must be self-contained.
-    // `context` holds conversation excerpts the head pasted verbatim.
     //
-    // Head spawns (trigger 'manual') execute on the verbatim conversation ONLY — the head's
-    // `task` is a human-facing label (dashboard pill tooltip, DB, git commit, completion
-    // summaries) and is deliberately NOT shown to the agent, so an over-prescribed task can't
-    // steer the work (issue #45). Nested/scheduled/sensor spawns keep the task-led prompt.
-    // The last branch is a defensive fallback if a head spawn somehow arrives without context.
-    const agentFirstMessage = options.trigger === 'manual' && options.context
-      ? `Here is the conversation that prompted this work. Carry out what's being asked of you in it:\n"""\n${options.context}\n"""`
+    // Head spawns (trigger 'manual') — FULL FACADE (issue #45): the verbatim conversation
+    // was just prepended above by the composer, so the agent works from the real turns, not
+    // from anything the head transcribed. The first message is a thin framing line pointing
+    // at that history; the head's `task` (a human-facing label) and pasted `context` are NOT
+    // the agent's content. Defensive fallback only: if the composer produced nothing
+    // (empty/absent headHistory, e.g. an eval harness that set only `context`), fall back to
+    // the head's pasted `context`, else the bare `task` so the agent gets something.
+    //
+    // Nested/scheduled/sensor spawns keep the task-led prompt (unchanged): `task` + any
+    // pasted `context`, else bare `task`.
+    const agentFirstMessage = options.trigger === 'manual'
+      ? (!composedEmpty
+          ? `Carry out what the conversation above is asking of you.`
+          : options.context
+            ? `Here is the conversation that prompted this work. Carry out what's being asked of you in it:\n"""\n${options.context}\n"""`
+            : options.task)
       : options.context
         ? `${options.task}\n\nRelevant messages from the conversation:\n"""\n${options.context}\n"""`
         : options.task
