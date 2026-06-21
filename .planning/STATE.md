@@ -21,7 +21,7 @@ stopped_at: Milestone complete (Phase 52 was final phase)
 Phase: 52
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-06-21 - Completed quick task 260621-dom: sensor schedules multi-head delivery (deliverToHeadIds fan-out for kind:script)
+Last activity: 2026-06-21 - Completed quick task 260621-r73: simplify spawn_agent/message_agent to all-in-one task/message, remove #45 verbatim composer (v0.7.0)
 
 ### Quick Tasks Completed
 
@@ -45,6 +45,7 @@ Last activity: 2026-06-21 - Completed quick task 260621-dom: sensor schedules mu
 | 260620-fdc | Apply the #45 relay-not-author treatment to the message_agent head tool: required verbatim `context` (delivered, wrapped, uniform across running/completed/suspended), `message` reframed as a non-delivered intent label, both stewards judge `context`, SYSTEM.md reworded | 2026-06-20 | b75b47e | Verified (tsc clean + 151 head/agents tests green incl. 3 new parity cases; `message` kept required for strict #45 parity; dashboard/dist untouched) | [260620-fdc-apply-45-relay-not-author-treatment-to-t](./quick/260620-fdc-apply-45-relay-not-author-treatment-to-t/) |
 | 260620-wl2 | Add optional endDate to schedules — a recurring schedule auto-disables once its next computed fire lands on/after the cutoff. Threaded model→scheduler→agent tools (create/update_schedule, parseModelTime past-guard)→dashboard API+UI; lazy migration for legacy files | 2026-06-21 | 6ba5fed | Verified (root+dashboard tsc clean + 116 schedule/scheduler/registry tests green incl. 2 new endDate cutoff cases; dashboard/dist untouched) | [260620-wl2-add-optional-end-date-to-schedules-so-re](./quick/260620-wl2-add-optional-end-date-to-schedules-so-re/) |
 | 260621-dom | Sensor schedules multi-head delivery — a kind:script schedule runs its sensor ONCE then fans all three sinks (ambient/headEvent/subAgent) out to dedupe([headId, ...deliverToHeadIds]), matching the Phase-44 task fan-out. Identical ambient per head; one sensor_event per head; ONE sub-agent trigger carrying deliverToHeadIds → existing completeAgent fan-out. Backend+types+activation+route+dashboard head-picker | 2026-06-21 | ec574a8 | Verified (root tsc clean + 95 sensor-runner/schedules-route tests green incl. 11 new fan-out/route cases; dashboard/dist untouched) | [260621-dom-sensor-schedules-multi-head-delivery-del](./quick/260621-dom-sensor-schedules-multi-head-delivery-del/) |
+| 260621-r73 | Simplify spawn_agent/message_agent to an all-in-one task/message param; remove the #45 verbatim-context machinery entirely. Collapse task+context→task and message+context→message (delivered directly to the sub-agent), SOFT verbatim encouragement in the param descriptions; delete composeVerbatimContext + classifier modules; strip dead agentContextComposer + snapshotTokenBudget knobs (backend + dashboard); behavioral stewards kept intact. Partially reverses 260620-fdc. Bump to v0.7.0 | 2026-06-21 | b7182da | Verified (root+dashboard tsc clean + full vitest 2276 passed/0 failed; 0 dead refs; dashboard/dist untouched; 3 atomic commits + v0.7.0 tag) | [260621-r73-simplify-spawn-agent-message-agent-to-al](./quick/260621-r73-simplify-spawn-agent-message-agent-to-al/) |
 
 ## Project Reference
 
