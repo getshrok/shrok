@@ -46,7 +46,6 @@ export interface DraftState {
   headRelayStewardContextTokens: number
   routingStewardEnabled: boolean
   resumeStewardContextTokens: number
-  agentContextComposer: boolean
   agentContinuationEnabled: boolean
   nestedAgentSpawningEnabled: boolean
   messageAgentStewardEnabled: boolean
@@ -78,7 +77,6 @@ export interface DraftState {
   agentToolDefault: string[]
   // Advanced
   llmMaxTokens: number
-  snapshotTokenBudget: number
   archivalThresholdFraction: number
   contextAssemblyTokenBudget: number
   stewardContextTokenBudget: number
@@ -127,7 +125,6 @@ export function initDraft(s: SettingsData): DraftState {
     headRelayStewardContextTokens: s.headRelayStewardContextTokens,
     routingStewardEnabled: s.routingStewardEnabled,
     resumeStewardContextTokens: s.resumeStewardContextTokens,
-    agentContextComposer: s.agentContextComposer,
     agentContinuationEnabled: s.agentContinuationEnabled,
     nestedAgentSpawningEnabled: s.nestedAgentSpawningEnabled,
     messageAgentStewardEnabled: s.messageAgentStewardEnabled,
@@ -157,7 +154,6 @@ export function initDraft(s: SettingsData): DraftState {
     headToolDefault: s.headToolDefault,
     agentToolDefault: s.agentToolDefault,
     llmMaxTokens: s.llmMaxTokens,
-    snapshotTokenBudget: s.snapshotTokenBudget,
     archivalThresholdFraction: s.archivalThresholdFraction,
     contextAssemblyTokenBudget: s.contextAssemblyTokenBudget,
     stewardContextTokenBudget: s.stewardContextTokenBudget,
@@ -212,7 +208,6 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.headRelayStewardContextTokens !== s.headRelayStewardContextTokens) return true
   if (draft.routingStewardEnabled !== s.routingStewardEnabled) return true
   if (draft.resumeStewardContextTokens !== s.resumeStewardContextTokens) return true
-  if (draft.agentContextComposer !== s.agentContextComposer) return true
   if (draft.agentContinuationEnabled !== s.agentContinuationEnabled) return true
   if (draft.nestedAgentSpawningEnabled !== s.nestedAgentSpawningEnabled) return true
   if (draft.messageAgentStewardEnabled !== s.messageAgentStewardEnabled) return true
@@ -239,7 +234,6 @@ export function isDirty(draft: DraftState, s: SettingsData): boolean {
   if (draft.usageFootersEnabled !== s.usageFootersEnabled) return true
   if (draft.traceHistoryTokens !== s.traceHistoryTokens) return true
   if (draft.llmMaxTokens !== s.llmMaxTokens) return true
-  if (draft.snapshotTokenBudget !== s.snapshotTokenBudget) return true
   if (draft.archivalThresholdFraction !== s.archivalThresholdFraction) return true
   if (draft.contextAssemblyTokenBudget !== s.contextAssemblyTokenBudget) return true
   if (draft.stewardContextTokenBudget !== s.stewardContextTokenBudget) return true
@@ -285,7 +279,6 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.headRelayStewardContextTokens !== s.headRelayStewardContextTokens) body.headRelayStewardContextTokens = draft.headRelayStewardContextTokens
   if (draft.routingStewardEnabled !== s.routingStewardEnabled) body.routingStewardEnabled = draft.routingStewardEnabled
   if (draft.resumeStewardContextTokens !== s.resumeStewardContextTokens) body.resumeStewardContextTokens = draft.resumeStewardContextTokens
-  if (draft.agentContextComposer !== s.agentContextComposer) body.agentContextComposer = draft.agentContextComposer
   if (draft.agentContinuationEnabled !== s.agentContinuationEnabled) body.agentContinuationEnabled = draft.agentContinuationEnabled
   if (draft.nestedAgentSpawningEnabled !== s.nestedAgentSpawningEnabled) body.nestedAgentSpawningEnabled = draft.nestedAgentSpawningEnabled
   if (draft.messageAgentStewardEnabled !== s.messageAgentStewardEnabled) body.messageAgentStewardEnabled = draft.messageAgentStewardEnabled
@@ -312,7 +305,6 @@ export function buildBody(draft: DraftState, s: SettingsData): Record<string, un
   if (draft.usageFootersEnabled !== s.usageFootersEnabled) body.usageFootersEnabled = draft.usageFootersEnabled
   if (draft.traceHistoryTokens !== s.traceHistoryTokens) body.traceHistoryTokens = draft.traceHistoryTokens
   if (draft.llmMaxTokens !== s.llmMaxTokens) body.llmMaxTokens = draft.llmMaxTokens
-  if (draft.snapshotTokenBudget !== s.snapshotTokenBudget) body.snapshotTokenBudget = draft.snapshotTokenBudget
   if (draft.archivalThresholdFraction !== s.archivalThresholdFraction) body.archivalThresholdFraction = draft.archivalThresholdFraction
   if (draft.contextAssemblyTokenBudget !== s.contextAssemblyTokenBudget) body.contextAssemblyTokenBudget = draft.contextAssemblyTokenBudget
   if (draft.stewardContextTokenBudget !== s.stewardContextTokenBudget) body.stewardContextTokenBudget = draft.stewardContextTokenBudget

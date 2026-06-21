@@ -26,31 +26,6 @@ export default function ExperimentalTab({ d, set, inputClass }: SettingsTabProps
             <span className="text-sm text-zinc-300">{d.nestedAgentSpawningEnabled ? 'On' : 'Off'}</span>
           </label>
         </Field>
-
-        <Field label="Agent context composer" tooltip="When on, spawned agents receive a classified + edited snapshot of the head's conversation history (sized by the Agent snapshot budget below). Costs extra LLM calls per spawn. When off (default), agents see only their spawn prompt — cheaper, and prevents cross-conversation leakage. Turn on if agents frequently ask 'what were we talking about?' or need continuity from the preceding chat.">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={d.agentContextComposer}
-              onChange={e => set('agentContextComposer', e.target.checked)}
-              className="accent-[var(--accent)]"
-            />
-            <span className="text-xs text-zinc-400">{d.agentContextComposer ? 'On' : 'Off'}</span>
-          </label>
-        </Field>
-
-        <Field label="Agent snapshot budget" tooltip="Only applies when the agent context composer is on. Controls how much conversation history agents can see when they're created. Default: 100,000.">
-          <input
-            type="number"
-            min={10000}
-            max={500000}
-            step={10000}
-            value={d.snapshotTokenBudget}
-            onChange={e => set('snapshotTokenBudget', Number(e.target.value))}
-            disabled={!d.agentContextComposer}
-            className={`${inputClass} ${!d.agentContextComposer ? 'opacity-50 cursor-not-allowed' : ''}`}
-          />
-        </Field>
       </div>
 
       {/* Experimental stewards */}

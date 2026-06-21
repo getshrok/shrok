@@ -78,8 +78,6 @@ import * as ambientContext from './scenarios/ambient-context.js'
 import * as combinedStress from './scenarios/combined-stress.js'
 import * as systemMarkerHallucination from './scenarios/system-marker-hallucination.js'
 // Composer (premium agent context mode)
-import * as composerMultiTask from './scenarios/composer-multi-task.js'
-import * as composerContextCarry from './scenarios/composer-context-carry.js'
 // Skill creation
 import * as skillCreation from './scenarios/skill-creation.js'
 
@@ -157,9 +155,6 @@ const ALL_SCENARIOS = [
   // Stress/reliability
   combinedStress,
   systemMarkerHallucination,
-  // Composer (premium agent context mode)
-  composerMultiTask,
-  composerContextCarry,
   // Skill creation
   skillCreation,
 ]

@@ -222,7 +222,6 @@ async function main() {
   const userContextWindow = config.contextWindowTokens
   const modelContextWindow = await resolveContextWindow(config.llmProvider, headModelId, headApiKey)
   config.contextWindowTokens = Math.min(userContextWindow, modelContextWindow)
-  config.snapshotTokenBudget = config.contextWindowTokens
 
   ensureWorkspaceRepo(workspacePath)
   fs.mkdirSync(path.join(workspacePath, 'media'), { recursive: true })

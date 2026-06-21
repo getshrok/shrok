@@ -102,8 +102,6 @@ export interface SystemDeps {
   spawnAgentNote?: string
   /** Replace agent runner with a no-op stub. */
   stubAgentRunner?: boolean
-  /** Override config.agentContextComposer for this build. */
-  agentContextComposer?: boolean
   /** Pre-created topic memory — if provided, buildSystem uses it instead of creating one. */
   topicMemory?: Memory
   /** Override stewards for testing (e.g. [] to disable all stewards). */
@@ -336,7 +334,6 @@ export function buildSystem(deps: SystemDeps): System {
   })
 
   // ── Agent Runner ────────────────────────────────────────────────────────
-  const agentContextComposer = deps.agentContextComposer ?? config.agentContextComposer
   const agentRunner: AgentRunner = deps.stubAgentRunner
     ? {
         spawn: async () => 'stub',
@@ -382,8 +379,6 @@ export function buildSystem(deps: SystemDeps): System {
         timezone: config.timezone,
         agentModel: config.agentModel,
         stewardModel: config.stewardModel,
-        snapshotTokenBudget: config.snapshotTokenBudget,
-        agentContextComposer,
         nestedAgentSpawningEnabled: config.nestedAgentSpawningEnabled,
         spawnAgentStewardEnabled: config.spawnAgentStewardEnabled,
       })
@@ -451,7 +446,6 @@ export function buildSystem(deps: SystemDeps): System {
     messages: stores.messages,
     llmRouter,
     stewardModel: config.stewardModel,
-    snapshotTokenBudget: config.snapshotTokenBudget,  // #45 message_agent verbatim composer
     resumeStewardContextTokens: config.resumeStewardContextTokens,
     resumeStewardEnabled: config.resumeStewardEnabled,
     agentContinuationEnabled: config.agentContinuationEnabled,

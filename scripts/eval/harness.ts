@@ -796,7 +796,6 @@ export function makeLocalAgentRunner(
   skillsDir: string,
   scheduleStore?: ScheduleStore,
   noteStore?: NoteStore,
-  agentContextComposer?: boolean,
   workspacePath?: string | null,
 ): LocalAgentRunner {
   const inboxStore = new AgentInboxStore(db)
@@ -821,7 +820,6 @@ export function makeLocalAgentRunner(
     // to the ephemeral temp dir rather than the real production workspace.
     envOverrides: { WORKSPACE_PATH: path.dirname(skillsDir), SHROK_SKILLS_DIR: skillsDir },
     pollIntervalMs: 500,
-    ...(agentContextComposer !== undefined ? { agentContextComposer } : {}),
     timezone: 'UTC',
   })
 }
@@ -868,8 +866,6 @@ export interface RunHeadQueryOpts {
   stubAgentRunner?: boolean
   /** Override the note returned in spawn_agent tool result (e.g. to encourage Round 2 acknowledgment). */
   spawnAgentNote?: string
-  /** Enable the agent context composer (three-way classify + EXTRACT). */
-  agentContextComposer?: boolean
   /** Workspace directory — agents get this as workspacePath for AMBIENT.md, file access, etc. */
   workspaceDir?: string
 }
@@ -896,8 +892,6 @@ export interface RunHeadEventOpts {
   stubAgentRunner?: boolean
   /** Override the note returned in spawn_agent tool result. */
   spawnAgentNote?: string
-  /** Enable the agent context composer (three-way classify + EXTRACT). */
-  agentContextComposer?: boolean
   /** Workspace directory — agents get this as workspacePath for AMBIENT.md, file access, etc. */
   workspaceDir?: string
 }
@@ -935,7 +929,6 @@ interface RunActivationOpts {
   responseChannel?: string | null
   /** Workspace directory — agents get this as workspacePath. */
   workspaceDir?: string
-  agentContextComposer?: boolean
 }
 
 async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResult> {
@@ -992,7 +985,6 @@ async function runActivation(opts: RunActivationOpts): Promise<RunHeadQueryResul
       ? (real) => { capturing.inner = opts.assembler!; return capturing }
       : (real) => { capturing.inner = real; return capturing },
     ...(opts.stubAgentRunner !== undefined ? { stubAgentRunner: opts.stubAgentRunner } : {}),
-    ...(opts.agentContextComposer !== undefined ? { agentContextComposer: opts.agentContextComposer } : {}),
     ...(opts.headTools !== undefined ? { headTools: opts.headTools } : {}),
     ...(opts.terminalToolNames !== undefined ? { terminalToolNames: opts.terminalToolNames } : {}),
     ...(opts.spawnAgentNote !== undefined ? { spawnAgentNote: opts.spawnAgentNote } : {}),

@@ -84,8 +84,6 @@ export interface LocalAgentRunnerOptions {
   timezone: string
   agentModel?: string       // default model for agents with no skill/tier override
   stewardModel?: string       // model for agent context summaries
-  snapshotTokenBudget?: number  // max tokens of head history passed to spawned agents
-  agentContextComposer?: boolean  // when true, agents get classified+edited head history
   /** When false, no agent ever receives spawn_agent (byte-equivalent to pre-Milestone-1 behavior). Default true. Maps to config.nestedAgentSpawningEnabled. */
   nestedAgentSpawningEnabled?: boolean
   /** When true, a standard-tier LLM steward gates every depth-1 spawn_agent call and can reject with a short reason. On reject, the tool returns an instruction-shaped error containing the reason verbatim. When false, no steward call is made and the spawn proceeds subject only to NEST-* rules. Fail-open on infra errors. Default true. Maps to config.spawnAgentStewardEnabled. See STEW-01..08. */
@@ -122,8 +120,6 @@ export class LocalAgentRunner implements AgentRunner {
   private envOverrides: Record<string, string>
   private agentModel: string
   private stewardModel: string
-  private snapshotTokenBudget: number
-  private agentContextComposer: boolean
   private nestedAgentSpawningEnabled: boolean
   private spawnAgentStewardEnabled: boolean
   private toolRegistry = new AgentToolRegistryImpl()
@@ -170,8 +166,6 @@ export class LocalAgentRunner implements AgentRunner {
     // a concrete tier — "dynamic" must never reach the LLM router.
     this.agentModel = (opts.agentModel && opts.agentModel !== 'dynamic') ? opts.agentModel : 'smart'
     this.stewardModel = opts.stewardModel ?? 'dumb'
-    this.snapshotTokenBudget = opts.snapshotTokenBudget ?? 60_000
-    this.agentContextComposer = opts.agentContextComposer ?? false
     this.nestedAgentSpawningEnabled = opts.nestedAgentSpawningEnabled ?? true
     this.spawnAgentStewardEnabled = opts.spawnAgentStewardEnabled ?? false
   }

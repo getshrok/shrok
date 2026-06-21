@@ -192,8 +192,6 @@ const ConfigSchema = z.object({
   // Behavior
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   llmMaxTokens: z.coerce.number().default(16384),
-  // Token budget for the context snapshot passed to each spawned agent (head history they can see).
-  snapshotTokenBudget: z.coerce.number().default(100_000),
   // Total token budget for a head turn's assembled context (system + memory + history).
   // This is the dominant driver of time-to-first-token: prefill latency scales with how
   // many tokens are sent, so a smaller budget makes EVERY turn faster (sporadic or active,
@@ -223,9 +221,6 @@ const ConfigSchema = z.object({
   headRelayStewardContextTokens: z.coerce.number().min(100).max(10000).default(2000),
   // Token budget for conversation context given to the resume steward (validates answers to paused agents).
   resumeStewardContextTokens: z.coerce.number().min(500).max(20000).default(4000),
-  // When true, agents receive classified + edited head history (premium — extra LLM calls).
-  // When false, agents receive only their spawn prompt (cheap, no cross-contamination).
-  agentContextComposer: z.coerce.boolean().default(false),
   // When true, message_agent can resume completed agents with new instructions.
   agentContinuationEnabled: z.coerce.boolean().default(true),
   // Steward that validates message_agent calls before passing them to running/completed agents.

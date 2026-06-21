@@ -237,8 +237,6 @@ export interface HeadToolExecutorOptions {
   messages: MessageStore
   /** Returns the current head conversation history for passing to spawned agents. */
   getHistory?: () => import('../types/core.js').Message[]
-  /** Token budget for the verbatim-context composer snapshot (issue #45 pass-through). */
-  snapshotTokenBudget?: number
   /** Returns attachments from the triggering event message, if any. */
   getAttachments?: () => import('../types/core.js').Attachment[]
   onDebug?: (msg: string) => Promise<void>

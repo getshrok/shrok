@@ -335,7 +335,6 @@ export interface SettingsData {
   routingStewardEnabled: boolean
   headRelayStewardContextTokens: number
   resumeStewardContextTokens: number
-  agentContextComposer: boolean
   agentContinuationEnabled: boolean
   nestedAgentSpawningEnabled: boolean
   messageAgentStewardEnabled: boolean
@@ -363,7 +362,6 @@ export interface SettingsData {
   timezone: string
   traceHistoryTokens: number
   llmMaxTokens: number
-  snapshotTokenBudget: number
   archivalThresholdFraction: number
   contextAssemblyTokenBudget: number
   stewardContextTokenBudget: number

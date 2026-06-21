@@ -80,8 +80,6 @@
     "eval:ambient-context": "tsx scripts/eval/run.ts ambient-context",
     "eval:combined-stress": "tsx scripts/eval/run.ts combined-stress",
     "eval:system-marker-hallucination": "tsx scripts/eval/run.ts system-marker-hallucination",
-    "eval:composer-multi-task": "tsx scripts/eval/run.ts composer-multi-task",
-    "eval:composer-context-carry": "tsx scripts/eval/run.ts composer-context-carry",
     "eval:skill-creation": "tsx scripts/eval/run.ts skill-creation",
     "licenses:generate": "license-checker --production --excludePrivatePackages --out THIRD-PARTY-LICENSES.txt"
   },
