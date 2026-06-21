@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [next]
 
 ### Added
+- **Recurring schedules can now have an end date** — when creating or editing a repeating task schedule, set an optional end date and the schedule will automatically disable itself once its next computed fire time reaches or passes that cutoff. Useful for setting up a campaign or series that should stop on a known date without manual intervention. Agents can set `endDate` in `create_schedule`/`update_schedule` using the usual workspace-local `YYYY-MM-DD HH:MM` format.
 - **See where your context window goes** — Settings → Behavior now shows a live, multi-segment bar that breaks down how a turn's context window is allocated: identity files (their own segment, since they grow over time), the rest of the system prompt, memory, history, and the output reserve. It reflows as you drag the memory/history balance and the context-window ceiling, so you can feel the trade-offs, and it warns when the system prompt plus output reserve no longer leave room under the ceiling. Token counts are approximate.
 
 ### Changed

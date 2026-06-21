@@ -103,6 +103,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   const [editAgentContext, setEditAgentContext] = useState('')
   const [editRelayGuidance, setEditRelayGuidance] = useState('')
   const [editDeliverToHeadIds, setEditDeliverToHeadIds] = useState<string[]>([])
+  const [editEndDate, setEditEndDate] = useState('')
 
   const headsQuery = useQuery({
     queryKey: ['heads'],
@@ -120,7 +121,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string; relayGuidance?: string; deliverToHeadIds?: string[] }) => api.schedules.update(schedule.id, update),
+    mutationFn: (update: { cron?: string; runAt?: string; conditions?: string; agentContext?: string; relayGuidance?: string; deliverToHeadIds?: string[]; endDate?: string | null }) => api.schedules.update(schedule.id, update),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['schedules'] }); setEditing(false) },
   })
 
@@ -130,6 +131,7 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     setEditAgentContext(schedule.agentContext ?? '')
     setEditRelayGuidance(schedule.relayGuidance ?? '')
     setEditDeliverToHeadIds(schedule.deliverToHeadIds ?? [])
+    setEditEndDate(schedule.endDate ? toDatetimeLocalInTz(schedule.endDate, tz) : '')
     setEditing(true)
   }
 
@@ -144,16 +146,18 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
     const deliverUnchanged =
       JSON.stringify([...editDeliverToHeadIds].sort()) ===
       JSON.stringify([...(schedule.deliverToHeadIds ?? [])].sort())
+    const endDateUtc = editEndDate ? datetimeLocalToUtc(editEndDate, tz) : null
+    const endDateUnchanged = endDateUtc === schedule.endDate
     if (schedule.cron !== null) {
-      if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged && relayGuidanceUnchanged && deliverUnchanged) { setEditing(false); return }
-      updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext, relayGuidance: editRelayGuidance, deliverToHeadIds: editDeliverToHeadIds })
+      if (trimmed === schedule.cron && conditionsUnchanged && agentContextUnchanged && relayGuidanceUnchanged && deliverUnchanged && endDateUnchanged) { setEditing(false); return }
+      updateMutation.mutate({ cron: trimmed, conditions: editConditions, agentContext: editAgentContext, relayGuidance: editRelayGuidance, deliverToHeadIds: editDeliverToHeadIds, endDate: endDateUtc })
       return
     }
     const runAtUtc = datetimeLocalToUtc(trimmed, tz)
     if (!runAtUtc) return
     const runAtUnchanged = runAtUtc === schedule.runAt
-    if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged && relayGuidanceUnchanged && deliverUnchanged) { setEditing(false); return }
-    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions, agentContext: editAgentContext, relayGuidance: editRelayGuidance, deliverToHeadIds: editDeliverToHeadIds })
+    if (runAtUnchanged && conditionsUnchanged && agentContextUnchanged && relayGuidanceUnchanged && deliverUnchanged && endDateUnchanged) { setEditing(false); return }
+    updateMutation.mutate({ runAt: runAtUtc, conditions: editConditions, agentContext: editAgentContext, relayGuidance: editRelayGuidance, deliverToHeadIds: editDeliverToHeadIds, endDate: endDateUtc })
   }
 
   const scheduleLabel = schedule.cron
@@ -285,6 +289,18 @@ function ScheduleRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                   </select>
                   <div className="text-[11px] text-zinc-500 mt-0.5">Hold Ctrl/Cmd to select multiple. Owner head always included.</div>
                 </div>
+                {schedule.cron !== null && (
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">End date (optional)</label>
+                    <input
+                      type="datetime-local"
+                      value={editEndDate}
+                      onChange={e => setEditEndDate(e.target.value)}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600"
+                    />
+                    <div className="text-[11px] text-zinc-500 mt-0.5">Schedule auto-disables after this time. Leave blank for no end date. Times are in the workspace timezone ({tz}).</div>
+                  </div>
+                )}
                 {updateMutation.isError && (
                   <div className="text-xs text-red-400">{(updateMutation.error as Error).message}</div>
                 )}
@@ -337,6 +353,7 @@ function AddScheduleForm({
   const [conditions, setConditions] = useState('')
   const [agentContext, setAgentContext] = useState('')
   const [relayGuidance, setRelayGuidance] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [error, setError] = useState('')
 
   const headsQuery = useQuery({
@@ -379,11 +396,13 @@ function AddScheduleForm({
         ...(relayGuidance ? { relayGuidance } : {}),
         ...(type === 'repeating' && startAt ? { startAt: datetimeLocalToUtc(startAt, tz) } : {}),
         ...(deliverToHeadIds.length ? { deliverToHeadIds } : {}),
+        ...(type === 'repeating' && endDate ? { endDate: datetimeLocalToUtc(endDate, tz) ?? undefined } : {}),
       })
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['schedules'] })
       setStartAt('')
+      setEndDate('')
       onDone()
     },
     onError: (err: Error) => setError(err.message),
@@ -522,6 +541,21 @@ function AddScheduleForm({
           className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
         />
       </div>
+
+      {type === 'repeating' && (
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">End date (optional)</label>
+          <input
+            type="datetime-local"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
+          />
+          <div className="text-[11px] text-zinc-500 mt-0.5">
+            Schedule auto-disables after this time. Leave blank for no end date. Times are in the workspace timezone ({tz}).
+          </div>
+        </div>
+      )}
 
       {startAt && new Date(startAt) <= new Date() && (
         <div className="text-xs text-red-400">Start date must be in the future.</div>

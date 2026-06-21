@@ -279,6 +279,8 @@ export interface Schedule {
   /** Operator guidance injected into the relay steward's prompt to bias whether this
    *  task's output is surfaced. Task-only; absent = relay defaults apply. */
   relayGuidance?: string
+  /** ISO UTC cutoff — recurring schedule auto-disables once its next fire is on/after this. */
+  endDate: string | null
 }
 
 export interface ApiKeyStatus { isSet: boolean }

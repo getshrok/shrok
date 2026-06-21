@@ -40,8 +40,8 @@ export function createSchedulesRouter(
       return
     }
 
-    const { taskName, cron, runAt, conditions, agentContext, relayGuidance } = req.body as {
-      taskName?: unknown; cron?: unknown; runAt?: unknown; conditions?: unknown; agentContext?: unknown; relayGuidance?: unknown
+    const { taskName, cron, runAt, conditions, agentContext, relayGuidance, endDate: rawEndDate } = req.body as {
+      taskName?: unknown; cron?: unknown; runAt?: unknown; conditions?: unknown; agentContext?: unknown; relayGuidance?: unknown; endDate?: unknown
     }
 
     // D-04: validate ack↔nag coupling, floor, and ceiling before any other logic
@@ -203,6 +203,15 @@ export function createSchedulesRouter(
       if (ackBool && nagNum > 0) createOpts.nagIntervalMinutes = nagNum
       // Phase 44 D-08: persist delivery set (task-only, already validated + deduped above)
       if (deliverToHeadIds !== undefined) createOpts.deliverToHeadIds = deliverToHeadIds
+      // WL2: endDate — optional ISO datetime string, stored verbatim as UTC
+      if (typeof rawEndDate === 'string' && rawEndDate) {
+        const d = new Date(rawEndDate)
+        if (isNaN(d.getTime())) {
+          res.status(400).json({ error: 'Invalid endDate' })
+          return
+        }
+        createOpts.endDate = d.toISOString()
+      }
       const schedule = scheduleStore.create(createOpts)
       res.json({ schedule })
     } catch (err) {
@@ -225,14 +234,25 @@ export function createSchedulesRouter(
       res.status(400).json({ error: 'headId cannot be reassigned via PATCH. To move a schedule to a different head, delete and recreate.' })
       return
     }
-    const { enabled, cron, runAt, conditions, agentContext, relayGuidance } = req.body as {
+    const { enabled, cron, runAt, conditions, agentContext, relayGuidance, endDate: patchEndDate } = req.body as {
       enabled?: unknown; cron?: unknown; runAt?: unknown;
-      conditions?: unknown; agentContext?: unknown; relayGuidance?: unknown
+      conditions?: unknown; agentContext?: unknown; relayGuidance?: unknown; endDate?: unknown
     }
 
     const patch: Parameters<typeof scheduleStore.update>[1] = {}
     if (typeof enabled === 'boolean') patch.enabled = enabled
     if (typeof cron === 'string' && cron) patch.cron = cron
+    // WL2: endDate — null clears the cutoff, a string value sets a new one
+    if (patchEndDate === null) {
+      patch.endDate = null
+    } else if (typeof patchEndDate === 'string' && patchEndDate) {
+      const d = new Date(patchEndDate)
+      if (isNaN(d.getTime())) {
+        res.status(400).json({ error: 'Invalid endDate' })
+        return
+      }
+      patch.endDate = d.toISOString()
+    }
     if (typeof runAt === 'string') {
       if (!runAt) {
         res.status(400).json({ error: 'runAt cannot be empty (use cron to make a schedule recurring, or send a valid ISO timestamp)' })
