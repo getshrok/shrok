@@ -71,7 +71,7 @@ export class ScheduleEvaluatorImpl implements ScheduleEvaluator {
           if (!slug) {
             log.warn(`[scheduler] script schedule ${schedule.id} has no taskName/slug — skipping`)
           } else if (this.sensorRunner) {
-            this.sensorRunner.run(slug, schedule.headId).catch(err =>
+            this.sensorRunner.run(slug, schedule.headId, schedule.deliverToHeadIds ?? []).catch(err =>
               log.error(`[scheduler] sensor:${slug} runner error:`, (err as Error).message)
             )
           }

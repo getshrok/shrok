@@ -84,9 +84,9 @@ export function createSchedulesRouter(
     }
     const kind: 'task' | 'reminder' | 'script' = rawKind === 'reminder' ? 'reminder' : rawKind === 'script' ? 'script' : 'task'
 
-    // Phase 44 D-08: deliverToHeadIds — task-only, validate shape + known heads, dedupe
+    // Phase 44 D-08 + sensor fan-out: deliverToHeadIds — valid for task + script, rejected for reminder
     let deliverToHeadIds: string[] | undefined
-    if (kind === 'task') {
+    if (kind === 'task' || kind === 'script') {
       const rawDeliverTo = (req.body as { deliverToHeadIds?: unknown }).deliverToHeadIds
       if (rawDeliverTo !== undefined) {
         if (!Array.isArray(rawDeliverTo)) {
@@ -109,8 +109,8 @@ export function createSchedulesRouter(
         if (deduped.length > 0) deliverToHeadIds = deduped
       }
     } else if ((req.body as { deliverToHeadIds?: unknown }).deliverToHeadIds !== undefined) {
-      // 400 on reminder/script kinds — clearer than silently ignoring (D-08)
-      res.status(400).json({ error: 'deliverToHeadIds is only valid for task schedules' })
+      // 400 on reminder kind — clearer than silently ignoring
+      res.status(400).json({ error: 'deliverToHeadIds is not valid for reminder schedules' })
       return
     }
 
@@ -365,8 +365,8 @@ export function createSchedulesRouter(
     if (rawDeliverTo !== undefined) {
       const existing = scheduleStore.get(id)
       if (!existing) { res.status(404).json({ error: 'Not found' }); return }
-      if (existing.kind !== 'task') {
-        res.status(400).json({ error: 'deliverToHeadIds is only valid for task schedules' })
+      if (existing.kind === 'reminder') {
+        res.status(400).json({ error: 'deliverToHeadIds is not valid for reminder schedules' })
         return
       }
       if (!Array.isArray(rawDeliverTo) || !(rawDeliverTo as unknown[]).every(x => typeof x === 'string' && (x as string).trim())) {

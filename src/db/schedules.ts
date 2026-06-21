@@ -21,8 +21,9 @@ export interface Schedule {
   nagIntervalMinutes: number | null
   /** Whether an ack-required reminder currently has an outstanding (un-acknowledged) nag in flight. Inert (false) for non-ack reminders and tasks. Set true at activation delivery (D-05), cleared on ack (D-07). */
   ackPending: boolean
-  /** Additional heads to deliver task completion to (Phase 44). Only meaningful for kind:'task'.
-   *  Absent on reminders and legacy rows (absent = owner-only; do NOT migrate to []).
+  /** Additional heads to fan output out to (Phase 44 task fan-out; sensor fan-out for kind:'script').
+   *  Meaningful for kind:'task' and kind:'script'. Absent on reminders and legacy rows
+   *  (absent = owner-only; do NOT migrate to []).
    *  Effective delivery set is dedupe([headId, ...deliverToHeadIds]). */
   deliverToHeadIds?: string[]
   /** Optional operator guidance for the relay steward, injected into its prompt to bias

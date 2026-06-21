@@ -187,6 +187,10 @@ export type QueueEvent =
        *  Carried to the spawned sub-agent's relayGuidance so the relay steward can bias
        *  the surface-vs-suppress decision for this dispatch. Absent = default relay rules. */
       relayGuidance?: string
+      /** Extra heads to fan the sub-agent's completion out to; rides the existing Phase-44
+       *  task-completion fan-out (src/sub-agents/local.ts completeAgent).
+       *  Absent = owner-only. */
+      deliverToHeadIds?: string[]
       createdAt: string
     }
 

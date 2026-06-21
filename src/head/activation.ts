@@ -1161,6 +1161,7 @@ export class ActivationLoop {
       trigger: 'sensor',
       headId: this.opts.headId,
       ...(event.relayGuidance ? { relayGuidance: event.relayGuidance } : {}),
+      ...(event.deliverToHeadIds?.length ? { deliverToHeadIds: event.deliverToHeadIds } : {}),
     })
   }
 
