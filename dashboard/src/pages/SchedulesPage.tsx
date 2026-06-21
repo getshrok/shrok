@@ -1519,10 +1519,13 @@ function AddSensorScheduleForm({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type SchedTab = 'task' | 'reminder' | 'script'
+
 export default function SchedulesPage() {
   const [showForm, setShowForm] = useState(false)
   const [showReminderForm, setShowReminderForm] = useState(false)
   const [showSensorForm, setShowSensorForm] = useState(false)
+  const [activeTab, setActiveTab] = useState<SchedTab>('task')
   const tz = useConfigTimezone()
 
   const schedulesQuery = useQuery({
@@ -1548,11 +1551,42 @@ export default function SchedulesPage() {
   const sensorSchedules = allSchedules.filter(s => s.kind === 'script')
   const tasks = tasksQuery.data?.tasks ?? []
 
+  const tabs: { id: SchedTab; label: string; count: number }[] = [
+    { id: 'task', label: 'Tasks', count: taskSchedules.length },
+    { id: 'reminder', label: 'Reminders', count: reminderSchedules.length },
+    { id: 'script', label: 'Sensors', count: sensorSchedules.length },
+  ]
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl mx-auto space-y-6">
 
+        {/* ── Tab bar ── */}
+        <div className="flex gap-1 border-b border-zinc-800">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm rounded-t-md border-b-2 transition-colors -mb-px ${
+                activeTab === tab.id
+                  ? 'text-zinc-100 border-zinc-400 bg-zinc-800/40'
+                  : 'text-zinc-500 border-transparent hover:text-zinc-300'
+              }`}
+            >
+              {tab.label}
+              <span
+                className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                  activeTab === tab.id ? 'bg-zinc-700 text-zinc-200' : 'bg-zinc-800 text-zinc-500'
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {/* ── Scheduled Tasks ── */}
+        {activeTab === 'task' && <>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-100">Tasks</h2>
@@ -1588,8 +1622,10 @@ export default function SchedulesPage() {
             />
           )}
         </div>
+        </>}
 
         {/* ── Reminders ── */}
+        {activeTab === 'reminder' && <>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-100">Reminders</h2>
@@ -1617,8 +1653,10 @@ export default function SchedulesPage() {
             <AddReminderForm onDone={() => setShowReminderForm(false)} tz={tz} />
           )}
         </div>
+        </>}
 
         {/* ── Sensor Schedules ── */}
+        {activeTab === 'script' && <>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-100">Sensor Schedules</h2>
@@ -1651,6 +1689,7 @@ export default function SchedulesPage() {
             />
           )}
         </div>
+        </>}
 
       </div>
     </div>

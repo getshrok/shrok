@@ -6,12 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+## [0.6.0] — 2026-06-21
+
 ### Added
 - **A scheduled sensor can now report to more than one head** — when you have multiple assistant heads, a sensor schedule can deliver to additional heads beyond the one that owns it, the same way scheduled tasks already can. Pick the extra heads in the schedule's "Also deliver to" list. The sensor still runs only once per fire — its findings just fan out to everyone you chose: each head gets the same always-in-context ambient note, each head is woken by the same headEvent, and a silent sub-agent dispatch reports its result back to all of them. (Reminders remain single-delivery.)
 - **Recurring schedules can now have an end date** — when creating or editing a repeating task schedule, set an optional end date and the schedule will automatically disable itself once its next computed fire time reaches or passes that cutoff. Useful for setting up a campaign or series that should stop on a known date without manual intervention. Agents can set `endDate` in `create_schedule`/`update_schedule` using the usual workspace-local `YYYY-MM-DD HH:MM` format.
 - **See where your context window goes** — Settings → Behavior now shows a live, multi-segment bar that breaks down how a turn's context window is allocated: identity files (their own segment, since they grow over time), the rest of the system prompt, memory, history, and the output reserve. It reflows as you drag the memory/history balance and the context-window ceiling, so you can feel the trade-offs, and it warns when the system prompt plus output reserve no longer leave room under the ceiling. Token counts are approximate.
 
 ### Changed
+- **The Schedules page is now organized into tabs** — Tasks, Reminders, and Sensors each get their own tab (with a count badge) instead of stacking into one long scroll, so you can focus on a single type at a time.
 - **Default context window raised to 40,000 tokens** (was 30,000) — keeps a bit more recent conversation and retrieved memory in context per turn by default. Override with `contextWindowTokens` in `config.json` or Settings → Behavior.
 
 ### Fixed
