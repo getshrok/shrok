@@ -755,7 +755,7 @@ function ReminderRow({ schedule, tz }: { schedule: Schedule; tz: string }) {
                     value={editMessage}
                     onChange={e => setEditMessage(e.target.value)}
                     placeholder="The reminder text"
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-y min-h-[3.5rem]"
                   />
                 </div>
                 <div>
@@ -955,7 +955,7 @@ function AddReminderForm({ onDone, tz }: { onDone: () => void; tz: string }) {
           value={message}
           onChange={e => setMessage(e.target.value)}
           placeholder="e.g. Review weekly goals"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-none"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-zinc-600 resize-y min-h-[3.5rem]"
         />
       </div>
 
