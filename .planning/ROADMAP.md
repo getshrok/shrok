@@ -70,14 +70,14 @@ Plans:
 **Goal:** Eliminate the long-lived in-memory `history` array as a second source of truth for sub-agents, collapsing them onto the head's model where the DB is canonical. After Phase 53 every message is persisted at inject time, so the in-memory array can become a **transient per-invocation buffer** (rebuilt from the DB on each entry) instead of state carried across idle gaps. Changes in `src/sub-agents/local.ts`: (1) **load history from the DB on each loop entry/wake** — mirroring the head's `assembler.ts:201` `messages.getRecent(...)` with `historyBudget` windowing — and drop the array when the loop parks (suspend / inbox wait); sub-agents routinely sit idle for minutes (waiting on a bash call, finished prior work, or suspended on a question awaiting a `message_agent` answer), so idle agents should hold zero conversation in memory. (2) **Collapse the two `update()` resume paths into one DB-sourced path** — the live-emitter in-memory path (~262–264) and the `resumeSuspended` DB path (~266 / 409) currently diverge; unify the *history source* to the DB (still wake a parked poller vs. start a fresh loop, but read history uniformly). (3) **Retire the `work_start` index** in favor of the `injected`-flag filter (it's already out of step with the persisted array). `runToolLoop` keeps its transient working buffer and round-by-round `appendMessage` persistence — no change there; the head holds an in-memory buffer mid-loop too. Performance is a non-issue (synchronous local SQLite reads at loop-entry/wake, not per round — the head already does this every turn); memory strictly improves for idle agents. Restart behavior unchanged: running agents are still reaped on boot (`src/index.ts:349–358`), not resumed. Core-loop refactor of `loopIteration` — needs thorough tests (resume-after-idle, mid-loop `message_agent`, compaction interaction, suspend→answer→continue).
 **Requirements**: No REQ-IDs mapped — internal refactor; must-haves derived from the ROADMAP goal + 54-CONTEXT.md LOCKED decisions (DB-sourced loop entry, two-`update()`-path unification, `work_start` retirement, anti-double-injection). Behaviors covered by tests T1–T7 (54-VALIDATION.md).
 **Depends on:** Phase 53
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 **Wave 1**
 - [x] 54-01-PLAN.md — Author T1–T7 RED tests in agents.test.ts (DB-sourced history, anti-double-injection, restart-reaping regression); Phase 53 tests A–D stay green
 
 **Wave 2** *(blocked on Wave 1)*
-- [ ] 54-02-PLAN.md — AgentStore.getHistoryWithinBudget + stmtGetMessagesDesc (mirror MessageStore.getRecent); budget-windowed chronological DB read
+- [x] 54-02-PLAN.md — AgentStore.getHistoryWithinBudget + stmtGetMessagesDesc (mirror MessageStore.getRecent); budget-windowed chronological DB read
 
 **Wave 3** *(blocked on Waves 1+2)*
 - [ ] 54-03-PLAN.md — DB-reload restructure of loopIteration + nudge ordering + work_start retirement + update() path unification + resumeSuspended no-re-inject; turns T1–T7 green; full-suite regression gate
