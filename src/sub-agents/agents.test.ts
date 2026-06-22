@@ -392,7 +392,7 @@ function makeStewardQuestionResponse(question: string): LLMResponse {
 function makeRunner(
   llmRouter: LLMRouter,
   db: ReturnType<typeof freshDb>,
-  overrides: { spawnAgentStewardEnabled?: boolean; stewardModel?: string; unifiedLoader?: import('../skills/unified.js').UnifiedLoader; skillLoader?: SkillLoader; agentModel?: string; archivalThreshold?: number } = {},
+  overrides: { spawnAgentStewardEnabled?: boolean; stewardModel?: string; unifiedLoader?: import('../skills/unified.js').UnifiedLoader; skillLoader?: SkillLoader; agentModel?: string; archivalThreshold?: number; historyBudget?: number } = {},
 ) {
   const agentStore = new AgentStore(db)
   const inboxStore = new AgentInboxStore(db)
@@ -445,6 +445,7 @@ function makeRunner(
     ...(overrides.unifiedLoader ? { unifiedLoader: overrides.unifiedLoader } : {}),
     ...(overrides.agentModel !== undefined ? { agentModel: overrides.agentModel } : {}),
     ...(overrides.archivalThreshold !== undefined ? { archivalThreshold: overrides.archivalThreshold } : {}),
+    ...(overrides.historyBudget !== undefined ? { historyBudget: overrides.historyBudget } : {}),
   })
 
   return { runner, agentStore, inboxStore, queueStore, skillLoader }
@@ -2301,26 +2302,38 @@ describe('Phase 54: DB-sourced history', () => {
 
   // ─── T4: compaction interaction — DB reload picks up compacted form ────────
   //
-  // After maybeArchiveHistory fires, `agentStore.get(id)?.history` should contain
-  // a summary message AND not contain the full pre-summary message sequence.
-  // Uses a very low archivalThreshold (10 tokens) so the first tool round triggers
-  // compaction. Uses the makeStewardDoneResponse pattern for the steward summary call.
+  // Genuine regression guard for compaction: verifies that maybeArchiveHistory fires,
+  // the steward produces a summary, and compactHistory persists it as kind:'summary'.
   //
-  // Strong assertion: summary message is present in DB history AND the original
-  // pre-compaction detail rows are NOT all still present (history was compacted).
-  // This proves the DB reload picks up the compacted form.
+  // Design:
+  //  - historyBudget=200_000 > archivalThreshold=30 satisfies the constructor invariant.
+  //  - Messages are seeded into the DB via appendMessages immediately after spawn().
+  //    Due to JavaScript's microtask scheduling, spawn() returns only after the first
+  //    loop pass's getHistoryWithinBudget runs. On pass 1 the DB has only the task
+  //    message (1 msg, cutoff=0) → archival early-returns. The seeded messages land in
+  //    the DB during pass 1's runToolLoop phase (between the first and second await
+  //    points). On pass 2, the DB reload sees all messages (5 total, cutoff=1 >= 1,
+  //    combined tokens >> archivalThreshold=30) → maybeArchiveHistory fires.
+  //  - Pass 1 agent call returns end_turn without tools → nudge injected → pass 2.
+  //  - Pass 2: archival fires first (steward summary), then agent makes bash call,
+  //    then end_turn, then completion steward classifies as done.
+  //  - LLM calls are dispatched by message-content inspection (archival call contains
+  //    "Summarize") for robust routing regardless of exact call ordering.
+  //  - PASS assertion: history.some(m => m.kind === 'summary') — asserts a REAL summary
+  //    message produced by compactHistory, NOT a text content check. Fails if compaction
+  //    is dead code (historyBudget <= archivalThreshold or cutoff < 1).
   it('compact: after maybeArchiveHistory, DB history contains summary + does not contain full pre-compaction sequence', async () => {
     const db = freshDb()
     const summaryContent = 'Phase54-T4-compact-summary-content'
-    let llmCallNum = 0
+    let agentCallNum = 0
     const llmRouter: LLMRouter = {
       complete: vi.fn().mockImplementation(async (_tier: string, _msgs: Message[]) => {
-        llmCallNum++
-        // First steward call is the compaction summary
-        // First agent call: bash tool call
-        // Second agent call: end_turn
-        if (llmCallNum === 1) {
-          // This is the steward's archival summary call (low threshold fires before first pass)
+        // Archival steward call: detected by the "Summarize" prompt in archival.ts line 56.
+        // Returns the sentinel summary text; archival.ts persists it as kind:'summary'.
+        const isArchivalCall = _msgs.some(m =>
+          m.kind === 'text' && m.role === 'user' && m.content.startsWith('Summarize this conversation history')
+        )
+        if (isArchivalCall) {
           return {
             content: summaryContent,
             model: 'test-model',
@@ -2330,44 +2343,60 @@ describe('Phase 54: DB-sourced history', () => {
             toolCalls: [],
           }
         }
-        if (llmCallNum === 2) {
-          return makeToolCallResponse('bash', { command: 'echo t4' })
+        // Completion steward call: detected by tier='dumb' (non-archival steward calls).
+        // All non-archival dumb-tier calls are treated as completion steward.
+        if (_tier === 'dumb') {
+          return makeStewardDoneResponse()
         }
-        if (llmCallNum === 3) {
+        // Agent calls (tier != 'dumb'):
+        agentCallNum++
+        // Pass 1 agent call: end_turn without tools → triggers tool nudge → pass 2.
+        if (agentCallNum === 1) {
           return makeEndTurnResponse()
         }
-        return makeStewardDoneResponse()
+        // Pass 2 agent call 1: bash tool call.
+        if (agentCallNum === 2) {
+          return makeToolCallResponse('bash', { command: 'echo t4' })
+        }
+        // Pass 2 agent call 2: end_turn after tool.
+        return makeEndTurnResponse()
       }),
     }
 
-    // archivalThreshold=10 means even a minimal task message exceeds it (a short
-    // sentence is ~10+ tokens), triggering compaction on the very first pass
-    const { runner, agentStore } = makeRunner(llmRouter, db, { archivalThreshold: 10 })
+    // historyBudget=200_000 > archivalThreshold=30 satisfies the constructor invariant.
+    // Pass explicitly to document intent (default would be max(30*2,200_000)=200_000).
+    const { runner, agentStore } = makeRunner(llmRouter, db, { archivalThreshold: 30, historyBudget: 200_000 })
     const agentId = await runner.spawn({ task: 'Phase54-TaskT4-compaction-trigger-test', name: 'task-t4', trigger: 'manual', headId: 'default' })
-    await runner.awaitAll(8000)
+
+    // Seed additional messages after spawn() returns. These land in the DB during
+    // pass 1's runToolLoop (after the first DB reload but before pass 2's reload).
+    // On pass 2, DB has 5 messages: task + 3 seeded + tool_nudge, totalling >> 30 tokens.
+    // cutoff = floor(5 * 0.3) = 1 >= 1, so maybeArchiveHistory compacts the oldest message.
+    const seedTs = new Date().toISOString()
+    agentStore.appendMessages(agentId, [
+      { kind: 'text', role: 'assistant', id: 'T4-seed-a1', content: 'I will work on the Phase54 T4 compaction test task right now.', createdAt: seedTs },
+      { kind: 'text', role: 'user',      id: 'T4-seed-u1', content: 'Please continue with the Phase54 T4 compaction trigger test step.', createdAt: seedTs },
+      { kind: 'text', role: 'assistant', id: 'T4-seed-a2', content: 'Proceeding with Phase54 T4 compaction test execution as requested.', createdAt: seedTs },
+    ] satisfies TextMessage[])
+
+    await runner.awaitAll(10000)
 
     const history = agentStore.get(agentId)?.history ?? []
 
-    // If compaction fired: DB history should contain a summary or notice message
-    // (summary or fallback notice from archival.ts)
-    const summaryOrNoticeRow = history.find(m =>
-      m.kind === 'summary' || (m.kind === 'text' && (m as TextMessage).content.includes(summaryContent))
-    )
+    // PASS assertion: a genuine kind:'summary' message must exist in DB history.
+    // This fails if compaction is dead code (early-return bypasses compactHistory).
+    expect(history.some(m => m.kind === 'summary')).toBe(true)
 
-    // The strong assertion: summary is present
-    expect(summaryOrNoticeRow).toBeDefined()
+    // Verify the summary content matches the steward's sentinel response.
+    const summaryMsg = history.find(m => m.kind === 'summary')
+    expect(summaryMsg?.content).toContain(summaryContent)
 
-    // Anti-regression: the original full pre-compaction detail rows should NOT
-    // all still be present (the compacted ones are replaced by the summary)
-    // Specifically, there should be at most 1 task row (the task itself is either
-    // compacted into the summary or remains, but we should NOT see duplicates)
+    // Anti-duplication regression: the task message appears at most once in DB history.
     const taskRows = history.filter(m => {
       if (m.kind !== 'text') return false
       const tm = m as TextMessage
       return tm.role === 'user' && tm.content.includes('Phase54-TaskT4')
     })
-    // After compaction, the task message is either replaced by summary (0 rows)
-    // or still present (1 row), never duplicated (never > 1)
     expect(taskRows.length).toBeLessThanOrEqual(1)
   }, 15000)
 
