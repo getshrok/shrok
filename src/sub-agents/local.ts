@@ -445,6 +445,25 @@ export class LocalAgentRunner implements AgentRunner {
     this.tasks.set(agentId, task)
   }
 
+  // ─── Inbound persistence helper ──────────────────────────────────────────────
+
+  /**
+   * Persist a single inbound message to the agent_messages table and fire an SSE
+   * event so the dashboard live-updates.  Mirrors the 3-step pattern established
+   * in the appendMessage callback (lines ~828-831) but covers the inbound side
+   * (initial task, MCP warning, synthetic skill reads, message_agent updates,
+   * resume answers, sub-agent notices).
+   *
+   * Does NOT push to the in-memory `history` array — the caller always does that
+   * first.  Two DB steps only:
+   *   1. this.agentStore.appendMessages(agentId, [msg])
+   *   2. this.agentStore.emitMessageAdded(agentId, msg, options.trigger, this.headId)
+   */
+  private persistInbound(agentId: string, msg: Message, options: SpawnOptions): void {
+    this.agentStore.appendMessages(agentId, [msg])
+    this.agentStore.emitMessageAdded(agentId, msg, options.trigger, this.headId)
+  }
+
   // ─── Main loop ───────────────────────────────────────────────────────────────
 
   private async runLoop(
@@ -466,14 +485,16 @@ export class LocalAgentRunner implements AgentRunner {
 
     // Warn agent about unavailable MCP capabilities
     if (failedMcpCapabilities.length > 0) {
-      history.push({
+      const mcpWarnMsg: TextMessage = {
         kind: 'text',
         role: 'user',
         id: generateId('msg'),
         content: `[System notice: The following capabilities could not be loaded and are unavailable: ${failedMcpCapabilities.join(', ')}. You may need to work around their absence.]`,
         injected: true,
         createdAt: now(),
-      } as TextMessage)
+      }
+      history.push(mcpWarnMsg)
+      this.persistInbound(agentId, mcpWarnMsg, options)
     }
 
     // Record where the agent's own work begins.
@@ -554,14 +575,20 @@ export class LocalAgentRunner implements AgentRunner {
         }
       }
 
-      history.push({
+      const skillTcMsg: ToolCallMessage = {
         kind: 'tool_call', id: generateId('msg'), createdAt: now(),
         content: '', toolCalls: toolCalls as [ToolCall, ...ToolCall[]],
-      } as ToolCallMessage)
-      history.push({
+        injected: true,
+      }
+      const skillTrMsg: ToolResultMessage = {
         kind: 'tool_result', id: generateId('msg'), createdAt: now(),
         toolResults: toolResults as [ToolResult, ...ToolResult[]],
-      } as ToolResultMessage)
+        injected: true,
+      }
+      history.push(skillTcMsg)
+      this.persistInbound(agentId, skillTcMsg, options)
+      history.push(skillTrMsg)
+      this.persistInbound(agentId, skillTrMsg, options)
     }
 
     await this.runLoopFrom(agentId, options, toolEntries, systemPrompt, history, emitter, false)
@@ -668,13 +695,15 @@ export class LocalAgentRunner implements AgentRunner {
         if (msg.type === 'signal') {
           this.inboxStore.markProcessed(msg.id)
           if (isSuspended) {
-            // Resume: inject the answer as a user turn
-            history.push({
+            // Resume: inject the answer as a user turn (genuine user input — no injected flag)
+            const resumeAnswerMsg: TextMessage = {
               kind: 'text', role: 'user',
               id: generateId('msg'),
               content: msg.payload ?? '',
               createdAt: now(),
-            } satisfies TextMessage)
+            }
+            history.push(resumeAnswerMsg)
+            this.persistInbound(agentId, resumeAnswerMsg, options)
             this.agentStore.resume(agentId, this.headId)
             isSuspended = false
           }
@@ -712,13 +741,16 @@ export class LocalAgentRunner implements AgentRunner {
           } else {
             content = `[Sub-agent ${payload.subWorkerId} failed: ${payload.error ?? 'unknown error'}]`
           }
-          history.push({
+          const noticeMsg: TextMessage = {
             kind: 'text',
             role: 'user',
             id: generateId('msg'),
             content,
+            injected: true,
             createdAt: now(),
-          } satisfies TextMessage)
+          }
+          history.push(noticeMsg)
+          this.persistInbound(agentId, noticeMsg, options)
         }
       }
 
