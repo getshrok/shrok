@@ -250,9 +250,8 @@ export class LocalAgentRunner implements AgentRunner {
     const state = this.agentStore.get(agentId)
     if (state?.status === 'completed') {
       // Continuation: transition back to running and restart the loop.
-      // Update workStart so the next completion only summarizes new work.
+      // History source is unified to the DB — loopIteration reloads on each pass.
       this.agentStore.resume(agentId, this.headId)
-      this.agentStore.updateWorkStart(agentId, state.history?.length ?? 0)
       this.inboxStore.write(agentId, 'signal', message)
       await this.resumeSuspended(agentId, state)
       return
@@ -426,14 +425,15 @@ export class LocalAgentRunner implements AgentRunner {
       skill,
     })
     const systemPrompt = buildSystemPrompt(this.toolSurfaceDeps(), skill)
-    const history: Message[] = [...(state.history ?? [])]
+    // History source is unified to the DB — do NOT thread state.history into
+    // runLoopFrom; loopIteration reloads from getHistoryWithinBudget on each pass.
 
     const emitter = new EventEmitter()
     this.emitters.set(agentId, emitter)
     const abortController = new AbortController()
     this.abortControllers.set(agentId, abortController)
 
-    const task = this.runLoopFrom(agentId, options, toolEntries, systemPrompt, history, emitter, true).catch(err => {
+    const task = this.runLoopFrom(agentId, options, toolEntries, systemPrompt, emitter, true).catch(err => {
       log.error(`[agent:${agentId}] Unhandled escape (resume):`, err)
       try { this.agentStore.fail(agentId, (err as Error).message, this.headId) } catch { /* ignore */ }
     }).finally(() => {
@@ -496,10 +496,6 @@ export class LocalAgentRunner implements AgentRunner {
       history.push(mcpWarnMsg)
       this.persistInbound(agentId, mcpWarnMsg, options)
     }
-
-    // Record where the agent's own work begins.
-    // Must stay before the first await (runLoopFrom) so it's set before any messages are appended.
-    this.agentStore.updateWorkStart(agentId, history.length)
 
     // Inject the agent's first message. The head writes a rich all-in-one `task` that
     // carries both what is wanted and the relevant context, so the agent receives it
@@ -589,7 +585,7 @@ export class LocalAgentRunner implements AgentRunner {
       this.persistInbound(agentId, skillTrMsg, options)
     }
 
-    await this.runLoopFrom(agentId, options, toolEntries, systemPrompt, history, emitter, false)
+    await this.runLoopFrom(agentId, options, toolEntries, systemPrompt, emitter, false)
   }
 
   private async runLoopFrom(
@@ -597,12 +593,11 @@ export class LocalAgentRunner implements AgentRunner {
     options: SpawnOptions,
     toolEntries: AgentToolEntry[],
     systemPrompt: string,
-    history: Message[],
     emitter: EventEmitter,
     isSuspended: boolean,
   ): Promise<void> {
     try {
-      await this.loopIteration(agentId, options, toolEntries, systemPrompt, history, emitter, isSuspended)
+      await this.loopIteration(agentId, options, toolEntries, systemPrompt, emitter, isSuspended)
     } catch (err) {
       log.error(`[agent:${agentId}] Error:`, (err as Error).message)
       try {
@@ -646,7 +641,6 @@ export class LocalAgentRunner implements AgentRunner {
     options: SpawnOptions,
     baseToolEntries: AgentToolEntry[],
     systemPrompt: string,
-    history: Message[],
     emitter: EventEmitter,
     isSuspended: boolean,
   ): Promise<void> {
@@ -685,6 +679,7 @@ export class LocalAgentRunner implements AgentRunner {
           // markProcessed runs before poll in onRoundComplete, so a single inbox row
           // is claimed by exactly one of the two sites (top-of-loop or onRoundComplete).
           // This is the idempotency guard — never stored twice.
+          // Persist to DB — the DB reload below will include this message.
           const updateMsg: TextMessage = {
             kind: 'text', role: 'user',
             id: generateId('msg'),
@@ -692,21 +687,20 @@ export class LocalAgentRunner implements AgentRunner {
             injected: true,
             createdAt: now(),
           }
-          history.push(updateMsg)
           this.persistInbound(agentId, updateMsg, options)
         }
 
         if (msg.type === 'signal') {
           this.inboxStore.markProcessed(msg.id)
           if (isSuspended) {
-            // Resume: inject the answer as a user turn (genuine user input — no injected flag)
+            // Resume: inject the answer as a user turn (genuine user input — no injected flag).
+            // Persist to DB — the DB reload below will include this message.
             const resumeAnswerMsg: TextMessage = {
               kind: 'text', role: 'user',
               id: generateId('msg'),
               content: msg.payload ?? '',
               createdAt: now(),
             }
-            history.push(resumeAnswerMsg)
             this.persistInbound(agentId, resumeAnswerMsg, options)
             this.agentStore.resume(agentId, this.headId)
             isSuspended = false
@@ -753,7 +747,7 @@ export class LocalAgentRunner implements AgentRunner {
             injected: true,
             createdAt: now(),
           }
-          history.push(noticeMsg)
+          // Persist to DB — the DB reload below will include this message.
           this.persistInbound(agentId, noticeMsg, options)
         }
       }
@@ -764,12 +758,20 @@ export class LocalAgentRunner implements AgentRunner {
         continue
       }
 
+      // --- DB reload: rebuild transient history from the DB on each pass ---
+      // All inbound messages processed above have been persisted via persistInbound,
+      // so they are included in this reload. The buffer is scoped to this one
+      // runToolLoop invocation and dropped when the loop parks (P2: no reload inside
+      // runToolLoop rounds; P5: nudges pushed AFTER this reload, every pass).
+      const history = this.agentStore.getHistoryWithinBudget(agentId, this.archivalThreshold)
+
       // --- check_status injection ---
       // Add report_status transiently for ONE LLM call if a status check was requested.
       let toolEntries = baseToolEntries
       const checkStatusMsgs = inbox.filter(m => m.type === 'check_status')
       if (checkStatusMsgs.length > 0) {
         for (const m of checkStatusMsgs) this.inboxStore.markProcessed(m.id)
+        // Non-persisted nudge pushed AFTER DB reload (P5) — transient framing only.
         history.push({
           kind: 'text', role: 'user',
           id: generateId('msg'),
@@ -798,7 +800,8 @@ export class LocalAgentRunner implements AgentRunner {
 
       // --- Ensure history ends with a user message ---
       // Anthropic rejects calls where the last message is role:assistant (prefill).
-      // If no inbox message added a user turn, inject a nudge.
+      // If no inbox message added a user turn, inject a non-persisted nudge AFTER the
+      // DB reload (P5) — transient framing only.
       const lastMsg = history[history.length - 1]
       const lastIsAssistant = lastMsg && (
         lastMsg.kind === 'text' && lastMsg.role === 'assistant' ||
@@ -936,18 +939,22 @@ export class LocalAgentRunner implements AgentRunner {
       // in the inbox AND no running sub-agents — otherwise the agent is
       // implicitly waiting for results.
       if (this.inboxStore.poll(agentId).length === 0 && !this.agentStore.hasRunningChildren(agentId)) {
-        const workStart = this.agentStore.get(agentId)?.workStart ?? 0
-        const hasCalledTool = history.slice(workStart).some(m => m.kind === 'tool_call')
+        // work_start index retired (Phase 54): use the injected flag to identify
+        // genuine LLM-generated tool calls vs. synthetic system-injected ones.
+        const hasCalledTool = history.some(m => m.kind === 'tool_call' && !m.injected)
 
         // No tools called yet — nudge once to use tools before involving the steward.
         if (!hasCalledTool && !toolNudgeSent) {
           toolNudgeSent = true
-          history.push({
+          // Persist the nudge so it survives the DB reload on the next loop pass.
+          const toolNudgeMsg = {
             kind: 'text', role: 'user',
             id: generateId('msg'),
             content: '[You responded without calling any tools. You must use your available tools to complete this task — do not answer from memory or training data.]',
+            injected: true,
             createdAt: now(),
-          } satisfies TextMessage)
+          } satisfies TextMessage
+          this.persistInbound(agentId, toolNudgeMsg, options)
           continue
         }
 
