@@ -505,25 +505,23 @@ export class LocalAgentRunner implements AgentRunner {
     // carries both what is wanted and the relevant context, so the agent receives it
     // directly — no composer in between. `options.context`, when present, is a defensive
     // fallback for any eval/nested caller that still sets it; it is appended after `task`.
+    //
+    // Always push the task as its own separate message (no in-place mutation of the MCP
+    // warning above). This ensures both the warning and the task are persisted as distinct
+    // rows in agent_messages, avoiding the persist-then-mutate problem.
     const agentFirstMessage = options.context
       ? `${options.task}\n\nRelevant messages from the conversation:\n"""\n${options.context}\n"""`
       : options.task
-    const last = history.length > 0 ? history[history.length - 1] : null
-    if (last && last.kind === 'text' && last.role === 'user') {
-      ;(last as TextMessage).content += `\n\n${agentFirstMessage}`
-      if (options.attachments?.length) {
-        ;(last as TextMessage).attachments = [...(last as TextMessage).attachments ?? [], ...options.attachments]
-      }
-    } else {
-      history.push({
-        kind: 'text',
-        role: 'user',
-        id: generateId('msg'),
-        content: agentFirstMessage,
-        ...(options.attachments?.length ? { attachments: options.attachments } : {}),
-        createdAt: now(),
-      } satisfies TextMessage)
+    const taskMsg: TextMessage = {
+      kind: 'text',
+      role: 'user',
+      id: generateId('msg'),
+      content: agentFirstMessage,
+      ...(options.attachments?.length ? { attachments: options.attachments } : {}),
+      createdAt: now(),
     }
+    history.push(taskMsg)
+    this.persistInbound(agentId, taskMsg, options)
 
     // For skill-spawned agents, inject synthetic read_file calls for SKILL.md
     // and MEMORY.md so the agent sees the skill's instructions and state upfront.
@@ -684,12 +682,18 @@ export class LocalAgentRunner implements AgentRunner {
 
         if (msg.type === 'update') {
           this.inboxStore.markProcessed(msg.id)
-          history.push({
+          // markProcessed runs before poll in onRoundComplete, so a single inbox row
+          // is claimed by exactly one of the two sites (top-of-loop or onRoundComplete).
+          // This is the idempotency guard — never stored twice.
+          const updateMsg: TextMessage = {
             kind: 'text', role: 'user',
             id: generateId('msg'),
             content: `[Message received: ${msg.payload ?? ''}]\nIf this requires a response, call respond_to_message. Otherwise, continue your current task.`,
+            injected: true,
             createdAt: now(),
-          } satisfies TextMessage)
+          }
+          history.push(updateMsg)
+          this.persistInbound(agentId, updateMsg, options)
         }
 
         if (msg.type === 'signal') {
@@ -903,8 +907,11 @@ export class LocalAgentRunner implements AgentRunner {
                 createdAt: now(),
               }
               history.push(injectedMsg)
-              // Persist to DB so the mid-loop update survives a process restart.
-              this.agentStore.appendMessages(agentId, [injectedMsg])
+              // Persist to DB and fire SSE so the dashboard live-updates.
+              // Uses persistInbound (appendMessages + emitMessageAdded) to match
+              // the top-of-loop site. The markProcessed-before-poll invariant
+              // ensures a single inbox row is claimed by exactly one site.
+              this.persistInbound(agentId, injectedMsg, options)
             }
             // Other types (signal, check_status, sub_agent_completed/question/failed)
             // are intentionally NOT handled here — the outer loopIteration's top-of-loop
