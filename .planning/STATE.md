@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: Ambient Context (Sensors)
-status: milestone_complete
-last_updated: 2026-06-20T12:02:19.555Z
-last_activity: 2026-06-20
+status: executing
+last_updated: "2026-06-22T02:12:44.756Z"
+last_activity: 2026-06-22 -- Phase 53 planning complete
 progress:
-  total_phases: 3
+  total_phases: 5
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 17
-  percent: 100
-stopped_at: Milestone complete (Phase 52 was final phase)
+  total_plans: 12
+  completed_plans: 11
+  percent: 60
 ---
 
 # Project State
@@ -20,8 +19,8 @@ stopped_at: Milestone complete (Phase 52 was final phase)
 
 Phase: 52
 Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-21 - Completed quick task 260621-r73: simplify spawn_agent/message_agent to all-in-one task/message, remove #45 verbatim composer (v0.7.0)
+Status: Ready to execute
+Last activity: 2026-06-22 -- Phase 53 planning complete
 
 ### Quick Tasks Completed
 
@@ -94,6 +93,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 - Phase 50 added: Per-head xray isolation — eliminate cross-head agent-activity bleed in the dashboard timeline. Reverses the deferred "accepted cross-head leakage (T-33-09)" decision. Two paths: (1) backfill — `/api/agents/xray-history` scoped via `?head=` → `getRecent(50, head)`, frontend passes `selectedHead` + keys `['xray-backfill', selectedHead]`; (2) live — add `head_id` to the `agent_message_added` SSE event payload (`src/dashboard/events.ts` + emit site `src/db/agents.ts`), `useStream` filters live xray accumulation by current head, `['xray-messages']` buffer reset/keyed on head switch. Plus removal of the T-33-09 deferral language in `streamFilter.ts` and tests on all three behaviors. Motivation: Ashley opened the dashboard and saw Zoey's overnight agent activity in Ashley's head view (data is correctly per-head in the DB; leak is purely in the dashboard xray timeline).
 - Phase 51 added: v1.10.1 Sensor dual-sink rework — one scheduled sensor run emits a structured `{ ambient?, event? }` JSON payload routing to two head-scoped sinks (passive per-head `ambient/<headId>/<slug>.md` pull + active `sensor_event` priority-queue push that wakes the bound head). SENSOR-13–16. (Complete.)
 - Phase 52 added: v1.10.2 Sensor sub-agent sink — third sink on the sensor payload (a sub-agent event carrying a prompt string) that spawns a sub-agent SILENTLY through the existing proactive-decision steward + `kind:'task'` spawn path (schedule-less synthetic trigger), bypassing the conversational head (no head chatter). Renames the Phase-51 `event` sink → "head event", new one → "sub-agent event" (no back-compat; relay/calendar/example sensors migrated). Steward gets a non-schedule-shaped prompt variant. SENSOR-17/18/19. Motivating (separate, later) use case: a calendar sensor that fires a 10-min-before ack-required 60s-nag reminder for upcoming meetings — its dedup lives in the sensor's own state.json, not the framework.
+- Phases 53–54 added: Single-source-of-truth for sub-agent history (2-phase split, core functionality). Today sub-agents persist only LLM-*generated* output to `agent_messages`; the inbound half (initial task, `message_agent` updates, resume answers, sub-agent notices, synthetic skill reads) lives only in the in-memory `history` array, so the dashboard agent-stream view can't show the inbound side and the two suspended-agent resume paths (in-memory vs `resumeSuspended` from DB) diverge. The head already does it right (persists both sides to `messages`, assembles context from DB via `getRecent`). **Phase 53** (additive, low-risk): persist every inbound message at inject time with the `injected` flag — fixes the dashboard view for free + the resume divergence, no loop-control-flow change. **Phase 54** (core-loop refactor, depends on 53): drop the long-lived in-memory `history` array (becomes a transient per-`runToolLoop` buffer rebuilt from DB on each entry/wake), collapse the two `update()` resume paths into one DB-sourced path, retire the `work_start` index in favor of the `injected` filter. Restart behavior unchanged (running agents reaped on boot, not resumed — `index.ts:349–358`). Perf non-issue (synchronous local SQLite, read at loop-entry/wake not per round; head already does this every turn); idle agents hold zero conversation in memory.
 
 ### Key Architecture Decisions (v1.10 — locked in design session)
 
