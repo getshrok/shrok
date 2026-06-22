@@ -375,6 +375,7 @@ export function buildSystem(deps: SystemDeps): System {
           SHROK_STEWARD_MODEL: config.stewardModel, // same
         },
         archivalThreshold: Math.floor(config.contextWindowTokens * config.archivalThresholdFraction),
+        historyBudget: config.contextWindowTokens,
         toolOutputMaxChars: config.toolOutputMaxChars,
         timezone: config.timezone,
         agentModel: config.agentModel,
