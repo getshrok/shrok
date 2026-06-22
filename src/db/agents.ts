@@ -2,6 +2,7 @@ import { type DatabaseSync, type StatementSync, transaction } from './index.js'
 import type { Message, TextMessage } from '../types/core.js'
 import type { AgentState, AgentStatus, SpawnOptions } from '../types/agent.js'
 import type { DashboardEvent, DashboardEventBus } from '../dashboard/events.js'
+import { estimateTokens } from './token.js'
 
 /** Number of distinct color slots available to active agents. Matches dashboard Okabe-Ito palette length. */
 export const AGENT_COLOR_SLOT_COUNT = 7
@@ -89,6 +90,7 @@ export class AgentStore {
   private stmtListActiveSlots: StatementSync
   private stmtInsertMessage: StatementSync
   private stmtGetMessages: StatementSync
+  private stmtGetMessagesDesc: StatementSync
   private stmtGetRowidForMessage: StatementSync
 
   constructor(private db: DatabaseSync, private eventBus?: DashboardEventBus) {
@@ -147,6 +149,10 @@ export class AgentStore {
 
     this.stmtGetMessages = db.prepare(
       'SELECT data FROM agent_messages WHERE agent_id = ? ORDER BY rowid ASC'
+    )
+
+    this.stmtGetMessagesDesc = db.prepare(
+      'SELECT data FROM agent_messages WHERE agent_id = ? ORDER BY rowid DESC'
     )
 
     this.stmtGetRowidForMessage = db.prepare(
@@ -311,6 +317,21 @@ export class AgentStore {
       const history: Message[] = msgRows.map(r => JSON.parse(r.data) as Message)
       return rowToState(row, history)
     })
+  }
+
+  /** Fetch most-recent messages for the given agent up to tokenBudget, returned in chronological order. Mirrors MessageStore.getRecent. */
+  getHistoryWithinBudget(agentId: string, tokenBudget: number): Message[] {
+    const rows = this.stmtGetMessagesDesc.all(agentId) as unknown as { data: string }[]
+    const selected: Message[] = []
+    let used = 0
+    for (const row of rows) {
+      const msg = JSON.parse(row.data) as Message
+      const cost = estimateTokens([msg])
+      if (used + cost > tokenBudget) break
+      selected.unshift(msg)
+      used += cost
+    }
+    return selected
   }
 
   /** Back-compat shim — delegates to appendMessages. Direct callers should prefer appendMessages. */
