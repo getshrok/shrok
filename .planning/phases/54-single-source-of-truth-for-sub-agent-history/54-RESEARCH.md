@@ -387,17 +387,19 @@ Both must remain. The in-memory splice keeps the current `runToolLoop` invocatio
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`historyBudget` value for sub-agents**
    - What we know: head uses `contextWindowTokens - baseSystemTokens - outputReserve` from assembler; sub-agents are currently unbounded
    - What's unclear: whether sub-agents should share the same budget or use a smaller one (they have less system prompt overhead)
    - Recommendation: reuse the same config constant as the head, sourced from `config.json`; verify the assembler budget calculation is accessible from `local.ts`
+   - **RESOLVED:** Reuse the existing `this.archivalThreshold` (default `120_000`, `local.ts:158`) as the `tokenBudget` for `getHistoryWithinBudget`. No new config knob — per CONTEXT discretion ("reuse an existing knob") and Pitfall 4; `archivalThreshold` already bounds long sub-agent histories. Decided in 54-03's interfaces block.
 
 2. **DB reload frequency: every `while` pass vs. only on wake**
    - What we know: the head reloads on every turn; sub-agent `loopIteration` may spin through inbox polls before each `runToolLoop` call
    - What's unclear: whether reloading on every inbox-poll pass (many times per minute during busy inbox) is needlessly expensive vs. only reloading when waking from an idle wait
    - Recommendation: reload at the point `runToolLoop` is about to be called (after inbox drain, before the LLM call) — not on every while loop pass that doesn't result in a `runToolLoop` invocation
+   - **RESOLVED:** Reload at the top of each `while(true)` pass in `loopIteration`, after the inbox drain and immediately before `runToolLoop` — NOT between `runToolLoop` rounds (avoids Pitfall 2). Decided in 54-03 Task 1 step A.
 
 ---
 
