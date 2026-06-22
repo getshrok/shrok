@@ -320,13 +320,12 @@ describe('HeadToolExecutor', () => {
     expect(JSON.parse(result.content)).toMatchObject({ ok: true })
   })
 
-  it('message_agent calls runner.update with the wrapped all-in-one message and returns ok', async () => {
-    // The head's `message` is delivered directly (no composer in between).
+  it('message_agent calls runner.update with the all-in-one message as-is and returns ok', async () => {
+    // The head's `message` is delivered verbatim — no composer or wrapper in between.
     const result = await executor.execute({ id: 'tc1', name: 'message_agent', input: { agentId: 't1', message: 'go ahead, the window seat under $300' } })
     // third arg is the head's onVerbose (rebinds the agent's xray to the current
     // channel); this fixture has none, so it's undefined.
-    expect(runner.update).toHaveBeenCalledWith('t1', expect.stringContaining('go ahead, the window seat under $300'), undefined)
-    expect(runner.update).toHaveBeenCalledWith('t1', expect.stringContaining('continue your work based on it'), undefined)
+    expect(runner.update).toHaveBeenCalledWith('t1', 'go ahead, the window seat under $300', undefined)
     expect(JSON.parse(result.content)).toMatchObject({ ok: true })
   })
 

@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+### Changed
+- **Messages relayed to a background agent now arrive verbatim** — when the assistant sends a follow-up or answers a working agent's question, that text is now delivered to the agent as-is, instead of being wrapped in "here's the latest from the conversation …" framing. Replies to an agent's own question read as direct answers rather than as a quoted excerpt.
+
 ### Fixed
 - **The background-agent view now shows the full back-and-forth** — the conversation panel for a running or completed background agent now displays the prompts and follow-ups the agent received (the initial task, any messages sent mid-run, resume answers, and sub-agent notices) alongside the agent's own responses, so you can see the complete exchange rather than only the agent's side of it.
 

@@ -445,11 +445,12 @@ export class HeadToolExecutor implements ToolExecutor {
         }
         // Deliver the head's all-in-one `message` directly to the agent. The head writes a
         // rich follow-up (new turns / reply / added detail), so it becomes the agent's
-        // content as-is — no composer in between. Delivery is UNIFORM across running/
-        // completed/suspended agents. The head's current xray callback streams a continued
-        // agent's work to THIS activation's channel, not the one it was first spawned from.
-        const delivered = `Here's the latest from the conversation — continue your work based on it:\n"""\n${message}\n"""`
-        await this.opts.agentRunner.update(agentId, delivered, this.opts.onVerbose)
+        // content as-is — no composer or wrapper in between (it arrives as the agent's next
+        // user turn, and the head is effectively the agent's "user"). Delivery is UNIFORM
+        // across running/completed/suspended agents. The head's current xray callback streams
+        // a continued agent's work to THIS activation's channel, not the one it was first
+        // spawned from.
+        await this.opts.agentRunner.update(agentId, message, this.opts.onVerbose)
         return JSON.stringify({ ok: true })
       }
 

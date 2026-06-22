@@ -1941,11 +1941,11 @@ describe('message_agent — the all-in-one message is delivered directly', () =>
     ['running', { status: 'running', task: 'book a flight' }],
     ['completed', { status: 'completed', task: 'book a flight' }],
     ['suspended', { status: 'suspended', pendingQuestion: 'which seat?' }],
-  ] as const)('%s agent: delivers the wrapped all-in-one message', async (_label, state) => {
+  ] as const)('%s agent: delivers the all-in-one message as-is', async (_label, state) => {
     const delivered = await dispatchAndGetDelivered(state)
-    // the head's all-in-one message + the delivery wrapper text are present
-    expect(delivered).toContain('continue your work based on it')
-    expect(delivered).toContain('window seat one under $300')
+    // the head's all-in-one message is delivered verbatim — no wrapper framing
+    expect(delivered).toBe(MESSAGE)
+    expect(delivered).not.toContain('continue your work based on it')
   })
 })
 
