@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+### Fixed
+- **The background-agent view now shows the full back-and-forth** — the conversation panel for a running or completed background agent now displays the prompts and follow-ups the agent received (the initial task, any messages sent mid-run, resume answers, and sub-agent notices) alongside the agent's own responses, so you can see the complete exchange rather than only the agent's side of it.
+
 ## [0.7.0] — 2026-06-21
 
 ### Changed

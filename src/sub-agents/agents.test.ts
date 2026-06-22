@@ -1946,3 +1946,196 @@ describe('message_agent — the all-in-one message is delivered directly', () =>
     expect(delivered).toContain('window seat one under $300')
   })
 })
+
+// ─── Phase 53: inbound persistence ───────────────────────────────────────────
+//
+// Verify that every inbound inject point writes to agent_messages before the
+// LLM call. Tests assert against agentStore.get(id)?.history (the DB surface)
+// rather than the captured LLM messages to prove persistence, not just
+// in-memory wiring.
+
+describe('Phase 53: inbound persistence', () => {
+  // ─── Test A: initial task persisted as role:user row without injected flag ──
+  it('A: initial task is stored in agent_messages as a user-role text row (no injected flag)', async () => {
+    const db = freshDb()
+    const { runner, agentStore } = makeRunner(
+      makeLLMRouter([makeEndTurnResponse()]),
+      db,
+    )
+
+    const agentId = await runner.spawn({ task: 'Phase53-TaskA', name: 'task-a', trigger: 'manual', headId: 'default' })
+    await runner.awaitAll(3000)
+
+    const history = agentStore.get(agentId)?.history ?? []
+    const taskRow = history.find(m => {
+      if (m.kind !== 'text') return false
+      const tm = m as TextMessage
+      return tm.role === 'user' && tm.content.includes('Phase53-TaskA')
+    }) as TextMessage | undefined
+
+    expect(taskRow).toBeDefined()
+    // Genuine user input — must NOT carry injected:true
+    expect((taskRow as { injected?: boolean }).injected).toBeUndefined()
+  })
+
+  // ─── Test B: message_agent stored exactly once across both inject paths ───────
+  //
+  // The two sites (top-of-loop and onRoundComplete) share the same inbox row.
+  // markProcessed runs before the other site's poll, so only one site claims
+  // the row. Assert exactly one [Message received: ...] row in agent_messages.
+  it('B: a message_agent update appears exactly once in agent_messages regardless of which site claims it', async () => {
+    const db = freshDb()
+    let llmCallNum = 0
+    // Round 1: bash tool call (keeps the loop alive so onRoundComplete fires)
+    // Round 2: end_turn (agent finishes)
+    const llmRouter: LLMRouter = {
+      complete: vi.fn().mockImplementation(async (_tier: string, msgs: Message[]) => {
+        llmCallNum++
+        await new Promise(r => setTimeout(r, 60))
+        if (llmCallNum === 1) {
+          return makeToolCallResponse('bash', { command: 'echo r1' })
+        }
+        return makeEndTurnResponse()
+      }),
+    }
+
+    const { runner, agentStore } = makeRunner(llmRouter, db)
+    const agentId = await runner.spawn({ task: 'Phase53-TaskB', name: 'task-b', trigger: 'manual', headId: 'default' })
+
+    // Send update after the first LLM call starts (agent is in-loop, giving onRoundComplete a chance)
+    await new Promise(r => setTimeout(r, 90))
+    await runner.update(agentId, 'Phase53-update-payload')
+
+    await runner.awaitAll(5000)
+
+    const history = agentStore.get(agentId)?.history ?? []
+    const updateRows = history.filter(m => {
+      if (m.kind !== 'text') return false
+      const tm = m as TextMessage
+      return tm.role === 'user' && tm.content.includes('Phase53-update-payload')
+    })
+
+    // Exactly one storage — idempotency guard (markProcessed-before-poll invariant)
+    expect(updateRows).toHaveLength(1)
+    // The stored row carries injected:true (it's a system inject, not genuine user input)
+    expect((updateRows[0] as TextMessage & { injected?: boolean }).injected).toBe(true)
+  }, 10000)
+
+  // ─── Test C: no duplicate first turn after DB-path resume ────────────────────
+  //
+  // resumeSuspended loads history from DB (state.history). The task was already
+  // persisted at spawn. Resuming via the DB path must NOT re-inject the task,
+  // so there's exactly one task row in agent_messages after signal resumes a
+  // suspended agent.
+  it('C: resumeSuspended does not add a second copy of the task after signal', async () => {
+    const db = freshDb()
+    // Sequence: bash call → question (suspends) → steward classifies question → resume → end_turn
+    const { runner, agentStore } = makeRunner(
+      makeLLMRouter([
+        makeToolCallResponse('bash', { command: 'echo q' }),
+        { content: 'Phase53-question?', model: 'test-model', inputTokens: 5, outputTokens: 5, stopReason: 'end_turn', toolCalls: [] },
+        makeStewardQuestionResponse('Phase53-question?'),
+        makeEndTurnResponse(),
+        makeStewardDoneResponse(),
+      ]),
+      db,
+    )
+
+    const agentId = await runner.spawn({ task: 'Phase53-TaskC', name: 'task-c', trigger: 'manual', headId: 'default' })
+
+    // Wait for suspended state
+    await new Promise<void>(resolve => {
+      const poll = setInterval(() => {
+        if (agentStore.get(agentId)?.status === 'suspended') {
+          clearInterval(poll)
+          resolve()
+        }
+      }, 20)
+    })
+
+    await runner.signal(agentId, 'Phase53-answer')
+    await runner.awaitAll(5000)
+
+    const history = agentStore.get(agentId)?.history ?? []
+    const taskRows = history.filter(m => {
+      if (m.kind !== 'text') return false
+      const tm = m as TextMessage
+      return tm.role === 'user' && tm.content.includes('Phase53-TaskC')
+    })
+
+    // Task must appear exactly once — no duplicate from the resume path
+    expect(taskRows).toHaveLength(1)
+    // Resume answer is also persisted (genuine user input)
+    const answerRows = history.filter(m => {
+      if (m.kind !== 'text') return false
+      const tm = m as TextMessage
+      return tm.role === 'user' && tm.content.includes('Phase53-answer')
+    })
+    expect(answerRows).toHaveLength(1)
+  }, 10000)
+
+  // ─── Test D: synthetic skill reads stored as injected tool_call + tool_result ─
+  //
+  // When a skill is resolved at spawn, runLoop injects a synthetic read_file
+  // tool_call + tool_result pair so the agent sees SKILL.md upfront.
+  // Both messages must be persisted with injected:true.
+  it('D: skill-agent stores injected tool_call + tool_result rows for the synthetic SKILL.md read', async () => {
+    const db = freshDb()
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'p53-skill-'))
+    const skillDir = path.join(tmpDir, 'my-skill')
+    fs.mkdirSync(skillDir, { recursive: true })
+    const skillPath = path.join(skillDir, 'SKILL.md')
+    fs.writeFileSync(skillPath, '---\nname: my-skill\ndescription: Phase53 skill\n---\nPhase53-instructions')
+
+    try {
+      const mockSkillLoader: SkillLoader = {
+        load: vi.fn().mockImplementation((name: string) => {
+          if (name === 'my-skill') {
+            return {
+              name: 'my-skill',
+              path: skillPath,
+              frontmatter: { name: 'my-skill', description: 'Phase53 skill' },
+              instructions: 'Phase53-instructions',
+            }
+          }
+          return null
+        }),
+        listAll: vi.fn().mockReturnValue([]),
+        write: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+        watch: vi.fn(),
+      } as unknown as SkillLoader
+
+      const { runner, agentStore } = makeRunner(
+        makeLLMRouter([makeEndTurnResponse()]),
+        db,
+        { skillLoader: mockSkillLoader },
+      )
+
+      const agentId = await runner.spawn({
+        task: 'Phase53-TaskD',
+        name: 'my-skill',
+        skillName: 'my-skill',
+        trigger: 'scheduled',
+        headId: 'default',
+      })
+      await runner.awaitAll(3000)
+
+      const history = agentStore.get(agentId)?.history ?? []
+
+      // Must have at least one tool_call row with injected:true
+      const injectedTc = history.find(m => m.kind === 'tool_call' && (m as { injected?: boolean }).injected === true)
+      expect(injectedTc).toBeDefined()
+
+      // Must have at least one tool_result row with injected:true
+      const injectedTr = history.find(m => m.kind === 'tool_result' && (m as { injected?: boolean }).injected === true)
+      expect(injectedTr).toBeDefined()
+
+      // The tool_call must reference the skill path
+      const tc = injectedTc as { toolCalls?: Array<{ name: string; input: { path?: string } }> }
+      expect(tc.toolCalls?.[0]?.input?.path).toBe(skillPath)
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
+  }, 8000)
+})
