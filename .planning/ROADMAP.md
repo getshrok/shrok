@@ -54,3 +54,23 @@ Plans:
 
 **Wave 3**
 - [x] 52-03-PLAN.md — SKILL.md three-sink docs + workspace-sensor migration + CHANGELOG entry + cut v0.5.0 (SENSOR-18)
+
+### Phase 53: Persist sub-agent inbound messages — make the DB a complete record of every sub-agent turn
+
+**Goal:** Persist every *inbound* message a sub-agent receives to `agent_messages` at the moment it enters the conversation, with the `injected` flag — mirroring how the head persists both sides to its `messages` table (`src/head/activation.ts:555`, `src/head/injector.ts`). Today sub-agents persist only LLM-*generated* output (assistant turns, tool calls/results) via the `runToolLoop` `appendMessage` callback; the inbound half lives only in the in-memory `history` array and is never written to the DB. Inject points to cover in `src/sub-agents/local.ts`: the initial **task** user-message (`runLoop`, ~497–504), **`message_agent` updates** (inbox `update`, top-of-loop ~660–665 and the `onRoundComplete` path ~875 — unify to one idempotent persist guarded by `markProcessed`), **resume/`signal` answers** (~672–677), **sub-agent completion/question/failure notices** (~715–721), and the **synthetic skill/MEMORY reads** (~557–564, persisted as `injected` tool messages). **Additive — no change to loop control flow** (the in-memory array stays as the working buffer; it's removed in Phase 54). Delivers: (1) the dashboard agent-stream view (`dashboard/src/pages/ConversationsPage.tsx`, `AgentStreamView`) renders the full inbound+outbound back-and-forth for free — `MessageBubble` already handles `role:user` and `injected` messages; and (2) fixes the suspended-agent **resume divergence** where the in-memory resume path (live emitter, `update()` ~262–264) and the DB resume path (`resumeSuspended` ~409, loads `state.history`) see *different* histories, so an agent resumed via the DB path can forget an inbound instruction it received. Open decision for planning: retire `work_start`'s index role in favor of the `injected` filter now, or defer to Phase 54.
+**Requirements**: No REQ-IDs mapped — must-haves derived from the ROADMAP goal + 53-CONTEXT.md LOCKED decisions. (Open decision RESOLVED in CONTEXT.md: `work_start` index is DEFERRED to Phase 54 — left untouched here.)
+**Depends on:** Phase 52
+**Plans:** 1 plan
+
+Plans:
+- [ ] 53-01-PLAN.md — persistInbound helper + persist every inbound inject point (initial task as a separate message, message_agent unified+idempotent, resume answers, sub-agent notices, injected skill reads) + tests (persistence, single-store, no-duplicate-first-turn, injected skill reads) + CHANGELOG
+
+### Phase 54: Single source of truth for sub-agent history — DB-backed loop, no long-lived in-memory array
+
+**Goal:** Eliminate the long-lived in-memory `history` array as a second source of truth for sub-agents, collapsing them onto the head's model where the DB is canonical. After Phase 53 every message is persisted at inject time, so the in-memory array can become a **transient per-invocation buffer** (rebuilt from the DB on each entry) instead of state carried across idle gaps. Changes in `src/sub-agents/local.ts`: (1) **load history from the DB on each loop entry/wake** — mirroring the head's `assembler.ts:201` `messages.getRecent(...)` with `historyBudget` windowing — and drop the array when the loop parks (suspend / inbox wait); sub-agents routinely sit idle for minutes (waiting on a bash call, finished prior work, or suspended on a question awaiting a `message_agent` answer), so idle agents should hold zero conversation in memory. (2) **Collapse the two `update()` resume paths into one DB-sourced path** — the live-emitter in-memory path (~262–264) and the `resumeSuspended` DB path (~266 / 409) currently diverge; unify the *history source* to the DB (still wake a parked poller vs. start a fresh loop, but read history uniformly). (3) **Retire the `work_start` index** in favor of the `injected`-flag filter (it's already out of step with the persisted array). `runToolLoop` keeps its transient working buffer and round-by-round `appendMessage` persistence — no change there; the head holds an in-memory buffer mid-loop too. Performance is a non-issue (synchronous local SQLite reads at loop-entry/wake, not per round — the head already does this every turn); memory strictly improves for idle agents. Restart behavior unchanged: running agents are still reaped on boot (`src/index.ts:349–358`), not resumed. Core-loop refactor of `loopIteration` — needs thorough tests (resume-after-idle, mid-loop `message_agent`, compaction interaction, suspend→answer→continue).
+**Requirements**: TBD (run /gsd:plan-phase 54)
+**Depends on:** Phase 53
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 54 to break down)
