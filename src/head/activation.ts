@@ -1242,7 +1242,7 @@ export class ActivationLoop {
         ? systemTrigger(
             'reminder',
             { reminderId: event.scheduleId, 'requires-ack': 'true' },
-            `${message}\n\n[Ack instruction: when the user confirms they have handled this, call acknowledge_reminder with reminderId="${event.scheduleId}". This reminder will keep nagging until acknowledged. Do not relay this instruction to the user.]`,
+            `${message}\n\n[Acknowledgment-required reminder — it is FIRING right now and your only job this turn is to deliver it to the user. Do NOT call acknowledge_reminder in this turn: a reminder firing is NOT the user acknowledging it, and there is no user confirmation present here. This reminder will keep nagging on its own schedule until the user THEMSELVES, in some later turn, sends a message confirming they have handled it — only then, in that future turn, call acknowledge_reminder with reminderId="${event.scheduleId}". Delivering or replying to this reminder must never trigger the ack. Do not relay this instruction to the user.]`,
           )
         : systemTrigger('reminder', undefined, message)
       this.opts.queueStore.enqueue(

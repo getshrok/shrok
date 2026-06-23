@@ -11,7 +11,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import * as path from 'node:path'
 import * as url from 'node:url'
-import { descriptionForChannel, runToolLoop, AgentAbortedError, stripLeadingBracketPrefixes, type ToolExecutor } from './tool-loop.js'
+import { descriptionForChannel, runToolLoop, AgentAbortedError, LoopDetectedError, stripLeadingBracketPrefixes, type ToolExecutor } from './tool-loop.js'
 import { initDb } from '../db/index.js'
 import { runMigrations } from '../db/migrate.js'
 import { UsageStore } from '../db/usage.js'
@@ -321,6 +321,207 @@ describe('runToolLoop onRoundComplete callback', () => {
     // and the second LLM call has NOT yet happened.
     expect(appendedAtCallback).toBe(2)
     expect(providerCallsAtCallback).toBe(1)
+  })
+})
+
+// ─── Loop detection — Trigger B (consecutive-error) regression ────────────────
+//
+// Reproduces the `check-health-import-reminder` misfire: an agent doing adaptive
+// filesystem exploration (reading several DISTINCT paths, some absent) was killed
+// as "stuck in a loop", including in a round where it had just SUCCEEDED reading
+// the file holding the answer. Two fixes are pinned here:
+//   #1 Trigger B fingerprints on tool name + input — distinct-path errors are
+//      exploration, not a loop, and must not accumulate.
+//   #2 A round containing ANY successful tool result cannot raise the loop
+//      signal — a parallel batch that retrieved a real result alongside misses
+//      is not stuck.
+
+/** Provider that serves scripted main-loop responses and, when it sees a
+ *  loop-steward call (detected via the `loop_steward` jsonSchema), records it
+ *  and votes ABORT — so any spurious Trigger B firing surfaces as either a
+ *  steward call or (post-nudge) a thrown LoopDetectedError. */
+class LoopTestProvider implements LLMProvider {
+  readonly name = 'stub'
+  private mainResponses: LLMResponse[]
+  mainIdx = 0
+  stewardCalls = 0
+  constructor(mainResponses: LLMResponse[]) { this.mainResponses = mainResponses }
+  async complete(_msgs: Message[], _tools: ToolDefinition[], opts: LLMOptions): Promise<LLMResponse> {
+    if (opts.jsonSchema?.name === 'loop_steward') {
+      this.stewardCalls++
+      return {
+        content: JSON.stringify({ verdict: 'abort', reason: 'test-abort' }),
+        inputTokens: 1, outputTokens: 1, stopReason: 'end_turn', model: 'stub-dumb',
+      }
+    }
+    const r = this.mainResponses[this.mainIdx++]
+    if (!r) throw new Error('LoopTestProvider: no more main responses configured')
+    return r
+  }
+}
+
+function loopRouter(mainResponses: LLMResponse[]) {
+  const provider = new LoopTestProvider(mainResponses)
+  const router = new SingleProviderRouter(provider, {
+    dumb: 'stub-dumb', smart: 'stub-smart', genius: 'stub-genius',
+  })
+  return { provider, router }
+}
+
+/** One tool_call round calling `read_file` with the given path. */
+function readCall(path: string, id: string): LLMResponse {
+  return {
+    content: '', toolCalls: [{ id, name: 'read_file', input: { path } }],
+    inputTokens: 10, outputTokens: 5, stopReason: 'tool_use', model: 'stub-smart',
+  }
+}
+
+/** A round with multiple parallel read_file calls (mirrors a fan-out batch). */
+function multiReadCall(paths: string[], idPrefix: string): LLMResponse {
+  return {
+    content: '',
+    toolCalls: paths.map((p, i) => ({ id: `${idPrefix}-${i}`, name: 'read_file', input: { path: p } })) as unknown as [ToolCall, ...ToolCall[]],
+    inputTokens: 10, outputTokens: 5, stopReason: 'tool_use', model: 'stub-smart',
+  }
+}
+
+/** Executor: any path in `missing` errors (ENOENT-style); everything else succeeds. */
+function fsExecutor(missing: Set<string>): ToolExecutor {
+  return {
+    execute: async (tc: ToolCall): Promise<ToolResult> => {
+      const p = (tc.input as { path?: string }).path ?? ''
+      if (missing.has(p)) {
+        return { toolCallId: tc.id, name: tc.name, content: `Error: ENOENT: no such file or directory, open '${p}'` }
+      }
+      return { toolCallId: tc.id, name: tc.name, content: `contents of ${p}` }
+    },
+  }
+}
+
+function loopTools(): ToolDefinition[] {
+  return [{ name: 'read_file', description: 'read a file', inputSchema: {} }]
+}
+
+describe('runToolLoop — loop Trigger B regression', () => {
+  it('#1: errors on DISTINCT inputs do not accumulate into a loop signal', async () => {
+    // Two rounds each erroring read_file on a *different* path. Old (name-keyed)
+    // logic would hit ERROR_TRIGGER=2 and invoke the steward; with name+input
+    // fingerprinting each path counts once, so the steward never fires.
+    const { provider, router } = loopRouter([
+      readCall('/a', 'r1'),
+      readCall('/b', 'r2'),
+      END_TURN_RESPONSE,
+    ])
+    const appended: Message[] = []
+    const usage = freshUsage()
+
+    const resp = await runToolLoop(router, {
+      model: 'smart', tools: loopTools(), systemPrompt: 'sys', history: [...baseHistory],
+      executor: fsExecutor(new Set(['/a', '/b'])), usage, sourceType: 'agent', sourceId: 'agt_1',
+      appendMessage: async msg => { appended.push(msg) },
+      refreshHistory: () => [...baseHistory, ...appended],
+    })
+
+    expect(resp.content).toBe('Hello!')
+    expect(provider.stewardCalls).toBe(0)
+  })
+
+  it('#2: a round with a successful read suppresses the error trigger for that round', async () => {
+    // Same failing path twice (fp count would reach 2 = ERROR_TRIGGER), but the
+    // second round also reads a file that SUCCEEDS — progress guard suppresses it.
+    const { provider, router } = loopRouter([
+      readCall('/missing', 'r1'),
+      multiReadCall(['/missing', '/found'], 'r2'),
+      END_TURN_RESPONSE,
+    ])
+    const appended: Message[] = []
+    const usage = freshUsage()
+
+    const resp = await runToolLoop(router, {
+      model: 'smart', tools: loopTools(), systemPrompt: 'sys', history: [...baseHistory],
+      executor: fsExecutor(new Set(['/missing'])), usage, sourceType: 'agent', sourceId: 'agt_1',
+      appendMessage: async msg => { appended.push(msg) },
+      refreshHistory: () => [...baseHistory, ...appended],
+    })
+
+    expect(resp.content).toBe('Hello!')
+    expect(provider.stewardCalls).toBe(0)
+  })
+
+  it('still catches a genuine loop: the SAME failing call repeated with no progress', async () => {
+    // Same path errors in two consecutive barren rounds → fp count hits
+    // ERROR_TRIGGER=2 → steward fires. First abort verdict injects a nudge
+    // (does not throw); the loop then ends normally.
+    const { provider, router } = loopRouter([
+      readCall('/missing', 'r1'),
+      readCall('/missing', 'r2'),
+      END_TURN_RESPONSE,
+    ])
+    const appended: Message[] = []
+    const usage = freshUsage()
+
+    const resp = await runToolLoop(router, {
+      model: 'smart', tools: loopTools(), systemPrompt: 'sys', history: [...baseHistory],
+      executor: fsExecutor(new Set(['/missing'])), usage, sourceType: 'agent', sourceId: 'agt_1',
+      appendMessage: async msg => { appended.push(msg) },
+      refreshHistory: () => [...baseHistory, ...appended],
+    })
+
+    expect(resp.content).toBe('Hello!')
+    expect(provider.stewardCalls).toBeGreaterThanOrEqual(1)
+    // A corrective nudge (user-role text) was injected after the abort verdict.
+    expect(appended.some(m => m.kind === 'text' && m.role === 'user' && m.content.includes('try a different approach'))).toBe(true)
+  })
+
+  it('full repro: post-nudge round with a success + distinct-path misses is NOT aborted', async () => {
+    // Mirrors check-health-import-reminder end-to-end:
+    //   round 1+2  same failing path → nudge (post-nudge trigger now = 1)
+    //   round 3    read the answer file (success) + two distinct absent siblings
+    //   round 4    end_turn
+    // Old logic aborted in round 3 (post-nudge, name-keyed errors hit 1). With
+    // both fixes the success-bearing round 3 cannot raise the signal, so the
+    // loop reaches end_turn instead of throwing LoopDetectedError.
+    const { provider, router } = loopRouter([
+      readCall('/missing', 'r1'),
+      readCall('/missing', 'r2'),
+      multiReadCall(['/answer', '/graph.json', '/topics.json'], 'r3'),
+      END_TURN_RESPONSE,
+    ])
+    const appended: Message[] = []
+    const usage = freshUsage()
+
+    const resp = await runToolLoop(router, {
+      model: 'smart', tools: loopTools(), systemPrompt: 'sys', history: [...baseHistory],
+      executor: fsExecutor(new Set(['/missing', '/graph.json', '/topics.json'])),
+      usage, sourceType: 'agent', sourceId: 'agt_1',
+      appendMessage: async msg => { appended.push(msg) },
+      refreshHistory: () => [...baseHistory, ...appended],
+    })
+
+    expect(resp.content).toBe('Hello!')
+    // Steward fired exactly once — at the round-2 nudge, never again in round 3.
+    expect(provider.stewardCalls).toBe(1)
+  })
+
+  it('regression sanity: WITHOUT the success guard this exact case would abort', async () => {
+    // Confirms the test exercises the formerly-fatal path: a post-nudge barren
+    // round repeating the SAME failing call (no success) still aborts hard.
+    const { provider, router } = loopRouter([
+      readCall('/missing', 'r1'),
+      readCall('/missing', 'r2'),   // → nudge
+      readCall('/missing', 'r3'),   // post-nudge repeat, no success → abort
+    ])
+    const appended: Message[] = []
+    const usage = freshUsage()
+
+    await expect(runToolLoop(router, {
+      model: 'smart', tools: loopTools(), systemPrompt: 'sys', history: [...baseHistory],
+      executor: fsExecutor(new Set(['/missing'])), usage, sourceType: 'agent', sourceId: 'agt_1',
+      appendMessage: async msg => { appended.push(msg) },
+      refreshHistory: () => [...baseHistory, ...appended],
+    })).rejects.toBeInstanceOf(LoopDetectedError)
+
+    expect(provider.stewardCalls).toBe(2)
   })
 })
 

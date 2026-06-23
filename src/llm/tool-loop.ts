@@ -251,6 +251,9 @@ export async function runToolLoop(
   const ERROR_TRIGGER = options.loopErrorTrigger ?? 2
   const POST_NUDGE_ERROR_TRIGGER = options.loopPostNudgeErrorTrigger ?? 1
   const recentFingerprints: Set<string>[] = []  // sliding window, newest-first
+  // Consecutive-error counter keyed on a name+input fingerprint (NOT bare tool
+  // name). Errors on distinct inputs — e.g. probing several candidate file
+  // paths — are independent and never accumulate into a false loop signal.
   const consecutiveErrors = new Map<string, number>()
   let nudgeSent = false
 
@@ -414,15 +417,31 @@ export async function runToolLoop(
       }
     }
 
-    // Trigger B: same tool erroring consecutively
-    for (const result of toolResults) {
+    // Trigger B: the SAME tool call (name + input) erroring across rounds.
+    //
+    // (#1) Keyed on a name+input fingerprint — mirroring Trigger A — so errors
+    // on DISTINCT inputs (e.g. reading several candidate paths, some absent)
+    // count as exploration, not a loop. A fingerprint's counter resets the
+    // moment that exact call succeeds.
+    //
+    // (#2) Progress guard: if ANY call in this round succeeded, the round made
+    // genuine progress, so it cannot raise the loop signal — a parallel batch
+    // that retrieved a real result alongside a few misses is not stuck. The
+    // fingerprint counters still accrue, so a failing call that keeps recurring
+    // in later barren rounds is caught the moment progress stops. (Trigger A is
+    // unaffected — true spinning produces no successes anyway.)
+    const roundHadSuccess = toolResults.some(r => !isErrorResult(r.content))
+    for (const [i, tc] of response.toolCalls!.entries()) {
+      const result = toolResults[i]
+      if (!result) continue
+      const fp = `${tc.name}\0${JSON.stringify(tc.input)}`
       if (isErrorResult(result.content)) {
-        const n = (consecutiveErrors.get(result.name) ?? 0) + 1
-        consecutiveErrors.set(result.name, n)
+        const n = (consecutiveErrors.get(fp) ?? 0) + 1
+        consecutiveErrors.set(fp, n)
         const trigger = nudgeSent ? POST_NUDGE_ERROR_TRIGGER : ERROR_TRIGGER
-        if (n >= trigger) loopSuspected = true
+        if (!roundHadSuccess && n >= trigger) loopSuspected = true
       } else {
-        consecutiveErrors.delete(result.name)
+        consecutiveErrors.delete(fp)
       }
     }
 

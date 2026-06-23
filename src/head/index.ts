@@ -194,7 +194,8 @@ export const HEAD_TOOLS: ToolDefinition[] = [
     description: 'Acknowledge an acknowledgment-required reminder, stopping its nag loop. ' +
       'Only call this for reminders that explicitly require acknowledgment (requiresAck: true) — ' +
       'NEVER call this on an ordinary reminder that does not require acknowledgment; use cancel_reminder if you need to cancel an ordinary reminder. ' +
-      'Call this only when the user has explicitly confirmed they have seen and handled the reminder. ' +
+      'Call this only when the user has explicitly confirmed, in their own message, that they have seen and handled the reminder. ' +
+      'NEVER call this in the same turn that the reminder fires — the firing event is the reminder nagging, NOT the user acknowledging it; delivering or replying to it is not confirmation. ' +
       'The reminder ID is provided in the reminder event that triggered this activation.',
     inputSchema: {
       type: 'object',
