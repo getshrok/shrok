@@ -271,7 +271,7 @@ describe('VoiceChannelAdapter', () => {
     expect(messages).toHaveLength(0)
   })
 
-  it('silently drops oversize (>10 MB) binary frames without parsing', async () => {
+  it('drops oversize binary frames without parsing, and tells the client (#42)', async () => {
     const { adapter, httpServer, messages, transcribe } = await setupAdapter()
     triggerUpgrade(httpServer as unknown as MockHttpServer)
     const ws = getActiveSocket(adapter)
@@ -282,6 +282,26 @@ describe('VoiceChannelAdapter', () => {
 
     expect(transcribe).not.toHaveBeenCalled()
     expect(messages).toHaveLength(0)
+    // The turn is dropped, but the client must now learn about it (no silent vanish).
+    const errorFrames = ws.sent
+      .filter((f: { kind: string; value: string | Buffer }) => f.kind === 'text')
+      .map((f: { value: string }) => JSON.parse(f.value as string))
+      .filter((m: { type?: string }) => m.type === 'error')
+    expect(errorFrames).toEqual([{ type: 'error', message: 'Message too long — please speak in shorter turns' }])
+  })
+
+  it('accepts a long-but-under-cap frame that the old 10 MB limit would have dropped (#42)', async () => {
+    const { adapter, httpServer, messages, transcribe } = await setupAdapter('a long turn')
+    triggerUpgrade(httpServer as unknown as MockHttpServer)
+    const ws = getActiveSocket(adapter)
+    // ~13 MB: a continuous ~7 min voice turn — over the OLD 10 MB cap, well under the new one.
+    const big = buildWav(32000, 13 * 1024 * 1024)
+
+    ws.emit('message', big, true)
+    await new Promise(r => setImmediate(r))
+
+    expect(transcribe).toHaveBeenCalledTimes(1)
+    expect(messages).toEqual([{ channel: 'voice', text: 'a long turn' }])
   })
 
   it('silently drops empty-transcript results (whitespace-only)', async () => {

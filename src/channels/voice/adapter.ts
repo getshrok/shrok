@@ -9,9 +9,21 @@ import { log } from '../../logger.js'
 import { transcribeWavWithFallback, TooShortError, InvalidWavError, MIN_WAV_DURATION_SECONDS, type SttProvider } from './stt.js'
 import { streamTts, isAbortError, TTS_MODEL, TTS_VOICE, type TtsProvider } from './tts.js'
 
-/** Hard ceiling on a single binary WAV frame. 10 MB = ~5 min of 16 kHz mono PCM,
- *  far larger than any reasonable voice turn. Oversized frames are dropped. */
-export const MAX_WAV_BYTES = 10 * 1024 * 1024
+/** Hard ceiling on a single binary WAV frame. 48 MB ≈ 25 min of 16 kHz mono PCM —
+ *  far beyond any real voice turn, so this only rejects runaway/garbage frames, never
+ *  a legitimate recording. Raised from 10 MB (#42): a continuous ~7 min turn encodes
+ *  to ~13 MB and was being silently dropped before transcription.
+ *
+ *  Why not lower "to be safe": a self-hosted faster-whisper box has no length limit
+ *  and transcribes several× realtime (measured ~10× idle on the reference 4090), so
+ *  the real ceiling on a long turn is transcription wall-time vs the STT client
+ *  timeout (set to 15 min in buildSttProviders), not bytes. NOTE: if an OpenAI STT
+ *  *fallback* is enabled, OpenAI hard-limits requests to 25 MB — a turn between 25 MB
+ *  and this cap will transcribe on the self-hosted primary but fail on OpenAI fallback.
+ *  That's an acceptable degradation (the primary handles it); the cap is sized for the
+ *  self-hosted primary, which is the configured default. Frames over the cap are
+ *  dropped AND the client is told (see handleAudio), never silently. */
+export const MAX_WAV_BYTES = 48 * 1024 * 1024
 
 /** Path at which the voice WebSocket is mounted on the dashboard http.Server. */
 export const VOICE_WS_PATH = '/api/voice/ws'
@@ -203,7 +215,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
         : Array.isArray(data)
           ? Buffer.concat(data as Buffer[])
           : Buffer.from(data as ArrayBuffer)
-      await this.handleAudio(buf)
+      await this.handleAudio(ws, buf)
       return
     }
     // Text frame: JSON control message
@@ -221,9 +233,21 @@ export class VoiceChannelAdapter implements ChannelAdapter {
     }
   }
 
-  private async handleAudio(buf: Buffer): Promise<void> {
+  /** Send a user-facing error control frame to the client so a dropped turn is
+   *  visible instead of vanishing silently (#42). No-op if the socket is gone. */
+  private sendError(ws: WebSocket, message: string): void {
+    if (ws.readyState !== WebSocket.OPEN) return
+    try {
+      ws.send(JSON.stringify({ type: 'error', message }))
+    } catch (err) {
+      log.warn('[voice] failed to send error frame to client:', (err as Error).message)
+    }
+  }
+
+  private async handleAudio(ws: WebSocket, buf: Buffer): Promise<void> {
     if (buf.length > MAX_WAV_BYTES) {
       log.warn(`[voice] dropping oversize WAV frame (${buf.length} bytes > ${MAX_WAV_BYTES})`)
+      this.sendError(ws, 'Message too long — please speak in shorter turns')
       return
     }
     // Observability (#42): log every received audio frame at info level. A turn that
@@ -258,6 +282,7 @@ export class VoiceChannelAdapter implements ChannelAdapter {
         return
       }
       log.error('[voice] whisper error:', (err as Error).message)
+      this.sendError(ws, 'Voice error — please try again')
     }
   }
 }

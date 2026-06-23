@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 - **The background-agent view now shows the full back-and-forth** — the conversation panel for a running or completed background agent now displays the prompts and follow-ups the agent received (the initial task, any messages sent mid-run, resume answers, and sub-agent notices) alongside the agent's own responses, so you can see the complete exchange rather than only the agent's side of it.
+- **Long voice messages in the dashboard no longer silently vanish** — a continuous voice turn of more than ~5 minutes encoded to a clip larger than the server's size cap and was dropped before transcription with no feedback, so nothing happened in response. The cap is raised so a multi-minute turn now goes through, and on the rare turn that's still too long the dashboard shows a "Message too long — please speak in shorter turns" notice and returns the mic to ready instead of appearing to hang.
 
 ## [0.7.0] — 2026-06-21
 

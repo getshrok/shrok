@@ -111,7 +111,15 @@ function buildSttProviders(
   const providers: SttProvider[] = []
   if (sttBaseUrl) {
     providers.push({
-      client: new OpenAI({ baseURL: sttBaseUrl, apiKey: 'unused' }),
+      // Long voice turns transcribe fine on a self-hosted box (faster-whisper has no
+      // length cap and runs several× realtime), but the bare client would inherit the
+      // OpenAI SDK's 10-min timeout AND 2 silent retries — so a turn that did run long
+      // would be re-uploaded and re-transcribed up to 3× before failing. Give it an
+      // explicit, generous timeout and disable retries: a genuine over-timeout then
+      // fails once, fast, and surfaces the visible "Voice error" frame (#42) instead of
+      // hammering the box. 15 min covers ~25 min of audio even at a heavily-loaded ~2×
+      // realtime; idle the box does ~10×.
+      client: new OpenAI({ baseURL: sttBaseUrl, apiKey: 'unused', timeout: 900_000, maxRetries: 0 }),
       label: 'self-hosted',
     })
     if (voiceOpenaiFallback && openaiClient) {

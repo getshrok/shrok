@@ -301,8 +301,25 @@ export function useVoice(selectedHead: string): UseVoiceReturn {
         }
         if (typeof evt.data === 'string') {
           try {
-            const msg = JSON.parse(evt.data) as { type?: string; fallback?: boolean }
-            if (msg.type === 'tts_start') {
+            const msg = JSON.parse(evt.data) as { type?: string; fallback?: boolean; message?: string }
+            if (msg.type === 'error') {
+              // Server-side drop made visible (#42): e.g. a turn too long to transcribe.
+              // The mic stays live (no FSM ERROR) — the user can simply speak again,
+              // shorter. Pass the known server message through, else a generic one.
+              const known: VoiceErrorMessage[] = [
+                'Microphone access denied', 'Voice disconnected',
+                'Voice error — please try again', 'Voice requires iOS 17.1+ or Chrome on Android',
+                'Message too long — please speak in shorter turns',
+              ]
+              const m = known.find((k) => k === msg.message)
+              console.warn('[voice] server reported a dropped turn:', msg.message)
+              signalError(m ?? 'Voice error — please try again')
+              // Return the FSM to idle so the UI isn't stuck on 'processing' waiting
+              // for a reply that will never come. The VAD/WS stay live (no teardown),
+              // so the user can simply speak again — shorter.
+              dispatch({ type: 'ERROR' })
+            }
+            else if (msg.type === 'tts_start') {
               // Visible-fallback badge: server flags fallback:true when the OpenAI
               // (paid) path served this turn because the self-hosted box was down.
               // Reflect the latest turn so the badge clears once self-hosted returns.

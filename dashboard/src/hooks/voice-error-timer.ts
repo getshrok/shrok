@@ -4,6 +4,7 @@ export type VoiceErrorMessage =
   | 'Voice disconnected'
   | 'Voice error — please try again'
   | 'Voice requires iOS 17.1+ or Chrome on Android'
+  | 'Message too long — please speak in shorter turns'
 
 export interface ErrorTimerHandle {
   /** Set or replace the active error. Clears any pending dismiss timer and
