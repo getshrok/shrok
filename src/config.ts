@@ -164,6 +164,14 @@ const ConfigSchema = z.object({
   ttsResponseFormat: z.enum(['mp3', 'wav', 'opus']).default('mp3'),  // audio codec the endpoint returns
   sttBaseUrl: z.string().optional(),                       // e.g. http://100.80.122.111:8000/v1 (self-hosted Whisper)
   voiceOpenaiFallback: z.coerce.boolean().default(true),   // when false, OpenAI is never used as voice fallback (STT or TTS)
+  // Optional HTTP/SOCKS proxy URI for ONLY the self-hosted voice STT/TTS clients
+  // (e.g. http://127.0.0.1:1055). For boxes whose tailnet runs in userspace mode
+  // (no OS route to 100.x — e.g. the rootless macOS tailscaled sidecar), the speech
+  // servers are reachable only through that proxy. When unset (the default, every
+  // normal install), no proxy is used and the clients are built exactly as before.
+  // Scoped to voice only — never a global proxy, which would wrongly route shrok's
+  // LLM/API calls (normal internet) through the tailnet-only proxy and break them.
+  voiceHttpProxy: z.string().optional(),
 
   // Webhook
   webhookPort: z.coerce.number().default(8766),

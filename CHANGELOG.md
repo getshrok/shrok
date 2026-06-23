@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+### Added
+- **Self-hosted voice now works on boxes behind a userspace-only Tailscale proxy** — a new optional `voiceHttpProxy` setting routes just the speech-to-text and text-to-speech traffic through an HTTP/SOCKS proxy (e.g. `http://127.0.0.1:1055`). This lets an instance whose only route to the speech server is that proxy (such as a rootless macOS Tailscale sidecar) use the same self-hosted Whisper/TTS endpoints as everyone else. It is scoped to voice alone — the agent's other network calls are untouched — and when unset (the default) nothing about voice changes.
+
 ### Changed
 - **Messages relayed to a background agent now arrive verbatim** — when the assistant sends a follow-up or answers a working agent's question, that text is now delivered to the agent as-is, instead of being wrapped in "here's the latest from the conversation …" framing. Replies to an agent's own question read as direct answers rather than as a quoted excerpt.
 

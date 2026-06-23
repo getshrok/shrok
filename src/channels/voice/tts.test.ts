@@ -2,17 +2,22 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   streamTts, isAbortError, TTS_VOICE, TTS_MODEL,
-  createSelfHostedTtsFetch, TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS, TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+  createSelfHostedTtsFetch, createSelfHostedSttFetch,
+  TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS, TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+  STT_SELF_HOSTED_CONNECT_TIMEOUT_MS, STT_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
   type TtsProvider,
 } from './tts.js'
 
 // Mock undici so we can assert HOW the self-hosted fetch is wired without real sockets.
-const { agentCtor, undiciFetchMock } = vi.hoisted(() => ({
+// proxyAgentCtor records both the proxy URI and the (timeout) opts it was built with.
+const { agentCtor, proxyAgentCtor, undiciFetchMock } = vi.hoisted(() => ({
   agentCtor: vi.fn(),
+  proxyAgentCtor: vi.fn(),
   undiciFetchMock: vi.fn(async () => ({ ok: true } as unknown)),
 }))
 vi.mock('undici', () => ({
   Agent: class { constructor(opts: unknown) { agentCtor(opts) } },
+  ProxyAgent: class { constructor(opts: unknown) { proxyAgentCtor(opts) } },
   fetch: (...args: unknown[]) => undiciFetchMock(...(args as [])),
 }))
 
@@ -109,6 +114,52 @@ describe('createSelfHostedTtsFetch', () => {
     // RequestInfo) is awkward to satisfy from a test and irrelevant to what we assert.
     const f = createSelfHostedTtsFetch() as unknown as (url: string, init?: Record<string, unknown>) => Promise<unknown>
     await f('http://tts.local/v1/audio/speech', { method: 'POST' })
+    expect(undiciFetchMock).toHaveBeenCalledTimes(1)
+    const [, init] = undiciFetchMock.mock.calls[0] as unknown as [unknown, Record<string, unknown>]
+    expect(init).toHaveProperty('dispatcher')
+    expect(init['method']).toBe('POST')
+  })
+
+  // ── No-op invariant (the guarantee that non-proxy installs are unchanged) ──
+  it('uses a plain Agent and NEVER a ProxyAgent when no proxy is given', () => {
+    agentCtor.mockClear(); proxyAgentCtor.mockClear()
+    createSelfHostedTtsFetch()              // no proxy arg = every normal install
+    expect(agentCtor).toHaveBeenCalledTimes(1)
+    expect(proxyAgentCtor).not.toHaveBeenCalled()
+  })
+
+  // ── Proxy path (userspace-tailnet boxes) ──
+  it('uses a ProxyAgent with the proxy URI + TTS timeouts when a proxy is given', () => {
+    agentCtor.mockClear(); proxyAgentCtor.mockClear()
+    createSelfHostedTtsFetch('http://127.0.0.1:1055')
+    expect(agentCtor).not.toHaveBeenCalled()
+    expect(proxyAgentCtor).toHaveBeenCalledWith({
+      uri: 'http://127.0.0.1:1055',
+      connect: { timeout: TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS },
+      headersTimeout: TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+      bodyTimeout: TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+    })
+  })
+})
+
+describe('createSelfHostedSttFetch', () => {
+  it('uses a ProxyAgent with the proxy URI + STT timeouts (long response budget)', () => {
+    agentCtor.mockClear(); proxyAgentCtor.mockClear()
+    createSelfHostedSttFetch('http://127.0.0.1:1055')
+    expect(agentCtor).not.toHaveBeenCalled()
+    expect(proxyAgentCtor).toHaveBeenCalledWith({
+      uri: 'http://127.0.0.1:1055',
+      connect: { timeout: STT_SELF_HOSTED_CONNECT_TIMEOUT_MS },
+      headersTimeout: STT_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+      bodyTimeout: STT_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+    })
+    expect(STT_SELF_HOSTED_CONNECT_TIMEOUT_MS).toBeLessThan(STT_SELF_HOSTED_RESPONSE_TIMEOUT_MS)
+  })
+
+  it('routes requests through the dispatcher, preserving the original init', async () => {
+    undiciFetchMock.mockClear()
+    const f = createSelfHostedSttFetch('http://127.0.0.1:1055') as unknown as (url: string, init?: Record<string, unknown>) => Promise<unknown>
+    await f('http://stt.local/v1/audio/transcriptions', { method: 'POST' })
     expect(undiciFetchMock).toHaveBeenCalledTimes(1)
     const [, init] = undiciFetchMock.mock.calls[0] as unknown as [unknown, Record<string, unknown>]
     expect(init).toHaveProperty('dispatcher')

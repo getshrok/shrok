@@ -69,7 +69,7 @@ import { ZohoCliqStateStore } from './db/zoho_cliq_state.js'
 // WhatsApp adapter is dynamically imported — Baileys is an optional dependency
 import { DashboardChannelAdapter } from './channels/dashboard/adapter.js'
 import { VoiceChannelAdapter } from './channels/voice/adapter.js'
-import { TTS_MODEL, TTS_VOICE, createSelfHostedTtsFetch, type TtsProvider } from './channels/voice/tts.js'
+import { TTS_MODEL, TTS_VOICE, createSelfHostedTtsFetch, createSelfHostedSttFetch, type TtsProvider } from './channels/voice/tts.js'
 import type { SttProvider } from './channels/voice/stt.js'
 import { HomeAssistantChannelAdapter } from './channels/home-assistant/adapter.js'
 import { ScheduleEvaluatorImpl } from './scheduler/index.js'
@@ -107,6 +107,7 @@ function buildSttProviders(
   sttBaseUrl: string | undefined,
   openaiClient: OpenAI | null,
   voiceOpenaiFallback: boolean,
+  httpProxy?: string,
 ): SttProvider[] {
   const providers: SttProvider[] = []
   if (sttBaseUrl) {
@@ -119,7 +120,16 @@ function buildSttProviders(
       // fails once, fast, and surfaces the visible "Voice error" frame (#42) instead of
       // hammering the box. 15 min covers ~25 min of audio even at a heavily-loaded ~2×
       // realtime; idle the box does ~10×.
-      client: new OpenAI({ baseURL: sttBaseUrl, apiKey: 'unused', timeout: 900_000, maxRetries: 0 }),
+      // When httpProxy is set (userspace-tailnet boxes whose only route to the speech
+      // server is the proxy), route through it; when unset, NO fetch key is added — the
+      // client is byte-for-byte what it was before.
+      client: new OpenAI({
+        baseURL: sttBaseUrl,
+        apiKey: 'unused',
+        timeout: 900_000,
+        maxRetries: 0,
+        ...(httpProxy ? { fetch: createSelfHostedSttFetch(httpProxy) } : {}),
+      }),
       label: 'self-hosted',
     })
     if (voiceOpenaiFallback && openaiClient) {
@@ -302,7 +312,7 @@ async function main() {
   // is used directly (legacy behavior). Empty list → transcribeInboundAudio returns msg
   // unchanged (same as old openai=null fast path).
   const openaiIngestionClient = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null
-  const ingestionSttProviders: SttProvider[] = buildSttProviders(config.sttBaseUrl, openaiIngestionClient, config.voiceOpenaiFallback)
+  const ingestionSttProviders: SttProvider[] = buildSttProviders(config.sttBaseUrl, openaiIngestionClient, config.voiceOpenaiFallback, config.voiceHttpProxy)
 
   // Phase 45 (RING-02, RING-10, RING-11): instantiate the global ring delivery layer.
   // ringStore and ringRunner are singletons across all heads. The haAdapters resolver closure
@@ -591,11 +601,15 @@ async function main() {
       const openaiVoiceClient = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null
       const knownHeadIds = new Set(headSystems.map(h => h.head.id))
 
+      // Suffix appended to the STT/TTS startup lines when voice traffic is routed through
+      // a tailnet proxy (userspace-tailscale boxes) — makes the active path visible in logs.
+      const voiceProxyMsg = config.voiceHttpProxy ? ` (via proxy ${config.voiceHttpProxy})` : ''
+
       // STT providers — split from TTS so repointing STT does not disturb TTS.
-      const voiceSttProviders = buildSttProviders(config.sttBaseUrl, openaiVoiceClient, config.voiceOpenaiFallback)
+      const voiceSttProviders = buildSttProviders(config.sttBaseUrl, openaiVoiceClient, config.voiceOpenaiFallback, config.voiceHttpProxy)
       if (config.sttBaseUrl) {
         const fallbackMsg = config.voiceOpenaiFallback && openaiVoiceClient ? '; fallback: OpenAI' : ' (no OpenAI fallback)'
-        log.info(`[startup] STT primary: self-hosted ${config.sttBaseUrl}${fallbackMsg}`)
+        log.info(`[startup] STT primary: self-hosted ${config.sttBaseUrl}${voiceProxyMsg}${fallbackMsg}`)
       }
 
       // TTS providers, in priority order. When a self-hosted endpoint is configured
@@ -609,7 +623,7 @@ async function main() {
         const selfHostedTts = new OpenAI({
           baseURL: config.ttsBaseUrl,
           apiKey: 'unused',          // self-hosted endpoint is unauthenticated (tailnet-scoped)
-          fetch: createSelfHostedTtsFetch(),  // fast connect-fail, slow-response-tolerant
+          fetch: createSelfHostedTtsFetch(config.voiceHttpProxy),  // fast connect-fail, slow-response-tolerant; via proxy when set
           timeout: 180_000,          // backstop above the dispatcher's response timeout
           maxRetries: 0,             // no SDK retry storm before failing over
         })
@@ -628,9 +642,9 @@ async function main() {
             responseFormat: 'mp3',
             label: 'openai',
           })
-          log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice}); fallback: OpenAI`)
+          log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice})${voiceProxyMsg}; fallback: OpenAI`)
         } else {
-          log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice}); no OpenAI fallback`)
+          log.info(`[startup] TTS primary: self-hosted ${config.ttsBaseUrl} (${config.ttsModel}/${config.ttsVoice})${voiceProxyMsg}; no OpenAI fallback`)
         }
       } else if (openaiVoiceClient) {
         ttsProviders.push({

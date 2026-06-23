@@ -2,7 +2,7 @@
 import type OpenAI from 'openai'
 import type { ClientOptions } from 'openai'
 import { Readable } from 'node:stream'
-import { Agent, fetch as undiciFetch } from 'undici'
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici'
 import type { WebSocket } from 'ws'
 import { log } from '../../logger.js'
 
@@ -17,6 +17,36 @@ export const TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS = 4000
  *  this phase must NOT be capped at the connect budget. */
 export const TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS = 180_000
 
+/** Connect-phase timeout (ms) for the self-hosted STT client when routed through a proxy.
+ *  Short, so an unreachable box/proxy fails promptly rather than hanging the connect. */
+export const STT_SELF_HOSTED_CONNECT_TIMEOUT_MS = 4000
+
+/** Response-phase budget (ms) for the self-hosted STT client when routed through a proxy.
+ *  Whisper returns the WHOLE transcript before response headers, and transcription time
+ *  scales with audio length — so this must comfortably exceed a long turn. Matches the
+ *  STT OpenAI-client `timeout` (15 min) set in buildSttProviders. */
+export const STT_SELF_HOSTED_RESPONSE_TIMEOUT_MS = 900_000
+
+/** Build the undici dispatcher backing a self-hosted voice client. When `proxyUri` is set
+ *  (userspace-tailnet boxes whose only route to the speech server is the proxy), it's a
+ *  ProxyAgent; otherwise a plain Agent — byte-for-byte the prior behavior. Same timeout
+ *  split (fast connect, slow response) applies either way. ⚠️ A ProxyAgent dispatcher MUST
+ *  be paired with undici's OWN fetch (`undiciFetch`), never Node's global fetch — the
+ *  bundled-vs-npm undici dispatcher interfaces mismatch and throw on newer Node (mirrors
+ *  the relay sensor's hard-won lesson). The non-proxy path also uses undiciFetch, as before. */
+function makeVoiceDispatcher(
+  proxyUri: string | undefined,
+  connectTimeoutMs: number,
+  responseTimeoutMs: number,
+): Agent | ProxyAgent {
+  const opts = {
+    connect: { timeout: connectTimeoutMs },
+    headersTimeout: responseTimeoutMs,
+    bodyTimeout: responseTimeoutMs,
+  }
+  return proxyUri ? new ProxyAgent({ uri: proxyUri, ...opts }) : new Agent(opts)
+}
+
 /**
  * Build a `fetch` for the self-hosted TTS OpenAI client that fails FAST on connection
  * (box off/unreachable → prompt fallback to OpenAI) but tolerates a SLOW response (a
@@ -25,16 +55,34 @@ export const TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS = 180_000
  * when the box is dead (5s) also aborts legitimate long synthesis and spuriously falls
  * back to the paid provider. Backing the client with an undici dispatcher separates the
  * connect timeout from the headers/body timeout, so each concern gets its own budget.
+ *
+ * When `proxyUri` is set the dispatcher is a ProxyAgent (the only route to the speech
+ * server on userspace-tailnet boxes); when unset it is a plain Agent — identical to the
+ * prior behavior, so every non-proxy install is unchanged.
  */
 export function createSelfHostedTtsFetch(
+  proxyUri?: string,
   connectTimeoutMs: number = TTS_SELF_HOSTED_CONNECT_TIMEOUT_MS,
   responseTimeoutMs: number = TTS_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
 ): ClientOptions['fetch'] {
-  const dispatcher = new Agent({
-    connect: { timeout: connectTimeoutMs },
-    headersTimeout: responseTimeoutMs,
-    bodyTimeout: responseTimeoutMs,
-  })
+  const dispatcher = makeVoiceDispatcher(proxyUri, connectTimeoutMs, responseTimeoutMs)
+  return ((url: string | URL | Request, init?: RequestInit) =>
+    undiciFetch(url as Parameters<typeof undiciFetch>[0], { ...(init as Record<string, unknown>), dispatcher })
+  ) as ClientOptions['fetch']
+}
+
+/**
+ * Build a `fetch` for the self-hosted STT OpenAI client routed through a proxy. Only ever
+ * called when `voiceHttpProxy` is set, so STT's normal (no-proxy) path keeps passing NO
+ * custom fetch and is byte-for-byte unchanged. Uses STT timeouts (a long response budget
+ * to cover transcription of a multi-minute turn).
+ */
+export function createSelfHostedSttFetch(
+  proxyUri: string,
+  connectTimeoutMs: number = STT_SELF_HOSTED_CONNECT_TIMEOUT_MS,
+  responseTimeoutMs: number = STT_SELF_HOSTED_RESPONSE_TIMEOUT_MS,
+): ClientOptions['fetch'] {
+  const dispatcher = makeVoiceDispatcher(proxyUri, connectTimeoutMs, responseTimeoutMs)
   return ((url: string | URL | Request, init?: RequestInit) =>
     undiciFetch(url as Parameters<typeof undiciFetch>[0], { ...(init as Record<string, unknown>), dispatcher })
   ) as ClientOptions['fetch']
