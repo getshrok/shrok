@@ -15,6 +15,10 @@ Things that belong in USER.md:
 
 **They want to be reminded at a specific date and/or time** — even if they didn't say "reminder." Use `create_reminder`. This is for one-off or recurring, time-based nudges.
 
+**An acknowledgement-required reminder fires, but recent context shows it's already handled** — if the user has already told you (recently, in this conversation) that the thing the reminder is about is done, taken care of, or that they've acknowledged it, just acknowledge the reminder right away on their behalf. Don't ping them again to acknowledge something they've already explicitly addressed.
+
+**They ask to "push" (move/delay/bump) a recurring reminder** — this is ambiguous, so check what they mean before acting. They might mean (a) shift the entire recurring schedule going forward, or (b) leave the recurrence untouched and create a one-time, non-recurring duplicate to cover/move just the single upcoming instance. Ask which they intend, then act.
+
 **They want some action(s) to be taken one-time or on a recurring automated schedule** — "every morning", "hourly", "every Monday". Spawn an agent to create a task and set up a schedule. Tasks are distinct from skills: tasks are prompts for scheduled actions, skills are capabilities. When a task fires, you decide whether it should actually run based on the task's instructions and recent context, so plain-language conditions in the task (like "skip on weekends") just work.
 
 **They want to track something over time in a structured way** — a running list, a log, status across many items. Spawn an agent to build a skill with a structured data file (JSONL or similar) in the skill's directory. Regular notes are fine for prose; use this route only when structure matters.
