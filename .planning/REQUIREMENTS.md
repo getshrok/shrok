@@ -1,104 +1,56 @@
-# Requirements: v1.10 Ambient Context (Sensors)
+# Requirements: v1.11 Agent-Authored Apps
 
-**Defined:** 2026-06-17
+**Defined:** 2026-06-26
 **Core Value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
 
-**Milestone goal:** Give the model live situational state (weather, smart-home device state, etc.) gathered by user-defined "sensor" scripts on a schedule, injected into every model turn — without busting prompt caching. Sensors are pure scripts: no LLM, no agent. Implements GitHub issue #25.
+**Milestone goal:** Let shrok construct small, self-contained web apps on the fly and serve them through its own server, surfaced in a new dashboard "Apps" section that launches each app standalone.
 
-**Core semantics (apply to every SENSOR requirement):**
-- **A sensor is pure code.** It emits plain body text on stdout; no model or agent is ever invoked to run it. (Contrast: a *task* is a prompt run by an agent — that already exists and is unchanged.)
-- **One output file per sensor.** A sensor named `Weather` (slug `weather`) owns `{workspace}/ambient/weather.md`. The runner is the sole writer of that file.
-- **Uncached injection.** The assembled `ambient/*.md` block is placed AFTER the `\n\nCurrent time:` marker that `toAnthropicSystem` (`src/llm/anthropic.ts`) splits on for `cache_control`, so frequent sensor updates never invalidate the cached system-prompt prefix.
-- **No last-good, no freshness stamps.** On failure the output file is overwritten with the error (sensors are cheap and refresh often → a stale block means genuinely broken, which the error already signals).
+**Core semantics (apply to every requirement):**
+- **Apps are ViewModelShell (VMS) apps.** UI is a server-returned JSON ViewNode tree rendered by VMS's browser adapter — no per-app frontend build. Each app is a folder under the workspace `apps/<slug>/` with a small TS module (logic) + metadata, backed by its own `node:sqlite` file. The host owns the HTML shell, the `/_pkg` browser bundle, routing, the `createAction`↔Express adapter, discovery, and per-app error isolation.
+- **Same trust posture as skills/sensors/tasks.** Apps run in shrok's process; the agent authoring them already has file/bash tools. No new sandbox — apps inherit the dashboard's existing access boundary.
+- **Proven architecture.** A proof-of-concept (built while scoping this milestone) verified `createAction`-under-Express via a ~15-line web-Request adapter, the `bun:sqlite`→`node:sqlite` store port, and filesystem discovery + dynamic `tsx` import + per-app error boundary — all end-to-end (add/edit/delete persists, verified by curl + direct DB read).
 
 ## v1 Requirements
 
-### Sensor Management
+### App-Serving Subsystem (APPSRV)
 
-- [x] **SENSOR-01**: Operator can create a sensor (name + script body) in a dedicated dashboard "Sensors" section, parallel to Tasks.
-- [x] **SENSOR-02**: Operator can edit an existing sensor's name and script body from the Sensors section.
-- [x] **SENSOR-03**: Operator can delete a sensor from the Sensors section, removing its script and its `ambient/<slug>.md` output.
-- [x] **SENSOR-04**: Operator can hand-edit a sensor's script directly on disk and the Sensors section reflects it (filesystem and dashboard are two views of the same files).
+- [ ] **APPSRV-01**: Shrok auto-discovers apps placed in the workspace `apps/<slug>/` directory and serves each standalone page at `/apps/<slug>/`.
+- [ ] **APPSRV-02**: Shrok serves each app's VMS wire — `GET /apps/<slug>/api` (initial `{ok,vm,state}`) and `POST /apps/<slug>/api/action` (dispatch) — through its own Express server via a `createAction`↔Express adapter.
+- [ ] **APPSRV-03**: Shrok serves the shared ViewModelShell browser bundle + styles once at `/apps/_pkg/*`, and the VMS agent skill manual at `/apps/_skill.md`.
+- [ ] **APPSRV-04**: A broken app (load error or runtime throw) surfaces an error scoped to that app only and never crashes shrok or affects other apps.
+- [ ] **APPSRV-05**: Each app persists its data in its own `node:sqlite` database under the workspace, isolated per app.
+- [ ] **APPSRV-06**: A newly authored app becomes reachable without restarting shrok (hot discovery).
+- [ ] **APPSRV-07**: App ownership is consistent with shrok's multi-head model — the global-vs-per-head decision is made and applied uniformly across discovery, listing, and serving.
 
-### Scheduling
+### Agent Build Capability (BUILDAPP)
 
-- [x] **SENSOR-05**: Operator can schedule a sensor to run on a cron interval through the existing Schedules UI (a sensor schedule is `Schedule.kind:'script'`, the third kind alongside `'task'`/`'reminder'`).
-- [x] **SENSOR-06**: A scheduled sensor runs directly in the scheduler tick — no queue event, no context assembly, no model invocation — bypassing the activation loop entirely.
+- [ ] **BUILDAPP-01**: The agent can author a new app (logic module + metadata) in response to a user request and have it served.
+- [ ] **BUILDAPP-02**: Guidance gives the agent a `node:sqlite` store template, a ViewNode reference, and the minimal app file layout so a Sonnet-class model reliably produces a working app.
+- [ ] **BUILDAPP-03**: The agent smoke-tests an app it authored (loads its `/api`, confirms `ok`) before declaring it complete.
+- [ ] **BUILDAPP-04**: The agent can update or remove an app it previously created.
 
-### Runner & Output
+### Dashboard Apps Section (APPSUI)
 
-- [x] **SENSOR-07**: On a successful run, the sensor's captured stdout, truncated to a maximum length, is written to `ambient/<slug>.md`.
-- [x] **SENSOR-08**: On a failed run (throw, non-zero exit, or timeout), `ambient/<slug>.md` is overwritten with actionable error text that includes the trimmed error message.
-- [x] **SENSOR-09**: A sensor runs once immediately on create/enable/save, so its first output appears without waiting for the next scheduled tick.
+- [ ] **APPSUI-01**: A new "Apps" item appears in the dashboard sidebar.
+- [ ] **APPSUI-02**: The Apps page lists the apps shrok has built (name / icon / description).
+- [ ] **APPSUI-03**: Selecting an app navigates out of the dashboard SPA to that app's standalone page.
+- [ ] **APPSUI-04**: The Apps list reflects apps appearing/disappearing without a dashboard rebuild.
 
-### Injection
+## Future Requirements (deferred)
 
-- [x] **SENSOR-10**: Sensor output is injected into every model turn as a fresh scan of `ambient/*.md`, each block labeled by a filename-derived heading (`weather.md` → `## Weather`), placed in the uncached system-prompt region so updates never bust prompt caching.
-- [x] **SENSOR-11**: The same ambient scan feeds both the head's own turns (assembler) and the proactive scheduler, so proactive runs see the same situational state.
-
-### Cleanup
-
-- [x] **SENSOR-12**: The legacy single-file `AMBIENT.md` mechanism is removed (both the assembler injection and `readAmbientContext`), eliminating its current above-the-cache-split injection bug.
-
-## v1.10.1 Requirements — Sensor Dual-Sink Rework (Phase 51)
-
-**Context:** Phases 48–49 shipped sensors as a single passive sink (stdout body → global `ambient/<slug>.md` → every head's prompt, bypassing the activation loop). Phase 51 reworks the primitive so one scheduled run can route its observation to **two head-scoped sinks**: a passive per-head ambient block (pull) and/or an active event that wakes the bound head (push). No back-compat is preserved — sensors shipped hours earlier and have no external users. These requirements **redefine** the contract of SENSOR-06/07/08/10/11 (see Traceability notes) and **implement** the previously-deferred SENSOR-F-01.
-
-- [x] **SENSOR-13**: A sensor script's stdout is exactly **one structured JSON object** `{ ambient?: string, event?: {...} }`. Both fields are optional — emitting neither is a valid quiet/no-op tick. Non-conforming or unparseable stdout is a **sensor error** (fail loud), handled by the SENSOR-08 failure path (error marker written to the sensor's ambient file). This **supersedes** SENSOR-07's "stdout is plain body text".
-- [x] **SENSOR-14**: The `ambient` field is **head-scoped**: written to `ambient/<headId>/<slug>.md` and injected **only into the owning head's** turns. All three ambient read sites (head assembler, proactive/activation scheduler, sub-agent tool-surface) scan only the current head's directory. This **implements SENSOR-F-01** and **supersedes** the global flat `ambient/<slug>.md` of SENSOR-10/11.
-- [x] **SENSOR-15**: The `event` field enqueues a **new `sensor_event` priority-queue type** that flows through the existing activation loop and **causes the bound head to take a turn**, framed honestly as a sensor observation the head decides whether to act on / surface. This **extends** SENSOR-06 — the event path now *enters* the activation loop the ambient path still bypasses.
-- [x] **SENSOR-16**: A sensor's **target head is mandatory**, taken from its schedule's existing `headId` field (same model as scheduling a task). The event fires to that head; the ambient file lands under that head's directory. No per-event head field — one sensor is bound to exactly one head.
-
-**Non-goals (Phase 51):** No runner-level dedup/cooldown/edge-detection machinery — sensor scripts self-watermark (own `state.json`/timestamp in the sensor dir), exactly like the email-check pattern. The runner stays stateless about what counts as "new".
-
-## v1.10.2 Requirements — Sensor Sub-Agent Sink (Phase 52)
-
-**Context:** Phase 51 gave the sensor a dual-sink payload `{ ambient?, event? }` whose two active outcomes are a passive per-head ambient block (pull) and an `event` that wakes the bound conversational head (push). Phase 52 adds a **third sink** so a sensor can also dispatch work to a **sub-agent** silently — without waking/activating the head — by routing through the existing proactive-decision steward and task-spawn path. This lets a cheap, deterministic sensor (no LLM in detection) trigger an LLM sub-agent only when there's something to act on, with the steward as the should-it-run gate. No back-compat with the Phase-51 sink names — sensors have no external users.
-
-- [x] **SENSOR-17**: A sensor's structured JSON payload gains a **third optional sink — a sub-agent event carrying a prompt string**. When present, it spawns a sub-agent through the steward gate **without waking the conversational head**. The prompt is the universal interface: there is **no task-name field**; if a specific workspace task should run, the prompt says so. **Extends** SENSOR-13's payload contract (the payload is now `{ ambient?, event?, <sub-agent-event>? }`).
-- [x] **SENSOR-18**: The Phase-51 `event` (head-waking) sink is **renamed to the "head event" sink** and the new one is the **"sub-agent event" sink** — the two active sinks are named distinctly so a sensor author chooses head-wake vs. silent-sub-agent explicitly. **No back-compat**; the three existing workspace sensors (relay, calendar, example) are migrated to the new key names. **Supersedes** the SENSOR-15 `event` key name.
-- [x] **SENSOR-19**: The sub-agent event routes through the **existing proactive-decision steward** (`src/scheduler/proactive.ts`, **reused — not duplicated**) using a **rephrased, non-schedule-shaped prompt variant** (cron/lastRun/lastSkipped don't apply to a sensor-originated trigger), and spawns silently via the **existing task-spawn path** (`handleScheduleTrigger` → `agentRunner.spawn`) with a **schedule-less synthetic trigger** (no schedule row). The head only learns of the result via the normal `agent_completed` path, subject to the existing relay/output steward.
-
-**Non-goals (Phase 52):** The motivating calendar→pre-meeting-nag-reminder sensor is a **separate later deliverable**, not this phase — its meeting-dedup (`already handled this meeting`) lives in that sensor's own `state.json`, not in the framework. The steward remains a "should this run now?" gate, **not** an exactly-once/dedup mechanism. No new sensor-side scheduling primitives — the sub-agent event reuses the `kind:'task'` spawn machinery as-is.
-
-## v2 Requirements (deferred)
-
-### Sensor Enhancements
-
-- **SENSOR-F-01**: Per-head ambient scoping (a head sees only its own sensors' output). → **Promoted to Phase 51 as SENSOR-14.**
-- **SENSOR-F-02**: Inline run-now / last-status / last-error surfaced per sensor in the dashboard beyond the basic CRUD.
+- Editing an existing app's schema or data directly through the dashboard (vs. agent-authored only)
+- App templates / a starter gallery to speed authoring
+- Per-app access control distinct from the dashboard boundary
 
 ## Out of Scope
 
-| Feature | Reason |
-|---------|--------|
-| Per-head ambient scoping | ~~Global only this milestone — one `ambient/` folder feeds all heads. Deferred to SENSOR-F-01.~~ **Now in scope — Phase 51 (SENSOR-14).** |
-| LLM/agent-driven gathering | That is exactly what a scheduled *task* already is; sensors are deliberately model-free. |
-| Sandboxed secret model for sensor scripts | Scripts inherit the server env / workspace `.env`, same trust as task write-along scripts. |
-| Last-good preservation + freshness stamps | Explicitly rejected — would force a strict parsable markdown schema; overwrite-with-error is the chosen failure model. |
+- **Authenticated / multi-tenant per-app access** — apps inherit shrok's existing dashboard trust boundary (the trust model is unchanged this milestone)
+- **Arbitrary non-VMS frontends** — VMS is the only supported app UI (server-driven UI is exactly what removes the per-app build)
+- **App marketplace / cross-instance sharing** — out of scope for a single-instance feature
+- **Sandboxing app code beyond the existing server trust model** — apps run in-process, same posture as skills/sensors/tasks
 
 ## Traceability
 
-Which phases cover which requirements. Filled during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SENSOR-01 | Phase 49 | Complete |
-| SENSOR-02 | Phase 49 | Complete |
-| SENSOR-03 | Phase 49 | Complete |
-| SENSOR-04 | Phase 49 | Complete |
-| SENSOR-05 | Phase 49 | Complete |
-| SENSOR-06 | Phase 48 | Complete (event path extended by Phase 51 / SENSOR-15) |
-| SENSOR-07 | Phase 48 | Complete (superseded by Phase 51 / SENSOR-13) |
-| SENSOR-08 | Phase 48 | Complete (failure path reused by Phase 51 / SENSOR-13) |
-| SENSOR-09 | Phase 48 | Complete |
-| SENSOR-10 | Phase 48 | Complete (head-scoped by Phase 51 / SENSOR-14) |
-| SENSOR-11 | Phase 48 | Complete (head-scoped by Phase 51 / SENSOR-14) |
-| SENSOR-12 | Phase 48 | Complete |
-| SENSOR-13 | Phase 51 | Complete |
-| SENSOR-14 | Phase 51 | Complete |
-| SENSOR-15 | Phase 51 | Complete (`event` key renamed by Phase 52 / SENSOR-18) |
-| SENSOR-16 | Phase 51 | Complete |
-| SENSOR-17 | Phase 52 | Complete |
-| SENSOR-18 | Phase 52 | Complete |
-| SENSOR-19 | Phase 52 | Complete |
+| *(filled by roadmap)* | | |
