@@ -40,7 +40,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 55-03-PLAN.md — Apps router + HTML shell: page, VMS wire, /_pkg, /_skill.md, enumeration
+- [x] 55-03-PLAN.md — Apps router + HTML shell: page, VMS wire, /_pkg, /_skill.md, enumeration
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -87,6 +87,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 55. App-Serving Subsystem | 2/4 | In Progress|  |
+| 55. App-Serving Subsystem | 3/4 | In Progress|  |
 | 56. `build_app` Agent Capability | 0/TBD | Not started | - |
 | 57. Dashboard "Apps" Section | 0/TBD | Not started | - |

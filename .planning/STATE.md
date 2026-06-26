@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: Agent-Authored Apps
 status: executing
-last_updated: "2026-06-26T22:33:52.419Z"
+last_updated: "2026-06-26T23:00:00.000Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -18,7 +18,7 @@ progress:
 ## Current Position
 
 Phase: 55 (app-serving-subsystem) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -51,6 +51,7 @@ See: .planning/PROJECT.md
 
 - **55-01:** `@ashley-shrok/viewmodel-shell` pinned as `^1.8.0` in `dependencies` (not devDependencies); npm resolved to v1.12.0; `/server` export confirmed under Node 22 (createAction + createAgentSkillHandler are functions); `tsc --noEmit` clean. APPSRV-03 satisfied.
 - **55-02:** `appDb` cache key = `appDir:name` (not just `name`) prevents cross-temp-dir collisions in tests; discovery cache keyed by absolute app-folder path for hot-discovery + test isolation; D-07 contract: callers pass `JSON.stringify(req.body ?? {})` because `express.json` is globally mounted and has already consumed the raw stream; 43 tests (workspace 5, db 8, discovery 18, adapter 12), all green; `tsc --noEmit` clean.
+- **55-03:** Shell embedded as TypeScript string constant (no file-copy step under tsx/Docker); `/_pkg/*` as four literal routes with no `:file` traversal param; literal routes registered before `:slug` routes (T-55-03-SHADOW); `createAgentSkillHandler` called once at factory construction; async route handlers use `void (async () => {})()` pattern; 36 tests (shell 23, router 13), all green; `tsc --noEmit` clean.
 
 ### Roadmap Evolution
 
