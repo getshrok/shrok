@@ -52,6 +52,7 @@ import type { ScheduleStore } from '../db/schedules.js'
 import type { McpRegistry } from '../mcp/registry.js'
 import type { AgentRunner } from '../types/agent.js'
 import type { QueueStore } from '../db/queue.js'
+import { createAppsRouter } from '../apps/router.js'
 
 export interface DashboardServerOptions {
   config: Config
@@ -174,6 +175,7 @@ export class DashboardServer {
     app.use((req, res, next) => {
       if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
       if (req.path.startsWith('/v1/')) return next()   // HA bearer-auth; /v1 router validates
+      if (req.path.startsWith('/apps/')) return next() // VMS browser adapter POSTs same-origin w/o CSRF token (D-08)
       requireSameOrigin(req, res, next)
     })
 
@@ -352,6 +354,13 @@ export class DashboardServer {
         }
       }
     }
+
+    // Phase 55 (D-05): workspace app-serving subsystem — mount BEFORE the SPA
+    // catch-all so /apps/... is not intercepted by the GET '*' fallback.
+    // Mount lands after sessionMiddleware (line 172) so apps inherit the
+    // dashboard session boundary (D-08). createAppsRouter ensures the workspace
+    // VMS symlink at construction (D-11).
+    app.use('/apps', createAppsRouter({ workspacePath }))
 
     // Serve built frontend in production (dashboard/dist must exist)
     const distPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../dashboard/dist')
