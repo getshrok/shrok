@@ -36,7 +36,7 @@ Plans:
 **Wave 1**
 
 - [x] 55-01-PLAN.md — Add @ashley-shrok/viewmodel-shell dependency (legitimacy-gated)
-- [ ] 55-02-PLAN.md — Foundation modules: per-app node:sqlite helper, discovery + error boundary, Express↔web-Fetch adapter
+- [x] 55-02-PLAN.md — Foundation modules: per-app node:sqlite helper, discovery + error boundary, Express↔web-Fetch adapter
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -87,6 +87,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 55. App-Serving Subsystem | 1/4 | In Progress|  |
+| 55. App-Serving Subsystem | 2/4 | In Progress|  |
 | 56. `build_app` Agent Capability | 0/TBD | Not started | - |
 | 57. Dashboard "Apps" Section | 0/TBD | Not started | - |

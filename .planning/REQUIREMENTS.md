@@ -14,13 +14,13 @@
 
 ### App-Serving Subsystem (APPSRV)
 
-- [ ] **APPSRV-01**: Shrok auto-discovers apps placed in the workspace `apps/<slug>/` directory and serves each standalone page at `/apps/<slug>/`.
-- [ ] **APPSRV-02**: Shrok serves each app's VMS wire — `GET /apps/<slug>/api` (initial `{ok,vm,state}`) and `POST /apps/<slug>/api/action` (dispatch) — through its own Express server via a `createAction`↔Express adapter.
+- [x] **APPSRV-01**: Shrok auto-discovers apps placed in the workspace `apps/<slug>/` directory and serves each standalone page at `/apps/<slug>/`.
+- [x] **APPSRV-02**: Shrok serves each app's VMS wire — `GET /apps/<slug>/api` (initial `{ok,vm,state}`) and `POST /apps/<slug>/api/action` (dispatch) — through its own Express server via a `createAction`↔Express adapter.
 - [x] **APPSRV-03**: Shrok serves the shared ViewModelShell browser bundle + styles once at `/apps/_pkg/*`, and the VMS agent skill manual at `/apps/_skill.md`.
-- [ ] **APPSRV-04**: A broken app (load error or runtime throw) surfaces an error scoped to that app only and never crashes shrok or affects other apps.
-- [ ] **APPSRV-05**: Each app persists its data in its own `node:sqlite` database under the workspace, isolated per app.
-- [ ] **APPSRV-06**: A newly authored app becomes reachable without restarting shrok (hot discovery).
-- [ ] **APPSRV-07**: App ownership is consistent with shrok's multi-head model — the global-vs-per-head decision is made and applied uniformly across discovery, listing, and serving.
+- [x] **APPSRV-04**: A broken app (load error or runtime throw) surfaces an error scoped to that app only and never crashes shrok or affects other apps.
+- [x] **APPSRV-05**: Each app persists its data in its own `node:sqlite` database under the workspace, isolated per app.
+- [x] **APPSRV-06**: A newly authored app becomes reachable without restarting shrok (hot discovery).
+- [x] **APPSRV-07**: App ownership is consistent with shrok's multi-head model — the global-vs-per-head decision is made and applied uniformly across discovery, listing, and serving.
 
 ### Agent Build Capability (BUILDAPP)
 
@@ -53,13 +53,13 @@
 
 | Requirement | Phase | Status |
 |-------------|----------|---------|
-| APPSRV-01 | Phase 55 | Pending |
-| APPSRV-02 | Phase 55 | Pending |
+| APPSRV-01 | Phase 55 | Complete |
+| APPSRV-02 | Phase 55 | Complete |
 | APPSRV-03 | Phase 55 | Complete |
-| APPSRV-04 | Phase 55 | Pending |
-| APPSRV-05 | Phase 55 | Pending |
-| APPSRV-06 | Phase 55 | Pending |
-| APPSRV-07 | Phase 55 | Pending |
+| APPSRV-04 | Phase 55 | Complete |
+| APPSRV-05 | Phase 55 | Complete |
+| APPSRV-06 | Phase 55 | Complete |
+| APPSRV-07 | Phase 55 | Complete |
 | BUILDAPP-01 | Phase 56 | Pending |
 | BUILDAPP-02 | Phase 56 | Pending |
 | BUILDAPP-03 | Phase 56 | Pending |

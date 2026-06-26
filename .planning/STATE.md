@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: Agent-Authored Apps
 status: executing
-last_updated: "2026-06-26T22:13:03.175Z"
+last_updated: "2026-06-26T22:33:52.419Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -18,7 +18,7 @@ progress:
 ## Current Position
 
 Phase: 55 (app-serving-subsystem) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -50,6 +50,7 @@ See: .planning/PROJECT.md
 ### Decisions
 
 - **55-01:** `@ashley-shrok/viewmodel-shell` pinned as `^1.8.0` in `dependencies` (not devDependencies); npm resolved to v1.12.0; `/server` export confirmed under Node 22 (createAction + createAgentSkillHandler are functions); `tsc --noEmit` clean. APPSRV-03 satisfied.
+- **55-02:** `appDb` cache key = `appDir:name` (not just `name`) prevents cross-temp-dir collisions in tests; discovery cache keyed by absolute app-folder path for hot-discovery + test isolation; D-07 contract: callers pass `JSON.stringify(req.body ?? {})` because `express.json` is globally mounted and has already consumed the raw stream; 43 tests (workspace 5, db 8, discovery 18, adapter 12), all green; `tsc --noEmit` clean.
 
 ### Roadmap Evolution
 
