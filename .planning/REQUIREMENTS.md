@@ -52,5 +52,19 @@
 ## Traceability
 
 | Requirement | Phase | Status |
-|-------------|-------|--------|
-| *(filled by roadmap)* | | |
+|-------------|----------|---------|
+| APPSRV-01 | Phase 55 | Pending |
+| APPSRV-02 | Phase 55 | Pending |
+| APPSRV-03 | Phase 55 | Pending |
+| APPSRV-04 | Phase 55 | Pending |
+| APPSRV-05 | Phase 55 | Pending |
+| APPSRV-06 | Phase 55 | Pending |
+| APPSRV-07 | Phase 55 | Pending |
+| BUILDAPP-01 | Phase 56 | Pending |
+| BUILDAPP-02 | Phase 56 | Pending |
+| BUILDAPP-03 | Phase 56 | Pending |
+| BUILDAPP-04 | Phase 56 | Pending |
+| APPSUI-01 | Phase 57 | Pending |
+| APPSUI-02 | Phase 57 | Pending |
+| APPSUI-03 | Phase 57 | Pending |
+| APPSUI-04 | Phase 57 | Pending |
