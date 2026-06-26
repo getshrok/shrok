@@ -67,10 +67,31 @@ export const SHELL = `<!DOCTYPE html>
 </html>`
 
 /**
+ * HTML-escape a string for safe insertion into HTML text/attribute contexts.
+ * Escapes & < > " ' — the five characters sufficient to prevent XSS in element
+ * text content and double-quoted attribute values.
+ *
+ * Used for agent-authored values (e.g. meta.json title) before substitution into
+ * the shell template. __SLUG__ substitution does not need this because SLUG_RE
+ * constrains slugs to [a-z0-9-], which contains no HTML-special characters.
+ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
  * Produce the final HTML page for a discovered app.
  * Replaces ALL occurrences of __SLUG__ (endpoint + actionEndpoint in both meta and script,
  * plus the onError label) and __TITLE__ (single <title> element).
+ *
+ * slug is SLUG_RE-validated ([a-z0-9-] only) — no HTML-special characters, no escaping needed.
+ * title comes from agent-authored meta.json — must be HTML-escaped to prevent XSS.
  */
 export function renderShell(slug: string, title: string): string {
-  return SHELL.replaceAll('__SLUG__', slug).replaceAll('__TITLE__', title)
+  return SHELL.replaceAll('__SLUG__', slug).replaceAll('__TITLE__', escapeHtml(title))
 }

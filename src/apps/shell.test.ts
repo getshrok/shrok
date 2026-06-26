@@ -75,6 +75,26 @@ describe('shell.ts', () => {
       const count = (html.match(/\/apps\/myapp\//g) ?? []).length
       expect(count).toBeGreaterThan(1)
     })
+
+    // ── Security regression: CR-03 (stored XSS via agent-authored title) ─────────
+    it('CR-03: title containing </title><script> is HTML-escaped — no raw <script> in output', () => {
+      const maliciousTitle = '</title><script>alert(document.cookie)</script>'
+      const html = renderShell('myapp', maliciousTitle)
+      // The raw attack string must NOT appear verbatim in the output.
+      expect(html).not.toContain('<script>alert(document.cookie)</script>')
+      // The title must appear as HTML entities so the browser renders it as text.
+      expect(html).toContain('&lt;/title&gt;&lt;script&gt;')
+    })
+    it('CR-03: title with & < > " \' characters are all entity-escaped', () => {
+      const html = renderShell('myapp', '&<>"\'')
+      expect(html).toContain('&amp;&lt;&gt;&quot;&#39;')
+      // No raw HTML-special characters from the title in the <title> element
+      expect(html).not.toContain('<title>&<>"\'</title>')
+    })
+    it('CR-03: a benign title with no HTML-special chars passes through unchanged', () => {
+      const html = renderShell('counter', 'My Counter App')
+      expect(html).toContain('<title>My Counter App</title>')
+    })
   })
 
   // ── pkgDir ────────────────────────────────────────────────────────────────────
