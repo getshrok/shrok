@@ -11,7 +11,7 @@ Shrok learns to build and serve small, self-contained web apps on the fly. The j
 - Integer phases (55, 56, 57): Planned milestone work (continuing from the prior milestone's Phase 54)
 - Decimal phases (e.g. 55.1): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 55: App-Serving Subsystem** - Shrok's Express server discovers, serves, and isolates VMS apps from the workspace `apps/<slug>/` directory
+- [x] **Phase 55: App-Serving Subsystem** - Shrok's Express server discovers, serves, and isolates VMS apps from the workspace `apps/<slug>/` directory (completed 2026-06-26)
 - [ ] **Phase 56: `build_app` Agent Capability** - The agent authors, smoke-tests, updates, and removes working VMS apps from user requests
 - [ ] **Phase 57: Dashboard "Apps" Section** - A new sidebar item + Apps page lists built apps and launches each standalone, reflecting hot discovery
 
@@ -44,7 +44,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 55-04-PLAN.md — Mount /apps on the dashboard server (CSRF carve-out) + end-to-end integration test
+- [x] 55-04-PLAN.md — Mount /apps on the dashboard server (CSRF carve-out) + end-to-end integration test
 
 ### Phase 56: `build_app` Agent Capability
 
@@ -87,6 +87,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 55. App-Serving Subsystem | 3/4 | In Progress|  |
+| 55. App-Serving Subsystem | 4/4 | Complete   | 2026-06-26 |
 | 56. `build_app` Agent Capability | 0/TBD | Not started | - |
 | 57. Dashboard "Apps" Section | 0/TBD | Not started | - |
