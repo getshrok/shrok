@@ -62,8 +62,11 @@ export function createAppsRouter(opts: { workspacePath: string }): Router {
     // createAgentSkillHandler returns (req: Request) => Response — synchronous handler.
     // Response.text() is still async, so void the promise correctly.
     const webRes = skillHandler(new Request('http://x/_skill.md'))
-    void webRes.text().then((text) => {
+    webRes.text().then((text) => {
       res.type('text/markdown').send(text)
+    }).catch((e: unknown) => {
+      res.status(500).type('text').send('Failed to read skill file')
+      console.error('[apps/_skill.md] error:', e)
     })
   })
 
@@ -103,11 +106,11 @@ export function createAppsRouter(opts: { workspacePath: string }): Router {
     void (async () => {
       const loaded = await loadApp(appsDir, slug)
       if (loaded === undefined) {
-        res.status(404).send(`no such app "${slug}"`)
+        res.status(404).type('text').send(`no such app "${slug}"`)
         return
       }
       if (loaded.error !== undefined) {
-        res.status(500).send(`App "${slug}" failed to load: ${loaded.error}`)
+        res.status(500).type('text').send(`App "${slug}" failed to load: ${loaded.error}`)
         return
       }
       const title = loaded.meta['title'] ?? slug

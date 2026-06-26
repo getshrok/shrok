@@ -127,6 +127,32 @@ describe('createAppsRouter', () => {
     expect(res.status).toBe(404)
   })
 
+  // ── Security regression: CR-01 (reflected XSS in 404 response) ───────────────
+  it('CR-01: 404 for XSS-shaped slug returns text/plain, not text/html', async () => {
+    // URL-encode a slug that would execute script if interpreted as HTML.
+    // The slug fails SLUG_RE so loadApp returns undefined → 404 path.
+    const res = await fetch(`${base}/%3Cscript%3Ealert(1)%3C%2Fscript%3E/`)
+    expect(res.status).toBe(404)
+    const ct = res.headers.get('content-type') ?? ''
+    // Must NOT be text/html — response must not be browser-interpreted as HTML.
+    expect(ct).not.toMatch(/text\/html/)
+    expect(ct).toMatch(/text\/plain/)
+  })
+
+  // ── Security regression: CR-02 (stored XSS in 500 response) ─────────────────
+  it('CR-02: 500 for broken app returns text/plain, not text/html', async () => {
+    // The 'broken' app fixture throws at import time → loadApp returns { error }.
+    // The /:slug/ handler must send 500 as text/plain, not text/html.
+    const res = await fetch(`${base}/broken/`)
+    expect(res.status).toBe(500)
+    const ct = res.headers.get('content-type') ?? ''
+    expect(ct).not.toMatch(/text\/html/)
+    expect(ct).toMatch(/text\/plain/)
+    const body = await res.text()
+    // Body must contain the error indication (plain text, not HTML markup).
+    expect(body).toContain('broken')
+  })
+
   // ── VMS GET wire ───────────────────────────────────────────────────────────────
   it('GET /:slug/api returns { ok:true, vm, state }', async () => {
     const res = await fetch(`${base}/counter/api`)
