@@ -26,10 +26,13 @@ Shrok learns to build and serve small, self-contained web apps on the fly. The j
   3. The shared ViewModelShell browser bundle and styles load from `/apps/_pkg/*`, and the VMS agent skill manual is readable at `/apps/_skill.md`.
   4. A deliberately broken app (load error or runtime throw) returns an error scoped to its own route while every other app and the dashboard keep responding and the shrok process never crashes.
   5. App ownership follows a single decided rule consistent with shrok's multi-head model (global-vs-per-head locked), applied uniformly across discovery, listing, and serving.
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
 
 Plans:
-- [ ] 55-01: TBD
+- [ ] 55-01-PLAN.md — Add @ashley-shrok/viewmodel-shell dependency (legitimacy-gated)
+- [ ] 55-02-PLAN.md — Foundation modules: per-app node:sqlite helper, discovery + error boundary, Express↔web-Fetch adapter
+- [ ] 55-03-PLAN.md — Apps router + HTML shell: page, VMS wire, /_pkg, /_skill.md, enumeration
+- [ ] 55-04-PLAN.md — Mount /apps on the dashboard server (CSRF carve-out) + end-to-end integration test
 
 ### Phase 56: `build_app` Agent Capability
 **Goal**: Give the agent the guidance and capability to author a new VMS app (logic module + metadata) in response to a user request, smoke-test its own `/api` before declaring done, and update or remove an app it previously created.
@@ -64,6 +67,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 55. App-Serving Subsystem | 0/TBD | Not started | - |
+| 55. App-Serving Subsystem | 0/4 | Not started | - |
 | 56. `build_app` Agent Capability | 0/TBD | Not started | - |
 | 57. Dashboard "Apps" Section | 0/TBD | Not started | - |
