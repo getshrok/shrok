@@ -16,7 +16,7 @@
 
 - [ ] **APPSRV-01**: Shrok auto-discovers apps placed in the workspace `apps/<slug>/` directory and serves each standalone page at `/apps/<slug>/`.
 - [ ] **APPSRV-02**: Shrok serves each app's VMS wire — `GET /apps/<slug>/api` (initial `{ok,vm,state}`) and `POST /apps/<slug>/api/action` (dispatch) — through its own Express server via a `createAction`↔Express adapter.
-- [ ] **APPSRV-03**: Shrok serves the shared ViewModelShell browser bundle + styles once at `/apps/_pkg/*`, and the VMS agent skill manual at `/apps/_skill.md`.
+- [x] **APPSRV-03**: Shrok serves the shared ViewModelShell browser bundle + styles once at `/apps/_pkg/*`, and the VMS agent skill manual at `/apps/_skill.md`.
 - [ ] **APPSRV-04**: A broken app (load error or runtime throw) surfaces an error scoped to that app only and never crashes shrok or affects other apps.
 - [ ] **APPSRV-05**: Each app persists its data in its own `node:sqlite` database under the workspace, isolated per app.
 - [ ] **APPSRV-06**: A newly authored app becomes reachable without restarting shrok (hot discovery).
@@ -55,7 +55,7 @@
 |-------------|----------|---------|
 | APPSRV-01 | Phase 55 | Pending |
 | APPSRV-02 | Phase 55 | Pending |
-| APPSRV-03 | Phase 55 | Pending |
+| APPSRV-03 | Phase 55 | Complete |
 | APPSRV-04 | Phase 55 | Pending |
 | APPSRV-05 | Phase 55 | Pending |
 | APPSRV-06 | Phase 55 | Pending |

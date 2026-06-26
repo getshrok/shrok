@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: Agent-Authored Apps
 status: executing
-last_updated: "2026-06-26T21:43:53.480Z"
-last_activity: 2026-06-26 -- Phase 55 planning complete
+last_updated: "2026-06-26T22:13:03.175Z"
+last_activity: 2026-06-26
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-Phase: 55 — App-Serving Subsystem (not started)
-Plan: —
+Phase: 55 (app-serving-subsystem) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-26 -- Phase 55 planning complete
+Last activity: 2026-06-26
 
 ## v1.11 Phase Map
 
@@ -43,9 +43,13 @@ Last activity: 2026-06-26 -- Phase 55 planning complete
 See: .planning/PROJECT.md
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** v1.11 Agent-Authored Apps — Phase 55 (App-Serving Subsystem)
+**Current focus:** Phase 55 — app-serving-subsystem
 
 ## Accumulated Context
+
+### Decisions
+
+- **55-01:** `@ashley-shrok/viewmodel-shell` pinned as `^1.8.0` in `dependencies` (not devDependencies); npm resolved to v1.12.0; `/server` export confirmed under Node 22 (createAction + createAgentSkillHandler are functions); `tsc --noEmit` clean. APPSRV-03 satisfied.
 
 ### Roadmap Evolution
 
