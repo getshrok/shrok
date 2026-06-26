@@ -134,6 +134,13 @@ export async function loadApp(appsDir: string, slug: string): Promise<Loaded | u
   } catch (e) {
     const error = (e instanceof Error ? e.message : String(e))
     const loaded: Loaded = { slug, meta, error }
+    // Cache the error result so repeated requests to a broken app do not retry the
+    // dynamic import on every request (which would re-run potentially expensive or
+    // side-effectful module-level code on each hit).
+    // Trade-off: once an app's load error is cached, fixing the app's source file has
+    // no effect until the server process is restarted to clear this entry.
+    // This is intentional per D-02: "live code-edits to an already-loaded app may need
+    // a restart." Hot discovery (APPSRV-06) only applies to NEW slugs with no cache entry.
     cache.set(cacheKey, loaded)
     return loaded
   }
