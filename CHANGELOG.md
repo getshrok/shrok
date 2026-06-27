@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+## [0.9.0] — 2026-06-27
+
+### Added
+- **You can now delete apps from the dashboard** — the Apps page has an **Edit** button that reveals a delete (✕) badge on each app tile. Clicking a badge asks for confirmation, then removes that app entirely — its code and its saved data together. Hit **Done** to leave edit mode. Outside edit mode the tiles behave exactly as before (a click opens the app).
+
+### Fixed
+- **Buttons in built apps now work** — clicking a control in an app (e.g. a Start button) was failing with a server error and doing nothing, because the dashboard mishandled the way apps submit actions. Apps are now driven correctly, so their buttons, forms, and other controls respond as intended.
+
 ## [0.8.0] — 2026-06-27
 
 ### Added
