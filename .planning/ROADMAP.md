@@ -83,12 +83,12 @@ Plans:
   3. Selecting an app navigates out of the dashboard SPA to that app's standalone `/apps/<slug>/` page.
   4. The Apps list reflects apps appearing and disappearing without a dashboard rebuild.
 
-**Plans**: TBD
+**Plans**: 1 plan (1 wave)
 **UI hint**: yes
 
 Plans:
 
-- [ ] 57-01: TBD
+- [ ] 57-01-PLAN.md — Dashboard Apps section: api.apps.list, AppsPage launcher grid, sidebar nav item + route
 
 ## Progress
 
@@ -96,4 +96,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 55. App-Serving Subsystem | 4/4 | Complete    | 2026-06-26 |
 | 56. `build_app` Agent Capability | 3/3 | Complete    | 2026-06-27 |
-| 57. Dashboard "Apps" Section | 0/TBD | Not started | - |
+| 57. Dashboard "Apps" Section | 0/1 | Planned | - |
