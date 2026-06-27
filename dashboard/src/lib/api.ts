@@ -365,4 +365,8 @@ export const api = {
   contextWindow: {
     get: () => request<ContextWindowData>('/api/context-window'),
   },
+  apps: {
+    list: () =>
+      request<Array<{ slug: string; meta: { title?: string; icon?: string; desc?: string } }>>('/apps/'),
+  },
 }
