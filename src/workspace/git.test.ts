@@ -140,8 +140,9 @@ describe('ensureWorkspaceRepo', () => {
     // Simulate a workspace on the old pre-apps constant (PRIOR_KNOWN_GITIGNORES[1]).
     // Without the PRIOR_KNOWN_GITIGNORES guard this test fails because the pre-apps
     // constant is not the 2-line LEGACY seed, so ensureWorkspaceRepo would skip it.
+    // noUncheckedIndexedAccess: narrow to string before use
     const preAppsSnapshot = PRIOR_KNOWN_GITIGNORES[1]
-    expect(preAppsSnapshot).toBeDefined()
+    if (!preAppsSnapshot) throw new Error('PRE_APPS_GITIGNORE snapshot missing from PRIOR_KNOWN_GITIGNORES')
     expect(preAppsSnapshot).not.toContain('!/apps/')
 
     git(ws, ['init'])
