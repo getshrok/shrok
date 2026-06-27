@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+## [0.8.0] — 2026-06-27
+
 ### Added
 - **New "Apps" section in the dashboard** — a sidebar "Apps" item (under Sensors) opens a launcher page that lists the apps shrok has built for you, each as a tile showing its icon, name, and description. Clicking a tile opens that app in the same tab. The list refreshes whenever you open the page or return to the tab, so apps you ask shrok to build (or remove) show up — or disappear — without any rebuild. When you have no apps yet, the page shows a friendly prompt to ask shrok to build one.
 - **Self-hosted voice now works on boxes behind a userspace-only Tailscale proxy** — a new optional `voiceHttpProxy` setting routes just the speech-to-text and text-to-speech traffic through an HTTP/SOCKS proxy (e.g. `http://127.0.0.1:1055`). This lets an instance whose only route to the speech server is that proxy (such as a rootless macOS Tailscale sidecar) use the same self-hosted Whisper/TTS endpoints as everyone else. It is scoped to voice alone — the agent's other network calls are untouched — and when unset (the default) nothing about voice changes.
