@@ -65,7 +65,7 @@ Plans:
 **Wave 1**
 
 - [x] 56-01-PLAN.md — Workspace git allowlist: add `!/apps/` (+ exclude data.sqlite-wal/-shm/-journal) and fix the `.gitignore` migration so existing installs upgrade
-- [ ] 56-02-PLAN.md — Golden example VMS app (single-file node:sqlite, APP_DB_PATH override, journal_mode=DELETE) + its in-process app.test.ts + a vitest guard that the shipped example loads via loadApp
+- [x] 56-02-PLAN.md — Golden example VMS app (single-file node:sqlite, APP_DB_PATH override, journal_mode=DELETE) + its in-process app.test.ts + a vitest guard that the shipped example loads via loadApp
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -95,5 +95,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 55. App-Serving Subsystem | 4/4 | Complete    | 2026-06-26 |
-| 56. `build_app` Agent Capability | 1/3 | In Progress|  |
+| 56. `build_app` Agent Capability | 2/3 | In Progress|  |
 | 57. Dashboard "Apps" Section | 0/TBD | Not started | - |

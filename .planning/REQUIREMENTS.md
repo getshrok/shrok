@@ -24,9 +24,9 @@
 
 ### Agent Build Capability (BUILDAPP)
 
-- [ ] **BUILDAPP-01**: The agent can author a new app (logic module + metadata) in response to a user request and have it served.
-- [ ] **BUILDAPP-02**: Guidance gives the agent a `node:sqlite` store template, a ViewNode reference, and the minimal app file layout so a Sonnet-class model reliably produces a working app.
-- [ ] **BUILDAPP-03**: The agent smoke-tests an app it authored (loads its `/api`, confirms `ok`) before declaring it complete.
+- [x] **BUILDAPP-01**: The agent can author a new app (logic module + metadata) in response to a user request and have it served.
+- [x] **BUILDAPP-02**: Guidance gives the agent a `node:sqlite` store template, a ViewNode reference, and the minimal app file layout so a Sonnet-class model reliably produces a working app.
+- [x] **BUILDAPP-03**: The agent smoke-tests an app it authored (loads its `/api`, confirms `ok`) before declaring it complete.
 - [x] **BUILDAPP-04**: The agent can update or remove an app it previously created.
 
 ### Dashboard Apps Section (APPSUI)
@@ -60,9 +60,9 @@
 | APPSRV-05 | Phase 55 | Complete |
 | APPSRV-06 | Phase 55 | Complete |
 | APPSRV-07 | Phase 55 | Complete |
-| BUILDAPP-01 | Phase 56 | Pending |
-| BUILDAPP-02 | Phase 56 | Pending |
-| BUILDAPP-03 | Phase 56 | Pending |
+| BUILDAPP-01 | Phase 56 | Complete |
+| BUILDAPP-02 | Phase 56 | Complete |
+| BUILDAPP-03 | Phase 56 | Complete |
 | BUILDAPP-04 | Phase 56 | Complete |
 | APPSUI-01 | Phase 57 | Pending |
 | APPSUI-02 | Phase 57 | Pending |
