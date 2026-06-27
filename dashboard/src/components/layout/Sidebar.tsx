@@ -4,6 +4,7 @@ import {
   MessageSquare, BrainCircuit, UserCircle, Zap, BarChart3,
   ScrollText, FlaskConical, ClipboardCheck, Settings, LogOut,
   Clock, PanelLeftClose, PanelLeftOpen, CheckSquare, BookOpen, Activity,
+  LayoutGrid,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../auth/AuthContext'
@@ -121,6 +122,7 @@ const NAV_ICONS = {
   Skills: Zap,
   Tasks: CheckSquare,
   Sensors: Activity,
+  Apps: LayoutGrid,
   Schedules: Clock,
   Docs: BookOpen,
   Usage: BarChart3,
@@ -186,6 +188,7 @@ export default function Sidebar({ onSettingsOpen, mobileOpen, onMobileClose }: {
           { to: '/skills', label: 'Skills', end: false },
           { to: '/tasks', label: 'Tasks', end: false },
           { to: '/sensors', label: 'Sensors', end: false },
+          { to: '/apps', label: 'Apps', end: false },
           { to: '/schedules', label: 'Schedules', end: false },
           { to: '/memory', label: 'Memory', end: false },
           { to: '/docs', label: 'Docs', end: false },
