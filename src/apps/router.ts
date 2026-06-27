@@ -17,13 +17,13 @@
 //       src/dashboard/server.ts:170 is global and has already consumed the raw stream.
 // D-08: page/api/action routes gated by requireAuth; _pkg + _skill.md are un-gated
 //       (static framework assets, same rationale as express.static for the SPA bundle).
-import { Router } from 'express'
+import express, { Router } from 'express'
 import type { Request as ExReq, Response as ExRes } from 'express'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { requireAuth } from '../dashboard/auth.js'
 import { ensurePackageSymlink } from './workspace.js'
-import { listApps, loadApp } from './discovery.js'
+import { listApps, loadApp, evictApp, SLUG_RE } from './discovery.js'
 import type { Loaded } from './discovery.js'
 import { toWebRequest, sendWeb } from './adapter.js'
 import { renderShell, pkgDir } from './shell.js'
@@ -140,17 +140,24 @@ export function createAppsRouter(opts: { workspacePath: string }): Router {
   })
 
   // ── POST /:slug/api/action — VMS POST wire (D-06/D-07) ───────────────────────
-  // D-07: re-serialise req.body (already parsed by express.json); raw stream is gone.
+  // The VMS BrowserAdapter POSTs actions as multipart/form-data (FormData with _action/_state).
+  // Global express.json (src/dashboard/server.ts:171) only drains application/json, so it leaves
+  // a multipart stream intact — the route-scoped express.raw() below captures the raw bytes, which
+  // we forward untouched so createAction can parse the FormData. The application/json branch keeps
+  // the old behaviour (re-serialise the express.json-parsed body). Forwarding a JSON string for a
+  // multipart request was the bug that 400'd every built app's buttons.
   // D-09: try/catch so a throwing action() is contained to this app's 500 response.
-  router.post('/:slug/api/action', requireAuth, (req: ExReq, res: ExRes): void => {
+  router.post('/:slug/api/action', requireAuth, express.raw({ type: 'multipart/form-data', limit: '50mb' }), (req: ExReq, res: ExRes): void => {
     const slug = req.params['slug'] as string
     void (async () => {
       const loaded = await resolve(slug, res)
       if (loaded === null) return
       try {
-        const webRes = await loaded.mod!.action(
-          toWebRequest(req, JSON.stringify(req.body ?? {}))
-        )
+        const contentType = req.headers['content-type'] ?? ''
+        const body = contentType.includes('multipart/form-data')
+          ? (req.body as Buffer)            // raw multipart bytes (express.raw)
+          : JSON.stringify(req.body ?? {})  // application/json path (unchanged)
+        const webRes = await loaded.mod!.action(toWebRequest(req, body))
         await sendWeb(webRes, res)
       } catch (e) {
         res.status(500).json({
@@ -162,6 +169,37 @@ export function createAppsRouter(opts: { workspacePath: string }): Router {
         })
       }
     })()
+  })
+
+  // ── DELETE /:slug — remove an app (code + co-located data) from disk ──────────
+  // An app is purely {workspace}/apps/<slug>/ (no central registry), so deletion is
+  // one fs.rm of the folder — code + data.sqlite together (D-03). Gated by requireAuth
+  // like the other app routes. The slug guard reuses SLUG_RE (a '_'-prefixed reserved
+  // slug already fails it), so path traversal and reserved system routes are rejected.
+  router.delete('/:slug', requireAuth, (req: ExReq, res: ExRes): void => {
+    const slug = req.params['slug'] as string
+    if (!SLUG_RE.test(slug)) {
+      res.status(404).json({ ok: false, errors: [{ message: `no app "${slug}"` }] })
+      return
+    }
+    const dir = path.join(appsDir, slug)
+    if (!fs.existsSync(dir)) {
+      res.status(404).json({ ok: false, errors: [{ message: `no app "${slug}"` }] })
+      return
+    }
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+      evictApp(appsDir, slug)
+      res.json({ ok: true })
+    } catch (e) {
+      res.status(500).json({
+        ok: false,
+        errors: [{
+          message: e instanceof Error ? e.message : String(e),
+          code: ERR_CODES.UNCAUGHT,
+        }],
+      })
+    }
   })
 
   return router

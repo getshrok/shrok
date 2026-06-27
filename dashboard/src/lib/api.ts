@@ -368,5 +368,7 @@ export const api = {
   apps: {
     list: () =>
       request<Array<{ slug: string; meta: { title?: string; icon?: string; desc?: string } }>>('/apps/'),
+    delete: (slug: string) =>
+      request<{ ok: true }>(`/apps/${encodeURIComponent(slug)}`, { method: 'DELETE' }),
   },
 }

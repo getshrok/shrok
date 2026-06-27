@@ -95,6 +95,23 @@ export function listApps(appsDir: string): { slug: string; meta: Record<string, 
 }
 
 /**
+ * Evict a single app from the load cache (used by DELETE /:slug after removing the
+ * app folder from disk). Drops the module entry so the slug falls back to filesystem
+ * truth: listApps is already fs-based, and loadApp → resolveEntry returns undefined
+ * for the now-missing dir, so subsequent requests 404.
+ *
+ * ⚠️ This evicts only THIS module's Loaded cache. Node's ESM module registry still
+ * holds the imported app module for the process lifetime, and db.ts may hold an open
+ * DatabaseSync handle (agent apps open their own, not db.ts's). So deleting a slug and
+ * then recreating it with NEW code in the same process can still serve stale module
+ * code until a server restart — the pre-existing D-02 "live edits may need a restart"
+ * limitation. Irrelevant to the real use case (removing an app you no longer want).
+ */
+export function evictApp(appsDir: string, slug: string): void {
+  cache.delete(path.join(appsDir, slug))
+}
+
+/**
  * Load (and cache) an app by slug, running the per-app load-time error boundary.
  *
  * Returns:

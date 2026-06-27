@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import express from 'express'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { Server } from 'node:http'
@@ -194,6 +194,31 @@ describe('createAppsRouter', () => {
     expect(persisted.state.count).toBe(before + 1)
   })
 
+  // ── Real VMS wire: multipart/form-data action (regression for the 400 bug) ──────
+  // The VMS BrowserAdapter POSTs actions as multipart/form-data (FormData with _action/_state),
+  // NOT application/json. The JSON test above fabricates a wire the browser never uses; this one
+  // replicates the real dispatch. Node's fetch sets the multipart content-type + boundary itself.
+  it('POST /:slug/api/action accepts a real multipart/form-data FormData body', async () => {
+    const getRes = await fetch(`${base}/counter/api`)
+    const initial = await getRes.json() as { ok: boolean; state: { count: number } }
+    const before = initial.state.count
+
+    const form = new FormData()
+    form.append('_action', JSON.stringify({ name: 'increment' }))
+    form.append('_state', JSON.stringify(initial.state))
+
+    const actionRes = await fetch(`${base}/counter/api/action`, { method: 'POST', body: form })
+    expect(actionRes.status).toBe(200)
+    const updated = await actionRes.json() as { ok: boolean; state: { count: number } }
+    expect(updated.ok).toBe(true)
+    expect(updated.state.count).toBe(before + 1)
+
+    // Confirm the multipart-driven write persisted.
+    const getRes2 = await fetch(`${base}/counter/api`)
+    const persisted = await getRes2.json() as { state: { count: number } }
+    expect(persisted.state.count).toBe(before + 1)
+  })
+
   // ── Per-app error boundary (D-09) ──────────────────────────────────────────────
   it('broken app GET /:slug/api returns 500 with code:uncaught_exception', async () => {
     const res = await fetch(`${base}/broken/api`)
@@ -236,6 +261,55 @@ describe('createAppsRouter', () => {
     const res = await fetch(`${base}/_pkg/theme.css`)
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toMatch(/css/)
+  })
+
+  // ── DELETE /:slug — remove an app (code + co-located data) ──────────────────────
+  it('DELETE /:slug removes the app dir, de-lists it, and subsequent GET 404s', async () => {
+    // Dedicated throwaway fixture so the shared `counter`/`broken` apps are untouched.
+    const dir = join(workspacePath, 'apps', 'deleteme')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'meta.json'), JSON.stringify({ title: 'Delete Me' }))
+    writeFileSync(
+      join(dir, 'app.mjs'),
+      `export function get() { return { vm: { type: 'page', title: 'Delete Me', children: [] }, state: {} } }
+export async function action() { return new Response('{}', { headers: { 'content-type': 'application/json' } }) }
+`
+    )
+
+    // It's discoverable before deletion.
+    const listBefore = await (await fetch(`${base}/`)).json() as { slug: string }[]
+    expect(listBefore.map((a) => a.slug)).toContain('deleteme')
+
+    // Delete it.
+    const del = await fetch(`${base}/deleteme`, { method: 'DELETE' })
+    expect(del.status).toBe(200)
+    expect(await del.json()).toEqual({ ok: true })
+
+    // Folder is gone on disk.
+    expect(existsSync(dir)).toBe(false)
+
+    // No longer listed, and the API route 404s (cache evicted).
+    const listAfter = await (await fetch(`${base}/`)).json() as { slug: string }[]
+    expect(listAfter.map((a) => a.slug)).not.toContain('deleteme')
+    const apiRes = await fetch(`${base}/deleteme/api`)
+    expect(apiRes.status).toBe(404)
+  })
+
+  it('DELETE /:slug for a missing app returns 404 JSON envelope', async () => {
+    const res = await fetch(`${base}/nonexistent`, { method: 'DELETE' })
+    expect(res.status).toBe(404)
+    const data = await res.json() as { ok: boolean; errors: { message: string }[] }
+    expect(data.ok).toBe(false)
+    expect(data.errors[0]?.message).toContain('nonexistent')
+  })
+
+  it('DELETE /:slug for a reserved/invalid slug returns 404 and never touches disk', async () => {
+    // A '_'-prefixed slug fails SLUG_RE → rejected before any fs access.
+    const res = await fetch(`${base}/_pkg`, { method: 'DELETE' })
+    expect(res.status).toBe(404)
+    // The real counter app is still present and serving.
+    const counter = await fetch(`${base}/counter/api`)
+    expect(counter.status).toBe(200)
   })
 
   // ── Agent skill ─────────────────────────────────────────────────────────────────

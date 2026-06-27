@@ -1,16 +1,17 @@
 // src/apps/adapter.ts
 // Express <-> web Fetch bridge (D-06/D-07).
 //
-// ⚠️ D-07 contract — callers MUST pass the body as JSON.stringify(req.body ?? {}).
-// src/dashboard/server.ts:170 mounts express.json() GLOBALLY, so the raw request
-// stream is already consumed by the time the action route runs. Reading the raw stream
-// would yield an empty body. Build the web Request from req.body (already parsed) by
-// re-serialising it back to a JSON string. The content-type stays "application/json"
-// (carried in req.headers), which createAction content-type-detects to parse the VMS
-// {name,state} payload.
-//
-// Multipart / file-upload is explicitly deferred — this adapter handles the JSON
-// action wire only (Deferred Ideas in 55-02-PLAN.md).
+// ⚠️ Body contract — the caller decides what bytes to forward, by content-type:
+//   - multipart/form-data (the REAL VMS BrowserAdapter wire — FormData with _action/_state):
+//     pass the raw request Buffer through untouched. src/dashboard/server.ts:171 mounts
+//     express.json() globally, but express.json only drains application/json bodies — it does
+//     NOT consume a multipart stream, so the raw bytes are still available and the action route
+//     captures them with a route-scoped express.raw(). The original content-type (with its
+//     boundary) is carried in req.headers, which createAction content-type-detects to parse the
+//     FormData. Passing a JSON string here instead is the bug that produced HTTP 400
+//     "Failed to parse body as FormData" for every built app's buttons.
+//   - application/json: express.json already parsed it, so the caller passes
+//     JSON.stringify(req.body ?? {}); createAction parses it as JSON.
 import type { Request as ExReq, Response as ExRes } from 'express'
 
 // SKIP_HEADERS: headers the web Fetch layer must not receive from the Express side.
@@ -21,11 +22,13 @@ const SKIP_HEADERS = new Set(['content-length', 'host'])
 /**
  * Build a global web Fetch `Request` from an incoming Express request.
  *
- * @param req  - Express request (already populated by express.json middleware, D-07).
- * @param body - The serialised body string. Callers must supply `JSON.stringify(req.body ?? {})`.
- *               Do NOT attempt to re-read `req` as a raw stream — it is already consumed.
+ * @param req  - Express request.
+ * @param body - The body bytes to forward: a Buffer of the raw multipart body (the real VMS
+ *               action wire), or `JSON.stringify(req.body ?? {})` for the application/json path.
+ *               The original content-type header (incl. any multipart boundary) is preserved so
+ *               createAction can content-type-detect and parse it.
  */
-export function toWebRequest(req: ExReq, body: string): Request {
+export function toWebRequest(req: ExReq, body: string | Buffer): Request {
   const headers = new Headers()
   for (const [k, v] of Object.entries(req.headers)) {
     if (SKIP_HEADERS.has(k.toLowerCase())) continue
