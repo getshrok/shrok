@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import * as child_process from 'node:child_process'
-import { ensureWorkspaceRepo, commitWorkspace, WORKSPACE_GITIGNORE } from './git.js'
+import { ensureWorkspaceRepo, commitWorkspace, WORKSPACE_GITIGNORE, PRIOR_KNOWN_GITIGNORES } from './git.js'
 
 const GIT_ENV = {
   GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@local',
@@ -134,6 +134,38 @@ describe('ensureWorkspaceRepo', () => {
     ensureWorkspaceRepo(ws)
 
     expect(fs.readFileSync(path.join(ws, '.gitignore'), 'utf8')).toBe(custom)
+  })
+
+  it('migrates the pre-apps WORKSPACE_GITIGNORE snapshot to the current list (apps/ tracked)', () => {
+    // Simulate a workspace on the old pre-apps constant (PRIOR_KNOWN_GITIGNORES[1]).
+    // Without the PRIOR_KNOWN_GITIGNORES guard this test fails because the pre-apps
+    // constant is not the 2-line LEGACY seed, so ensureWorkspaceRepo would skip it.
+    const preAppsSnapshot = PRIOR_KNOWN_GITIGNORES[1]
+    expect(preAppsSnapshot).toBeDefined()
+    expect(preAppsSnapshot).not.toContain('!/apps/')
+
+    git(ws, ['init'])
+    fs.writeFileSync(path.join(ws, '.gitignore'), preAppsSnapshot)
+    git(ws, ['add', '-A'])
+    git(ws, ['commit', '-m', 'Initialize workspace'])
+
+    ensureWorkspaceRepo(ws)
+
+    // Should have been upgraded to the current (apps-aware) constant
+    expect(fs.readFileSync(path.join(ws, '.gitignore'), 'utf8')).toBe(WORKSPACE_GITIGNORE)
+    // A migration commit should have been made
+    expect(git(ws, ['log', '--oneline'])).toMatch(/upgrade workspace \.gitignore/)
+
+    // apps/demo/app.ts and data.sqlite are tracked; data.sqlite-wal is not
+    fs.mkdirSync(path.join(ws, 'apps', 'demo'), { recursive: true })
+    fs.writeFileSync(path.join(ws, 'apps', 'demo', 'app.ts'), '// demo app')
+    fs.writeFileSync(path.join(ws, 'apps', 'demo', 'data.sqlite'), 'db')
+    fs.writeFileSync(path.join(ws, 'apps', 'demo', 'data.sqlite-wal'), 'wal')
+    commitWorkspace(ws, 'add app')
+
+    expect(isTracked(ws, 'apps/demo/app.ts')).toBe(true)
+    expect(isTracked(ws, 'apps/demo/data.sqlite')).toBe(true)
+    expect(isTracked(ws, 'apps/demo/data.sqlite-wal')).toBe(false)
   })
 })
 
