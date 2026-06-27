@@ -43,6 +43,50 @@ export const WORKSPACE_GITIGNORE = `# Workspace repo is an allowlist — nothing
 !/skills/
 !/sub-agents/
 !/topics/
+!/apps/
+
+# Within allowlisted dirs, still exclude skill runtime artifacts
+# (reinstallable, large, platform-specific)
+skills/*/node_modules/
+skills/*/.playwright-browsers/
+skills/*/.browser-session.json
+skills/*/.browser-sidecar.log
+skills/*/.highlight-*.png
+skills/*/.venv/
+skills/*/__pycache__/
+skills/*/*.pyc
+apps/*/data.sqlite-wal
+apps/*/data.sqlite-shm
+apps/*/data.sqlite-journal
+
+# OS junk anywhere
+**/.DS_Store
+**/Thumbs.db
+`
+
+// The original seed value shipped in early versions. Detecting this exact
+// content lets us safely auto-upgrade old workspaces without overwriting a
+// .gitignore the user themselves customized.
+const LEGACY_SEEDED_GITIGNORE = '*.tmp\n.DS_Store\n'
+
+// Verbatim snapshot of the WORKSPACE_GITIGNORE constant before apps/ was
+// added. Stored here so existing installs (whose .gitignore is byte-identical
+// to this pre-apps version) are auto-upgraded on next daemon boot rather than
+// silently left behind.
+const PRE_APPS_GITIGNORE = `# Workspace repo is an allowlist — nothing tracked unless explicitly included.
+
+# Default: ignore everything at the root
+/*
+
+# Allowlist — things agents could corrupt or delete
+!/.env
+!/.gitignore
+!/config.json
+!/identity/
+!/tasks/
+!/skills/
+!/sub-agents/
+!/topics/
 
 # Within allowlisted dirs, still exclude skill runtime artifacts
 # (reinstallable, large, platform-specific)
@@ -60,15 +104,20 @@ skills/*/*.pyc
 **/Thumbs.db
 `
 
-// The original seed value shipped in early versions. Detecting this exact
-// content lets us safely auto-upgrade old workspaces without overwriting a
-// .gitignore the user themselves customized.
-const LEGACY_SEEDED_GITIGNORE = '*.tmp\n.DS_Store\n'
+// All prior shipped WORKSPACE_GITIGNORE values that are safe to auto-upgrade.
+// A workspace whose .gitignore equals any entry here was never customized by
+// the user, so it is safe to rewrite to the current constant on next boot.
+// When a new allowlist entry is added to WORKSPACE_GITIGNORE, capture the
+// pre-edit constant value here so existing installs migrate automatically.
+export const PRIOR_KNOWN_GITIGNORES: string[] = [
+  LEGACY_SEEDED_GITIGNORE,
+  PRE_APPS_GITIGNORE,
+]
 
 /**
  * Ensure the workspace directory exists and is a git repo.
  * Creates it and runs `git init` if not already initialised. Also migrates
- * old workspaces whose .gitignore is still the original 2-line seed: rewrites
+ * old workspaces whose .gitignore matches any known prior snapshot: rewrites
  * it to the current list and untracks any files that now match. No-op if git
  * is not installed (silently skipped).
  */
@@ -94,10 +143,10 @@ export function ensureWorkspaceRepo(workspacePath: string): void {
 
     if (existing === WORKSPACE_GITIGNORE) return  // already on current list
 
-    // Only auto-upgrade if the current content matches the exact legacy seed
-    // or is missing entirely. If the user customized it, leave alone — they
-    // may have deliberately tracked things we'd exclude.
-    if (existing !== '' && existing !== LEGACY_SEEDED_GITIGNORE) return
+    // Only auto-upgrade if the current content matches a known prior snapshot
+    // (PRIOR_KNOWN_GITIGNORES) or is missing entirely. If the user customized
+    // it, leave alone — they may have deliberately tracked things we'd exclude.
+    if (existing !== '' && !PRIOR_KNOWN_GITIGNORES.includes(existing)) return
 
     fs.writeFileSync(ignorePath, WORKSPACE_GITIGNORE)
 
