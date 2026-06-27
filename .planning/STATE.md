@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: Agent-Authored Apps
 status: executing
-last_updated: "2026-06-27T02:56:56.011Z"
-last_activity: 2026-06-27 -- Phase 56 planning complete
+last_updated: "2026-06-27T04:52:40.584Z"
+last_activity: 2026-06-27
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 33
 ---
 
@@ -17,10 +17,10 @@ progress:
 
 ## Current Position
 
-Phase: 56
-Plan: Not started
+Phase: 56 (build-app-agent-capability) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-06-27 -- Phase 56 planning complete
+Last activity: 2026-06-27
 
 ## v1.11 Phase Map
 
@@ -43,7 +43,7 @@ Last activity: 2026-06-27 -- Phase 56 planning complete
 See: .planning/PROJECT.md
 
 **Core value:** A single coherent AI identity that remembers everything, works across every channel, and delegates to agents — without ever losing the thread.
-**Current focus:** Phase 56 — `build_app` agent capability
+**Current focus:** Phase 56 — build-app-agent-capability
 
 ## Accumulated Context
 
@@ -54,6 +54,9 @@ See: .planning/PROJECT.md
 - **55-03:** Shell embedded as TypeScript string constant (no file-copy step under tsx/Docker); `/_pkg/*` as four literal routes with no `:file` traversal param; literal routes registered before `:slug` routes (T-55-03-SHADOW); `createAgentSkillHandler` called once at factory construction; async route handlers use `void (async () => {})()` pattern; 36 tests (shell 23, router 13), all green; `tsc --noEmit` clean.
 
 - **55-04:** CSRF carve-out `if (req.path.startsWith('/apps/')) return next()` placed after existing `/v1/` line (D-08); `app.use('/apps', createAppsRouter({ workspacePath }))` mounted after HA `/v1` block and BEFORE SPA `GET '*'` catch-all (D-05); integration test uses `beforeEach`/`afterEach` with unique tmpDir per test for sqlite isolation; D-08 proof via `sec-fetch-site: cross-site` — `/apps/*` returns 200, `/sentinel` returns 403; APPSRV-05 proof via direct `DatabaseSync` read on co-located sqlite; 13 integration tests added, 92 total across all apps suite, all green; `tsc --noEmit` clean.
+- [Phase ?]: PRIOR_KNOWN_GITIGNORES array: migration guard checks all known prior snapshots
+- [Phase ?]: 56-01: PRE_APPS_GITIGNORE stored as named const (not inline) for clarity and ease of future additions
+- [Phase ?]: 56-01: Null-check guard (throw on undefined) used over non-null assertion to satisfy noUncheckedIndexedAccess
 
 ### Roadmap Evolution
 

@@ -27,7 +27,7 @@
 - [ ] **BUILDAPP-01**: The agent can author a new app (logic module + metadata) in response to a user request and have it served.
 - [ ] **BUILDAPP-02**: Guidance gives the agent a `node:sqlite` store template, a ViewNode reference, and the minimal app file layout so a Sonnet-class model reliably produces a working app.
 - [ ] **BUILDAPP-03**: The agent smoke-tests an app it authored (loads its `/api`, confirms `ok`) before declaring it complete.
-- [ ] **BUILDAPP-04**: The agent can update or remove an app it previously created.
+- [x] **BUILDAPP-04**: The agent can update or remove an app it previously created.
 
 ### Dashboard Apps Section (APPSUI)
 
@@ -63,7 +63,7 @@
 | BUILDAPP-01 | Phase 56 | Pending |
 | BUILDAPP-02 | Phase 56 | Pending |
 | BUILDAPP-03 | Phase 56 | Pending |
-| BUILDAPP-04 | Phase 56 | Pending |
+| BUILDAPP-04 | Phase 56 | Complete |
 | APPSUI-01 | Phase 57 | Pending |
 | APPSUI-02 | Phase 57 | Pending |
 | APPSUI-03 | Phase 57 | Pending |
