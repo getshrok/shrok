@@ -5,6 +5,35 @@
 > Started 2026-05-24 during the combined v1.3 + v1.4 close-out (both milestones were
 > completed earlier but never formally closed). v1.0–v1.2 predate this document.
 
+## Milestone: v1.11 — Agent-Authored Apps
+
+**Shipped:** 2026-06-27
+**Phases:** 3 (55–57) | **Plans:** 8 | **Sessions:** orchestrated (PoC → discuss → plan → execute, wave-based)
+
+### What Was Built
+shrok can now build small, self-contained ViewModelShell apps on the fly and serve them through its own Express server: workspace `apps/<slug>/` discovery, the `createAction`↔Express adapter, `/apps/:slug/*` + `/apps/_pkg/*` + `/apps/_skill.md`, a per-app error boundary, hot discovery, and a per-app co-located `node:sqlite` store (Phase 55); a `build_app` skill that lets the agent author/verify/update/remove apps, with a golden-example app + a CI guard (Phase 56); and a dashboard "Apps" sidebar section + launcher that links out to each standalone app (Phase 57). Apps are global/shared across heads.
+
+### What Worked
+- **Proof-of-concept first.** Building a throwaway working host (Express + tsx + node:sqlite) BEFORE planning answered the core feasibility question ("does VMS `createAction` run under Express?") with running code, and produced the embedded reference adapter the plans reused.
+- **The plan-checker caught a real blocker the PoC had masked** (D-11): the PoC's apps sat inside the host tree, but real workspace apps live in a different tree from `node_modules`, so their `import { createAction }` would have failed at runtime and every app would have loaded as an error. Caught at planning time (with an empirical repro), fixed via a workspace symlink + an `import.meta.url` db path — before any production code was written.
+- **Discuss → lock decisions → plan kept scope tight.** Global-vs-per-head ownership and filesystem-vs-DB registry were settled up front (global, filesystem), so planning didn't thrash.
+
+### What Was Inefficient
+- The milestone-close CLI's auto-extracted accomplishments were garbage (it scraped "One-liner:"/"CSRF carve-out placement:" lines) and had to be rewritten by hand — the one-liner extraction doesn't match this repo's SUMMARY shape.
+- v1.8/v1.9/v1.10 were still formally unclosed going into the v1.11 close, so the project-wide `audit-open` noise (older UAT/verification gaps + stale quick-task rows) had to be triaged as "pre-existing, not this milestone."
+
+### Patterns Established
+- **An agent-authored artifact that needs an npm dependency resolves it via a symlink into `{workspace}/node_modules`** — apps are the first workspace artifact to need the repo's `node_modules` (skills/sensors are `.md`/`.mjs` and import nothing).
+- **Host owns the boilerplate; the agent authors only logic + metadata** — the HTML shell, `/_pkg`, routing, the adapter, discovery, and error isolation are host-provided, keeping codegen reliable.
+- **Server-driven UI (VMS) means a new app needs zero frontend build** — the SPA is untouched per app; only Phase 57's one-time sidebar/launcher change rebuilt `dashboard/dist`.
+
+### Key Lessons
+- Build the de-risking PoC first when the core question is "does X run under our runtime?" — but remember a convenient PoC layout can mask a real integration constraint (here, cross-tree module resolution); let the adversarial plan-checker find it.
+
+### Cost Observations
+- Model mix: planning on opus (planner) + sonnet (plan-checker, pattern-mapper); execution per GSD defaults.
+- Notable: the PoC and the plan-checker's empirical repro of the module-resolution failure were the two highest-leverage spends.
+
 ## Milestone: v1.6 — Multi-Head Task Delivery
 
 **Shipped:** 2026-05-24

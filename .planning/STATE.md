@@ -2,26 +2,25 @@
 gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: Agent-Authored Apps
-status: milestone_complete
-last_updated: 2026-06-27T06:32:02.229Z
-last_activity: 2026-06-27
+status: Awaiting next milestone
+last_updated: "2026-06-27T17:23:03.942Z"
+last_activity: 2026-06-27 — Milestone v1.11 completed and archived
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 8
-  completed_plans: 30
+  completed_plans: 8
   percent: 100
-stopped_at: Milestone complete (Phase 57 was final phase)
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 57
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-27
+Phase: Milestone v1.11 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-27 — Milestone v1.11 completed and archived
 
 ## v1.11 Phase Map
 
@@ -63,3 +62,7 @@ See: .planning/PROJECT.md
 ### Roadmap Evolution
 
 - Phases 55–57 added: v1.11 Agent-Authored Apps. Let shrok construct small, self-contained VMS web apps on the fly and serve them through its own Express server, surfaced in a new dashboard "Apps" section. Phase 55 = the app-serving subsystem (VMS dependency, `apps/<slug>/` discovery, `createAction`↔Express adapter, page + `/api` + `/api/action` routes, `/_pkg` + `/_skill.md`, per-app error boundary, hot discovery, per-app `node:sqlite`, ownership model); Phase 56 = the `build_app` agent capability (store template + ViewNode reference + minimal layout guidance + mandatory self-smoke-test; skill-vs-tool decision); Phase 57 = the dashboard Apps section (sidebar item + Apps page that links out of the SPA to each standalone app; one-time CI `dashboard/dist` rebuild). One phase per surface, each independently verifiable.
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

@@ -1,5 +1,22 @@
 # Project Milestones: Shrok
 
+## v1.11 Agent-Authored Apps (Shipped: 2026-06-27)
+
+**Phases completed:** 3 phases, 8 plans, 4 tasks
+
+**Delivered:** shrok can now build small, self-contained ViewModelShell apps on the fly and serve them through its own server, with a new dashboard "Apps" section that launches each standalone. 15/15 requirements delivered (APPSRV-01..07, BUILDAPP-01..04, APPSUI-01..04); all three phases verified `passed`.
+
+**Key accomplishments:**
+
+- **App-serving subsystem (Phase 55).** shrok's Express server auto-discovers VMS apps in `{workspace}/apps/<slug>/` and serves each — the standalone page, the `createAction`↔Express wire (`GET`/`POST …/api`), the shared `/apps/_pkg/*` browser bundle, and the `/apps/_skill.md` manual — behind a per-app error boundary, with hot discovery (a new app goes live with no restart) and a per-app co-located `node:sqlite` store. Apps are **global/shared across heads** (consistent with shrok's shared skills/identity/memory). `@ashley-shrok/viewmodel-shell` added as a runtime dependency; workspace apps resolve it via a symlink into `{workspace}/node_modules` (decision D-11) — a real module-resolution gap the plan-checker caught that the proof-of-concept's in-tree layout had masked.
+- **`build_app` agent capability (Phase 56).** A `build_app` **skill** (not a registered tool — the resolved skill-vs-tool decision) lets the agent author a working VMS app from a user request, **smoke-test its own `/api` before declaring done**, and update or remove an app it created. Shipped with a golden-example "notes" app, an in-process test harness + a vitest CI guard, and an apps `.gitignore` allowlist.
+- **Dashboard "Apps" section (Phase 57).** A new sidebar "Apps" item opens a launcher page (`api.apps.list()` → `AppsPage`) listing built apps as tiles (icon / name / description) that link *out* of the SPA to each standalone app; the list refreshes on open/focus so apps appear or disappear with **no dashboard rebuild**. Hardened against malformed app metadata and empty-state-during-error.
+- **Architecture de-risked before code:** a working proof-of-concept proved `createAction` under Express + the `bun:sqlite`→`node:sqlite` store port; the GSD plan-checker then caught the workspace module-resolution blocker (D-11) at planning time, before a line of production code was written.
+
+**Known deferred at close (pre-existing, NOT v1.11):** v1.8 / v1.9 / v1.10 remain feature-complete-but-formally-unclosed (their UAT/verification-gap artifacts are the 2+3 `audit-open` items); 17 stale quick-task ledger rows (dirs already cleaned). None originate from phases 55–57.
+
+---
+
 ## v1.6 Multi-Head Task Delivery (Shipped: 2026-05-24)
 
 **Delivered:** A scheduled **task** runs once but delivers its result to every head in an opt-in delivery set — `completeAgent` fans out `agent_completed` to each head in the deduped set `[headId, ...deliverToHeadIds]`, so the work runs once and the report reaches N heads. Scheduled agents now force-complete instead of suspending-as-question (no human in the loop). Tasks only — reminders are unchanged.
