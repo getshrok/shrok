@@ -19,6 +19,39 @@ function result(name: string, content: string): Message {
   } as Message
 }
 
+describe('injectAgentEvent work-summary override', () => {
+  function capture() {
+    const appended: TextMessage[] = []
+    const messages = { append: (m: TextMessage) => { appended.push(m) } } as unknown as MessageStore
+    // No agentStore → ownWork stays empty; with an override provided the injector must use it.
+    return { appended, injector: new InjectorImpl(messages, 'ashley') }
+  }
+
+  it('uses the work-summary override for a FAILED agent instead of dumping raw work', () => {
+    const { appended, injector } = capture()
+    injector.injectAgentEvent(
+      { type: 'agent_failed', id: 'e1', agentId: 'a1', error: 'loop detected' } as unknown as QueueEvent & { type: 'agent_failed' },
+      'Read the catalog, wrote two files, then failed.',
+    )
+    expect(appended).toHaveLength(1)
+    const content = appended[0]!.content as string
+    expect(content).toContain('<agent-result type="failed"')
+    expect(content).toContain('Read the catalog, wrote two files, then failed.') // summary used
+    expect(content).toContain('loop detected') // error body retained
+  })
+
+  it('still uses the override for a COMPLETED agent (unchanged behavior)', () => {
+    const { appended, injector } = capture()
+    injector.injectAgentEvent(
+      { type: 'agent_completed', id: 'e2', agentId: 'a2', output: 'done' } as unknown as QueueEvent & { type: 'agent_completed' },
+      'Summarized work.',
+    )
+    const content = appended[0]!.content as string
+    expect(content).toContain('<agent-result type="completed"')
+    expect(content).toContain('Summarized work.')
+  })
+})
+
 describe('formatWorkForSummary', () => {
   it('includes text, tool_call, and tool_result lines in order', () => {
     const out = formatWorkForSummary([

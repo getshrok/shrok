@@ -161,8 +161,12 @@ export class InjectorImpl implements Injector {
     // Build the head-formatted transcript for the content field.
     // When an override is provided (append-only path: work-summary steward ran pre-injection),
     // skip the raw render loop entirely and use the override directly.
+    // Both completed AND failed agents use the summary override when provided. A failed agent's
+    // raw work can be huge (a context-heavy agent that read large catalogs dumps its whole
+    // transcript here, pinning/churning the head's context window), so it must be summarized too,
+    // never raw-dumped.
     let workSection = ''
-    if (event.type === 'agent_completed' && workSummaryOverride !== undefined) {
+    if ((event.type === 'agent_completed' || event.type === 'agent_failed') && workSummaryOverride !== undefined) {
       workSection = '\n\n' + workSummaryOverride
     } else if (ownWork.length > 0) {
       const adjusted = adjustToolMessages(ownWork, this.headToolNames)

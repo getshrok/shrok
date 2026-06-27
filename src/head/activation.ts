@@ -656,6 +656,18 @@ export class ActivationLoop {
       if (ev.type === 'agent_completed') completedEvents.push(ev as QueueEvent & { type: 'agent_completed' })
     }
 
+    // Failed events ALSO need a work-summary override, or the injector raw-dumps the agent's full
+    // work into the head's history. A context-heavy failed agent (e.g. a build-app run that read
+    // large catalogs) can be tens of thousands of tokens and pin/churn the head's context window.
+    // Collected separately from completedEvents because the relay-steward gate below keys on
+    // `output` (failed events carry `error`, not `output`) — only the work-summary steward, which
+    // summarizes the WORK regardless of outcome, applies to them.
+    const failedEvents: Array<QueueEvent & { type: 'agent_failed' }> = []
+    if (event.type === 'agent_failed') failedEvents.push(event as QueueEvent & { type: 'agent_failed' })
+    for (const { event: ev } of coalescedEvents) {
+      if (ev.type === 'agent_failed') failedEvents.push(ev as QueueEvent & { type: 'agent_failed' })
+    }
+
     // Relay steward: for background agent completions (scheduled + sensor sub-agent —
     // Phase 52 D-09), decide if output warrants activation. Runs BEFORE injection —
     // !relay suppresses the injection entirely (no retroactive delete needed). Sensor
@@ -701,7 +713,7 @@ export class ActivationLoop {
     // agent_completed event. Injector will use these instead of raw tool dumps.
     const overrides = new Map<string, string>()
     if (event.type !== 'user_message') {
-      for (const ce of completedEvents) {
+      for (const ce of [...completedEvents, ...failedEvents]) {
         if (suppressedEventIds.has(ce.id)) continue
         const tag = `[work-summary:${ce.agentId}]`
         const a = this.opts.agentStore.get(ce.agentId)
