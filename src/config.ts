@@ -297,11 +297,15 @@ const ConfigSchema = z.object({
   // Token budget for the conversation history passed to stewards (preference, compliance, etc.).
   stewardContextTokenBudget: z.coerce.number().default(10_000),
   // Loop detection: how many consecutive rounds with identical tool+args before the LLM steward is invoked.
-  loopSameArgsTrigger: z.coerce.number().min(2).default(3),
+  // This is the true-loop signal (byte-identical call), so it stays lowish — but high enough to tolerate a
+  // couple of transient-error retries of the same call.
+  loopSameArgsTrigger: z.coerce.number().min(2).default(5),
   // Loop detection: how many consecutive errors from the same tool before the LLM steward is invoked.
-  loopErrorTrigger: z.coerce.number().min(1).default(2),
+  // This fires even when the agent VARIES its args (legitimate "try a different way a few times"), so it gets
+  // lots of rope — an LLM loop-steward is the actual arbiter and still aborts genuine loops.
+  loopErrorTrigger: z.coerce.number().min(1).default(8),
   // Loop detection: after a nudge, how many more errors before aborting.
-  loopPostNudgeErrorTrigger: z.coerce.number().min(1).default(1),
+  loopPostNudgeErrorTrigger: z.coerce.number().min(1).default(3),
   // Loop steward: max characters of each tool call's input shown to the steward.
   loopStewardToolInputChars: z.coerce.number().min(50).default(200),
   // Loop steward: max characters of each tool result shown to the steward.
