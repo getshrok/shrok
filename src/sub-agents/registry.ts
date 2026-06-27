@@ -473,7 +473,22 @@ function validateSkillFrontmatterIfGated(
 
 function executeWriteFile(input: Record<string, unknown>): string {
   const filePath = resolvePath(input['path'] as string)
-  const content = input['content'] as string
+  const content = input['content']
+  // Guard a missing `content` arg with an actionable error instead of letting fs.writeFileSync throw the
+  // cryptic Node `The "data" argument must be of type string`. A missing content on an otherwise well-formed
+  // call (path + description present) is the output-token-truncation signature for a too-large file — the
+  // model can't recover from the raw Node message and retries identically until the loop guard kills it.
+  // Throwing here surfaces this text via the dispatch wrapper (local.ts) as an `Error:`-prefixed result, which
+  // both tells the model what to do AND still counts toward loop detection as a backstop. An empty string is a
+  // legal write (empty file), so only reject a non-string (missing/undefined) content.
+  if (typeof content !== 'string') {
+    throw new Error(
+      `write_file got no \`content\` for ${filePath}. This usually means the file body was truncated at the ` +
+      `output-token limit because the file is too large for one call. Do NOT retry the same write — instead ` +
+      `write a smaller skeleton first and use edit_file to add the rest, or split it into multiple smaller ` +
+      `files (an app's app.ts can import sibling modules).`,
+    )
+  }
   const rejection = validateSkillFrontmatterIfGated('write_file', filePath, content)
   if (rejection !== null) return rejection
   fs.mkdirSync(path.dirname(filePath), { recursive: true })

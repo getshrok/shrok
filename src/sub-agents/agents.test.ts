@@ -235,6 +235,29 @@ describe('AgentToolRegistryImpl', () => {
     expect(readFileSync(tmpPath, 'utf8')).toBe('hello world')
   })
 
+  it('write_file executor rejects a missing `content` arg with an actionable error and writes nothing', async () => {
+    const entries = registry.resolveOptional(['write_file'])
+    const writeFile = entries[0]!
+    const ctx = { agentId: 't1', headId: 'test-head', suspend: vi.fn(), complete: vi.fn(), fail: vi.fn() }
+    const fs = await import('node:fs')
+    // A large-file write truncated at the output-token limit arrives with path + description but no content.
+    const tmpPath = `/tmp/agent_test_nocontent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.txt`
+    const call = () => writeFile.execute({ path: tmpPath, description: 'write the app' }, ctx)
+    await expect(call()).rejects.toThrow(/content/)
+    // The error must steer toward a different action (split / edit_file), not the cryptic Node message.
+    await expect(call()).rejects.toThrow(/edit_file|smaller|split/)
+    expect(fs.existsSync(tmpPath)).toBe(false)
+
+    // Boundary: an empty string is a LEGAL write (empty file), NOT a missing-content rejection.
+    const emptyPath = `/tmp/agent_test_empty_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.txt`
+    try {
+      const ok = await writeFile.execute({ path: emptyPath, content: '' }, ctx)
+      expect(ok).toContain('Written 0 bytes')
+    } finally {
+      fs.rmSync(emptyPath, { force: true })
+    }
+  })
+
   it('write_file executor accepts valid SKILL.md frontmatter', async () => {
     const entries = registry.resolveOptional(['write_file'])
     const writeFile = entries[0]!
