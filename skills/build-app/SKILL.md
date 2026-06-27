@@ -1,19 +1,28 @@
 ---
 name: build-app
-description: How to author, smoke-test, update, and remove a VMS app served at /apps/<slug>/ — copy the seeded example, pick a slug, edit app.ts + meta.json + app.test.ts, verify with tsx + the in-process loadApp probe, and report "live". Read this when the user asks for a small custom app, tool, or dashboard.
+description: How to author, smoke-test, update, and remove a VMS app served at /apps/<slug>/ — copy the seeded example, pick a slug, edit app.ts (+ optional sibling modules for bigger apps) + meta.json + app.test.ts, verify with tsx + the in-process loadApp probe, and report "live". Read this when the user asks for a small custom app, tool, or dashboard.
 ---
 
 ## What an app is and what you author
 
 A VMS app is a server-driven UI served at `/apps/<slug>/`. The host (shrok's Express server)
 owns the HTML shell, the `/_pkg` browser bundle, routing, the `createAction`↔Express adapter,
-hot discovery, and per-app error isolation. **You author exactly three files:**
+hot discovery, and per-app error isolation. **You author these files in `apps/<slug>/`:**
 
-- `app.ts` — the app module: store + state type + `get(): ShellResponseBody` + `createAction`-wrapped
-  `action`. One self-contained TypeScript file; no HTML, no frontend build.
+- `app.ts` — the app **entry module**: it must export `get(): ShellResponseBody`, a `createAction`-wrapped
+  `action`, and `meta`. No HTML, no frontend build. A small app can be one self-contained file; for a **bigger
+  app, split the logic across co-located sibling modules** (e.g. `state.ts`, `views.ts`, `systems.ts`) that
+  `app.ts` imports — exactly like the `vms-apps` apps. **Prefer several normal-sized files over one giant
+  `app.ts`:** a single very large `write_file` can be truncated at the output-token limit (you'll get a
+  "no `content` / file too large" error — if that happens, split the file or use `edit_file`). `app.ts` is the
+  only entry the host looks for; sibling files are never mistaken for separate apps.
 - `meta.json` — three fields: `{ "title": "...", "icon": "...", "desc": "..." }`.
-- `app.test.ts` — the permanent per-app verification harness (adapted from the example);
-  kept in the app folder after you're done.
+- `app.test.ts` — the permanent per-app verification harness (adapted from the example); kept in the app
+  folder. It imports `app.ts` (which pulls in any sibling modules), so multi-file apps need no special test
+  wiring.
+
+**Editing existing files:** use `edit_file` (precise `oldText`→`newText` edits) to change a file you've already
+written — reserve `write_file` for creating new files, so you never re-send a whole large file through one call.
 
 Each app lives at `$SHROK_WORKSPACE_PATH/apps/<slug>/` alongside its own co-located
 `data.sqlite` (created on first run).
