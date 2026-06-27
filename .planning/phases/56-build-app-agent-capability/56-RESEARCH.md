@@ -337,7 +337,7 @@ A delegated build-app sub-agent is a **foreground** trigger (not `isBackgroundTr
 
 **These three are the items discuss-phase/the planner should confirm before locking.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 ### 1. The D-07 HTTP check is auth-gated — how does the agent verify "served"? (RESOLVE IN PLAN)
 - **What we know:** `GET /apps/<slug>/api` → `requireAuth` (`src/apps/router.ts:123`) → 401 without a `shrok_session` cookie (`src/dashboard/auth.ts:76-82`). No loopback bypass. Login needs `dashboardPasswordHash` (`src/dashboard/routes/auth.ts:68`), which the sub-agent doesn't have. The unauthenticated routes are only `GET /apps/` (enumeration), `/_pkg/*`, `/_skill.md` (`src/apps/router.ts:51-78`).
