@@ -95,5 +95,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 55. App-Serving Subsystem | 4/4 | Complete    | 2026-06-26 |
-| 56. `build_app` Agent Capability | 3/3 | Complete   | 2026-06-27 |
+| 56. `build_app` Agent Capability | 3/3 | Complete    | 2026-06-27 |
 | 57. Dashboard "Apps" Section | 0/TBD | Not started | - |
