@@ -13,7 +13,7 @@ Shrok learns to build and serve small, self-contained web apps on the fly. The j
 
 - [x] **Phase 55: App-Serving Subsystem** - Shrok's Express server discovers, serves, and isolates VMS apps from the workspace `apps/<slug>/` directory (completed 2026-06-26)
 - [x] **Phase 56: `build_app` Agent Capability** - The agent authors, smoke-tests, updates, and removes working VMS apps from user requests (completed 2026-06-27)
-- [ ] **Phase 57: Dashboard "Apps" Section** - A new sidebar item + Apps page lists built apps and launches each standalone, reflecting hot discovery
+- [x] **Phase 57: Dashboard "Apps" Section** - A new sidebar item + Apps page lists built apps and launches each standalone, reflecting hot discovery (completed 2026-06-27)
 
 ## Phase Details
 
@@ -88,7 +88,7 @@ Plans:
 
 Plans:
 
-- [ ] 57-01-PLAN.md — Dashboard Apps section: api.apps.list, AppsPage launcher grid, sidebar nav item + route
+- [x] 57-01-PLAN.md — Dashboard Apps section: api.apps.list, AppsPage launcher grid, sidebar nav item + route
 
 ## Progress
 
@@ -96,4 +96,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 55. App-Serving Subsystem | 4/4 | Complete    | 2026-06-26 |
 | 56. `build_app` Agent Capability | 3/3 | Complete    | 2026-06-27 |
-| 57. Dashboard "Apps" Section | 0/1 | Planned | - |
+| 57. Dashboard "Apps" Section | 1/1 | Complete   | 2026-06-27 |

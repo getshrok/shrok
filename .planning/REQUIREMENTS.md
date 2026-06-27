@@ -31,10 +31,10 @@
 
 ### Dashboard Apps Section (APPSUI)
 
-- [ ] **APPSUI-01**: A new "Apps" item appears in the dashboard sidebar.
-- [ ] **APPSUI-02**: The Apps page lists the apps shrok has built (name / icon / description).
-- [ ] **APPSUI-03**: Selecting an app navigates out of the dashboard SPA to that app's standalone page.
-- [ ] **APPSUI-04**: The Apps list reflects apps appearing/disappearing without a dashboard rebuild.
+- [x] **APPSUI-01**: A new "Apps" item appears in the dashboard sidebar.
+- [x] **APPSUI-02**: The Apps page lists the apps shrok has built (name / icon / description).
+- [x] **APPSUI-03**: Selecting an app navigates out of the dashboard SPA to that app's standalone page.
+- [x] **APPSUI-04**: The Apps list reflects apps appearing/disappearing without a dashboard rebuild.
 
 ## Future Requirements (deferred)
 
@@ -64,7 +64,7 @@
 | BUILDAPP-02 | Phase 56 | Complete |
 | BUILDAPP-03 | Phase 56 | Complete |
 | BUILDAPP-04 | Phase 56 | Complete |
-| APPSUI-01 | Phase 57 | Pending |
-| APPSUI-02 | Phase 57 | Pending |
-| APPSUI-03 | Phase 57 | Pending |
-| APPSUI-04 | Phase 57 | Pending |
+| APPSUI-01 | Phase 57 | Complete |
+| APPSUI-02 | Phase 57 | Complete |
+| APPSUI-03 | Phase 57 | Complete |
+| APPSUI-04 | Phase 57 | Complete |
