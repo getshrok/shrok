@@ -22,7 +22,7 @@ export default function AppsPage() {
         {appsQuery.isError && (
           <p className="px-2 py-1 text-xs text-red-400">Failed to load apps</p>
         )}
-        {!appsQuery.isLoading && apps.length === 0 && (
+        {!appsQuery.isLoading && !appsQuery.isError && apps.length === 0 && (
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-6 py-8 text-sm text-zinc-500 text-center">
             No apps yet — ask shrok to build one.
           </div>
