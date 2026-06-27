@@ -58,11 +58,18 @@ Plans:
   3. The agent smoke-tests an app it authored — loads its `/api`, confirms `ok` — before declaring the app complete.
   4. The agent can update or remove an app it previously created, and the change is reflected in what shrok serves.
 
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
 
 Plans:
 
-- [ ] 56-01: TBD
+**Wave 1**
+
+- [ ] 56-01-PLAN.md — Workspace git allowlist: add `!/apps/` (+ exclude data.sqlite-wal/-shm/-journal) and fix the `.gitignore` migration so existing installs upgrade
+- [ ] 56-02-PLAN.md — Golden example VMS app (single-file node:sqlite, APP_DB_PATH override, journal_mode=DELETE) + its in-process app.test.ts + a vitest guard that the shipped example loads via loadApp
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 56-03-PLAN.md — `skills/build-app/SKILL.md`: author → smoke-test (tsx test + loadApp probe) → update/remove workflow for a delegated sub-agent
 
 ### Phase 57: Dashboard "Apps" Section
 
@@ -88,5 +95,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 55. App-Serving Subsystem | 4/4 | Complete    | 2026-06-26 |
-| 56. `build_app` Agent Capability | 0/TBD | Not started | - |
+| 56. `build_app` Agent Capability | 0/3 | Not started | - |
 | 57. Dashboard "Apps" Section | 0/TBD | Not started | - |
