@@ -190,6 +190,51 @@ function makeExecutor(): ToolExecutor {
   }
 }
 
+// Records the LLMOptions of every complete() call so tests can assert what the
+// loop forwarded to the provider.
+class CapturingProvider implements LLMProvider {
+  readonly name = 'capturing'
+  readonly received: LLMOptions[] = []
+  callCount = 0
+  private responses: LLMResponse[]
+  constructor(responses: LLMResponse[]) { this.responses = responses }
+  async complete(_msgs: Message[], _tools: ToolDefinition[], opts: LLMOptions): Promise<LLMResponse> {
+    this.received.push(opts)
+    const resp = this.responses[this.callCount++]
+    if (!resp) throw new Error('CapturingProvider: no more responses configured')
+    return resp
+  }
+}
+
+describe('runToolLoop maxTokens pass-through', () => {
+  const baseOpts = () => ({
+    model: 'smart',
+    tools: [],
+    systemPrompt: 'sys',
+    history: [...baseHistory],
+    executor: makeExecutor(),
+    usage: freshUsage(),
+    sourceType: 'agent' as const,
+    sourceId: 'agt_1',
+    appendMessage: async () => {},
+    refreshHistory: () => [...baseHistory],
+  })
+
+  it('forwards options.maxTokens to the provider complete() call', async () => {
+    const provider = new CapturingProvider([END_TURN_RESPONSE])
+    const router = new SingleProviderRouter(provider, { dumb: 'stub-dumb', smart: 'stub-smart', genius: 'stub-genius' })
+    await runToolLoop(router, { ...baseOpts(), maxTokens: 16384 })
+    expect(provider.received[0]?.maxTokens).toBe(16384)
+  })
+
+  it('omits maxTokens when unset so the provider fallback (8192) applies', async () => {
+    const provider = new CapturingProvider([END_TURN_RESPONSE])
+    const router = new SingleProviderRouter(provider, { dumb: 'stub-dumb', smart: 'stub-smart', genius: 'stub-genius' })
+    await runToolLoop(router, baseOpts())
+    expect(provider.received[0]?.maxTokens).toBeUndefined()
+  })
+})
+
 describe('runToolLoop onRoundComplete callback', () => {
   it('fires once per non-final round (after each tool_result append, before next LLM call)', async () => {
     // 3 LLM rounds (tool_call, tool_call, end_turn) → callback fires exactly 2 times

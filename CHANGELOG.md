@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [next]
 
 ### Fixed
+- **Agents and the assistant no longer truncate large outputs partway through** — every reply was being capped at roughly half the available output length because the request never set its token limit and fell back to a conservative built-in default. That cap was small enough to cut off a single large file write or a long answer mid-stream. The limit now uses the configured value, doubling the room a reply has, so large writes and long responses complete in one go.
 - **Switching heads now switches the conversation view** — when you had a background agent's stream open and then picked a different head, the dashboard kept showing (and refreshing) the previous head's agent stream. Changing the head now snaps the view back to that head's conversation, so you're never left looking at a stream that belongs to another head.
 
 ## [0.9.0] — 2026-06-27

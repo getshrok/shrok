@@ -377,6 +377,7 @@ export function buildSystem(deps: SystemDeps): System {
         archivalThreshold: Math.floor(config.contextWindowTokens * config.archivalThresholdFraction),
         historyBudget: config.contextWindowTokens,
         toolOutputMaxChars: config.toolOutputMaxChars,
+        llmMaxTokens: config.llmMaxTokens,
         timezone: config.timezone,
         agentModel: config.agentModel,
         stewardModel: config.stewardModel,

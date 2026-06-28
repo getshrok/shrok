@@ -84,6 +84,10 @@ export interface LocalAgentRunnerOptions {
   /** Max chars of agent-visible tool OUTPUT before middle-truncation at the dispatch layer.
    *  0 or negative disables truncation (passthrough). Default 30_000. */
   toolOutputMaxChars?: number
+  /** Max output tokens for an agent's own completions (config.llmMaxTokens). When unset,
+   *  defaults to 16384 — never the provider's smaller 8192 fallback, which truncates large
+   *  write_file content. Passed through to runToolLoop's maxTokens. */
+  llmMaxTokens?: number
   /** IANA timezone identifier — used by the threshold block check to compute period boundaries. */
   timezone: string
   agentModel?: string       // default model for agents with no skill/tier override
@@ -120,6 +124,7 @@ export class LocalAgentRunner implements AgentRunner {
   private archivalThreshold: number
   private historyBudget: number
   private toolOutputMaxChars: number
+  private agentMaxTokens: number
   private agentDefaults: AgentDefaults
   private timezone: string
   private envOverrides: Record<string, string>
@@ -164,6 +169,7 @@ export class LocalAgentRunner implements AgentRunner {
     this.historyBudget = opts.historyBudget ?? Math.max(this.archivalThreshold * 2, 200_000)
     if (this.historyBudget <= this.archivalThreshold) throw new Error(`historyBudget (${this.historyBudget}) must exceed archivalThreshold (${this.archivalThreshold}) — otherwise compaction is dead code`)
     this.toolOutputMaxChars = opts.toolOutputMaxChars ?? 30_000
+    this.agentMaxTokens = opts.llmMaxTokens ?? 16384
     this.agentDefaults = opts.agentDefaults ?? { env: null, allowedTools: null }
     this.envOverrides = opts.envOverrides ?? {}
     this.timezone = opts.timezone
@@ -869,6 +875,7 @@ export class LocalAgentRunner implements AgentRunner {
         systemPrompt,
         history,
         executor,
+        maxTokens: this.agentMaxTokens,
         usage: this.usageStore,
         sourceType: 'agent',
         sourceId: agentId,

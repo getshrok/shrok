@@ -949,6 +949,7 @@ export class ActivationLoop {
       loopStewardToolResultChars: config.loopStewardToolResultChars,
       loopStewardSystemPromptChars: config.loopStewardSystemPromptChars,
       loopStewardMaxTokens: config.loopStewardMaxTokens,
+      maxTokens: config.llmMaxTokens,
       refreshHistory: filteredBuildHistory,
     }
 

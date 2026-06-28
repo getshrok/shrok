@@ -116,6 +116,12 @@ export interface ToolLoopOptions {
   loopStewardSystemPromptChars?: number
   /** Loop steward: max output tokens. Default: 128. */
   loopStewardMaxTokens?: number
+  /** Max output tokens for the agent/head's own completions. When unset, the
+   *  provider's built-in fallback (8192) applies — which truncates large writes
+   *  (a write_file content arg shares this budget with the turn's reasoning).
+   *  Callers pass config.llmMaxTokens so the limit matches the assembler's
+   *  reserved output budget instead of silently using the smaller fallback. */
+  maxTokens?: number
 
   /** When present and aborted, the loop exits between rounds (before the next llm.complete
    *  and before tool execution) by throwing AgentAbortedError. In-flight tool calls are
@@ -279,6 +285,7 @@ export async function runToolLoop(
       options.tools,
       {
         systemPrompt: options.systemPrompt,
+        ...(options.maxTokens !== undefined ? { maxTokens: options.maxTokens } : {}),
       }
     )
     timingMark('llm.call_end', {
