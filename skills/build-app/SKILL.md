@@ -20,6 +20,8 @@ hot discovery, and per-app error isolation. **You author these files in `apps/<s
 - `app.test.ts` — the permanent per-app verification harness (adapted from the example); kept in the app
   folder. It imports `app.ts` (which pulls in any sibling modules), so multi-file apps need no special test
   wiring.
+- `package.json` — copied verbatim from the example: a one-line `{ "type": "module" }` that marks the app
+  folder as ESM so `npx tsx app.test.ts` runs (see the copy step below). Do not edit it.
 
 **Editing existing files:** use `edit_file` (precise `oldText`→`newText` edits) to change a file you've already
 written — reserve `write_file` for creating new files, so you never re-send a whole large file through one call.
@@ -69,10 +71,19 @@ A collision is ambiguous (update vs. new app) and must be a user decision.
 ```bash
 WORKSPACE="$SHROK_WORKSPACE_PATH"
 mkdir -p "$WORKSPACE/apps/<slug>"
-cp "$WORKSPACE/skills/build-app/example/app.ts"      "$WORKSPACE/apps/<slug>/app.ts"
-cp "$WORKSPACE/skills/build-app/example/meta.json"   "$WORKSPACE/apps/<slug>/meta.json"
-cp "$WORKSPACE/skills/build-app/example/app.test.ts" "$WORKSPACE/apps/<slug>/app.test.ts"
+cp "$WORKSPACE/skills/build-app/example/app.ts"        "$WORKSPACE/apps/<slug>/app.ts"
+cp "$WORKSPACE/skills/build-app/example/meta.json"     "$WORKSPACE/apps/<slug>/meta.json"
+cp "$WORKSPACE/skills/build-app/example/app.test.ts"   "$WORKSPACE/apps/<slug>/app.test.ts"
+cp "$WORKSPACE/skills/build-app/example/package.json"  "$WORKSPACE/apps/<slug>/package.json"
 ```
+
+⚠️ **Copy the `package.json` too — do not skip it.** It is a one-line `{ "type": "module" }`
+that marks the app folder as ESM. Without it, `npx tsx app.test.ts` (Gate 1 below) runs the
+test as CommonJS and the harness's top-level `await import("./app.ts")` fails with a
+top-level-await / ESM error — even though your code is fine. The host already loads apps as ESM
+at serve time, so this just makes test-time match serve-time. Copy it as-is; do not edit it, and
+do NOT instead add a `package.json` at the workspace root (that pollutes every app and the
+workspace itself).
 
 ### 2. Edit to fit the ask
 
