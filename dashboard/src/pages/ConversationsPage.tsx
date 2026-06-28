@@ -576,8 +576,12 @@ export default function ConversationsPage() {
 
   // Clear stale pills when switching heads (closes #10: head-scope the pills).
   // The accumulator below re-populates from the now head-scoped agentsQuery.
+  // Also snap the visible stream back to the head: an agent id in selectedStream
+  // belongs to the previous head, so without this the view keeps rendering (and
+  // refetching) that stale agent's stream against the newly-selected head.
   useEffect(() => {
     setKnownAgents(new Map())
+    setSelectedStream('head')
   }, [selectedHead])
 
   // D-03: clear live accumulators on head switch so stale items from the previous

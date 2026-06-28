@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+### Fixed
+- **Switching heads now switches the conversation view** — when you had a background agent's stream open and then picked a different head, the dashboard kept showing (and refreshing) the previous head's agent stream. Changing the head now snaps the view back to that head's conversation, so you're never left looking at a stream that belongs to another head.
+
 ## [0.9.0] — 2026-06-27
 
 ### Added
