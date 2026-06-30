@@ -2,9 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <title>Shrok</title>
+    <script>
+      // Lock zoom so the dashboard feels like a native app. The viewport meta above stops
+      // the iOS focus-zoom, but Safari deliberately keeps pinch- and double-tap-zoom alive
+      // for accessibility, so block those gestures directly. Runs before React mounts.
+      (function () {
+        // Pinch-zoom (iOS gesture events + trackpad ctrl-wheel).
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
+          document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
+        });
+        document.addEventListener('wheel', function (e) {
+          if (e.ctrlKey) e.preventDefault();
+        }, { passive: false });
+        // Double-tap-to-zoom: swallow the second tap when it lands within 300ms of the first.
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function (e) {
+          var now = Date.now();
+          if (now - lastTouchEnd <= 300) e.preventDefault();
+          lastTouchEnd = now;
+        }, { passive: false });
+        // Keyboard zoom (Ctrl/Cmd +/-/0) for completeness on desktop.
+        document.addEventListener('keydown', function (e) {
+          if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0'].indexOf(e.key) !== -1) e.preventDefault();
+        });
+      })();
+    </script>
     <script type="module" crossorigin src="/assets/index-D8vLjNDC.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BMErehUH.css">
   </head>
