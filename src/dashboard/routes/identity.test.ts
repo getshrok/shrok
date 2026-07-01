@@ -215,6 +215,26 @@ describe('identity router — memory section', () => {
     expect(r.status).toBe(400)
   })
 
+  it('Test 11: PUT mixed-case identity filename (main) writes to workspace', async () => {
+    // Regression: identity files like Ashley.md / Zoey.md are legitimately
+    // mixed-case and must be savable. An uppercase-only filename regex previously
+    // rejected them with 400 "Invalid filename", blocking the save from the UI.
+    const r = await put('main', 'Ashley.md', { content: 'IDENTITY-V2' })
+    expect(r.status).toBe(200)
+    expect((r.data as { ok: boolean }).ok).toBe(true)
+    const written = fs.readFileSync(path.join(tmpMain, 'Ashley.md'), 'utf8')
+    expect(written).toBe('IDENTITY-V2')
+  })
+
+  it('Test 12: PUT identity filename still enforces the .md charset guard', async () => {
+    // Mixed case is allowed for identity files, but the guard must still reject
+    // non-.md files and anything outside the safe charset (traversal protection).
+    const bad = await put('main', 'evil.txt', { content: 'x' })
+    expect(bad.status).toBe(400)
+    const dots = await put('main', 'a..b.md', { content: 'x' })
+    expect(dots.status).toBe(400)
+  })
+
   it('Test 10: memory entries have isDangerous=false', async () => {
     const r = await get()
     const files = (r.data as { files: Array<{ filename: string; section: string; isDangerous: boolean }> }).files

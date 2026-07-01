@@ -7,10 +7,19 @@ import { listStewardPrompts } from '../../head/steward.js'
 import { listProactivePrompts } from '../../scheduler/proactive.js'
 import { listMemoryPrompts } from '../../memory/prompts.js'
 
-const SAFE_FILENAME = /^[A-Z0-9_-]+\.md$/
+// Prompt files (memory/steward/proactive) are canonically uppercase and are
+// additionally guarded by an exact-match lookup against the known shipped set.
+const SAFE_FILENAME_PROMPT = /^[A-Z0-9_-]+\.md$/
+// Identity files (main/agent) are user-named and legitimately mixed-case
+// (e.g. Ashley.md, Zoey.md), so lowercase letters must be allowed. Traversal is
+// still blocked: no path separators or dots are permitted beyond the trailing
+// .md, and '..' is rejected outright.
+const SAFE_FILENAME_IDENTITY = /^[A-Za-z0-9_-]+\.md$/
 
-function safeFilename(name: string): boolean {
-  return SAFE_FILENAME.test(name) && !name.includes('..')
+function safeFilename(name: string, section: string): boolean {
+  if (name.includes('..')) return false
+  const re = section === 'main' || section === 'agent' ? SAFE_FILENAME_IDENTITY : SAFE_FILENAME_PROMPT
+  return re.test(name)
 }
 
 // Files that warrant a warning in the UI
@@ -94,7 +103,7 @@ export function createIdentityRouter(
       return
     }
 
-    if (!safeFilename(filename)) {
+    if (!safeFilename(filename, section)) {
       res.status(400).json({ error: 'Invalid filename' })
       return
     }

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [next]
 
+## [0.9.2] — 2026-06-30
+
+### Fixed
+- **Identity files with lowercase letters in their name now save** — editing a file like `Ashley.md` or `Zoey.md` from the dashboard Identity page failed with a server error, because the save was rejecting any filename that wasn't all-uppercase. Mixed-case identity filenames now save correctly (prompt files remain restricted as before).
+
 ## [0.9.1] — 2026-06-30
 
 ### Fixed
